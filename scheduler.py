@@ -145,9 +145,11 @@ async def task_daily_predictions():
                 logger.warning("[Task 18h00] Pas de données météo, prédictions reportées")
                 return
 
-            # Fix v5 #6 : détecter si météo simulée
+            # Fix v5 #6 : détecter si météo simulée (via quality ou description)
             simulated = any(
-                f.get("description", "") == "donnees simulees" for f in forecasts
+                f.get("forecast_quality") == "simulated"
+                or f.get("description", "") == "donnees simulees"
+                for f in forecasts
             )
             if simulated:
                 logger.warning("[Task 18h00] Données météo SIMULÉES (pas de clé API)")
@@ -242,7 +244,9 @@ async def task_weekly_recap():
                 return
 
             simulated = any(
-                f.get("description", "") == "donnees simulees" for f in forecasts
+                f.get("forecast_quality") == "simulated"
+                or f.get("description", "") == "donnees simulees"
+                for f in forecasts
             )
             rte_score = await get_consumption_score()
             predictions = predict_range(forecasts, rte_score=rte_score,

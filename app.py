@@ -430,7 +430,11 @@ async def api_predictions():
                            "Les prédictions seront disponibles après le prochain cycle (18h).",
             }
 
-        simulated = any(f.get("description", "") == "donnees simulees" for f in forecasts)
+        simulated = any(
+            f.get("forecast_quality") == "simulated"
+            or f.get("description", "") == "donnees simulees"
+            for f in forecasts
+        )
         rte_score = await get_consumption_score()
         predictions = predict_range(forecasts, rte_score=rte_score, simulated=simulated)
 

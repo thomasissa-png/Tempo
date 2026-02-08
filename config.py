@@ -18,16 +18,21 @@ class Config:
 
     # --- Villes meteo ponderees par population / parc chauffage electrique ---
     # (lat, lon, poids) — poids normalises a 1.0
-    # Le sud-est pese plus car fort parc de chauffage electrique
+    # Fix meteo #2 : reequilibrage des poids
+    #   - Marseille reduit (climat mediterraneen doux, biaise la moyenne vers le haut)
+    #   - Lille et Strasbourg augmentes (climat froid + fort parc chauffage electrique)
+    #   - Clermont-Ferrand ajoute (representatif du Massif Central, climat continental)
+    #   - Bordeaux reduit (climat oceanique doux)
     WEATHER_CITIES = [
-        {"name": "Paris",      "lat": 48.8566, "lon": 2.3522,  "weight": 0.22},
-        {"name": "Lyon",       "lat": 45.7640, "lon": 4.8357,  "weight": 0.14},
-        {"name": "Marseille",  "lat": 43.2965, "lon": 5.3698,  "weight": 0.12},
-        {"name": "Toulouse",   "lat": 43.6047, "lon": 1.4442,  "weight": 0.10},
-        {"name": "Lille",      "lat": 50.6292, "lon": 3.0573,  "weight": 0.10},
-        {"name": "Strasbourg", "lat": 48.5734, "lon": 7.7521,  "weight": 0.10},
-        {"name": "Nantes",     "lat": 47.2184, "lon": -1.5536, "weight": 0.10},
-        {"name": "Bordeaux",   "lat": 44.8378, "lon": -0.5792, "weight": 0.12},
+        {"name": "Paris",           "lat": 48.8566, "lon": 2.3522,  "weight": 0.20},
+        {"name": "Lyon",            "lat": 45.7640, "lon": 4.8357,  "weight": 0.13},
+        {"name": "Lille",           "lat": 50.6292, "lon": 3.0573,  "weight": 0.14},
+        {"name": "Strasbourg",      "lat": 48.5734, "lon": 7.7521,  "weight": 0.12},
+        {"name": "Nantes",          "lat": 47.2184, "lon": -1.5536, "weight": 0.10},
+        {"name": "Toulouse",        "lat": 43.6047, "lon": 1.4442,  "weight": 0.09},
+        {"name": "Bordeaux",        "lat": 44.8378, "lon": -0.5792, "weight": 0.08},
+        {"name": "Marseille",       "lat": 43.2965, "lon": 5.3698,  "weight": 0.07},
+        {"name": "Clermont-Ferrand","lat": 45.7772, "lon": 3.0870,  "weight": 0.07},
     ]
 
     # Fallback Paris seul (compatibilite)

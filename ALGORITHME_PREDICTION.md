@@ -29,18 +29,21 @@ Les poids (0.30, 0.20, etc.) sont **ajustables mensuellement** par regression lo
 
 **Fonction** : `_score_temperature_v2(temp_moy_nationale)`
 
-La temperature moyenne est calculee a partir de 8 villes francaises ponderees par population et parc de chauffage electrique :
+La temperature moyenne est calculee a partir de **9 villes francaises** ponderees par population, parc de chauffage electrique et impact climatique sur Tempo :
 
-| Ville       | Poids |
-|-------------|-------|
-| Paris       | 22%   |
-| Lyon        | 14%   |
-| Marseille   | 12%   |
-| Bordeaux    | 12%   |
-| Toulouse    | 10%   |
-| Lille        | 10%   |
-| Strasbourg  | 10%   |
-| Nantes      | 10%   |
+| Ville            | Poids | Justification                                      |
+|------------------|-------|----------------------------------------------------|
+| Paris            | 20%   | Plus grande agglomeration, forte consommation       |
+| Lille             | 14%   | Climat froid, fort parc chauffage electrique        |
+| Lyon             | 13%   | Grand bassin, hivers froids                         |
+| Strasbourg       | 12%   | Climat continental froid                            |
+| Nantes           | 10%   | Facade atlantique, climat modere                    |
+| Toulouse         | 9%    | Sud-Ouest, climat intermediaire                     |
+| Bordeaux         | 8%    | Climat oceanique doux                               |
+| Marseille        | 7%    | Climat mediterraneen, faible impact Tempo           |
+| Clermont-Ferrand | 7%    | Massif Central, representatif de l'interieur froid  |
+
+**Changements v3** : Marseille reduit de 12% a 7% (climat doux qui baisait la moyenne), Lille et Strasbourg augmentes (regions froides = plus d'impact Tempo), Clermont-Ferrand ajoute (representatif du Massif Central).
 
 **Grille de scoring** :
 
@@ -266,7 +269,7 @@ Les sub-scores (score_temperature, score_budget, etc.) sont stockes en DB avec c
 ```
 18h00 (scheduler)
   |
-  +-- Fetch meteo 15 jours (8 villes ponderees)
+  +-- Fetch meteo 15 jours (9 villes ponderees, API 5j + extrapolation)
   +-- Fetch consommation RTE (J+1)
   +-- predict_range(forecasts, rte_score)
   |     |
@@ -293,16 +296,30 @@ Les sub-scores (score_temperature, score_budget, etc.) sont stockes en DB avec c
 | Source                  | API                                      | Usage                        |
 |-------------------------|------------------------------------------|------------------------------|
 | Couleurs officielles    | api-couleur-tempo.fr                     | Verification, override J+1   |
-| Meteo                   | OpenWeatherMap (8 villes)                | Temperature, pression         |
+| Meteo                   | OpenWeatherMap (9 villes) + extrapolation| Temperature, pression         |
 | Consommation electrique | RTE eco2mix (OAuth2)                     | Prevision pointe, nucleaire   |
 | Jours feries            | Calcul interne (algorithme de Meeus)     | Scoring jour semaine          |
 
 ---
 
-## 11. Limites connues
+## 11. Qualite des donnees meteo (v3)
 
-1. **Horizon J+8 a J+15** : Les previsions meteo deviennent peu fiables au-dela de 7 jours. Les predictions a cet horizon sont indicatives.
+Chaque jour de prevision porte un champ `forecast_quality` :
+
+| Qualite        | Source                     | Attenuation du score    | Horizon typique |
+|---------------|----------------------------|-------------------------|-----------------|
+| `api`          | API OpenWeatherMap reelle  | Aucune (100% confiance) | J+0 a J+5      |
+| `climatology`  | Extrapolation climatologique| 30% vers neutre (50)   | J+6 a J+15     |
+| `simulated`    | Moyennes saisonnieres      | 50% vers neutre (50)   | Sans cle API    |
+
+**Extrapolation J+6 a J+15** : Les dernieres temperatures API servent de point de depart. Le systeme regresse progressivement vers les normales saisonnieres du mois cible, avec une tendance amortie basee sur les 3 derniers jours API. Un bruit deterministique simule la variabilite naturelle.
+
+---
+
+## 12. Limites connues
+
+1. **Horizon J+6 a J+15** : Au-dela de J+5 (API gratuite), les temperatures sont extrapolees par regression climatologique. Le predictor attenue automatiquement le score de risque de 30% pour ces jours. Les predictions a cet horizon sont indicatives.
 2. **Donnees RTE** : Seulement fiables pour J+1, attenuees pour J+2/J+3, ignorees au-dela.
 3. **Profil mensuel** : Base sur un historique de 20 saisons. Un changement de politique EDF invaliderait ce profil.
 4. **Pas de donnees infra-journalieres** : Le scoring utilise des moyennes journalieres, pas les pointes horaires.
-5. **Meteo fallback** : Sans cle OpenWeather, le systeme utilise des moyennes saisonnières (flag `simulated`).
+5. **Meteo fallback** : Sans cle OpenWeather, le systeme utilise des moyennes saisonnières (flag `simulated`, attenuation 50%).

@@ -116,6 +116,9 @@ def predict_day(target_date: date, weather: dict | None = None,
     temp_max = weather.get("temp_max", 10) if weather else 10
     temp_moy = weather.get("temp_moy", 7.5) if weather else 7.5
 
+    # Fix meteo #1 : qualite de la meteo (api / climatology / simulated)
+    forecast_quality = weather.get("forecast_quality", "api") if weather else "simulated"
+
     # === 1. Score temperature (recalibre zone 0-5C) ===
     temp_score = _score_temperature_v2(temp_moy)
 
@@ -152,6 +155,16 @@ def predict_day(target_date: date, weather: dict | None = None,
     )
     score_risque = min(100, base_score + cold_wave)
 
+    # Fix meteo #1 : attenuer le score pour la meteo extrapolee/simulee
+    # Les facteurs meteo-dependants (temperature, gradient, cold wave, clustering)
+    # sont moins fiables avec des donnees climatologiques. On regresse vers 50 (neutre).
+    if forecast_quality == "climatology":
+        # Extrapolation J+6-J+15 : attenuation de 30% vers le neutre
+        score_risque = score_risque * 0.7 + 50 * 0.3
+    elif forecast_quality == "simulated":
+        # Pas de donnees API du tout : attenuation de 50% vers le neutre
+        score_risque = score_risque * 0.5 + 50 * 0.5
+
     # === Determiner la couleur predite ===
     if score_risque >= Config.SEUIL_ROUGE and remaining["ROUGE"] > 0:
         couleur = "ROUGE"
@@ -167,7 +180,7 @@ def predict_day(target_date: date, weather: dict | None = None,
     # === Raison humaine ===
     raison = _build_raison_v2(
         temp_moy, temp_min, gradient_score, cold_wave, remaining,
-        target_date, d_left, rte_score, cluster_score)
+        target_date, d_left, rte_score, cluster_score, forecast_quality)
 
     # Sub-scores pour stockage ML (Fix audit apprentissage #2)
     sub_scores = {
@@ -581,9 +594,16 @@ def _compute_probabilities(score: float, remaining: dict) -> tuple[float, float,
 def _build_raison_v2(temp_moy: float, temp_min: float,
                      gradient_score: float, cold_wave: float,
                      remaining: dict, target_date: date, d_left: int,
-                     rte_score: dict | None, cluster_score: float) -> str:
+                     rte_score: dict | None, cluster_score: float,
+                     forecast_quality: str = "api") -> str:
     """Construit une explication humaine de la prediction v2."""
     raisons = []
+
+    # Fix meteo #1 : signaler la qualite degradee
+    if forecast_quality == "climatology":
+        raisons.append("Meteo extrapolee (confiance reduite)")
+    elif forecast_quality == "simulated":
+        raisons.append("Meteo simulee (confiance faible)")
 
     # Temperature nationale
     if temp_moy < -2:
