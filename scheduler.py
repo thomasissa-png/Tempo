@@ -112,6 +112,7 @@ async def task_daily_predictions():
     """18h00 — Génère les prédictions J+1→J+15, envoie les alertes SMS."""
     from weather_client import fetch_forecast_extended, cache_weather
     from predictor import predict_range, store_prediction
+    from rte_client import get_consumption_score
     from alerts import send_alerts_for_prediction
 
     logger.info("[Task 18h00] Début génération des prédictions")
@@ -125,7 +126,8 @@ async def task_daily_predictions():
     cache_weather(forecasts)
 
     # 2. Générer les prédictions
-    predictions = predict_range(forecasts)
+    rte_score = await get_consumption_score()
+    predictions = predict_range(forecasts, rte_score=rte_score)
 
     # 3. Stocker et envoyer les alertes
     for pred in predictions:

@@ -166,9 +166,11 @@ async def api_predictions():
     from weather_client import fetch_forecast_extended
     from predictor import predict_range
     from performance_tracker import get_accuracy_global
+    from rte_client import get_consumption_score
 
     forecasts = await fetch_forecast_extended()
-    predictions = predict_range(forecasts)
+    rte_score = await get_consumption_score()
+    predictions = predict_range(forecasts, rte_score=rte_score)
 
     # Badge de fiabilité
     accuracy = get_accuracy_global(30)

@@ -10,6 +10,7 @@ import json
 import logging
 from datetime import date, datetime, timedelta
 from database import get_db, get_current_weights
+from predictor import is_french_holiday
 from config import Config
 
 logger = logging.getLogger(__name__)
@@ -234,18 +235,23 @@ def recalculate_weights():
             d = date_type.fromisoformat(row["date"])
             temp_min = row["temp_min_prevue"] or 5
             temp_max = row["temp_max_prevue"] or 10
-            pressure = row["pression_prevue"] or 1013
-            is_weekday = 1 if d.weekday() <= 4 else 0
+            temp_moy = (temp_min + temp_max) / 2
 
             rouge_restants = row["jours_rouges_restants"] or 0
             # Simple normalization: 22 jours = 0, 0 jours = 100
             budget_feature = max(0, min(100, (22 - rouge_restants) / 22 * 100))
 
+            is_weekday = 1 if d.weekday() <= 4 else 0
+            is_holiday = 1 if is_french_holiday(d) else 0
+            jour_semaine_feature = is_weekday * 70 + is_holiday * 30
+
             X.append([
-                _score_temp_feature(temp_min),      # feature température
-                budget_feature,                      # feature budget
-                is_weekday * 70,                     # feature jour semaine
-                _score_pressure_feature(pressure),   # feature pression
+                _score_temp_feature(temp_moy),     # feature température
+                budget_feature,                     # feature jours_restants
+                jour_semaine_feature,               # feature jour_semaine
+                30,                                 # feature gradient_thermique (placeholder)
+                20,                                 # feature clustering (placeholder)
+                50,                                 # feature consommation_rte (placeholder)
             ])
 
             # Label : 0=BLEU, 1=BLANC, 2=ROUGE
@@ -274,7 +280,9 @@ def recalculate_weights():
             "temperature": round(float(importance[0] / total_imp), 4),
             "jours_restants": round(float(importance[1] / total_imp), 4),
             "jour_semaine": round(float(importance[2] / total_imp), 4),
-            "pression_meteo": round(float(importance[3] / total_imp), 4),
+            "gradient_thermique": round(float(importance[3] / total_imp), 4),
+            "clustering": round(float(importance[4] / total_imp), 4),
+            "consommation_rte": round(float(importance[5] / total_imp), 4),
         }
 
         # Calculer la précision avant/après
@@ -313,24 +321,20 @@ def recalculate_weights():
         conn.close()
 
 
-def _score_temp_feature(temp_min: float) -> float:
-    """Feature température normalisée pour le ML."""
-    if temp_min < -5:
-        return 85
-    if temp_min < 0:
+def _score_temp_feature(temp_moy: float) -> float:
+    """Feature température normalisée pour le ML (basée sur temp_moy)."""
+    if temp_moy < -2:
+        return 90
+    if temp_moy < 0:
+        return 75
+    if temp_moy < 2:
         return 60
-    if temp_min < 5:
-        return 30
+    if temp_moy < 5:
+        return 40
+    if temp_moy < 8:
+        return 20
     return 5
 
-
-def _score_pressure_feature(pressure: float) -> float:
-    """Feature pression pour le ML."""
-    if pressure >= 1030:
-        return 80
-    if pressure >= 1020:
-        return 50
-    return 15
 
 
 # ================================================================
