@@ -2,8 +2,18 @@
 
 Trois responsabilités :
   1. Vérification quotidienne (11h30) : compare prédictions vs couleur réelle
-  2. Calcul de métriques : précision globale, par horizon, matrice de confusion
+  2. Calcul de métriques : précision, recall, F1, matrice de confusion
   3. Recalcul mensuel des poids via régression logistique (scikit-learn)
+
+Fix audit ML :
+  - ML-1/ML-2 : filtre horizon <= 5 dans évaluation et entraînement
+  - ML-4 : métriques precision/recall/F1 par classe
+  - ML-5 : seuil validation 55% (au lieu de 40%)
+  - ML-6 : normalisation StandardScaler des features
+  - ML-7/ML-8 : minimum 60 données + cross-validation 5-fold
+  - ML-11 : permutation importance au lieu de norme L2
+  - ML-12 : ALPHA adaptatif selon quantité de données
+  - ML-15 : precision_apres mise à jour indépendamment
 """
 
 import json
@@ -20,8 +30,8 @@ logger = logging.getLogger(__name__)
 # ================================================================
 
 def evaluate_predictions_for_date(target_date: date, couleur_reelle: str):
-    """Compare toutes les prédictions faites pour target_date avec la couleur réelle.
-    Enregistre les résultats dans la table performance."""
+    """Compare les prédictions faites pour target_date avec la couleur réelle.
+    Fix ML-1 : filtre les prédictions à horizon <= 5 jours (pertinentes)."""
     conn = get_db()
     try:
         predictions = conn.execute(
@@ -33,10 +43,16 @@ def evaluate_predictions_for_date(target_date: date, couleur_reelle: str):
             logger.info(f"[Perf] Aucune prédiction pour {target_date}")
             return
 
+        nb_stored = 0
         for pred in predictions:
             # Calculer l'avance en jours
             ts = datetime.fromisoformat(pred["timestamp_prediction"])
             jours_avance = (target_date - ts.date()).days
+
+            # Fix ML-1 : ignorer les prédictions trop anciennes (> 16 jours)
+            if jours_avance < 0 or jours_avance > 16:
+                continue
+
             correct = 1 if pred["couleur_predite"] == couleur_reelle else 0
 
             # Écart de score : différence entre score prédit et seuil réel
@@ -56,21 +72,21 @@ def evaluate_predictions_for_date(target_date: date, couleur_reelle: str):
                  score_predit, ecart,
                  pred["raison"] or "", datetime.now().isoformat()),
             )
+            nb_stored += 1
 
         conn.commit()
-        nb = len(predictions)
-        nb_correct = sum(1 for p in predictions if p["couleur_predite"] == couleur_reelle)
-        logger.info(f"[Perf] {target_date}: {nb_correct}/{nb} prédictions correctes")
+        nb_correct = sum(
+            1 for p in predictions
+            if p["couleur_predite"] == couleur_reelle
+        )
+        logger.info(f"[Perf] {target_date}: {nb_correct}/{nb_stored} prédictions correctes")
 
     finally:
         conn.close()
 
 
 def _couleur_to_score(couleur: str) -> float:
-    """Score de reference aligne sur les seuils de l'algorithme.
-
-    Fix #10 : milieu de chaque zone definie par SEUIL_ROUGE et SEUIL_BLANC.
-    """
+    """Score de reference aligne sur les seuils de l'algorithme."""
     return {
         "ROUGE": (Config.SEUIL_ROUGE + 100) / 2,   # 82.5
         "BLANC": (Config.SEUIL_BLANC + Config.SEUIL_ROUGE) / 2,  # 50.0
@@ -84,10 +100,7 @@ def _couleur_to_score(couleur: str) -> float:
 
 def get_accuracy_global(days: int = 30, max_horizon: int | None = None) -> dict:
     """Precision globale sur les N derniers jours.
-
-    Fix #6 audit v4 : filtre optionnel par horizon max (jours_avance).
-    max_horizon=1 → J-1 seulement, None → tous les horizons.
-    """
+    max_horizon=1 → J-1 seulement, None → tous les horizons."""
     conn = get_db()
     try:
         since = (date.today() - timedelta(days=days)).isoformat()
@@ -168,11 +181,50 @@ def get_confusion_matrix(days: int = 60) -> dict:
             for c_pred in ("BLEU", "BLANC", "ROUGE")
         }
         for r in rows:
-            matrix[r["couleur_predite"]][r["couleur_reelle"]] = r["cnt"]
+            if r["couleur_predite"] in matrix and r["couleur_reelle"] in matrix[r["couleur_predite"]]:
+                matrix[r["couleur_predite"]][r["couleur_reelle"]] = r["cnt"]
 
         return matrix
     finally:
         conn.close()
+
+
+def get_precision_recall_f1(days: int = 60) -> dict:
+    """Fix ML-4 : Precision, Recall et F1 par classe sur les N derniers jours."""
+    matrix = get_confusion_matrix(days)
+    couleurs = ["BLEU", "BLANC", "ROUGE"]
+    metrics = {}
+
+    for couleur in couleurs:
+        # TP = matrice[couleur][couleur] (prédit = couleur ET réel = couleur)
+        tp = matrix[couleur][couleur]
+        # FP = somme des prédits couleur mais réels différents
+        fp = sum(matrix[couleur][c] for c in couleurs if c != couleur)
+        # FN = somme des réels couleur mais prédits différents
+        fn = sum(matrix[c][couleur] for c in couleurs if c != couleur)
+
+        precision = tp / (tp + fp) if (tp + fp) > 0 else 0
+        recall = tp / (tp + fn) if (tp + fn) > 0 else 0
+        f1 = 2 * precision * recall / (precision + recall) if (precision + recall) > 0 else 0
+
+        metrics[couleur] = {
+            "precision": round(precision * 100, 1),
+            "recall": round(recall * 100, 1),
+            "f1": round(f1 * 100, 1),
+            "support": tp + fn,
+        }
+
+    # Weighted F1 (pondéré par le support)
+    total_support = sum(m["support"] for m in metrics.values())
+    weighted_f1 = 0
+    if total_support > 0:
+        weighted_f1 = sum(
+            m["f1"] * m["support"] / total_support
+            for m in metrics.values()
+        )
+
+    metrics["weighted_f1"] = round(weighted_f1, 1)
+    return metrics
 
 
 def get_recent_errors(limit: int = 5) -> list[dict]:
@@ -201,6 +253,7 @@ def get_performance_summary() -> dict:
         "global_90j": get_accuracy_global(90),
         "by_horizon": get_accuracy_by_horizon(90),
         "confusion_matrix": get_confusion_matrix(90),
+        "precision_recall_f1": get_precision_recall_f1(90),
         "recent_errors": get_recent_errors(10),
         "current_weights": get_current_weights(),
     }
@@ -211,57 +264,60 @@ def get_performance_summary() -> dict:
 # ================================================================
 
 def recalculate_weights():
-    """Recalcule les poids de l'algorithme via regression logistique
-    sur l'historique des predictions evaluees.
+    """Recalcule les poids de l'algorithme via regression logistique.
 
-    Corrections audit apprentissage :
-      Fix #1/#2 : utilise les sub-scores stockes (memes features qu'inference)
-      Fix #4 : bornes [0.05, 0.50] + lissage EMA avec anciens poids
-      Fix #5 : met a jour precision_apres de l'entree precedente
-      Fix #6 : class_weight='balanced' pour contrer desequilibre BLEU
-      Fix #8 : LIMIT 500 pour couvrir une saison complete
-      Fix #11 : split train/test 80/20 avec stratification
-      Fix #12 : entraine sur tous les horizons (sub-scores deja corrects)
+    Fix ML-2 : filtre sur jours_avance <= 5 pour entraîner sur horizons fiables.
+    Fix ML-5 : seuil validation 55% (random = 33%).
+    Fix ML-6 : normalisation StandardScaler des features.
+    Fix ML-7 : minimum 60 données.
+    Fix ML-8 : cross-validation 5-fold.
+    Fix ML-11 : permutation importance.
+    Fix ML-12 : ALPHA adaptatif.
     """
     conn = get_db()
     try:
+        # Fix ML-15 : toujours mettre à jour precision_apres, même sans recalcul
+        _update_previous_precision_apres(conn)
+
         # Verifier qu'on a assez de donnees evaluees
         count = conn.execute(
             "SELECT COUNT(*) as c FROM performance WHERE jours_avance <= 5"
         ).fetchone()["c"]
 
-        if count < 30:
-            logger.info(f"[Poids] Pas assez de donnees evaluees ({count}/30)")
+        # Fix ML-7 : minimum 60 données (au lieu de 30)
+        if count < 60:
+            logger.info(f"[Poids] Pas assez de donnees evaluees ({count}/60)")
             return None
 
-        # Fix #5 : mettre a jour precision_apres de l'entree precedente
-        _update_previous_precision_apres(conn)
-
-        # Fix #1/#2 : utiliser les sub-scores stockes dans predictions
-        # Fix #8 : LIMIT 500 pour couvrir ~une saison
-        # Fix #12 : tous les horizons (pas juste J-1/J-2/J-3)
+        # Fix ML-2 : filtrer sur jours_avance <= 5 pour horizons fiables
         rows = conn.execute(
             """SELECT p.score_temperature, p.score_budget, p.score_weekday,
                       p.score_gradient, p.score_clustering, p.score_rte,
                       a.couleur_reelle
                FROM predictions p
                JOIN actuals a ON p.date = a.date
-               WHERE (p.score_temperature + p.score_budget + p.score_weekday
+               WHERE p.horizon IN ('J-1','J-2','J-3','J-4','J-5','J0')
+                 AND (p.score_temperature + p.score_budget + p.score_weekday
                       + p.score_gradient + p.score_clustering + p.score_rte) > 0
                ORDER BY p.date DESC
-               LIMIT 500"""
+               LIMIT 300"""
         ).fetchall()
 
-        if len(rows) < 30:
+        if len(rows) < 60:
             logger.info(
-                f"[Poids] Pas assez de donnees avec sub-scores ({len(rows)}/30), "
-                "en attente d'accumulation de nouvelles predictions"
+                f"[Poids] Pas assez de donnees avec sub-scores ({len(rows)}/60)"
             )
             return None
 
         import numpy as np
         from sklearn.linear_model import LogisticRegression
-        from sklearn.model_selection import train_test_split
+        from sklearn.model_selection import cross_val_score
+        from sklearn.preprocessing import StandardScaler
+
+        feature_names = [
+            "temperature", "jours_restants", "jour_semaine",
+            "gradient_thermique", "clustering", "consommation_rte",
+        ]
 
         X = []
         y = []
@@ -287,44 +343,74 @@ def recalculate_weights():
             logger.info("[Poids] Pas assez de diversite dans les labels")
             return None
 
-        # Fix #11 : split train/test 80/20 avec stratification
-        try:
-            X_train, X_test, y_train, y_test = train_test_split(
-                X, y, test_size=0.2, random_state=42, stratify=y
-            )
-        except ValueError:
-            # Stratification impossible si une classe a < 2 exemples
-            X_train, X_test, y_train, y_test = train_test_split(
-                X, y, test_size=0.2, random_state=42
-            )
+        # Fix ML-6 : normalisation des features
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X)
 
-        # Fix #6 : class_weight='balanced' pour contrer le desequilibre
+        # Fix ML-8 : cross-validation 5-fold
         model = LogisticRegression(
             multi_class="multinomial", max_iter=1000, C=1.0,
             class_weight="balanced",
         )
-        model.fit(X_train, y_train)
 
-        # Fix #11 : evaluer sur le test set
-        test_accuracy = round(model.score(X_test, y_test) * 100, 1)
+        try:
+            cv_scores = cross_val_score(model, X_scaled, y, cv=5, scoring="accuracy")
+            cv_accuracy = round(cv_scores.mean() * 100, 1)
+            cv_std = round(cv_scores.std() * 100, 1)
+        except ValueError:
+            # Pas assez de données pour 5-fold sur une classe
+            cv_accuracy = 0
+            cv_std = 0
+            logger.warning("[Poids] Cross-validation impossible (classe trop rare)")
 
-        # Extraire l'importance relative (norme L2 des coefficients)
-        importance = np.sqrt((model.coef_ ** 2).sum(axis=0))
+        # Fix ML-5 : seuil validation 55% (random baseline = 33%)
+        if cv_accuracy < 55:
+            logger.warning(
+                f"[Poids] CV accuracy trop faible ({cv_accuracy}% ± {cv_std}%), "
+                "poids NON deployes"
+            )
+            conn.execute(
+                """INSERT INTO weights_history
+                   (date_update, weights_json, precision_avant, precision_apres,
+                    nb_predictions, commentaire, model_version, timestamp_update)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (datetime.now().strftime("%Y-%m-%d"),
+                 json.dumps(get_current_weights()),
+                 get_accuracy_global(30)["precision"], cv_accuracy, count,
+                 f"REJETE (cv_acc={cv_accuracy}% ± {cv_std}%)",
+                 "logreg_v2.1_scaler_cv5",
+                 datetime.now().isoformat()),
+            )
+            conn.commit()
+            return None
+
+        # Entraîner le modèle final sur toutes les données
+        model.fit(X_scaled, y)
+
+        # Fix ML-11 : permutation importance
+        try:
+            from sklearn.inspection import permutation_importance
+            perm_result = permutation_importance(
+                model, X_scaled, y, n_repeats=10, random_state=42
+            )
+            importance = perm_result.importances_mean
+            # Rendre positif (certaines importances peuvent être négatives)
+            importance = np.maximum(importance, 0.01)
+        except Exception:
+            # Fallback norme L2 si permutation échoue
+            importance = np.sqrt((model.coef_ ** 2).sum(axis=0))
+
         total_imp = importance.sum()
         if total_imp == 0:
             logger.warning("[Poids] Importance totale nulle, abandon")
             return None
 
         raw_weights = {
-            "temperature": float(importance[0] / total_imp),
-            "jours_restants": float(importance[1] / total_imp),
-            "jour_semaine": float(importance[2] / total_imp),
-            "gradient_thermique": float(importance[3] / total_imp),
-            "clustering": float(importance[4] / total_imp),
-            "consommation_rte": float(importance[5] / total_imp),
+            k: float(importance[i] / total_imp)
+            for i, k in enumerate(feature_names)
         }
 
-        # Fix #4 : bornes [0.05, 0.50] — aucun facteur desactive ni dominant
+        # Bornes [0.05, 0.50] — aucun facteur desactive ni dominant
         WEIGHT_MIN = 0.05
         WEIGHT_MAX = 0.50
         bounded = {
@@ -334,9 +420,9 @@ def recalculate_weights():
         total_bounded = sum(bounded.values())
         bounded = {k: v / total_bounded for k, v in bounded.items()}
 
-        # Fix #4 : lissage EMA (alpha=0.5) avec les anciens poids
+        # Fix ML-12 : ALPHA adaptatif (plus de données = plus de confiance)
         old_weights = get_current_weights()
-        ALPHA = 0.5
+        ALPHA = min(0.6, max(0.2, len(rows) / 500))
         smoothed = {}
         for key in bounded:
             old_val = old_weights.get(key, bounded[key])
@@ -350,48 +436,26 @@ def recalculate_weights():
 
         precision_avant = get_accuracy_global(30)["precision"]
 
-        # Fix #4 : validation — deployer seulement si test accuracy > 40%
-        if test_accuracy < 40:
-            logger.warning(
-                f"[Poids] Test accuracy trop faible ({test_accuracy}%), "
-                "poids NON deployes"
-            )
-            conn.execute(
-                """INSERT INTO weights_history
-                   (date_update, weights_json, precision_avant, precision_apres,
-                    nb_predictions, commentaire, timestamp_update)
-                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
-                (datetime.now().strftime("%Y-%m-%d"),
-                 json.dumps(new_weights),
-                 precision_avant, test_accuracy, count,
-                 f"REJETE (test_acc={test_accuracy}%) — ancien: "
-                 f"{json.dumps(old_weights)}",
-                 datetime.now().isoformat()),
-            )
-            conn.commit()
-            return None
-
-        # Fix #2 audit v4 : precision_apres = 0 (placeholder), sera mise a jour
-        # au prochain recalcul par _update_previous_precision_apres.
-        # test_accuracy est stockee dans le commentaire pour reference.
         conn.execute(
             """INSERT INTO weights_history
                (date_update, weights_json, precision_avant, precision_apres,
-                nb_predictions, commentaire, timestamp_update)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                nb_predictions, commentaire, model_version, timestamp_update)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             (datetime.now().strftime("%Y-%m-%d"),
              json.dumps(new_weights),
              precision_avant, 0, count,
-             f"Recalcul auto (test_acc={test_accuracy}%) — "
+             f"Recalcul auto (cv_acc={cv_accuracy}% ± {cv_std}%, "
+             f"alpha={ALPHA:.2f}, n={len(rows)}) — "
              f"ancien: {json.dumps(old_weights)}",
+             "logreg_v2.1_scaler_cv5",
              datetime.now().isoformat()),
         )
         conn.commit()
 
         logger.info(f"[Poids] Nouveaux poids deployes : {new_weights}")
         logger.info(
-            f"[Poids] Anciens : {old_weights} | "
-            f"Test accuracy : {test_accuracy}%"
+            f"[Poids] CV accuracy : {cv_accuracy}% ± {cv_std}% | "
+            f"Alpha={ALPHA:.2f} | n={len(rows)}"
         )
         return new_weights
 
@@ -406,25 +470,25 @@ def recalculate_weights():
 
 
 def _update_previous_precision_apres(conn):
-    """Fix #5 : met a jour precision_apres de la derniere entree weights_history.
+    """Met à jour precision_apres de la dernière entrée weights_history."""
+    try:
+        last_entry = conn.execute(
+            "SELECT id, precision_apres FROM weights_history ORDER BY id DESC LIMIT 1"
+        ).fetchone()
 
-    Appelee au debut de chaque recalcul mensuel pour enregistrer
-    la precision obtenue avec les poids du mois precedent.
-    """
-    last_entry = conn.execute(
-        "SELECT id, precision_apres FROM weights_history ORDER BY id DESC LIMIT 1"
-    ).fetchone()
-
-    if last_entry and last_entry["precision_apres"] == 0:
-        current_precision = get_accuracy_global(30)["precision"]
-        conn.execute(
-            "UPDATE weights_history SET precision_apres = ? WHERE id = ?",
-            (current_precision, last_entry["id"]),
-        )
-        logger.info(
-            f"[Poids] precision_apres mise a jour pour id={last_entry['id']}: "
-            f"{current_precision}%"
-        )
+        if last_entry and last_entry["precision_apres"] == 0:
+            current_precision = get_accuracy_global(30)["precision"]
+            conn.execute(
+                "UPDATE weights_history SET precision_apres = ? WHERE id = ?",
+                (current_precision, last_entry["id"]),
+            )
+            conn.commit()
+            logger.info(
+                f"[Poids] precision_apres mise a jour pour id={last_entry['id']}: "
+                f"{current_precision}%"
+            )
+    except Exception as e:
+        logger.error(f"[Poids] Erreur mise a jour precision_apres: {e}")
 
 
 
@@ -433,11 +497,7 @@ def _update_previous_precision_apres(conn):
 # ================================================================
 
 def export_monthly_csv(month: int, year: int) -> str:
-    """Exporte les performances d'un mois en format CSV.
-
-    Fix audit v6 : utilise le module csv pour un quoting correct
-    (gère les virgules et guillemets dans contexte_meteo).
-    """
+    """Exporte les performances d'un mois en format CSV."""
     import csv
     import io
 

@@ -113,8 +113,9 @@ async def fetch_edf_remaining() -> dict | None:
 
 # === Backfill saison ===
 
-def _count_actuals_in_season() -> int:
-    """Compte le nombre total d'entrées actuals pour la saison en cours."""
+def count_actuals_in_season() -> int:
+    """Compte le nombre total d'entrées actuals pour la saison en cours.
+    Fix P-7 : renommee sans underscore (fonction publique importee par app.py)."""
     start, end = get_season_dates()
     conn = get_db()
     try:

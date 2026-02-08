@@ -90,7 +90,10 @@ async function loadRemaining() {
         setText('count-rouge', '?');
         setText('count-blanc', '?');
         setText('count-bleu', '?');
-        setText('days-left', 'Erreur de connexion');
+        const daysEl = document.getElementById('days-left');
+        if (daysEl) {
+            daysEl.innerHTML = 'Erreur de connexion <button class="retry-btn" onclick="loadRemaining()">Réessayer</button>';
+        }
         console.error('Erreur chargement compteurs:', e);
     }
 }
@@ -128,19 +131,21 @@ async function loadPredictions() {
         if (hasSimulated) {
             const warn = document.createElement('div');
             warn.className = 'simulated-warning';
-            warn.innerHTML = '<strong>Données météo simulées</strong> — Clé API OpenWeather non configurée. ' +
+            warn.innerHTML = '<strong>Données météo simulées</strong> — Open-Meteo temporairement indisponible. ' +
                 'Les prédictions sont basées sur des moyennes saisonnières et sont moins fiables.';
             container.appendChild(warn);
         }
 
-        // Fix v5 #4 : afficher la date de dernière mise à jour
+        // Fix v5 #4 + I-7 : afficher la date de dernière mise à jour (avec validation)
         if (data.generated_at) {
-            const meta = document.createElement('div');
-            meta.className = 'forecast-meta';
             const genDate = new Date(data.generated_at);
-            meta.textContent = `Dernière mise à jour : ${genDate.toLocaleDateString('fr-FR')} ` +
-                `à ${genDate.toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'})}`;
-            container.appendChild(meta);
+            if (!isNaN(genDate.getTime())) {
+                const meta = document.createElement('div');
+                meta.className = 'forecast-meta';
+                meta.textContent = `Dernière mise à jour : ${genDate.toLocaleDateString('fr-FR')} ` +
+                    `à ${genDate.toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'})}`;
+                container.appendChild(meta);
+            }
         }
 
         // Grouper les prédictions par horizon

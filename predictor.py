@@ -155,14 +155,8 @@ def predict_day(target_date: date, weather: dict | None = None,
     )
     score_risque = min(100, base_score + cold_wave)
 
-    # Fix meteo #1 : attenuer le score pour la meteo extrapolee/simulee
-    # Les facteurs meteo-dependants (temperature, gradient, cold wave, clustering)
-    # sont moins fiables avec des donnees climatologiques. On regresse vers 50 (neutre).
-    if forecast_quality == "climatology":
-        # Extrapolation J+6-J+15 : attenuation de 30% vers le neutre
-        score_risque = score_risque * 0.7 + 50 * 0.3
-    elif forecast_quality == "simulated":
-        # Pas de donnees API du tout : attenuation de 50% vers le neutre
+    # Attenuation si meteo simulee (Open-Meteo indisponible, fallback saisonnier)
+    if forecast_quality == "simulated":
         score_risque = score_risque * 0.5 + 50 * 0.5
 
     # === Determiner la couleur predite ===
@@ -230,7 +224,7 @@ def predict_range(forecasts: list[dict],
         if target_str in actuals_future:
             couleur_officielle = actuals_future[target_str]
             pred = _result_confirmed(target, couleur_officielle, weather)
-            pred["horizon"] = f"J-{delta}" if delta > 0 else "J0"
+            pred["horizon"] = f"J-{delta}" if delta > 0 else ("J0" if delta == 0 else f"J+{-delta}")
             pred["confirmed"] = True
             pred["simulated"] = False
             predictions.append(pred)
@@ -259,7 +253,7 @@ def predict_range(forecasts: list[dict],
                            remaining=sim_remaining, weights=weights,
                            rte_score=day_rte,
                            _actuals_cache=actuals_cache)
-        pred["horizon"] = f"J-{delta}" if delta > 0 else "J0"
+        pred["horizon"] = f"J-{delta}" if delta > 0 else ("J0" if delta == 0 else f"J+{-delta}")
         pred["confirmed"] = False
         pred["simulated"] = simulated
         predictions.append(pred)
@@ -300,14 +294,17 @@ def _load_recent_actuals() -> dict[str, str]:
 
 
 def _load_future_actuals() -> dict[str, str]:
-    """Charge les couleurs officielles pour aujourd'hui et demain.
-    Fix v5 #5 : permet d'utiliser la couleur EDF confirmee au lieu de la prediction."""
+    """Charge les couleurs officielles pour aujourd'hui et demain uniquement.
+    Fix v5 #5 : permet d'utiliser la couleur EDF confirmee au lieu de la prediction.
+    Fix audit #P1 : limite a J+0/J+1 pour eviter de traiter des actuals
+    synthetiques (backfill) comme des couleurs confirmees."""
     conn = get_db()
     try:
-        today_str = date.today().isoformat()
+        today = date.today()
+        tomorrow = (today + timedelta(days=1)).isoformat()
         rows = conn.execute(
-            "SELECT date, couleur_reelle FROM actuals WHERE date >= ?",
-            (today_str,)
+            "SELECT date, couleur_reelle FROM actuals WHERE date >= ? AND date <= ?",
+            (today.isoformat(), tomorrow)
         ).fetchall()
         return {row["date"]: row["couleur_reelle"] for row in rows}
     finally:
@@ -599,10 +596,8 @@ def _build_raison_v2(temp_moy: float, temp_min: float,
     """Construit une explication humaine de la prediction v2."""
     raisons = []
 
-    # Fix meteo #1 : signaler la qualite degradee
-    if forecast_quality == "climatology":
-        raisons.append("Meteo extrapolee (confiance reduite)")
-    elif forecast_quality == "simulated":
+    # Signaler la qualite degradee si Open-Meteo indisponible
+    if forecast_quality == "simulated":
         raisons.append("Meteo simulee (confiance faible)")
 
     # Temperature nationale

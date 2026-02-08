@@ -136,8 +136,8 @@ async def task_daily_predictions():
 
             logger.info("[Task 18h00] Début génération des prédictions")
 
-            # Fix v5 #7 : cycle_id unique
-            cycle_id = f"{date.today().isoformat()}_18h"
+            # Fix v5 #7 + ML-21 : cycle_id unique avec timestamp
+            cycle_id = f"{date.today().isoformat()}_18h_{datetime.now().strftime('%H%M%S')}"
 
             # 1. Récupérer la météo
             forecasts = await fetch_forecast_extended()

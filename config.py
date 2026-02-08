@@ -88,6 +88,10 @@ class Config:
         5: 0.01,   # Mai : ~1% (0-1 jour)
     }
 
+    # Fix ML-20 : validation somme du profil mensuel
+    assert abs(sum(MONTHLY_RED_PROFILE.values()) - 1.0) < 0.02, \
+        f"MONTHLY_RED_PROFILE doit sommer a ~1.0, got {sum(MONTHLY_RED_PROFILE.values())}"
+
     # --- Seuils de scoring ---
     SEUIL_ROUGE = 65   # abaisse de 70 a 65 pour meilleur recall
     SEUIL_BLANC = 35   # abaisse de 40 a 35

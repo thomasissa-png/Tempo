@@ -123,7 +123,7 @@ def init_db():
             timestamp_confirmation  TEXT    NOT NULL
         );
 
-        -- Fix #7 : contrainte UNIQUE pour éviter les doublons
+        -- Fix #7 + ML-3 : UNIQUE(date_prediction, date_cible) evite doublons
         CREATE TABLE IF NOT EXISTS performance (
             id                   INTEGER PRIMARY KEY AUTOINCREMENT,
             date_prediction      TEXT    NOT NULL,
@@ -136,7 +136,7 @@ def init_db():
             ecart_score          REAL    DEFAULT 0,
             contexte_meteo       TEXT    DEFAULT '',
             timestamp_evaluation TEXT    NOT NULL,
-            UNIQUE(date_prediction, date_cible, couleur_predite)
+            UNIQUE(date_prediction, date_cible)
         );
 
         -- Fix #1 : phone_encrypted (Fernet) pour pouvoir envoyer les SMS
@@ -175,6 +175,7 @@ def init_db():
             precision_apres  REAL    DEFAULT 0,
             nb_predictions   INTEGER DEFAULT 0,
             commentaire      TEXT    DEFAULT '',
+            model_version    TEXT    DEFAULT '',
             timestamp_update TEXT    NOT NULL
         );
 
@@ -263,6 +264,48 @@ def init_db():
         """)
         conn.execute("PRAGMA user_version = 4")
         logger.info("Migration v4 appliquee (cycle_id, prediction_changes)")
+
+    if version < 5:
+        # Migration v5 — Fix ML-3 : UNIQUE(date_prediction, date_cible) sans couleur_predite
+        # + ML-16 : colonne model_version dans weights_history
+        try:
+            conn.executescript("""
+                CREATE TABLE IF NOT EXISTS performance_new (
+                    id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+                    date_prediction      TEXT    NOT NULL,
+                    date_cible           TEXT    NOT NULL,
+                    jours_avance         INTEGER NOT NULL,
+                    correct              INTEGER NOT NULL,
+                    couleur_predite      TEXT    NOT NULL,
+                    couleur_reelle       TEXT    NOT NULL,
+                    score_risque_predit  REAL    DEFAULT 0,
+                    ecart_score          REAL    DEFAULT 0,
+                    contexte_meteo       TEXT    DEFAULT '',
+                    timestamp_evaluation TEXT    NOT NULL,
+                    UNIQUE(date_prediction, date_cible)
+                );
+                INSERT OR IGNORE INTO performance_new
+                    SELECT * FROM performance;
+                DROP TABLE performance;
+                ALTER TABLE performance_new RENAME TO performance;
+                CREATE INDEX IF NOT EXISTS idx_performance_cible
+                    ON performance(date_cible);
+                CREATE INDEX IF NOT EXISTS idx_performance_avance
+                    ON performance(jours_avance);
+            """)
+        except sqlite3.OperationalError as e:
+            logger.warning(f"Migration v5 performance: {e}")
+
+        try:
+            conn.execute(
+                "ALTER TABLE weights_history ADD COLUMN model_version TEXT DEFAULT ''"
+            )
+        except sqlite3.OperationalError:
+            pass  # Colonne existe déjà
+
+        conn.execute("PRAGMA user_version = 5")
+        conn.commit()
+        logger.info("Migration v5 appliquee (UNIQUE performance, model_version)")
 
     # Poids initiaux si vide
     existing = conn.execute("SELECT COUNT(*) as c FROM weights_history").fetchone()

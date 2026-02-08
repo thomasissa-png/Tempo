@@ -300,10 +300,10 @@ async def api_remaining():
     """Jours restants par couleur pour la saison en cours."""
     from tempo_client import (get_remaining_days, days_left_in_season,
                               get_season_dates, get_blue_days_total,
-                              fetch_edf_remaining, _count_actuals_in_season)
+                              fetch_edf_remaining, count_actuals_in_season)
     remaining = get_remaining_days()
     start, end = get_season_dates()
-    actuals_count = _count_actuals_in_season()
+    actuals_count = count_actuals_in_season()
 
     result = {
         "status": "ok",

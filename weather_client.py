@@ -101,6 +101,13 @@ async def _fetch_all_cities() -> dict[str, list[dict]]:
         logger.error("[Meteo] Aucune ville n'a repondu")
         return {}
 
+    # Fix P-5 : au moins 3 villes pour une moyenne nationale fiable
+    if len(city_forecasts) < 3:
+        logger.warning(
+            f"[Meteo] Seulement {len(city_forecasts)} ville(s) sur "
+            f"{len(Config.WEATHER_CITIES)} — moyenne peu representative"
+        )
+
     logger.info(f"[Meteo] {len(city_forecasts)}/{len(Config.WEATHER_CITIES)} villes OK "
                 f"({len(next(iter(city_forecasts.values())))} jours)")
     return city_forecasts
