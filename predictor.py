@@ -547,7 +547,7 @@ def _compute_probabilities(score: float, remaining: dict) -> tuple[float, float,
     probabilites plus coherentes (ex: seuil ROUGE 65 -> ~50% a 65).
     """
     if remaining["ROUGE"] == 0 and remaining["BLANC"] == 0:
-        return 0.0, 0.0, 1.0
+        return (0.0, 0.0, 1.0)  # Seul BLEU possible
 
     # Probabilite rouge via sigmoide centree sur SEUIL_ROUGE
     # steepness 0.12 => transition douce sur ~20 points autour du seuil
@@ -567,10 +567,10 @@ def _compute_probabilities(score: float, remaining: dict) -> tuple[float, float,
     # Normaliser pour que la somme = 1.0
     total = p_rouge + p_blanc + p_bleu
     if total <= 0:
-        return 0.0, 0.0, 1.0
+        return (0.0, 0.0, 1.0)
     p_rouge = round(p_rouge / total, 3)
     p_blanc = round(p_blanc / total, 3)
-    p_bleu = round(1.0 - p_rouge - p_blanc, 3)
+    p_bleu = round(max(0.0, 1.0 - p_rouge - p_blanc), 3)
     return (p_rouge, p_blanc, p_bleu)
 
 

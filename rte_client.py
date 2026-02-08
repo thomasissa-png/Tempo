@@ -163,6 +163,8 @@ async def fetch_nuclear_availability() -> dict | None:
                 return None
 
             total_capacity = Config.RTE_NUCLEAR_CAPACITY_MW
+            if total_capacity <= 0:
+                return None
             available = round(max(values))
             return {
                 "available_mw": available,

@@ -69,12 +69,19 @@ def _parse_response(data: dict) -> dict | None:
 
 # === Stockage en base ===
 
-def store_actual(date_str: str, couleur: str):
-    """Enregistre une couleur réelle confirmée dans la table actuals."""
+def store_actual(date_str: str, couleur: str, overwrite: bool = True):
+    """Enregistre une couleur réelle confirmée dans la table actuals.
+
+    Args:
+        overwrite: Si True (défaut), utilise INSERT OR REPLACE (données officielles).
+                   Si False, utilise INSERT OR IGNORE (backfill/seed — ne jamais
+                   écraser une donnée existante).
+    """
     conn = get_db()
     try:
+        mode = "INSERT OR REPLACE" if overwrite else "INSERT OR IGNORE"
         conn.execute(
-            """INSERT OR REPLACE INTO actuals (date, couleur_reelle, timestamp_confirmation)
+            f"""{mode} INTO actuals (date, couleur_reelle, timestamp_confirmation)
                VALUES (?, ?, ?)""",
             (date_str, couleur, datetime.now().isoformat()),
         )
@@ -166,7 +173,7 @@ def seed_from_remaining(remaining_rouge: int, remaining_blanc: int):
     while current <= yesterday and idx < len(colors_to_inject):
         if current.isoformat() not in existing_dates:
             couleur = colors_to_inject[idx]
-            store_actual(current.isoformat(), couleur)
+            store_actual(current.isoformat(), couleur, overwrite=False)
             injected[couleur] += 1
             existing_dates.add(current.isoformat())
             idx += 1
@@ -175,7 +182,7 @@ def seed_from_remaining(remaining_rouge: int, remaining_blanc: int):
     # Remplir le reste des jours manquants en BLEU
     while current <= yesterday:
         if current.isoformat() not in existing_dates:
-            store_actual(current.isoformat(), "BLEU")
+            store_actual(current.isoformat(), "BLEU", overwrite=False)
             injected["BLEU"] += 1
         current += timedelta(days=1)
 
@@ -231,7 +238,7 @@ async def backfill_season_actuals():
     for i, target_date in enumerate(missing_dates):
         data = await fetch_tempo_date(target_date)
         if data and data.get("couleur"):
-            store_actual(data["date"], data["couleur"])
+            store_actual(data["date"], data["couleur"], overwrite=False)
             fetched += 1
         else:
             errors += 1
