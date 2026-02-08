@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TempoForecast — Prévision Jours Tempo EDF</title>
+    <meta name="description" content="Prévisions des jours Tempo EDF (Bleu/Blanc/Rouge) avec alertes SMS. Anticipez les jours rouges et optimisez votre consommation.">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<header>
+    <div class="container">
+        <h1>TempoForecast</h1>
+        <p class="subtitle">Prévision intelligente des jours Tempo EDF — Anticipez les jours rouges</p>
+        <nav>
+            <a href="/" class="active">Dashboard</a>
+            <a href="/mentions-legales">Mentions légales</a>
+        </nav>
+    </div>
+</header>
+
+<main class="container">
+
+    <!-- Badge de fiabilité -->
+    <div class="badge-fiabilite">
+        <div class="badge-icon">&#9889;</div>
+        <div>
+            <div class="badge-value" id="badge-value">—</div>
+            <div class="badge-text" id="badge-text">Chargement de la précision...</div>
+        </div>
+    </div>
+
+    <!-- Alerte jour rouge -->
+    <div class="alert-rouge" id="alert-rouge">
+        <span class="alert-icon">&#9888;&#65039;</span>
+        <span class="alert-text"></span>
+    </div>
+
+    <!-- Aujourd'hui / Demain -->
+    <div class="today-section">
+        <div class="today-card" id="today-card">
+            <div class="loading-state"><div class="loader"></div></div>
+        </div>
+        <div class="today-card" id="tomorrow-card">
+            <div class="loading-state"><div class="loader"></div></div>
+        </div>
+    </div>
+
+    <!-- Compteurs jours restants -->
+    <div class="counters">
+        <div class="counter-card rouge">
+            <div class="count" id="count-rouge">—</div>
+            <div class="label">Jours rouges restants</div>
+        </div>
+        <div class="counter-card blanc">
+            <div class="count" id="count-blanc">—</div>
+            <div class="label">Jours blancs restants</div>
+        </div>
+        <div class="counter-card bleu">
+            <div class="count" id="count-bleu">—</div>
+            <div class="label">Jours bleus restants</div>
+        </div>
+    </div>
+    <p style="text-align:center;color:var(--text-secondary);font-size:0.85rem;" id="days-left"></p>
+
+    <!-- Prévisions 15 jours -->
+    <h2 class="section-title">Prévisions des 15 prochains jours</h2>
+    <div class="forecast-grid" id="forecast-grid">
+        <div class="loading-state"><div class="loader"></div><p>Chargement...</p></div>
+    </div>
+
+    <!-- Inscription alertes SMS -->
+    <section class="subscribe-section" id="subscribe">
+        <h2>Recevez les alertes Tempo par SMS</h2>
+        <p class="sub-desc">
+            Soyez prévenu avant les jours rouges pour adapter votre consommation.
+            Gratuit, sans engagement. 1 SMS/jour maximum.
+        </p>
+
+        <form id="subscribe-form">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="phone">Numéro de téléphone</label>
+                    <input type="tel" id="phone" name="phone" placeholder="+33612345678" required
+                           pattern="\+33[0-9]{9}" title="Format: +33 suivi de 9 chiffres">
+                </div>
+                <div class="form-group">
+                    <label for="seuil_rouge">Seuil d'alerte rouge</label>
+                    <select id="seuil_rouge" name="seuil_rouge">
+                        <option value="70">70% de probabilité</option>
+                        <option value="80">80% de probabilité</option>
+                        <option value="90">90% de probabilité (prudent)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="delai">Délai d'alerte</label>
+                    <select id="delai" name="delai">
+                        <option value="1">J-1 (la veille)</option>
+                        <option value="2">J-2 (2 jours avant)</option>
+                        <option value="3">J-3 (3 jours avant)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <div class="form-checkbox">
+                        <input type="checkbox" id="alerte_blanc" name="alerte_blanc" value="true">
+                        <label for="alerte_blanc">Alertes jours blancs aussi</label>
+                    </div>
+                    <div class="form-checkbox" style="margin-top:8px">
+                        <input type="checkbox" id="recap_hebdo" name="recap_hebdo" value="true">
+                        <label for="recap_hebdo">Récapitulatif hebdomadaire (dimanche)</label>
+                    </div>
+                </div>
+            </div>
+            <button type="submit" class="btn">S'inscrire aux alertes</button>
+        </form>
+
+        <div id="form-result" class="form-result"></div>
+    </section>
+
+</main>
+
+<footer>
+    <div class="container">
+        <p>TempoForecast &mdash; Prévisions non-officielles basées sur les données météo et l'historique EDF.</p>
+        <p style="margin-top:4px">
+            Données : <a href="https://www.api-couleur-tempo.fr/" target="_blank" rel="noopener">API Tempo</a> &middot;
+            <a href="/mentions-legales">Mentions légales & RGPD</a>
+        </p>
+    </div>
+</footer>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>

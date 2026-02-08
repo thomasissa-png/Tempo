@@ -1,0 +1,312 @@
+"""Application FastAPI principale — TempoForecast.
+
+Endpoints :
+  - GET  /                       → Dashboard principal (HTML)
+  - GET  /admin                  → Dashboard performance (HTML)
+  - GET  /mentions-legales       → Page légale (HTML)
+  - GET  /api/predictions        → Prédictions J+1→J+15 (JSON)
+  - GET  /api/today              → Couleur Tempo du jour (JSON)
+  - GET  /api/tomorrow           → Couleur Tempo de demain (JSON)
+  - GET  /api/remaining          → Jours restants par couleur (JSON)
+  - GET  /api/performance        → Métriques de performance (JSON)
+  - GET  /api/performance/csv    → Export CSV mensuel
+  - POST /api/subscribe          → Inscription alertes SMS
+  - POST /api/unsubscribe        → Désinscription alertes SMS
+  - POST /admin/run-task         → Exécuter une tâche manuellement
+"""
+
+import logging
+import os
+from contextlib import asynccontextmanager
+from datetime import date, datetime
+
+from fastapi import FastAPI, Request, Form, HTTPException, Depends
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+
+from config import Config
+from database import init_db
+from scheduler import start_scheduler, stop_scheduler
+
+# === Logging ===
+os.makedirs("logs", exist_ok=True)
+logging.basicConfig(
+    level=getattr(logging, Config.LOG_LEVEL),
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[
+        logging.FileHandler(Config.LOG_FILE, encoding="utf-8"),
+        logging.StreamHandler(),
+    ],
+)
+logger = logging.getLogger(__name__)
+
+
+# === Lifespan ===
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Initialisation au démarrage, nettoyage à l'arrêt."""
+    logger.info("=== TempoForecast démarrage ===")
+    init_db()
+    start_scheduler()
+    yield
+    stop_scheduler()
+    logger.info("=== TempoForecast arrêt ===")
+
+
+# === App FastAPI ===
+app = FastAPI(
+    title="TempoForecast",
+    description="Prévision des jours Tempo EDF avec alertes SMS",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
+templates = Jinja2Templates(directory="templates")
+
+
+# === Vérification admin ===
+def verify_admin(password: str):
+    if password != Config.ADMIN_PASSWORD:
+        raise HTTPException(status_code=403, detail="Mot de passe admin incorrect")
+
+
+# ================================================================
+# PAGES HTML
+# ================================================================
+
+@app.get("/", response_class=HTMLResponse)
+async def page_dashboard(request: Request):
+    """Page principale — dashboard des prévisions."""
+    return templates.TemplateResponse("dashboard.html", {"request": request})
+
+
+@app.get("/admin", response_class=HTMLResponse)
+async def page_admin(request: Request):
+    """Dashboard admin — performance et gestion."""
+    return templates.TemplateResponse("admin.html", {"request": request})
+
+
+@app.get("/mentions-legales", response_class=HTMLResponse)
+async def page_legal(request: Request):
+    """Page mentions légales et RGPD."""
+    return templates.TemplateResponse("legal.html", {"request": request})
+
+
+# ================================================================
+# API : DONNÉES TEMPO
+# ================================================================
+
+@app.get("/api/today")
+async def api_today():
+    """Couleur Tempo du jour via l'API officielle."""
+    from tempo_client import fetch_tempo_today
+    data = await fetch_tempo_today()
+    if not data:
+        return {"status": "unavailable", "message": "Données non disponibles"}
+    return {"status": "ok", **data}
+
+
+@app.get("/api/tomorrow")
+async def api_tomorrow():
+    """Couleur Tempo de demain (disponible après 11h)."""
+    from tempo_client import fetch_tempo_tomorrow
+    data = await fetch_tempo_tomorrow()
+    if not data:
+        return {"status": "unavailable", "message": "Pas encore annoncé (disponible après 11h)"}
+    return {"status": "ok", **data}
+
+
+@app.get("/api/remaining")
+async def api_remaining():
+    """Jours restants par couleur pour la saison en cours."""
+    from tempo_client import get_remaining_days, days_left_in_season, get_season_dates
+    remaining = get_remaining_days()
+    start, end = get_season_dates()
+    return {
+        "status": "ok",
+        "remaining": remaining,
+        "days_left_in_season": days_left_in_season(),
+        "season_start": start.isoformat(),
+        "season_end": end.isoformat(),
+    }
+
+
+# ================================================================
+# API : PRÉDICTIONS
+# ================================================================
+
+@app.get("/api/predictions")
+async def api_predictions():
+    """Génère et retourne les prédictions J+1 → J+15."""
+    from weather_client import fetch_forecast_extended
+    from predictor import predict_range
+    from performance_tracker import get_accuracy_global
+
+    forecasts = await fetch_forecast_extended()
+    predictions = predict_range(forecasts)
+
+    # Badge de fiabilité
+    accuracy = get_accuracy_global(30)
+
+    return {
+        "status": "ok",
+        "predictions": predictions,
+        "accuracy": accuracy,
+        "generated_at": datetime.now().isoformat(),
+    }
+
+
+@app.get("/api/history")
+async def api_history(days: int = 30):
+    """Historique des couleurs réelles des N derniers jours."""
+    from database import get_db
+    from datetime import timedelta
+
+    conn = get_db()
+    try:
+        since = (date.today() - timedelta(days=days)).isoformat()
+        rows = conn.execute(
+            "SELECT date, couleur_reelle FROM actuals WHERE date >= ? ORDER BY date",
+            (since,)
+        ).fetchall()
+        return {"status": "ok", "history": [dict(r) for r in rows]}
+    finally:
+        conn.close()
+
+
+# ================================================================
+# API : PERFORMANCE (badge + admin)
+# ================================================================
+
+@app.get("/api/performance")
+async def api_performance():
+    """Métriques de performance complètes (pour dashboard admin)."""
+    from performance_tracker import get_performance_summary
+    return {"status": "ok", **get_performance_summary()}
+
+
+@app.get("/api/performance/badge")
+async def api_performance_badge():
+    """Badge de fiabilité simplifié pour la homepage."""
+    from performance_tracker import get_accuracy_global
+    acc = get_accuracy_global(30)
+    return {
+        "status": "ok",
+        "precision_30j": acc["precision"],
+        "total_predictions": acc["total"],
+        "label": f"Nos prévisions J-1 : {acc['precision']}% de précision sur les 30 derniers jours"
+                 if acc["total"] > 0
+                 else "Pas encore assez de données pour calculer la précision",
+    }
+
+
+@app.get("/api/performance/csv")
+async def api_performance_csv(month: int = None, year: int = None,
+                               password: str = ""):
+    """Export CSV des performances mensuelles (admin only)."""
+    verify_admin(password)
+    from performance_tracker import export_monthly_csv
+
+    if not month:
+        month = date.today().month
+    if not year:
+        year = date.today().year
+
+    csv_content = export_monthly_csv(month, year)
+    return PlainTextResponse(
+        content=csv_content,
+        media_type="text/csv",
+        headers={"Content-Disposition": f"attachment; filename=performance_{year}_{month:02d}.csv"},
+    )
+
+
+# ================================================================
+# API : ALERTES SMS
+# ================================================================
+
+@app.post("/api/subscribe")
+async def api_subscribe(
+    phone: str = Form(...),
+    seuil_rouge: int = Form(70),
+    delai: int = Form(1),
+    alerte_blanc: bool = Form(False),
+    recap_hebdo: bool = Form(False),
+):
+    """Inscription aux alertes SMS."""
+    from alerts import register_user
+    result = register_user(phone, seuil_rouge, delai, alerte_blanc, recap_hebdo)
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
+
+
+@app.post("/api/unsubscribe")
+async def api_unsubscribe(phone: str = Form(...)):
+    """Désinscription des alertes SMS."""
+    from alerts import unsubscribe_user
+    result = unsubscribe_user(phone)
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    return result
+
+
+@app.get("/api/users/stats")
+async def api_user_stats(password: str = ""):
+    """Stats utilisateurs (admin)."""
+    verify_admin(password)
+    from alerts import get_user_count
+    return {"status": "ok", **get_user_count()}
+
+
+# ================================================================
+# ADMIN : EXÉCUTION MANUELLE DES TÂCHES
+# ================================================================
+
+@app.post("/admin/run-task")
+async def admin_run_task(task: str = Form(...), password: str = Form(...)):
+    """Exécute une tâche du scheduler manuellement."""
+    verify_admin(password)
+    from scheduler import run_task_now
+    result = await run_task_now(task)
+    return {"status": "ok", "result": result}
+
+
+@app.get("/admin/weights-history")
+async def admin_weights_history(password: str = ""):
+    """Historique des versions de poids."""
+    verify_admin(password)
+    from database import get_db
+    import json
+
+    conn = get_db()
+    try:
+        rows = conn.execute(
+            "SELECT * FROM weights_history ORDER BY id DESC LIMIT 20"
+        ).fetchall()
+        result = []
+        for r in rows:
+            entry = dict(r)
+            entry["weights"] = json.loads(entry["weights_json"])
+            del entry["weights_json"]
+            result.append(entry)
+        return {"status": "ok", "history": result}
+    finally:
+        conn.close()
+
+
+@app.get("/admin/sms-logs")
+async def admin_sms_logs(password: str = "", limit: int = 50):
+    """Derniers SMS envoyés."""
+    verify_admin(password)
+    from database import get_db
+
+    conn = get_db()
+    try:
+        rows = conn.execute(
+            "SELECT * FROM sms_logs ORDER BY id DESC LIMIT ?", (limit,)
+        ).fetchall()
+        return {"status": "ok", "logs": [dict(r) for r in rows]}
+    finally:
+        conn.close()

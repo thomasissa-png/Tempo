@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env
+.venv/
+venv/
+env/
+*.db
+*.sqlite3
+.cache/
+dist/
+*.egg-info/
+logs/*.log
+.replit
+replit.nix
