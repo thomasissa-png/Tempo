@@ -6,7 +6,7 @@ Si la clé API payante est disponible, utilise le 16-day daily forecast.
 
 import httpx
 import logging
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from config import Config
 from database import get_db
 
@@ -74,7 +74,7 @@ def _aggregate_3h_to_daily(entries: list[dict]) -> list[dict]:
     """Agrège les données 3h en résumés journaliers."""
     daily: dict[str, list[dict]] = {}
     for entry in entries:
-        dt = datetime.fromtimestamp(entry["dt"])
+        dt = datetime.fromtimestamp(entry["dt"], tz=timezone.utc)
         day_str = dt.date().isoformat()
         daily.setdefault(day_str, []).append(entry)
 
@@ -106,7 +106,7 @@ def _parse_daily_forecast(entries: list[dict]) -> list[dict]:
     """Parse le format 16-day daily forecast."""
     result = []
     for entry in entries:
-        dt = datetime.fromtimestamp(entry["dt"])
+        dt = datetime.fromtimestamp(entry["dt"], tz=timezone.utc)
         temp = entry.get("temp", {})
         result.append({
             "date": dt.date().isoformat(),
@@ -141,6 +141,7 @@ def _generate_fallback_forecast() -> list[dict]:
     result = []
     for i in range(15):
         d = today + timedelta(days=i)
+        random.seed(today.toordinal() + i)
         variation = random.uniform(-3, 3)
         t_min = round(base_min + variation, 1)
         t_max = round(base_max + variation, 1)
@@ -165,16 +166,6 @@ def cache_weather(forecasts: list[dict]):
     conn = get_db()
     now = datetime.now().isoformat()
     try:
-        # On crée une table de cache à la volée si utile
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS weather_cache (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                date TEXT NOT NULL,
-                temp_min REAL, temp_max REAL, temp_moy REAL,
-                pressure REAL, humidity REAL, wind_speed REAL,
-                description TEXT, fetched_at TEXT NOT NULL
-            )
-        """)
         for f in forecasts:
             conn.execute(
                 """INSERT INTO weather_cache

@@ -14,7 +14,7 @@ par le système d'auto-amélioration (performance_tracker.py).
 """
 
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from database import get_db, get_current_weights
 from config import Config
 from tempo_client import get_remaining_days, is_in_season, days_left_in_season
@@ -23,7 +23,9 @@ logger = logging.getLogger(__name__)
 
 
 def predict_day(target_date: date, weather: dict | None = None,
-                forecasts: list[dict] | None = None, target_idx: int = 0) -> dict:
+                forecasts: list[dict] | None = None, target_idx: int = 0,
+                remaining: dict | None = None,
+                weights: dict | None = None) -> dict:
     """Prédit la couleur Tempo pour une date donnée.
 
     Args:
@@ -31,6 +33,8 @@ def predict_day(target_date: date, weather: dict | None = None,
         weather: données météo du jour (temp_min, temp_max, pressure, etc.)
         forecasts: liste complète des prévisions (pour détection vague de froid)
         target_idx: index du jour cible dans forecasts
+        remaining: jours restants par couleur (optionnel, chargé depuis DB si absent)
+        weights: poids courants (optionnel, chargé depuis DB si absent)
 
     Returns:
         dict avec couleur_predite, probabilités, score_risque, raison
@@ -40,7 +44,8 @@ def predict_day(target_date: date, weather: dict | None = None,
         return _result(target_date, "BLEU", 0, 1.0, 0.0, 0.0,
                        weather, "Hors saison Tempo (juin-août)")
 
-    remaining = get_remaining_days()
+    if remaining is None:
+        remaining = get_remaining_days()
     d_left = days_left_in_season()
 
     # Quota épuisé ?
@@ -49,7 +54,8 @@ def predict_day(target_date: date, weather: dict | None = None,
                        weather, "Quotas rouge et blanc épuisés")
 
     # Récupérer les poids courants
-    weights = get_current_weights()
+    if weights is None:
+        weights = get_current_weights()
     w_temp = weights.get("temperature", 0.40)
     w_jours = weights.get("jours_restants", 0.25)
     w_dow = weights.get("jour_semaine", 0.15)
@@ -106,11 +112,14 @@ def predict_day(target_date: date, weather: dict | None = None,
 
 def predict_range(forecasts: list[dict]) -> list[dict]:
     """Prédit la couleur pour chaque jour du forecast."""
+    remaining = get_remaining_days()
+    weights = get_current_weights()
     predictions = []
     for i, weather in enumerate(forecasts):
         target = date.fromisoformat(weather["date"])
         pred = predict_day(target, weather=weather,
-                           forecasts=forecasts, target_idx=i)
+                           forecasts=forecasts, target_idx=i,
+                           remaining=remaining, weights=weights)
         # Calculer l'horizon (J-N)
         delta = (target - date.today()).days
         pred["horizon"] = f"J-{delta}" if delta > 0 else "J0"
@@ -156,7 +165,7 @@ def _score_budget(remaining: dict, d_left: int, target_date: date) -> float:
         score += 25
 
     # Bonus fin de saison : < 5 jours rouges restants après février
-    if target_date.month >= 2 and remaining["ROUGE"] <= 5 and remaining["ROUGE"] > 0:
+    if target_date.month >= 4 and remaining["ROUGE"] <= 5 and remaining["ROUGE"] > 0:
         score += 30  # +20 pts mappé
 
     # Très peu de jours restants dans la saison avec du rouge à écouler
@@ -247,11 +256,10 @@ def _compute_probabilities(score: float, remaining: dict) -> tuple[float, float,
 
     # Normaliser
     total = p_rouge + p_blanc + p_bleu
-    return (
-        round(p_rouge / total, 3),
-        round(p_blanc / total, 3),
-        round(p_bleu / total, 3),
-    )
+    p_rouge = round(p_rouge / total, 3)
+    p_blanc = round(p_blanc / total, 3)
+    p_bleu = round(1.0 - p_rouge - p_blanc, 3)
+    return (p_rouge, p_blanc, p_bleu)
 
 
 def _build_raison(temp_min: float, pressure: float, cold_wave: float,

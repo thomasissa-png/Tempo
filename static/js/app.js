@@ -168,7 +168,7 @@ function createForecastCard(pred) {
 
     let raisonHtml = '';
     if (pred.raison && pred.raison !== 'Conditions normales') {
-        raisonHtml = `<div class="fc-raison">${pred.raison}</div>`;
+        raisonHtml = `<div class="fc-raison">${escapeHtml(pred.raison)}</div>`;
     }
 
     card.innerHTML = `
@@ -244,4 +244,12 @@ function formatDateFr(dateStr) {
 function setText(id, text) {
     const el = document.getElementById(id);
     if (el) el.textContent = text;
+}
+
+// Fix #15 : Protection XSS — échapper le HTML dans les données injectées
+function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.appendChild(document.createTextNode(str));
+    return div.innerHTML;
 }

@@ -1,23 +1,69 @@
-"""Gestion de la base de données SQLite — 6 tables.
+"""Gestion de la base de données SQLite — 7 tables.
 
 Tables :
   - predictions    : prédictions générées par l'algorithme
   - actuals        : couleurs réelles confirmées par EDF
-  - performance    : comparaison prédiction vs réalité
-  - users          : abonnés aux alertes SMS
+  - performance    : comparaison prédiction vs réalité (UNIQUE dedup Fix #7)
+  - users          : abonnés aux alertes SMS (phone_encrypted Fix #1)
   - sms_logs       : historique des SMS envoyés
   - weights_history: versions successives des poids de l'algorithme
+  - weather_cache  : cache des prévisions météo (Fix #17)
 """
 
 import sqlite3
 import hashlib
+import base64
+import logging
 from datetime import datetime
 from config import Config
 import json
-import logging
 
 logger = logging.getLogger(__name__)
 
+# ================================================================
+# Chiffrement téléphone (Fix #1 — Fernet réversible pour SMS)
+# ================================================================
+
+_fernet_instance = None
+
+
+def _get_fernet():
+    """Singleton Fernet. Clé depuis PHONE_ENCRYPTION_KEY ou dérivée d'ADMIN_PASSWORD."""
+    global _fernet_instance
+    if _fernet_instance is not None:
+        return _fernet_instance
+
+    from cryptography.fernet import Fernet
+
+    key_source = Config.PHONE_ENCRYPTION_KEY
+    if key_source:
+        _fernet_instance = Fernet(key_source.encode() if isinstance(key_source, str) else key_source)
+    else:
+        # Dérivation depuis ADMIN_PASSWORD → SHA-256 → base64 (Fernet veut 32 bytes url-safe)
+        raw = hashlib.sha256(Config.ADMIN_PASSWORD.encode()).digest()
+        _fernet_instance = Fernet(base64.urlsafe_b64encode(raw))
+
+    return _fernet_instance
+
+
+def encrypt_phone(phone: str) -> str:
+    """Chiffre un numéro de téléphone (réversible, pour envoi SMS)."""
+    return _get_fernet().encrypt(phone.encode()).decode()
+
+
+def decrypt_phone(encrypted: str) -> str:
+    """Déchiffre un numéro de téléphone pour envoi SMS."""
+    return _get_fernet().decrypt(encrypted.encode()).decode()
+
+
+def hash_phone(phone: str) -> str:
+    """Hash SHA-256 du numéro (lookup / déduplication uniquement)."""
+    return hashlib.sha256(phone.strip().encode()).hexdigest()
+
+
+# ================================================================
+# Connexion DB
+# ================================================================
 
 def get_db() -> sqlite3.Connection:
     """Obtenir une connexion à la base de données."""
@@ -28,13 +74,14 @@ def get_db() -> sqlite3.Connection:
     return conn
 
 
+# ================================================================
+# Initialisation
+# ================================================================
+
 def init_db():
-    """Créer toutes les tables et index si elles n'existent pas."""
+    """Créer toutes les tables et index."""
     conn = get_db()
     conn.executescript("""
-        -- ============================================================
-        -- TABLE 1 : predictions — chaque ligne = une prédiction émise
-        -- ============================================================
         CREATE TABLE IF NOT EXISTS predictions (
             id                   INTEGER PRIMARY KEY AUTOINCREMENT,
             date                 TEXT    NOT NULL,
@@ -53,9 +100,6 @@ def init_db():
             timestamp_prediction TEXT    NOT NULL
         );
 
-        -- ============================================================
-        -- TABLE 2 : actuals — couleur réelle confirmée par EDF
-        -- ============================================================
         CREATE TABLE IF NOT EXISTS actuals (
             id                      INTEGER PRIMARY KEY AUTOINCREMENT,
             date                    TEXT    NOT NULL UNIQUE,
@@ -63,9 +107,7 @@ def init_db():
             timestamp_confirmation  TEXT    NOT NULL
         );
 
-        -- ============================================================
-        -- TABLE 3 : performance — évaluation de chaque prédiction
-        -- ============================================================
+        -- Fix #7 : contrainte UNIQUE pour éviter les doublons
         CREATE TABLE IF NOT EXISTS performance (
             id                   INTEGER PRIMARY KEY AUTOINCREMENT,
             date_prediction      TEXT    NOT NULL,
@@ -77,15 +119,15 @@ def init_db():
             score_risque_predit  REAL    DEFAULT 0,
             ecart_score          REAL    DEFAULT 0,
             contexte_meteo       TEXT    DEFAULT '',
-            timestamp_evaluation TEXT    NOT NULL
+            timestamp_evaluation TEXT    NOT NULL,
+            UNIQUE(date_prediction, date_cible, couleur_predite)
         );
 
-        -- ============================================================
-        -- TABLE 4 : users — abonnés aux alertes SMS (RGPD-friendly)
-        -- ============================================================
+        -- Fix #1 : phone_encrypted (Fernet) pour pouvoir envoyer les SMS
         CREATE TABLE IF NOT EXISTS users (
             id                  INTEGER PRIMARY KEY AUTOINCREMENT,
             phone_hash          TEXT    NOT NULL UNIQUE,
+            phone_encrypted     TEXT    NOT NULL DEFAULT '',
             phone_last4         TEXT    NOT NULL,
             seuil_alerte_rouge  INTEGER DEFAULT 70,
             delai_alerte        INTEGER DEFAULT 1,
@@ -96,9 +138,6 @@ def init_db():
             updated_at          TEXT    NOT NULL
         );
 
-        -- ============================================================
-        -- TABLE 5 : sms_logs — historique complet des envois
-        -- ============================================================
         CREATE TABLE IF NOT EXISTS sms_logs (
             id              INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id         INTEGER NOT NULL,
@@ -112,9 +151,6 @@ def init_db():
             FOREIGN KEY(user_id) REFERENCES users(id)
         );
 
-        -- ============================================================
-        -- TABLE 6 : weights_history — versions des poids algorithme
-        -- ============================================================
         CREATE TABLE IF NOT EXISTS weights_history (
             id               INTEGER PRIMARY KEY AUTOINCREMENT,
             date_update      TEXT    NOT NULL,
@@ -126,20 +162,32 @@ def init_db():
             timestamp_update TEXT    NOT NULL
         );
 
-        -- ============================================================
-        -- INDEX pour les requêtes fréquentes
-        -- ============================================================
-        CREATE INDEX IF NOT EXISTS idx_predictions_date      ON predictions(date);
-        CREATE INDEX IF NOT EXISTS idx_predictions_horizon   ON predictions(horizon);
-        CREATE INDEX IF NOT EXISTS idx_actuals_date          ON actuals(date);
-        CREATE INDEX IF NOT EXISTS idx_performance_cible     ON performance(date_cible);
-        CREATE INDEX IF NOT EXISTS idx_performance_avance    ON performance(jours_avance);
-        CREATE INDEX IF NOT EXISTS idx_users_hash            ON users(phone_hash);
-        CREATE INDEX IF NOT EXISTS idx_sms_logs_user         ON sms_logs(user_id);
-        CREATE INDEX IF NOT EXISTS idx_sms_logs_date         ON sms_logs(date_envoi);
+        -- Fix #17 : table déclarée ici au lieu de créée à la volée
+        CREATE TABLE IF NOT EXISTS weather_cache (
+            id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            date        TEXT    NOT NULL,
+            temp_min    REAL,
+            temp_max    REAL,
+            temp_moy    REAL,
+            pressure    REAL,
+            humidity    REAL,
+            wind_speed  REAL,
+            description TEXT,
+            fetched_at  TEXT    NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_predictions_date    ON predictions(date);
+        CREATE INDEX IF NOT EXISTS idx_predictions_horizon ON predictions(horizon);
+        CREATE INDEX IF NOT EXISTS idx_actuals_date        ON actuals(date);
+        CREATE INDEX IF NOT EXISTS idx_performance_cible   ON performance(date_cible);
+        CREATE INDEX IF NOT EXISTS idx_performance_avance  ON performance(jours_avance);
+        CREATE INDEX IF NOT EXISTS idx_users_hash          ON users(phone_hash);
+        CREATE INDEX IF NOT EXISTS idx_sms_logs_user       ON sms_logs(user_id);
+        CREATE INDEX IF NOT EXISTS idx_sms_logs_date       ON sms_logs(date_envoi);
+        CREATE INDEX IF NOT EXISTS idx_weather_cache_date  ON weather_cache(date);
     """)
 
-    # Insérer les poids initiaux s'il n'y en a pas encore
+    # Poids initiaux si vide
     existing = conn.execute("SELECT COUNT(*) as c FROM weights_history").fetchone()
     if existing["c"] == 0:
         conn.execute(
@@ -147,24 +195,19 @@ def init_db():
                (date_update, weights_json, precision_avant, precision_apres,
                 nb_predictions, commentaire, timestamp_update)
                VALUES (?, ?, 0, 0, 0, 'Poids initiaux v1', ?)""",
-            (
-                datetime.now().strftime("%Y-%m-%d"),
-                json.dumps(Config.DEFAULT_WEIGHTS),
-                datetime.now().isoformat(),
-            ),
+            (datetime.now().strftime("%Y-%m-%d"),
+             json.dumps(Config.DEFAULT_WEIGHTS),
+             datetime.now().isoformat()),
         )
 
     conn.commit()
     conn.close()
-    logger.info("Base de données initialisée avec 6 tables")
+    logger.info("Base de données initialisée avec 7 tables")
 
 
-# === Utilitaires ===
-
-def hash_phone(phone: str) -> str:
-    """Hash SHA-256 du numéro de téléphone (RGPD)."""
-    return hashlib.sha256(phone.strip().encode()).hexdigest()
-
+# ================================================================
+# Utilitaires
+# ================================================================
 
 def get_current_weights() -> dict:
     """Récupérer les poids les plus récents de l'algorithme."""

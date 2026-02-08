@@ -45,7 +45,7 @@ def evaluate_predictions_for_date(target_date: date, couleur_reelle: str):
             ecart = abs(score_predit - seuil_reel)
 
             conn.execute(
-                """INSERT INTO performance
+                """INSERT OR IGNORE INTO performance
                    (date_prediction, date_cible, jours_avance, correct,
                     couleur_predite, couleur_reelle, score_risque_predit,
                     ecart_score, contexte_meteo, timestamp_evaluation)
@@ -210,7 +210,7 @@ def recalculate_weights():
         # Récupérer les données d'entraînement
         rows = conn.execute(
             """SELECT p.score_risque, p.temp_min_prevue, p.temp_max_prevue,
-                      p.pression_prevue, p.date,
+                      p.pression_prevue, p.date, p.jours_rouges_restants,
                       a.couleur_reelle
                FROM predictions p
                JOIN actuals a ON p.date = a.date
@@ -237,9 +237,13 @@ def recalculate_weights():
             pressure = row["pression_prevue"] or 1013
             is_weekday = 1 if d.weekday() <= 4 else 0
 
+            rouge_restants = row["jours_rouges_restants"] or 0
+            # Simple normalization: 22 jours = 0, 0 jours = 100
+            budget_feature = max(0, min(100, (22 - rouge_restants) / 22 * 100))
+
             X.append([
                 _score_temp_feature(temp_min),      # feature température
-                _score_budget_feature(d),            # feature budget
+                budget_feature,                      # feature budget
                 is_weekday * 70,                     # feature jour semaine
                 _score_pressure_feature(pressure),   # feature pression
             ])
@@ -318,17 +322,6 @@ def _score_temp_feature(temp_min: float) -> float:
     if temp_min < 5:
         return 30
     return 5
-
-
-def _score_budget_feature(d: date) -> float:
-    """Feature budget simplifiée pour le ML."""
-    from tempo_client import get_remaining_days, days_left_in_season
-    remaining = get_remaining_days()
-    d_left = days_left_in_season()
-    if d_left <= 0:
-        return 0
-    rate = remaining["ROUGE"] / d_left
-    return min(100, rate / 0.08 * 50)
 
 
 def _score_pressure_feature(pressure: float) -> float:

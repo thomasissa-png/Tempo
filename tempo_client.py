@@ -11,7 +11,7 @@ import httpx
 import logging
 from datetime import date, datetime
 from config import Config
-from database import get_db
+
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +102,7 @@ def get_season_dates() -> tuple[date, date]:
     """Retourne (début, fin) de la saison Tempo en cours.
     Saison = 1er septembre → 31 mai."""
     today = date.today()
-    if today.month >= 9:
+    if today.month >= 6:
         return date(today.year, 9, 1), date(today.year + 1, 5, 31)
     else:
         return date(today.year - 1, 9, 1), date(today.year, 5, 31)

@@ -5,13 +5,14 @@ Gestion complète :
   - Opt-in / opt-out par SMS (STOP / START)
   - Limite 1 alerte/jour/user
   - Log complet dans sms_logs
-  - Hash des numéros (RGPD)
+  - Fix #1 : chiffrement réversible (Fernet) pour envoyer les SMS
+  - Fix #8 : message erreur "9 chiffres" corrigé
 """
 
 import logging
 from datetime import datetime, date, timedelta
 from config import Config
-from database import get_db, hash_phone
+from database import get_db, hash_phone, encrypt_phone, decrypt_phone
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +38,7 @@ def send_sms(phone_number: str, message: str) -> tuple[str, str]:
     Retourne (sid, statut) — sid vide si échec."""
     client = _get_twilio_client()
     if not client:
-        logger.info(f"[SMS] Mode simulation → {phone_number}: {message[:60]}...")
+        logger.info(f"[SMS] Mode simulation → ****{phone_number[-4:]}: {message[:60]}...")
         return ("SIM_" + datetime.now().strftime("%H%M%S"), "simulated")
 
     try:
@@ -46,10 +47,10 @@ def send_sms(phone_number: str, message: str) -> tuple[str, str]:
             from_=Config.TWILIO_PHONE_NUMBER,
             to=phone_number,
         )
-        logger.info(f"[SMS] Envoyé à {phone_number[-4:]}: {msg.sid}")
+        logger.info(f"[SMS] Envoyé à ****{phone_number[-4:]}: {msg.sid}")
         return (msg.sid, "sent")
     except Exception as e:
-        logger.error(f"[SMS] Échec envoi à {phone_number[-4:]}: {e}")
+        logger.error(f"[SMS] Échec envoi à ****{phone_number[-4:]}: {e}")
         return ("", f"error: {e}")
 
 
@@ -116,6 +117,23 @@ def format_recap_hebdo(predictions: list[dict]) -> str:
 
 
 # ================================================================
+# Fix #1 : récupérer le vrai numéro depuis phone_encrypted
+# ================================================================
+
+def _get_user_phone(user) -> str:
+    """Déchiffre le numéro de téléphone d'un utilisateur pour envoi SMS."""
+    encrypted = user["phone_encrypted"]
+    if not encrypted:
+        logger.error(f"[SMS] User {user['id']} n'a pas de numéro chiffré")
+        return ""
+    try:
+        return decrypt_phone(encrypted)
+    except Exception as e:
+        logger.error(f"[SMS] Erreur déchiffrement user {user['id']}: {e}")
+        return ""
+
+
+# ================================================================
 # LOGIQUE D'ENVOI AVEC FILTRAGE
 # ================================================================
 
@@ -124,13 +142,11 @@ def send_alerts_for_prediction(target_date: date, prediction: dict):
     Respecte les préférences et la limite 1 alerte/jour."""
     couleur = prediction["couleur_predite"]
     if couleur == "BLEU":
-        return  # Pas d'alerte pour les jours bleus
+        return
 
     conn = get_db()
     try:
-        # Récupérer les users éligibles
         if couleur == "ROUGE":
-            # Users qui veulent les alertes rouges et dont le seuil est atteint
             prob_pct = round(prediction.get("probabilite_rouge", 0) * 100)
             users = conn.execute(
                 """SELECT * FROM users
@@ -149,7 +165,7 @@ def send_alerts_for_prediction(target_date: date, prediction: dict):
         today_str = date.today().isoformat()
 
         for user in users:
-            # Vérifier la limite 1 alerte/jour
+            # Limite 1 alerte/jour
             existing = conn.execute(
                 """SELECT id FROM sms_logs
                    WHERE user_id = ? AND date_envoi LIKE ?
@@ -165,10 +181,13 @@ def send_alerts_for_prediction(target_date: date, prediction: dict):
             if delta > user["delai_alerte"]:
                 continue
 
+            # Fix #1 : déchiffrer le vrai numéro pour l'envoi
+            phone = _get_user_phone(user)
+            if not phone:
+                continue
+
             message = format_fn(target_date, prediction)
-            sid, statut = send_sms(f"+33{user['phone_last4']}", message)
-            # Note: en prod, il faudrait stocker le numéro complet chiffré
-            # ou utiliser un système de lookup. Ici on log le hash.
+            sid, statut = send_sms(phone, message)
 
             _log_sms(conn, user["id"], type_alerte, couleur, message, statut, sid)
 
@@ -208,7 +227,11 @@ def send_official_alerts(target_date: date, couleur: str):
             if existing:
                 continue
 
-            sid, statut = send_sms(f"+33{user['phone_last4']}", message)
+            phone = _get_user_phone(user)
+            if not phone:
+                continue
+
+            sid, statut = send_sms(phone, message)
             _log_sms(conn, user["id"], "officiel", couleur, message, statut, sid)
 
         conn.commit()
@@ -230,7 +253,11 @@ def send_weekly_recap(predictions: list[dict]):
         message = format_recap_hebdo(predictions)
 
         for user in users:
-            sid, statut = send_sms(f"+33{user['phone_last4']}", message)
+            phone = _get_user_phone(user)
+            if not phone:
+                continue
+
+            sid, statut = send_sms(phone, message)
             _log_sms(conn, user["id"], "recap_hebdo", "", message, statut, sid)
 
         conn.commit()
@@ -242,6 +269,7 @@ def send_weekly_recap(predictions: list[dict]):
 def _log_sms(conn, user_id: int, type_alerte: str, couleur: str,
              message: str, statut: str, sid: str):
     """Enregistre un envoi dans sms_logs."""
+    erreur = statut if "error" in statut else ""
     conn.execute(
         """INSERT INTO sms_logs
            (user_id, type_alerte, couleur, message_body, date_envoi, statut, twilio_sid, erreur)
@@ -250,7 +278,7 @@ def _log_sms(conn, user_id: int, type_alerte: str, couleur: str,
          datetime.now().isoformat(),
          "sent" if sid else "failed",
          sid or "",
-         statut if "error" in statut else ""),
+         erreur),
     )
 
 
@@ -261,19 +289,19 @@ def _log_sms(conn, user_id: int, type_alerte: str, couleur: str,
 def register_user(phone_number: str, seuil_rouge: int = 70,
                   delai: int = 1, alerte_blanc: bool = False,
                   recap_hebdo: bool = False) -> dict:
-    """Inscrit un nouvel utilisateur aux alertes SMS.
-    Retourne le user créé ou une erreur."""
+    """Inscrit un nouvel utilisateur aux alertes SMS."""
     phone_clean = phone_number.strip().replace(" ", "")
+    # Fix #8 : message corrigé "9 chiffres"
     if not phone_clean.startswith("+33") or len(phone_clean) != 12:
-        return {"error": "Format invalide. Utilisez +33XXXXXXXXX (10 chiffres après +33)."}
+        return {"error": "Format invalide. Utilisez +33XXXXXXXXX (9 chiffres après +33)."}
 
     phone_h = hash_phone(phone_clean)
+    phone_enc = encrypt_phone(phone_clean)  # Fix #1 : chiffrement réversible
     last4 = phone_clean[-4:]
 
     conn = get_db()
     now = datetime.now().isoformat()
     try:
-        # Vérifier si déjà inscrit
         existing = conn.execute(
             "SELECT * FROM users WHERE phone_hash = ?", (phone_h,)
         ).fetchone()
@@ -282,20 +310,20 @@ def register_user(phone_number: str, seuil_rouge: int = 70,
             if existing["actif"]:
                 return {"error": "Ce numéro est déjà inscrit."}
             else:
-                # Réactiver
+                # Réactiver + mettre à jour le chiffré (la clé a pu changer)
                 conn.execute(
-                    "UPDATE users SET actif = 1, updated_at = ? WHERE id = ?",
-                    (now, existing["id"]),
+                    "UPDATE users SET actif = 1, phone_encrypted = ?, updated_at = ? WHERE id = ?",
+                    (phone_enc, now, existing["id"]),
                 )
                 conn.commit()
                 return {"success": True, "user_id": existing["id"], "message": "Compte réactivé !"}
 
         cursor = conn.execute(
             """INSERT INTO users
-               (phone_hash, phone_last4, seuil_alerte_rouge, delai_alerte,
+               (phone_hash, phone_encrypted, phone_last4, seuil_alerte_rouge, delai_alerte,
                 alerte_blanc, recap_hebdo, actif, created_at, updated_at)
-               VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)""",
-            (phone_h, last4, seuil_rouge, delai,
+               VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?, ?)""",
+            (phone_h, phone_enc, last4, seuil_rouge, delai,
              int(alerte_blanc), int(recap_hebdo), now, now),
         )
         conn.commit()

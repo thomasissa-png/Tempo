@@ -17,11 +17,14 @@ Endpoints :
 
 import logging
 import os
+import time
+from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import date, datetime
+from logging.handlers import RotatingFileHandler
 
-from fastapi import FastAPI, Request, Form, HTTPException, Depends
-from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse
+from fastapi import FastAPI, Request, Form, HTTPException, Header
+from fastapi.responses import HTMLResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -29,17 +32,27 @@ from config import Config
 from database import init_db
 from scheduler import start_scheduler, stop_scheduler
 
-# === Logging ===
+# === Logging (Fix #13 : RotatingFileHandler) ===
 os.makedirs("logs", exist_ok=True)
+_log_formatter = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+_file_handler = RotatingFileHandler(
+    Config.LOG_FILE, maxBytes=Config.LOG_MAX_BYTES,
+    backupCount=Config.LOG_BACKUP_COUNT, encoding="utf-8",
+)
+_file_handler.setFormatter(_log_formatter)
+_stream_handler = logging.StreamHandler()
+_stream_handler.setFormatter(_log_formatter)
 logging.basicConfig(
     level=getattr(logging, Config.LOG_LEVEL),
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    handlers=[
-        logging.FileHandler(Config.LOG_FILE, encoding="utf-8"),
-        logging.StreamHandler(),
-    ],
+    handlers=[_file_handler, _stream_handler],
 )
 logger = logging.getLogger(__name__)
+
+# === Fix #2 : Cache en mémoire pour /api/predictions ===
+_predictions_cache = {"data": None, "expires": 0}
+
+# === Fix #16 : Rate limiting simple pour /api/subscribe ===
+_rate_limit_store: dict[str, list[float]] = defaultdict(list)
 
 
 # === Lifespan ===
@@ -66,8 +79,12 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 
-# === Vérification admin ===
-def verify_admin(password: str):
+# === Vérification admin (Fix #6 : via header Authorization) ===
+def verify_admin(authorization: str | None):
+    """Vérifie le mot de passe admin depuis le header Authorization: Bearer <password>."""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=403, detail="Header Authorization manquant")
+    password = authorization[len("Bearer "):]
     if password != Config.ADMIN_PASSWORD:
         raise HTTPException(status_code=403, detail="Mot de passe admin incorrect")
 
@@ -139,7 +156,13 @@ async def api_remaining():
 
 @app.get("/api/predictions")
 async def api_predictions():
-    """Génère et retourne les prédictions J+1 → J+15."""
+    """Génère et retourne les prédictions J+1 → J+15 (cache TTL 15min)."""
+    now = time.time()
+
+    # Fix #2 : utiliser le cache si encore valide
+    if _predictions_cache["data"] and now < _predictions_cache["expires"]:
+        return _predictions_cache["data"]
+
     from weather_client import fetch_forecast_extended
     from predictor import predict_range
     from performance_tracker import get_accuracy_global
@@ -150,12 +173,17 @@ async def api_predictions():
     # Badge de fiabilité
     accuracy = get_accuracy_global(30)
 
-    return {
+    result = {
         "status": "ok",
         "predictions": predictions,
         "accuracy": accuracy,
         "generated_at": datetime.now().isoformat(),
     }
+
+    _predictions_cache["data"] = result
+    _predictions_cache["expires"] = now + Config.PREDICTIONS_CACHE_TTL
+
+    return result
 
 
 @app.get("/api/history")
@@ -181,8 +209,9 @@ async def api_history(days: int = 30):
 # ================================================================
 
 @app.get("/api/performance")
-async def api_performance():
-    """Métriques de performance complètes (pour dashboard admin)."""
+async def api_performance(authorization: str | None = Header(None)):
+    """Métriques de performance complètes (admin, Fix #3)."""
+    verify_admin(authorization)
     from performance_tracker import get_performance_summary
     return {"status": "ok", **get_performance_summary()}
 
@@ -204,9 +233,9 @@ async def api_performance_badge():
 
 @app.get("/api/performance/csv")
 async def api_performance_csv(month: int = None, year: int = None,
-                               password: str = ""):
+                               authorization: str | None = Header(None)):
     """Export CSV des performances mensuelles (admin only)."""
-    verify_admin(password)
+    verify_admin(authorization)
     from performance_tracker import export_monthly_csv
 
     if not month:
@@ -228,13 +257,25 @@ async def api_performance_csv(month: int = None, year: int = None,
 
 @app.post("/api/subscribe")
 async def api_subscribe(
+    request: Request,
     phone: str = Form(...),
     seuil_rouge: int = Form(70),
     delai: int = Form(1),
     alerte_blanc: bool = Form(False),
     recap_hebdo: bool = Form(False),
 ):
-    """Inscription aux alertes SMS."""
+    """Inscription aux alertes SMS (Fix #16 : rate limiting)."""
+    # Rate limiting par IP
+    client_ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    window = Config.SUBSCRIBE_RATE_WINDOW
+    _rate_limit_store[client_ip] = [
+        t for t in _rate_limit_store[client_ip] if now - t < window
+    ]
+    if len(_rate_limit_store[client_ip]) >= Config.SUBSCRIBE_RATE_LIMIT:
+        raise HTTPException(status_code=429, detail="Trop de tentatives. Réessayez plus tard.")
+    _rate_limit_store[client_ip].append(now)
+
     from alerts import register_user
     result = register_user(phone, seuil_rouge, delai, alerte_blanc, recap_hebdo)
     if "error" in result:
@@ -253,9 +294,9 @@ async def api_unsubscribe(phone: str = Form(...)):
 
 
 @app.get("/api/users/stats")
-async def api_user_stats(password: str = ""):
+async def api_user_stats(authorization: str | None = Header(None)):
     """Stats utilisateurs (admin)."""
-    verify_admin(password)
+    verify_admin(authorization)
     from alerts import get_user_count
     return {"status": "ok", **get_user_count()}
 
@@ -265,18 +306,18 @@ async def api_user_stats(password: str = ""):
 # ================================================================
 
 @app.post("/admin/run-task")
-async def admin_run_task(task: str = Form(...), password: str = Form(...)):
+async def admin_run_task(request: Request, task: str = Form(...)):
     """Exécute une tâche du scheduler manuellement."""
-    verify_admin(password)
+    verify_admin(request.headers.get("Authorization"))
     from scheduler import run_task_now
     result = await run_task_now(task)
     return {"status": "ok", "result": result}
 
 
 @app.get("/admin/weights-history")
-async def admin_weights_history(password: str = ""):
+async def admin_weights_history(authorization: str | None = Header(None)):
     """Historique des versions de poids."""
-    verify_admin(password)
+    verify_admin(authorization)
     from database import get_db
     import json
 
@@ -297,9 +338,9 @@ async def admin_weights_history(password: str = ""):
 
 
 @app.get("/admin/sms-logs")
-async def admin_sms_logs(password: str = "", limit: int = 50):
+async def admin_sms_logs(authorization: str | None = Header(None), limit: int = 50):
     """Derniers SMS envoyés."""
-    verify_admin(password)
+    verify_admin(authorization)
     from database import get_db
 
     conn = get_db()

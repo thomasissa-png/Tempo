@@ -7,9 +7,8 @@ Tâches planifiées :
   - Dimanche 20h     : récapitulatif hebdomadaire SMS
 """
 
-import asyncio
 import logging
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
