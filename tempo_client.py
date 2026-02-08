@@ -36,20 +36,6 @@ async def fetch_tempo_date(target_date: date) -> dict | None:
     return await _fetch(f"{Config.TEMPO_API_BASE}/jourTempo/{target_date.isoformat()}")
 
 
-async def fetch_remaining_days() -> dict | None:
-    """Récupère le nombre de jours restants par couleur pour la saison."""
-    try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.get(f"{Config.TEMPO_API_BASE}/joursTempo")
-            resp.raise_for_status()
-            data = resp.json()
-            logger.info(f"[Tempo] Jours restants saison : {data}")
-            return data
-    except Exception as e:
-        logger.error(f"[Tempo] Erreur fetch jours restants : {e}")
-        return None
-
-
 async def _fetch(url: str) -> dict | None:
     """Appel générique à l'API Tempo avec parsing."""
     try:

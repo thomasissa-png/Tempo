@@ -88,11 +88,17 @@ def purge_old_data() -> None:
         deleted_preds = conn.execute(
             "DELETE FROM predictions WHERE date < ?", (cutoff_preds,)
         ).rowcount
+        # Fix #15 audit v4 : purger aussi la table performance (>180 jours)
+        cutoff_perf = (date.today() - timedelta(days=180)).isoformat()
+        deleted_perf = conn.execute(
+            "DELETE FROM performance WHERE date_cible < ?", (cutoff_perf,)
+        ).rowcount
         conn.commit()
 
         logger.info(
-            "purge_old_data: deleted %d weather_cache rows (>30d) and %d predictions rows (>90d)",
-            deleted_cache, deleted_preds,
+            "purge_old_data: deleted %d weather_cache (>30d), %d predictions (>90d), "
+            "%d performance (>180d)",
+            deleted_cache, deleted_preds, deleted_perf,
         )
     except Exception:
         logger.exception("purge_old_data: error during purge")
@@ -263,10 +269,20 @@ async def api_predictions():
     from rte_client import get_consumption_score
 
     forecasts = await fetch_forecast_extended()
+    if not forecasts:
+        # Fix #17 audit v4 : message explicatif quand pas de donnees meteo
+        return {
+            "status": "ok",
+            "predictions": [],
+            "accuracy": get_accuracy_global(30),
+            "generated_at": datetime.now().isoformat(),
+            "message": "Données météo temporairement indisponibles",
+        }
+
     rte_score = await get_consumption_score()
     predictions = predict_range(forecasts, rte_score=rte_score)
 
-    # Badge de fiabilité
+    # Badge de fiabilite
     accuracy = get_accuracy_global(30)
 
     result = {
@@ -284,7 +300,9 @@ async def api_predictions():
 
 @app.get("/api/history")
 async def api_history(days: int = 30):
-    """Historique des couleurs réelles des N derniers jours."""
+    """Historique des couleurs reelles des N derniers jours.
+    Fix #10 audit v4 : cap a 365 jours pour eviter scan complet."""
+    days = max(1, min(days, 365))
     from database import get_db
     from datetime import timedelta
 
@@ -314,9 +332,10 @@ async def api_performance(authorization: str | None = Header(None)):
 
 @app.get("/api/performance/badge")
 async def api_performance_badge():
-    """Badge de fiabilité simplifié pour la homepage."""
+    """Badge de fiabilite simplifie pour la homepage.
+    Fix #6 audit v4 : filtre J-1 seulement pour que le label soit exact."""
     from performance_tracker import get_accuracy_global
-    acc = get_accuracy_global(30)
+    acc = get_accuracy_global(30, max_horizon=1)
     return {
         "status": "ok",
         "precision_30j": acc["precision"],
@@ -414,7 +433,10 @@ async def api_user_stats(authorization: str | None = Header(None)):
 
 @app.post("/admin/run-task")
 async def admin_run_task(request: Request, task: str = Form(...)):
-    """Exécute une tâche du scheduler manuellement."""
+    """Execute une tache du scheduler manuellement.
+    Fix #8 audit v4 : ajout check CSRF."""
+    if not _check_origin(request):
+        raise HTTPException(status_code=403, detail="Origine de la requête non autorisée")
     verify_admin(request.headers.get("Authorization"))
     from scheduler import run_task_now
     result = await run_task_now(task)

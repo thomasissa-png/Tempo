@@ -82,17 +82,30 @@ def _couleur_to_score(couleur: str) -> float:
 # 2. MÉTRIQUES DE PERFORMANCE
 # ================================================================
 
-def get_accuracy_global(days: int = 30) -> dict:
-    """Précision globale sur les N derniers jours."""
+def get_accuracy_global(days: int = 30, max_horizon: int | None = None) -> dict:
+    """Precision globale sur les N derniers jours.
+
+    Fix #6 audit v4 : filtre optionnel par horizon max (jours_avance).
+    max_horizon=1 → J-1 seulement, None → tous les horizons.
+    """
     conn = get_db()
     try:
         since = (date.today() - timedelta(days=days)).isoformat()
-        rows = conn.execute(
-            """SELECT correct, COUNT(*) as cnt
-               FROM performance WHERE date_cible >= ?
-               GROUP BY correct""",
-            (since,)
-        ).fetchall()
+        if max_horizon is not None:
+            rows = conn.execute(
+                """SELECT correct, COUNT(*) as cnt
+                   FROM performance
+                   WHERE date_cible >= ? AND jours_avance <= ?
+                   GROUP BY correct""",
+                (since, max_horizon),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """SELECT correct, COUNT(*) as cnt
+                   FROM performance WHERE date_cible >= ?
+                   GROUP BY correct""",
+                (since,),
+            ).fetchall()
 
         total = sum(r["cnt"] for r in rows)
         correct = sum(r["cnt"] for r in rows if r["correct"] == 1)
@@ -358,7 +371,9 @@ def recalculate_weights():
             conn.commit()
             return None
 
-        # Deployer les nouveaux poids
+        # Fix #2 audit v4 : precision_apres = 0 (placeholder), sera mise a jour
+        # au prochain recalcul par _update_previous_precision_apres.
+        # test_accuracy est stockee dans le commentaire pour reference.
         conn.execute(
             """INSERT INTO weights_history
                (date_update, weights_json, precision_avant, precision_apres,
@@ -366,7 +381,7 @@ def recalculate_weights():
                VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (datetime.now().strftime("%Y-%m-%d"),
              json.dumps(new_weights),
-             precision_avant, test_accuracy, count,
+             precision_avant, 0, count,
              f"Recalcul auto (test_acc={test_accuracy}%) — "
              f"ancien: {json.dumps(old_weights)}",
              datetime.now().isoformat()),

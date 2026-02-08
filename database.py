@@ -39,8 +39,15 @@ def _get_fernet():
     if key_source:
         _fernet_instance = Fernet(key_source.encode() if isinstance(key_source, str) else key_source)
     else:
-        # Dérivation depuis ADMIN_PASSWORD → SHA-256 → base64 (Fernet veut 32 bytes url-safe)
-        raw = hashlib.sha256(Config.ADMIN_PASSWORD.encode()).digest()
+        # Fix #9 audit v4 : PBKDF2 (100k iterations) au lieu de SHA-256 direct.
+        # Le sel est fixe mais protege contre les rainbow tables.
+        # En production, definir PHONE_ENCRYPTION_KEY explicitement.
+        raw = hashlib.pbkdf2_hmac(
+            "sha256",
+            Config.ADMIN_PASSWORD.encode(),
+            b"tempoforecast_fernet_v2",
+            iterations=100_000,
+        )
         _fernet_instance = Fernet(base64.urlsafe_b64encode(raw))
 
     return _fernet_instance
@@ -187,32 +194,35 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_weather_cache_date  ON weather_cache(date);
     """)
 
-    # === Migrations v3 — Système d'apprentissage ===
+    # === Fix #14 audit v4 : migrations conditionnelles via PRAGMA user_version ===
+    version = conn.execute("PRAGMA user_version").fetchone()[0]
 
-    # Fix #2/#7 : Colonnes sub-scores dans predictions (features exactes du prédicteur)
-    for col in ["score_temperature", "score_budget", "score_weekday",
-                "score_gradient", "score_clustering", "score_rte"]:
-        try:
-            conn.execute(f"ALTER TABLE predictions ADD COLUMN {col} REAL DEFAULT 0")
-        except sqlite3.OperationalError:
-            pass  # Colonne existe déjà
+    if version < 3:
+        # Migrations v3 — Système d'apprentissage
+        for col in ["score_temperature", "score_budget", "score_weekday",
+                    "score_gradient", "score_clustering", "score_rte"]:
+            try:
+                conn.execute(f"ALTER TABLE predictions ADD COLUMN {col} REAL DEFAULT 0")
+            except sqlite3.OperationalError:
+                pass  # Colonne existe déjà
 
-    # Fix #3 : Dédupliquer predictions et ajouter UNIQUE(date, horizon)
-    conn.execute("""DELETE FROM predictions WHERE id NOT IN
-        (SELECT MAX(id) FROM predictions GROUP BY date, horizon)""")
-    conn.execute("DROP INDEX IF EXISTS idx_predictions_date")
-    conn.execute("DROP INDEX IF EXISTS idx_predictions_horizon")
-    conn.execute(
-        "CREATE UNIQUE INDEX IF NOT EXISTS idx_predictions_date_horizon "
-        "ON predictions(date, horizon)")
+        conn.execute("""DELETE FROM predictions WHERE id NOT IN
+            (SELECT MAX(id) FROM predictions GROUP BY date, horizon)""")
+        conn.execute("DROP INDEX IF EXISTS idx_predictions_date")
+        conn.execute("DROP INDEX IF EXISTS idx_predictions_horizon")
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_predictions_date_horizon "
+            "ON predictions(date, horizon)")
 
-    # Fix #9 : Dédupliquer weather_cache et ajouter UNIQUE(date)
-    conn.execute("""DELETE FROM weather_cache WHERE id NOT IN
-        (SELECT MAX(id) FROM weather_cache GROUP BY date)""")
-    conn.execute("DROP INDEX IF EXISTS idx_weather_cache_date")
-    conn.execute(
-        "CREATE UNIQUE INDEX IF NOT EXISTS idx_weather_cache_date "
-        "ON weather_cache(date)")
+        conn.execute("""DELETE FROM weather_cache WHERE id NOT IN
+            (SELECT MAX(id) FROM weather_cache GROUP BY date)""")
+        conn.execute("DROP INDEX IF EXISTS idx_weather_cache_date")
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_weather_cache_date "
+            "ON weather_cache(date)")
+
+        conn.execute("PRAGMA user_version = 3")
+        logger.info("Migration v3 appliquee (sub-scores, index UNIQUE)")
 
     # Poids initiaux si vide
     existing = conn.execute("SELECT COUNT(*) as c FROM weights_history").fetchone()

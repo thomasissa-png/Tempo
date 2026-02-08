@@ -8,6 +8,7 @@ import httpx
 import logging
 import asyncio
 from datetime import datetime, date, timedelta, timezone
+from zoneinfo import ZoneInfo
 from config import Config
 from database import get_db
 
@@ -195,11 +196,15 @@ def _merge_city_forecasts(city_forecasts: dict[str, list[dict]]) -> list[dict]:
 # PARSING DES FORMATS API
 # ================================================================
 
+_CET = ZoneInfo("Europe/Paris")
+
+
 def _aggregate_3h_to_daily(entries: list[dict]) -> list[dict]:
-    """Agrege les donnees 3h en resumes journaliers."""
+    """Agrege les donnees 3h en resumes journaliers.
+    Fix #7 audit v4 : groupement en heure francaise (CET/CEST) au lieu de UTC."""
     daily: dict[str, list[dict]] = {}
     for entry in entries:
-        dt = datetime.fromtimestamp(entry["dt"], tz=timezone.utc)
+        dt = datetime.fromtimestamp(entry["dt"], tz=_CET)
         day_str = dt.date().isoformat()
         daily.setdefault(day_str, []).append(entry)
 
@@ -229,7 +234,7 @@ def _parse_daily_forecast(entries: list[dict]) -> list[dict]:
     """Parse le format 16-day daily forecast."""
     result = []
     for entry in entries:
-        dt = datetime.fromtimestamp(entry["dt"], tz=timezone.utc)
+        dt = datetime.fromtimestamp(entry["dt"], tz=_CET)
         temp = entry.get("temp", {})
         result.append({
             "date": dt.date().isoformat(),

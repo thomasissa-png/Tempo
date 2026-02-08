@@ -294,6 +294,9 @@ def register_user(phone_number: str, seuil_rouge: int = 70,
     # Fix #8 : message corrigé "9 chiffres"
     if not phone_clean.startswith("+33") or len(phone_clean) != 12:
         return {"error": "Format invalide. Utilisez +33XXXXXXXXX (9 chiffres après +33)."}
+    # Fix #13 audit v4 : verifier que les 9 derniers caracteres sont des chiffres
+    if not phone_clean[3:].isdigit():
+        return {"error": "Le numéro ne doit contenir que des chiffres après +33."}
 
     phone_h = hash_phone(phone_clean)
     phone_enc = encrypt_phone(phone_clean)  # Fix #1 : chiffrement réversible
@@ -369,16 +372,26 @@ def get_user_count() -> dict:
 
 
 def cleanup_inactive_users(months: int = 6):
-    """Supprime les users inactifs depuis plus de N mois (RGPD)."""
+    """Supprime les users inactifs depuis plus de N mois (RGPD).
+
+    Fix #1 audit v4 : supprime d'abord les sms_logs des users concernes
+    pour eviter une violation de cle etrangere (pas de ON DELETE CASCADE).
+    """
     cutoff = (datetime.now() - timedelta(days=months * 30)).isoformat()
     conn = get_db()
     try:
+        # Supprimer les sms_logs des users qui vont etre supprimes
+        conn.execute(
+            """DELETE FROM sms_logs WHERE user_id IN
+               (SELECT id FROM users WHERE actif = 0 AND updated_at < ?)""",
+            (cutoff,),
+        )
         deleted = conn.execute(
             "DELETE FROM users WHERE actif = 0 AND updated_at < ?",
             (cutoff,),
         ).rowcount
         conn.commit()
         if deleted:
-            logger.info(f"[RGPD] {deleted} users inactifs supprimés")
+            logger.info(f"[RGPD] {deleted} users inactifs supprimés (+ sms_logs associés)")
     finally:
         conn.close()

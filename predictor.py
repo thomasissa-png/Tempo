@@ -20,6 +20,7 @@ Corrections audit v2.1 :
 
 import logging
 import math
+from functools import lru_cache
 from datetime import date, datetime, timedelta
 from database import get_db, get_current_weights
 from config import Config
@@ -32,8 +33,10 @@ logger = logging.getLogger(__name__)
 # JOURS FERIES FRANCAIS
 # ================================================================
 
-def _get_french_holidays(year: int) -> set[date]:
-    """Retourne l'ensemble des jours feries francais pour une annee."""
+@lru_cache(maxsize=8)
+def _get_french_holidays(year: int) -> frozenset[date]:
+    """Retourne l'ensemble des jours feries francais pour une annee.
+    Fix #11 audit v4 : cache LRU pour eviter recalcul a chaque appel."""
     holidays = {
         date(year, 1, 1),    # Jour de l'an
         date(year, 5, 1),    # Fete du travail
@@ -50,7 +53,7 @@ def _get_french_holidays(year: int) -> set[date]:
     holidays.add(easter + timedelta(days=1))     # Lundi de Paques
     holidays.add(easter + timedelta(days=39))    # Ascension
     holidays.add(easter + timedelta(days=50))    # Lundi de Pentecote
-    return holidays
+    return frozenset(holidays)
 
 
 def _easter(year: int) -> date:
@@ -201,12 +204,26 @@ def predict_range(forecasts: list[dict],
     predictions = []
     for i, weather in enumerate(forecasts):
         target = date.fromisoformat(weather["date"])
+        delta = (target - date.today()).days
+
+        # Fix #5 audit v4 : RTE fiable J+1 seulement, degrade J+2/J+3, ignore au-dela
+        day_rte = rte_score
+        if rte_score and rte_score.get("available") and delta > 1:
+            if delta > 3:
+                day_rte = None  # Au-dela de J+3, RTE non pertinent
+            else:
+                # Attenuation lineaire vers neutre (50)
+                blend = max(0.0, 1.0 - (delta - 1) / 3.0)
+                day_rte = {
+                    **rte_score,
+                    "score": round(rte_score["score"] * blend + 50 * (1 - blend)),
+                }
+
         pred = predict_day(target, weather=weather,
                            forecasts=forecasts, target_idx=i,
                            remaining=sim_remaining, weights=weights,
-                           rte_score=rte_score,
+                           rte_score=day_rte,
                            _actuals_cache=actuals_cache)
-        delta = (target - date.today()).days
         pred["horizon"] = f"J-{delta}" if delta > 0 else "J0"
         predictions.append(pred)
 
@@ -280,14 +297,14 @@ def _score_budget_v2(remaining: dict, d_left: int, target_date: date) -> float:
     expected_pct = Config.MONTHLY_RED_PROFILE.get(month, 0.0)
 
     # Combien de jours rouges "devrait-il" rester a ce stade de la saison ?
-    # On cumule les % des mois restants (excluant le mois courant deja entame)
+    # Fix #4 audit v4 : exclure le mois courant (deja partiellement ecoule)
     months_ahead = []
     m = month
-    while m != 6:  # jusqu'a fin mai (mois 5)
-        months_ahead.append(m)
+    while True:
         m = m + 1 if m < 12 else 1
         if m == 6:
             break
+        months_ahead.append(m)
     expected_remaining_pct = sum(
         Config.MONTHLY_RED_PROFILE.get(mo, 0.0) for mo in months_ahead
     )
@@ -398,7 +415,8 @@ def _score_clustering(target_date: date, forecasts: list[dict],
 
     if yesterday_was_red:
         # La veille etait rouge. Le froid continue-t-il ?
-        if target_idx > 0 and target_idx < len(forecasts):
+        # Fix #3 audit v4 : target_idx >= 0 au lieu de > 0
+        if target_idx >= 0 and target_idx < len(forecasts):
             curr_temp = forecasts[target_idx].get("temp_moy", 10)
             if curr_temp < 2:
                 return 90  # Rouge hier + froid qui continue = tres probable
@@ -445,13 +463,16 @@ def _detect_cold_wave(forecasts: list[dict], target_idx: int) -> float:
     start = max(0, target_idx - half_window)
     end = min(len(forecasts), target_idx + half_window + 1)
 
+    window_size = end - start
     cold_days = sum(
         1 for i in range(start, end)
         if forecasts[i].get("temp_moy", 10) < 2  # < 2C national
     )
 
-    if cold_days >= 5:
-        return 25
+    # Fix #16 audit v4 : bonus maximum si toute la fenetre est froide
+    # (meme si fenetre < 5 en bord de forecast)
+    if cold_days >= window_size and cold_days >= 3:
+        return 25  # 100% de la fenetre froide (3+ jours)
     if cold_days >= 4:
         return 20
     if cold_days >= 3:
