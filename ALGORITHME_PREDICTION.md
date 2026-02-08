@@ -269,7 +269,7 @@ Les sub-scores (score_temperature, score_budget, etc.) sont stockes en DB avec c
 ```
 18h00 (scheduler)
   |
-  +-- Fetch meteo 15 jours (9 villes ponderees, API 5j + extrapolation)
+  +-- Fetch meteo 16 jours (9 villes ponderees, Open-Meteo gratuit)
   +-- Fetch consommation RTE (J+1)
   +-- predict_range(forecasts, rte_score)
   |     |
@@ -278,7 +278,7 @@ Les sub-scores (score_temperature, score_budget, etc.) sont stockes en DB avec c
   |     |     +-- Sinon -> predict_day() avec 6 facteurs
   |     |     +-- Decrementer quota simule
   |     |
-  |     +-- Retourne 15 predictions
+  |     +-- Retourne 16 predictions
   |
   +-- store_prediction() pour chaque prediction
   |     +-- Detecte changements vs cycle precedent
@@ -296,30 +296,29 @@ Les sub-scores (score_temperature, score_budget, etc.) sont stockes en DB avec c
 | Source                  | API                                      | Usage                        |
 |-------------------------|------------------------------------------|------------------------------|
 | Couleurs officielles    | api-couleur-tempo.fr                     | Verification, override J+1   |
-| Meteo                   | OpenWeatherMap (9 villes) + extrapolation| Temperature, pression         |
+| Meteo                   | Open-Meteo (9 villes, 16j gratuit)       | Temperature, vent, precipitations |
 | Consommation electrique | RTE eco2mix (OAuth2)                     | Prevision pointe, nucleaire   |
 | Jours feries            | Calcul interne (algorithme de Meeus)     | Scoring jour semaine          |
 
 ---
 
-## 11. Qualite des donnees meteo (v3)
+## 11. Qualite des donnees meteo
 
 Chaque jour de prevision porte un champ `forecast_quality` :
 
 | Qualite        | Source                     | Attenuation du score    | Horizon typique |
 |---------------|----------------------------|-------------------------|-----------------|
-| `api`          | API OpenWeatherMap reelle  | Aucune (100% confiance) | J+0 a J+5      |
-| `climatology`  | Extrapolation climatologique| 30% vers neutre (50)   | J+6 a J+15     |
-| `simulated`    | Moyennes saisonnieres      | 50% vers neutre (50)   | Sans cle API    |
+| `api`          | Open-Meteo (modeles NWP)  | Aucune (100% confiance) | J+0 a J+16     |
+| `simulated`    | Moyennes saisonnieres      | 50% vers neutre (50)   | Si Open-Meteo indisponible |
 
-**Extrapolation J+6 a J+15** : Les dernieres temperatures API servent de point de depart. Le systeme regresse progressivement vers les normales saisonnieres du mois cible, avec une tendance amortie basee sur les 3 derniers jours API. Un bruit deterministique simule la variabilite naturelle.
+**Open-Meteo** : API gratuite sans cle, fournit 16 jours de previsions journalieres basees sur les modeles meteorologiques nationaux (ICON, GFS, etc.). Toutes les donnees sont des previsions modele fiables, pas d'extrapolation necessaire.
 
 ---
 
 ## 12. Limites connues
 
-1. **Horizon J+6 a J+15** : Au-dela de J+5 (API gratuite), les temperatures sont extrapolees par regression climatologique. Le predictor attenue automatiquement le score de risque de 30% pour ces jours. Les predictions a cet horizon sont indicatives.
+1. **Horizon J+8 a J+16** : Les modeles meteorologiques perdent en fiabilite au-dela de 7-8 jours. Les predictions a cet horizon sont indicatives.
 2. **Donnees RTE** : Seulement fiables pour J+1, attenuees pour J+2/J+3, ignorees au-dela.
 3. **Profil mensuel** : Base sur un historique de 20 saisons. Un changement de politique EDF invaliderait ce profil.
 4. **Pas de donnees infra-journalieres** : Le scoring utilise des moyennes journalieres, pas les pointes horaires.
-5. **Meteo fallback** : Sans cle OpenWeather, le systeme utilise des moyennes saisonnières (flag `simulated`, attenuation 50%).
+5. **Meteo fallback** : Si Open-Meteo est indisponible, le systeme utilise des moyennes saisonnieres (flag `simulated`, attenuation 50%).

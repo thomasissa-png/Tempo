@@ -13,10 +13,8 @@ class Config:
     # --- API Tempo officielle ---
     TEMPO_API_BASE = "https://www.api-couleur-tempo.fr/api"
 
-    # --- OpenWeatherMap ---
-    OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY", "")
-
     # --- Villes meteo ponderees par population / parc chauffage electrique ---
+    # API : Open-Meteo (gratuit, 16 jours, sans cle)
     # (lat, lon, poids) — poids normalises a 1.0
     # Fix meteo #2 : reequilibrage des poids
     #   - Marseille reduit (climat mediterraneen doux, biaise la moyenne vers le haut)
@@ -34,10 +32,6 @@ class Config:
         {"name": "Marseille",       "lat": 43.2965, "lon": 5.3698,  "weight": 0.07},
         {"name": "Clermont-Ferrand","lat": 45.7772, "lon": 3.0870,  "weight": 0.07},
     ]
-
-    # Fallback Paris seul (compatibilite)
-    WEATHER_LAT = 48.8566
-    WEATHER_LON = 2.3522
 
     # --- RTE eco2mix API ---
     RTE_CLIENT_ID = os.getenv("RTE_CLIENT_ID", "")

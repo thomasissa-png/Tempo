@@ -50,7 +50,7 @@ TempoForecast/
 ├── config.py               # Configuration centralisée (.env)
 ├── database.py             # SQLite — 6 tables, init, utilitaires
 ├── tempo_client.py         # Client API Tempo officielle
-├── weather_client.py       # Client OpenWeatherMap
+├── weather_client.py       # Client Open-Meteo (previsions 16 jours)
 ├── predictor.py            # Algorithme de prédiction v1 (scoring par points)
 ├── performance_tracker.py  # Auto-amélioration, métriques, recalcul poids
 ├── alerts.py               # Alertes SMS Twilio, gestion users
@@ -123,19 +123,15 @@ Les poids sont recalculés automatiquement chaque mois via régression logistiqu
 Dans l'onglet "Secrets" de Replit, ajouter :
 
 ```
-OPENWEATHER_API_KEY=votre_clé_openweather
 TWILIO_ACCOUNT_SID=votre_sid_twilio
 TWILIO_AUTH_TOKEN=votre_token_twilio
 TWILIO_PHONE_NUMBER=+33xxxxxxxxx
 ADMIN_PASSWORD=votre_mot_de_passe_admin
 ```
 
-### 3. Obtenir les clés API
+> **Note** : La météo utilise [Open-Meteo](https://open-meteo.com/) (gratuit, 16 jours, aucune clé API nécessaire).
 
-**OpenWeatherMap** (gratuit) :
-1. Créer un compte sur [openweathermap.org](https://openweathermap.org/)
-2. Aller dans "API keys" pour obtenir votre clé
-3. Le plan gratuit inclut les prévisions 5 jours (suffisant)
+### 3. Obtenir les clés API
 
 **Twilio** (SMS) :
 1. Créer un compte sur [twilio.com](https://www.twilio.com/)
@@ -201,4 +197,4 @@ L'app sera accessible sur le port 8000. Le scheduler démarre automatiquement.
 - **SMS** : Twilio
 - **Scheduler** : APScheduler (AsyncIO)
 - **Frontend** : HTML5, CSS3, JavaScript vanilla, Chart.js
-- **APIs externes** : API Tempo officielle, OpenWeatherMap
+- **APIs externes** : API Tempo officielle, Open-Meteo (meteo 16j gratuit), RTE eco2mix
