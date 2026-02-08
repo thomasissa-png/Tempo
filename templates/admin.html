@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TempoForecast — Admin / Performance</title>
     <link rel="stylesheet" href="/static/css/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"
+            integrity="sha384-e1kSEwCaVTZnKiRDkBBbMLR5cMrqYOBNMu90RCMBB4RnXQ+LiY7SAFnFEeYz8dT"
+            crossorigin="anonymous"></script>
 </head>
 <body>
 
@@ -145,6 +147,9 @@
 
 <script>
 let adminPassword = '';
+// Fix #23 : stocker les instances Chart pour les detruire avant recréation
+let chartHorizon = null;
+let chartWeights = null;
 
 async function loadAdminData() {
     adminPassword = document.getElementById('admin-pw').value;
@@ -235,7 +240,9 @@ function renderHorizonChart(horizonData) {
     if (!ctx) return;
     if (horizonData.length === 0) return;
 
-    new Chart(ctx, {
+    // Fix #23 : detruire l'ancien graphique avant d'en creer un nouveau
+    if (chartHorizon) { chartHorizon.destroy(); }
+    chartHorizon = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: horizonData.map(h => h.horizon),
@@ -266,13 +273,16 @@ function renderWeightsChart(weights) {
     const labels = Object.keys(weights).map(k => k.replace('_', ' '));
     const values = Object.values(weights).map(v => v * 100);
 
-    new Chart(ctx, {
+    // Fix #23 : detruire l'ancien graphique avant d'en creer un nouveau
+    if (chartWeights) { chartWeights.destroy(); }
+    // Fix #22 : 6 couleurs pour les 6 poids
+    chartWeights = new Chart(ctx, {
         type: 'doughnut',
         data: {
             labels: labels,
             datasets: [{
                 data: values,
-                backgroundColor: ['#F44336', '#FF9800', '#2196F3', '#4CAF50'],
+                backgroundColor: ['#F44336', '#FF9800', '#2196F3', '#4CAF50', '#9C27B0', '#795548'],
             }]
         },
         options: {

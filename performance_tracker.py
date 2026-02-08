@@ -8,6 +8,7 @@ Trois responsabilités :
 
 import json
 import logging
+import re
 from datetime import date, datetime, timedelta
 from database import get_db, get_current_weights
 from predictor import is_french_holiday
@@ -212,7 +213,7 @@ def recalculate_weights():
         rows = conn.execute(
             """SELECT p.score_risque, p.temp_min_prevue, p.temp_max_prevue,
                       p.pression_prevue, p.date, p.jours_rouges_restants,
-                      a.couleur_reelle
+                      p.raison, a.couleur_reelle
                FROM predictions p
                JOIN actuals a ON p.date = a.date
                WHERE p.horizon IN ('J-1', 'J-2', 'J-3')
@@ -223,6 +224,34 @@ def recalculate_weights():
         if len(rows) < 30:
             logger.info("[Poids] Pas assez de jointures prédiction-réalité")
             return None
+
+        # Fix #4 : pre-fetch weather_cache and actuals for real feature computation
+        all_dates = set()
+        for row in rows:
+            d_str = row["date"]
+            all_dates.add(d_str)
+            prev_str = (date.fromisoformat(d_str) - timedelta(days=1)).isoformat()
+            all_dates.add(prev_str)
+
+        date_list = list(all_dates)
+        placeholders = ",".join("?" for _ in date_list)
+
+        weather_temps = {}
+        weather_rows = conn.execute(
+            f"SELECT date, temp_moy FROM weather_cache WHERE date IN ({placeholders})",
+            date_list,
+        ).fetchall()
+        for wr in weather_rows:
+            if wr["temp_moy"] is not None:
+                weather_temps[wr["date"]] = wr["temp_moy"]
+
+        actuals_colors = {}
+        actuals_rows = conn.execute(
+            f"SELECT date, couleur_reelle FROM actuals WHERE date IN ({placeholders})",
+            date_list,
+        ).fetchall()
+        for ar in actuals_rows:
+            actuals_colors[ar["date"]] = ar["couleur_reelle"]
 
         # Préparer les features
         import numpy as np
@@ -245,13 +274,66 @@ def recalculate_weights():
             is_holiday = 1 if is_french_holiday(d) else 0
             jour_semaine_feature = is_weekday * 70 + is_holiday * 30
 
+            # Fix #4 : gradient thermique — temp drop from weather_cache
+            date_str = row["date"]
+            prev_date_str = (d - timedelta(days=1)).isoformat()
+            curr_wt = weather_temps.get(date_str)
+            prev_wt = weather_temps.get(prev_date_str)
+            if curr_wt is not None and prev_wt is not None:
+                drop = prev_wt - curr_wt  # positive = colder today
+                if drop >= 8:
+                    gradient_feature = 90
+                elif drop >= 5:
+                    gradient_feature = 70
+                elif drop >= 3:
+                    gradient_feature = 50
+                elif drop >= 1:
+                    gradient_feature = 35
+                elif drop >= 0:
+                    gradient_feature = 25
+                elif drop >= -3:
+                    gradient_feature = 15
+                else:
+                    gradient_feature = 5
+            else:
+                gradient_feature = 30  # neutral when no weather data
+
+            # Fix #4 : clustering — previous day ROUGE in actuals
+            yesterday_rouge = actuals_colors.get(prev_date_str) == "ROUGE"
+            if yesterday_rouge:
+                if temp_moy < 2:
+                    clustering_feature = 90
+                elif temp_moy < 5:
+                    clustering_feature = 70
+                else:
+                    clustering_feature = 40
+            else:
+                prev_temp = weather_temps.get(prev_date_str, 10)
+                if prev_temp < 2 and temp_moy < 2:
+                    clustering_feature = 60
+                elif prev_temp < 4 and temp_moy < 4:
+                    clustering_feature = 40
+                else:
+                    clustering_feature = 20
+
+            # Fix #4 : consommation RTE — parse from prediction raison, default 50
+            rte_feature = 50
+            raison = row["raison"] or ""
+            if "conso" in raison.lower():
+                gw_match = re.search(r'(\d+)\s*GW', raison)
+                if gw_match:
+                    gw = int(gw_match.group(1))
+                    rte_feature = min(100, max(10, (gw - 40) * 2))
+                else:
+                    rte_feature = 70  # mentioned without value => was significant
+
             X.append([
                 _score_temp_feature(temp_moy),     # feature température
                 budget_feature,                     # feature jours_restants
                 jour_semaine_feature,               # feature jour_semaine
-                30,                                 # feature gradient_thermique (placeholder)
-                20,                                 # feature clustering (placeholder)
-                50,                                 # feature consommation_rte (placeholder)
+                gradient_feature,                   # feature gradient_thermique
+                clustering_feature,                 # feature clustering
+                rte_feature,                        # feature consommation_rte
             ])
 
             # Label : 0=BLEU, 1=BLANC, 2=ROUGE
@@ -322,18 +404,30 @@ def recalculate_weights():
 
 
 def _score_temp_feature(temp_moy: float) -> float:
-    """Feature température normalisée pour le ML (basée sur temp_moy)."""
+    """Feature température normalisée pour le ML (basée sur temp_moy).
+
+    Fix #5 : alignée sur predictor._score_temperature_v2
+    (98, 90, 80, 68, 55, 40, 25, 15, 8, 3).
+    """
+    if temp_moy < -5:
+        return 98
     if temp_moy < -2:
         return 90
     if temp_moy < 0:
-        return 75
+        return 80
     if temp_moy < 2:
-        return 60
-    if temp_moy < 5:
+        return 68
+    if temp_moy < 4:
+        return 55
+    if temp_moy < 6:
         return 40
     if temp_moy < 8:
-        return 20
-    return 5
+        return 25
+    if temp_moy < 10:
+        return 15
+    if temp_moy < 14:
+        return 8
+    return 3
 
 
 

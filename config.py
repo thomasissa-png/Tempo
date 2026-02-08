@@ -42,6 +42,8 @@ class Config:
     RTE_CONSO_SEUIL_CRITIQUE = 80000   # > 80 GW = risque rouge tres eleve
     RTE_CONSO_SEUIL_HAUT = 70000       # > 70 GW = risque rouge
     RTE_CONSO_SEUIL_MOYEN = 60000      # > 60 GW = risque blanc
+    # Fix #12 : capacite nucleaire configurable (evolue avec fermetures/mises en service)
+    RTE_NUCLEAR_CAPACITY_MW = int(os.getenv("RTE_NUCLEAR_CAPACITY_MW", "61370"))
 
     # --- Twilio ---
     TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")

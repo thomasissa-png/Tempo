@@ -11,6 +11,7 @@ import httpx
 import logging
 from datetime import date, datetime
 from config import Config
+from database import get_db
 
 
 logger = logging.getLogger(__name__)

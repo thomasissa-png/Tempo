@@ -1,4 +1,4 @@
-"""Algorithme de prediction Tempo v2 — 7 corrections audit expert.
+"""Algorithme de prediction Tempo v2.1 — audit complet corrige.
 
 Facteurs de scoring (sur 100, poids ajustables) :
   1. Temperature nationale ponderee (8 villes) — recalibree zone 0-5C
@@ -9,10 +9,17 @@ Facteurs de scoring (sur 100, poids ajustables) :
   6. Consommation RTE eco2mix (prevision pointe + nucleaire)
 
 Bonus hors-poids :
-  - Vague de froid (3+ jours consecutifs < 0C national) : +15-25 pts
+  - Vague de froid (3+ jours consecutifs < 2C national) : +15-25 pts
+
+Corrections audit v2.1 :
+  - Fix #2 : predict_range decremente les quotas simules
+  - Fix #6 : probabilites recalibrees (sigmoide reelle)
+  - Fix #8 : fenetre vague de froid symetrique (5 jours centres)
+  - Fix #11 : clustering evite requetes DB inutiles pour jours futurs
 """
 
 import logging
+import math
 from datetime import date, datetime, timedelta
 from database import get_db, get_current_weights
 from config import Config
@@ -74,8 +81,9 @@ def predict_day(target_date: date, weather: dict | None = None,
                 forecasts: list[dict] | None = None, target_idx: int = 0,
                 remaining: dict | None = None,
                 weights: dict | None = None,
-                rte_score: dict | None = None) -> dict:
-    """Predit la couleur Tempo pour une date donnee (algorithme v2)."""
+                rte_score: dict | None = None,
+                _actuals_cache: dict | None = None) -> dict:
+    """Predit la couleur Tempo pour une date donnee (algorithme v2.1)."""
     # Hors saison = toujours BLEU
     if not is_in_season(target_date):
         return _result(target_date, "BLEU", 0, 1.0, 0.0, 0.0,
@@ -118,7 +126,9 @@ def predict_day(target_date: date, weather: dict | None = None,
     gradient_score = _score_gradient(forecasts or [], target_idx)
 
     # === 5. Score clustering (jours rouges consecutifs) ===
-    cluster_score = _score_clustering(target_date, forecasts or [], target_idx)
+    # Fix #11 : passer le cache actuals pour eviter requetes DB inutiles
+    cluster_score = _score_clustering(
+        target_date, forecasts or [], target_idx, _actuals_cache)
 
     # === 6. Score consommation RTE ===
     rte_s = 50  # neutre par defaut si pas de donnees RTE
@@ -147,7 +157,7 @@ def predict_day(target_date: date, weather: dict | None = None,
     else:
         couleur = "BLEU"
 
-    # === Probabilites ===
+    # === Probabilites (Fix #6 : sigmoide calibree) ===
     prob_rouge, prob_blanc, prob_bleu = _compute_probabilities(
         score_risque, remaining)
 
@@ -163,20 +173,56 @@ def predict_day(target_date: date, weather: dict | None = None,
 
 def predict_range(forecasts: list[dict],
                   rte_score: dict | None = None) -> list[dict]:
-    """Predit la couleur pour chaque jour du forecast."""
+    """Predit la couleur pour chaque jour du forecast.
+
+    Fix #2 : decremente les quotas simules pour que les predictions
+    ulterieures ne predisent pas plus de rouges/blancs que le quota restant.
+    Fix #11 : charge les actuals une seule fois (batch).
+    """
     remaining = get_remaining_days()
     weights = get_current_weights()
+
+    # Fix #11 : pre-charger les actuals recents en une seule requete
+    actuals_cache = _load_recent_actuals()
+
+    # Fix #2 : copier remaining pour decrementation simulee
+    sim_remaining = dict(remaining)
+
     predictions = []
     for i, weather in enumerate(forecasts):
         target = date.fromisoformat(weather["date"])
         pred = predict_day(target, weather=weather,
                            forecasts=forecasts, target_idx=i,
-                           remaining=remaining, weights=weights,
-                           rte_score=rte_score)
+                           remaining=sim_remaining, weights=weights,
+                           rte_score=rte_score,
+                           _actuals_cache=actuals_cache)
         delta = (target - date.today()).days
         pred["horizon"] = f"J-{delta}" if delta > 0 else "J0"
         predictions.append(pred)
+
+        # Fix #2 : decrementer le quota simule si on a predit rouge/blanc
+        couleur = pred["couleur_predite"]
+        if couleur == "ROUGE" and sim_remaining["ROUGE"] > 0:
+            sim_remaining["ROUGE"] -= 1
+        elif couleur == "BLANC" and sim_remaining["BLANC"] > 0:
+            sim_remaining["BLANC"] -= 1
+
     return predictions
+
+
+def _load_recent_actuals() -> dict[str, str]:
+    """Charge les couleurs reelles des 7 derniers jours en une requete.
+    Retourne {date_iso: couleur}. Fix #11."""
+    conn = get_db()
+    try:
+        since = (date.today() - timedelta(days=7)).isoformat()
+        rows = conn.execute(
+            "SELECT date, couleur_reelle FROM actuals WHERE date >= ?",
+            (since,)
+        ).fetchall()
+        return {row["date"]: row["couleur_reelle"] for row in rows}
+    finally:
+        conn.close()
 
 
 # ================================================================
@@ -224,7 +270,7 @@ def _score_budget_v2(remaining: dict, d_left: int, target_date: date) -> float:
     expected_pct = Config.MONTHLY_RED_PROFILE.get(month, 0.0)
 
     # Combien de jours rouges "devrait-il" rester a ce stade de la saison ?
-    # On cumule les % des mois restants
+    # On cumule les % des mois restants (excluant le mois courant deja entame)
     months_ahead = []
     m = month
     while m != 6:  # jusqu'a fin mai (mois 5)
@@ -319,19 +365,30 @@ def _score_gradient(forecasts: list[dict], target_idx: int) -> float:
 
 
 def _score_clustering(target_date: date, forecasts: list[dict],
-                      target_idx: int) -> float:
+                      target_idx: int,
+                      actuals_cache: dict | None = None) -> float:
     """Score 0-100 base sur la continuite des jours rouges.
 
     Correction #5 : si la veille est rouge/prevue rouge et que le froid
     continue, forte probabilite de jour rouge consecutif.
+    Fix #11 : utilise actuals_cache au lieu d'ouvrir une connexion DB.
     """
-    # Verifier si hier etait rouge dans les actuals
     yesterday = target_date - timedelta(days=1)
-    yesterday_was_red = _check_yesterday_color(yesterday)
+    yesterday_str = yesterday.isoformat()
+
+    # Fix #11 : utiliser le cache au lieu d'une requete DB par jour
+    yesterday_was_red = False
+    if actuals_cache is not None:
+        yesterday_was_red = actuals_cache.get(yesterday_str) == "ROUGE"
+    else:
+        # Fallback : seul J+0 ou J+1 ont une chance d'avoir un actual
+        delta = (target_date - date.today()).days
+        if delta <= 1:
+            yesterday_was_red = _check_yesterday_color(yesterday)
 
     if yesterday_was_red:
         # La veille etait rouge. Le froid continue-t-il ?
-        if target_idx > 0 and forecasts:
+        if target_idx > 0 and target_idx < len(forecasts):
             curr_temp = forecasts[target_idx].get("temp_moy", 10)
             if curr_temp < 2:
                 return 90  # Rouge hier + froid qui continue = tres probable
@@ -366,12 +423,17 @@ def _check_yesterday_color(yesterday: date) -> bool:
 
 def _detect_cold_wave(forecasts: list[dict], target_idx: int) -> float:
     """Detecte une vague de froid (3+ jours consecutifs < 2C national).
-    Retourne un bonus de 0 a 25 points (hors poids ajustables)."""
+    Retourne un bonus de 0 a 25 points (hors poids ajustables).
+
+    Fix #8 : fenetre symetrique de 5 jours centree sur target_idx.
+    """
     if not forecasts or target_idx >= len(forecasts):
         return 0
 
-    start = max(0, target_idx - 2)
-    end = min(len(forecasts), target_idx + 3)
+    # Fenetre fixe de 5 jours centree sur target_idx
+    half_window = 2
+    start = max(0, target_idx - half_window)
+    end = min(len(forecasts), target_idx + half_window + 1)
 
     cold_days = sum(
         1 for i in range(start, end)
@@ -390,41 +452,42 @@ def _detect_cold_wave(forecasts: list[dict], target_idx: int) -> float:
 
 
 # ================================================================
-# PROBABILITES
+# PROBABILITES (Fix #6 : sigmoide calibree)
 # ================================================================
 
+def _sigmoid(x: float, center: float, steepness: float) -> float:
+    """Sigmoide logistique entre 0 et 1."""
+    return 1.0 / (1.0 + math.exp(-steepness * (x - center)))
+
+
 def _compute_probabilities(score: float, remaining: dict) -> tuple[float, float, float]:
-    """Convertit le score de risque en probabilites par couleur."""
+    """Convertit le score de risque en probabilites par couleur.
+
+    Fix #6 : utilise une sigmoide centree sur les seuils pour des
+    probabilites plus coherentes (ex: seuil ROUGE 65 -> ~50% a 65).
+    """
     if remaining["ROUGE"] == 0 and remaining["BLANC"] == 0:
         return 0.0, 0.0, 1.0
 
-    # Approche sigmoide simplifiee
-    if score >= 80:
-        p_rouge = 0.80 + (score - 80) * 0.008
-    elif score >= Config.SEUIL_ROUGE:
-        p_rouge = 0.45 + (score - Config.SEUIL_ROUGE) * 0.023
-    elif score >= 50:
-        p_rouge = 0.15 + (score - 50) * 0.020
-    else:
-        p_rouge = max(0.02, score * 0.003)
+    # Probabilite rouge via sigmoide centree sur SEUIL_ROUGE
+    # steepness 0.12 => transition douce sur ~20 points autour du seuil
+    p_rouge = _sigmoid(score, Config.SEUIL_ROUGE, 0.12)
 
+    # Probabilite blanc via sigmoide centree sur SEUIL_BLANC
+    p_blanc = _sigmoid(score, Config.SEUIL_BLANC, 0.08) * (1.0 - p_rouge)
+
+    # Appliquer les contraintes de quota
     if remaining["ROUGE"] == 0:
         p_rouge = 0.0
-
-    if score >= 50:
-        p_blanc = min(0.40, 0.15 + (score - 50) * 0.008)
-    elif score >= Config.SEUIL_BLANC:
-        p_blanc = 0.25 + (score - Config.SEUIL_BLANC) * 0.01
-    else:
-        p_blanc = max(0.05, 0.10 + score * 0.005)
-
     if remaining["BLANC"] == 0:
         p_blanc = 0.0
 
     p_bleu = max(0.0, 1.0 - p_rouge - p_blanc)
 
-    # Normaliser
+    # Normaliser pour que la somme = 1.0
     total = p_rouge + p_blanc + p_bleu
+    if total <= 0:
+        return 0.0, 0.0, 1.0
     p_rouge = round(p_rouge / total, 3)
     p_blanc = round(p_blanc / total, 3)
     p_bleu = round(1.0 - p_rouge - p_blanc, 3)

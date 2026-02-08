@@ -15,16 +15,17 @@ Endpoints :
   - POST /admin/run-task         → Exécuter une tâche manuellement
 """
 
+import hmac
 import logging
 import os
 import time
 from collections import defaultdict
 from contextlib import asynccontextmanager
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from logging.handlers import RotatingFileHandler
 
 from fastapi import FastAPI, Request, Form, HTTPException, Header
-from fastapi.responses import HTMLResponse, PlainTextResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -54,6 +55,50 @@ _predictions_cache = {"data": None, "expires": 0}
 # === Fix #16 : Rate limiting simple pour /api/subscribe ===
 _rate_limit_store: dict[str, list[float]] = defaultdict(list)
 
+_RATE_LIMIT_MAX_ENTRIES = 1000
+_RATE_LIMIT_PURGE_AGE = 3600  # 1 hour in seconds
+
+
+def _cleanup_rate_limit_store(now: float) -> None:
+    """Fix #9 : purge stale rate-limit entries to prevent memory leak."""
+    if len(_rate_limit_store) <= _RATE_LIMIT_MAX_ENTRIES:
+        return
+    cutoff = now - _RATE_LIMIT_PURGE_AGE
+    stale_keys = [
+        ip for ip, timestamps in _rate_limit_store.items()
+        if not timestamps or timestamps[-1] < cutoff
+    ]
+    for key in stale_keys:
+        del _rate_limit_store[key]
+
+
+# === Fix #10 : Purge old data from the database ===
+def purge_old_data() -> None:
+    """Delete weather_cache entries older than 30 days and predictions older than 90 days."""
+    from database import get_db
+
+    conn = get_db()
+    try:
+        cutoff_cache = (date.today() - timedelta(days=30)).isoformat()
+        cutoff_preds = (date.today() - timedelta(days=90)).isoformat()
+
+        deleted_cache = conn.execute(
+            "DELETE FROM weather_cache WHERE date < ?", (cutoff_cache,)
+        ).rowcount
+        deleted_preds = conn.execute(
+            "DELETE FROM predictions WHERE date < ?", (cutoff_preds,)
+        ).rowcount
+        conn.commit()
+
+        logger.info(
+            "purge_old_data: deleted %d weather_cache rows (>30d) and %d predictions rows (>90d)",
+            deleted_cache, deleted_preds,
+        )
+    except Exception:
+        logger.exception("purge_old_data: error during purge")
+    finally:
+        conn.close()
+
 
 # === Lifespan ===
 @asynccontextmanager
@@ -61,6 +106,7 @@ async def lifespan(app: FastAPI):
     """Initialisation au démarrage, nettoyage à l'arrêt."""
     logger.info("=== TempoForecast démarrage ===")
     init_db()
+    purge_old_data()  # Fix #10 : clean stale DB rows on startup
     start_scheduler()
     yield
     stop_scheduler()
@@ -85,8 +131,39 @@ def verify_admin(authorization: str | None):
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=403, detail="Header Authorization manquant")
     password = authorization[len("Bearer "):]
-    if password != Config.ADMIN_PASSWORD:
+    # Fix #15 : constant-time comparison to prevent timing attacks
+    if not hmac.compare_digest(password, Config.ADMIN_PASSWORD):
         raise HTTPException(status_code=403, detail="Mot de passe admin incorrect")
+
+
+# === Fix #16 (CSRF) : origin check for POST endpoints ===
+def _check_origin(request: Request) -> bool:
+    """Return True if the request origin is acceptable (same host or non-browser client).
+
+    Checks the Origin header first, then the Referer header.  If neither is
+    present the request is assumed to come from a non-browser client (e.g. curl,
+    mobile app) and is allowed through.
+    """
+    origin = request.headers.get("origin")
+    referer = request.headers.get("referer")
+    host = request.headers.get("host", "")
+
+    # Non-browser clients typically send neither header — allow them.
+    if not origin and not referer:
+        return True
+
+    if origin:
+        # Origin is like "https://example.com" — extract host part.
+        from urllib.parse import urlparse
+        parsed = urlparse(origin)
+        return parsed.netloc == host
+
+    if referer:
+        from urllib.parse import urlparse
+        parsed = urlparse(referer)
+        return parsed.netloc == host
+
+    return False
 
 
 # ================================================================
@@ -101,7 +178,14 @@ async def page_dashboard(request: Request):
 
 @app.get("/admin", response_class=HTMLResponse)
 async def page_admin(request: Request):
-    """Dashboard admin — performance et gestion."""
+    """Dashboard admin — performance et gestion.
+
+    Fix #18 : simple deterrent — redirect to homepage if ``?auth=1`` query
+    param is absent.  Real data protection is enforced via the Authorization
+    header on every admin API endpoint.
+    """
+    if request.query_params.get("auth") != "1":
+        return RedirectResponse(url="/")
     return templates.TemplateResponse("admin.html", {"request": request})
 
 
@@ -109,6 +193,16 @@ async def page_admin(request: Request):
 async def page_legal(request: Request):
     """Page mentions légales et RGPD."""
     return templates.TemplateResponse("legal.html", {"request": request})
+
+
+# ================================================================
+# Fix #24 : HEALTHCHECK
+# ================================================================
+
+@app.get("/health")
+async def health():
+    """Health check endpoint — returns OK status and current server timestamp."""
+    return {"status": "ok", "timestamp": datetime.now().isoformat()}
 
 
 # ================================================================
@@ -266,7 +360,11 @@ async def api_subscribe(
     alerte_blanc: bool = Form(False),
     recap_hebdo: bool = Form(False),
 ):
-    """Inscription aux alertes SMS (Fix #16 : rate limiting)."""
+    """Inscription aux alertes SMS (Fix #16 : rate limiting + CSRF check)."""
+    # Fix #16 (CSRF) : verify origin
+    if not _check_origin(request):
+        raise HTTPException(status_code=403, detail="Origine de la requête non autorisée")
+
     # Rate limiting par IP
     client_ip = request.client.host if request.client else "unknown"
     now = time.time()
@@ -278,6 +376,9 @@ async def api_subscribe(
         raise HTTPException(status_code=429, detail="Trop de tentatives. Réessayez plus tard.")
     _rate_limit_store[client_ip].append(now)
 
+    # Fix #9 : purge stale entries to prevent memory leak
+    _cleanup_rate_limit_store(now)
+
     from alerts import register_user
     result = register_user(phone, seuil_rouge, delai, alerte_blanc, recap_hebdo)
     if "error" in result:
@@ -286,8 +387,12 @@ async def api_subscribe(
 
 
 @app.post("/api/unsubscribe")
-async def api_unsubscribe(phone: str = Form(...)):
+async def api_unsubscribe(request: Request, phone: str = Form(...)):
     """Désinscription des alertes SMS."""
+    # Fix #16 (CSRF) : verify origin
+    if not _check_origin(request):
+        raise HTTPException(status_code=403, detail="Origine de la requête non autorisée")
+
     from alerts import unsubscribe_user
     result = unsubscribe_user(phone)
     if "error" in result:

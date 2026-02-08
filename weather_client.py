@@ -249,7 +249,8 @@ def _parse_daily_forecast(entries: list[dict]) -> list[dict]:
 # ================================================================
 
 def _generate_fallback_forecast() -> list[dict]:
-    """Donnees meteo simulees — moyennes saisonnieres nationales ponderees."""
+    """Donnees meteo simulees — moyennes saisonnieres nationales ponderees.
+    Fix #25 : utilise un Random local pour ne pas polluer l'etat global."""
     import random
 
     today = date.today()
@@ -265,8 +266,9 @@ def _generate_fallback_forecast() -> list[dict]:
     result = []
     for i in range(15):
         d = today + timedelta(days=i)
-        random.seed(today.toordinal() + i)
-        variation = random.uniform(-4, 4)
+        # Fix #25 : instance locale au lieu de random.seed global
+        rng = random.Random(today.toordinal() + i)
+        variation = rng.uniform(-4, 4)
         t_min = round(base_min + variation, 1)
         t_max = round(base_max + variation, 1)
         result.append({
@@ -274,9 +276,9 @@ def _generate_fallback_forecast() -> list[dict]:
             "temp_min": t_min,
             "temp_max": t_max,
             "temp_moy": round((t_min + t_max) / 2, 1),
-            "humidity": round(random.uniform(50, 85), 1),
-            "wind_speed": round(random.uniform(5, 25), 1),
-            "pressure": round(random.uniform(1005, 1035), 1),
+            "humidity": round(rng.uniform(50, 85), 1),
+            "wind_speed": round(rng.uniform(5, 25), 1),
+            "pressure": round(rng.uniform(1005, 1035), 1),
             "description": "donnees simulees",
         })
     return result

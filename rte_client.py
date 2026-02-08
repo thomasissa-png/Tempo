@@ -3,12 +3,18 @@
 API RTE (data.rte-france.com) avec OAuth2 Bearer token.
 Fournit le signal de consommation nationale, facteur cle pour la decision Tempo.
 Fallback gracieux si pas de credentials configures.
+
+Corrections audit :
+  - Fix #3 : type D-1 forecast au lieu de REALISED
+  - Fix #12 : capacite nucleaire configurable
+  - Fix #13 : fetches paralleles asyncio.gather
 """
 
 import httpx
 import logging
+import asyncio
 import base64
-from datetime import datetime, date, timedelta, timezone
+from datetime import date, timedelta
 from config import Config
 
 logger = logging.getLogger(__name__)
@@ -63,9 +69,7 @@ async def _get_token() -> str | None:
 async def fetch_consumption_forecast() -> dict | None:
     """Recupere la prevision de consommation J+1 depuis RTE.
 
-    Retourne:
-        {"date": "2026-01-15", "peak_mw": 82000, "mean_mw": 65000}
-        ou None si indisponible.
+    Fix #3 : utilise type D-1 (prevision) au lieu de REALISED (passe).
     """
     token = await _get_token()
     if not token:
@@ -80,7 +84,7 @@ async def fetch_consumption_forecast() -> dict | None:
                 f"{Config.RTE_API_BASE}/open_api/consumption/v1/short_term",
                 headers={"Authorization": f"Bearer {token}"},
                 params={
-                    "type": "REALISED",  # ou D-1 forecast
+                    "type": "D-1",
                     "start_date": f"{tomorrow}T00:00:00+01:00",
                     "end_date": f"{after}T00:00:00+01:00",
                 },
@@ -114,9 +118,7 @@ async def fetch_consumption_forecast() -> dict | None:
 async def fetch_nuclear_availability() -> dict | None:
     """Recupere la disponibilite du parc nucleaire.
 
-    Retourne:
-        {"available_mw": 45000, "total_mw": 61370, "availability_pct": 73.3}
-        ou None si indisponible.
+    Fix #12 : capacite totale configurable via Config.
     """
     token = await _get_token()
     if not token:
@@ -150,7 +152,7 @@ async def fetch_nuclear_availability() -> dict | None:
             if not values:
                 return None
 
-            total_capacity = 61370  # Capacite installee parc nucleaire FR (MW)
+            total_capacity = Config.RTE_NUCLEAR_CAPACITY_MW
             available = round(max(values))
             return {
                 "available_mw": available,
@@ -169,11 +171,22 @@ async def fetch_nuclear_availability() -> dict | None:
 async def get_consumption_score() -> dict:
     """Calcule un score de risque base sur la consommation prevue.
 
-    Retourne:
-        {"score": 0-100, "peak_mw": int|None, "nuke_pct": float|None, "available": bool}
+    Fix #13 : fetches paralleles avec asyncio.gather.
     """
-    conso = await fetch_consumption_forecast()
-    nuke = await fetch_nuclear_availability()
+    # Fix #13 : lancer les deux fetches en parallele
+    conso, nuke = await asyncio.gather(
+        fetch_consumption_forecast(),
+        fetch_nuclear_availability(),
+        return_exceptions=True,
+    )
+
+    # Gerer les exceptions retournees par gather
+    if isinstance(conso, Exception):
+        logger.warning(f"[RTE] Erreur consommation dans gather: {conso}")
+        conso = None
+    if isinstance(nuke, Exception):
+        logger.warning(f"[RTE] Erreur nucleaire dans gather: {nuke}")
+        nuke = None
 
     if not conso and not nuke:
         return {"score": 50, "peak_mw": None, "nuke_pct": None, "available": False}
