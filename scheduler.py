@@ -264,6 +264,11 @@ async def task_weekly_recap():
 
 async def run_task_now(task_name: str) -> str:
     """Exécute une tâche manuellement."""
+    if task_name == "backfill":
+        from tempo_client import backfill_season_actuals
+        await backfill_season_actuals()
+        return "Backfill des actuals de la saison terminé"
+
     tasks = {
         "verification": task_daily_verification,
         "predictions": task_daily_predictions,
@@ -271,7 +276,7 @@ async def run_task_now(task_name: str) -> str:
         "recap": task_weekly_recap,
     }
     if task_name not in tasks:
-        return f"Tâche inconnue: {task_name}. Disponibles: {list(tasks.keys())}"
+        return f"Tâche inconnue: {task_name}. Disponibles: {list(tasks.keys()) + ['backfill']}"
 
     await tasks[task_name]()
     return f"Tâche '{task_name}' exécutée avec succès"

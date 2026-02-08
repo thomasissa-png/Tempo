@@ -128,6 +128,14 @@ async def lifespan(app: FastAPI):
 
     init_db()
     purge_old_data()  # Fix #10 : clean stale DB rows on startup
+
+    # Backfill : remplir les actuals manquants pour la saison en cours
+    from tempo_client import backfill_season_actuals
+    try:
+        await backfill_season_actuals()
+    except Exception as e:
+        logger.error(f"[Startup] Erreur backfill actuals: {e}")
+
     start_scheduler()
     yield
     stop_scheduler()
@@ -290,10 +298,14 @@ async def api_tomorrow():
 @app.get("/api/remaining")
 async def api_remaining():
     """Jours restants par couleur pour la saison en cours."""
-    from tempo_client import get_remaining_days, days_left_in_season, get_season_dates, get_blue_days_total
+    from tempo_client import (get_remaining_days, days_left_in_season,
+                              get_season_dates, get_blue_days_total,
+                              fetch_edf_remaining, _count_actuals_in_season)
     remaining = get_remaining_days()
     start, end = get_season_dates()
-    return {
+    actuals_count = _count_actuals_in_season()
+
+    result = {
         "status": "ok",
         "remaining": remaining,
         "totals": {
@@ -301,10 +313,18 @@ async def api_remaining():
             "BLANC": Config.JOURS_BLANCS_TOTAL,
             "BLEU": get_blue_days_total(),
         },
+        "actuals_in_db": actuals_count,
         "days_left_in_season": days_left_in_season(),
         "season_start": start.isoformat(),
         "season_end": end.isoformat(),
     }
+
+    # Ajouter les compteurs officiels EDF si disponibles
+    edf = await fetch_edf_remaining()
+    if edf:
+        result["edf_official"] = edf
+
+    return result
 
 
 # ================================================================
