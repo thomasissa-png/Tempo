@@ -15,6 +15,7 @@ import sqlite3
 import hashlib
 import base64
 import logging
+import threading
 from datetime import datetime
 from config import Config
 import json
@@ -26,32 +27,39 @@ logger = logging.getLogger(__name__)
 # ================================================================
 
 _fernet_instance = None
+_fernet_lock = threading.Lock()
 
 
 def _get_fernet():
-    """Singleton Fernet. Clé depuis PHONE_ENCRYPTION_KEY ou dérivée d'ADMIN_PASSWORD."""
+    """Singleton Fernet. Clé depuis PHONE_ENCRYPTION_KEY ou dérivée d'ADMIN_PASSWORD.
+
+    Fix audit v6 : threading.Lock pour éviter les race conditions
+    lors de l'initialisation concurrente du singleton.
+    """
     global _fernet_instance
     if _fernet_instance is not None:
         return _fernet_instance
 
-    from cryptography.fernet import Fernet
+    with _fernet_lock:
+        # Re-vérifier après acquisition du lock (double-checked locking)
+        if _fernet_instance is not None:
+            return _fernet_instance
 
-    key_source = Config.PHONE_ENCRYPTION_KEY
-    if key_source:
-        _fernet_instance = Fernet(key_source.encode() if isinstance(key_source, str) else key_source)
-    else:
-        # Fix #9 audit v4 : PBKDF2 (100k iterations) au lieu de SHA-256 direct.
-        # Le sel est fixe mais protege contre les rainbow tables.
-        # En production, definir PHONE_ENCRYPTION_KEY explicitement.
-        raw = hashlib.pbkdf2_hmac(
-            "sha256",
-            Config.ADMIN_PASSWORD.encode(),
-            b"tempoforecast_fernet_v2",
-            iterations=100_000,
-        )
-        _fernet_instance = Fernet(base64.urlsafe_b64encode(raw))
+        from cryptography.fernet import Fernet
 
-    return _fernet_instance
+        key_source = Config.PHONE_ENCRYPTION_KEY
+        if key_source:
+            _fernet_instance = Fernet(key_source.encode() if isinstance(key_source, str) else key_source)
+        else:
+            raw = hashlib.pbkdf2_hmac(
+                "sha256",
+                Config.ADMIN_PASSWORD.encode(),
+                b"tempoforecast_fernet_v2",
+                iterations=100_000,
+            )
+            _fernet_instance = Fernet(base64.urlsafe_b64encode(raw))
+
+        return _fernet_instance
 
 
 def encrypt_phone(phone: str) -> str:

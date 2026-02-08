@@ -14,21 +14,21 @@
 <body>
 
 <!-- Fix #10 : nav harmonisée avec le dashboard -->
-<header>
+<header role="banner">
     <div class="container header-row">
         <a href="/" class="header-brand">
             <h1>TempoForecast</h1>
         </a>
-        <nav>
+        <nav aria-label="Navigation principale">
             <a href="/">Accueil</a>
             <a href="/#subscribe">Alertes SMS</a>
             <a href="/#comment-ca-marche">Comment ça marche ?</a>
-            <a href="/mentions-legales" class="active">Mentions légales</a>
+            <a href="/mentions-legales" class="active" aria-current="page">Mentions légales</a>
         </nav>
     </div>
 </header>
 
-<main class="container" style="max-width:800px">
+<main class="container" role="main" style="max-width:800px">
 
     <!-- Fix #9 : classes CSS au lieu de styles inline -->
     <div class="legal-section">
@@ -99,11 +99,13 @@
             Pour vous désinscrire des alertes SMS :
         </p>
         <form id="unsubscribe-form" class="unsub-form">
+            <label for="unsub-phone" class="sr-only">Numéro de téléphone</label>
             <input type="tel" id="unsub-phone" name="phone" placeholder="+33612345678" required
-                   pattern="\+33[0-9]{9}" title="Format: +33 suivi de 9 chiffres">
+                   pattern="\+33[0-9]{9}" title="Format: +33 suivi de 9 chiffres"
+                   aria-label="Numéro de téléphone pour désinscription">
             <button type="submit" class="task-btn" style="background:var(--rouge)">Se désinscrire</button>
         </form>
-        <div id="unsub-result" class="unsub-result"></div>
+        <div id="unsub-result" class="unsub-result" role="status" aria-live="polite"></div>
     </div>
 
 <script>
@@ -144,7 +146,7 @@ document.getElementById('unsubscribe-form').addEventListener('submit', async (e)
 
 </main>
 
-<footer>
+<footer role="contentinfo">
     <div class="container">
         <p>TempoForecast &mdash; <a href="/">Retour au dashboard</a></p>
     </div>

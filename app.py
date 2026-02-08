@@ -15,6 +15,7 @@ Endpoints :
   - POST /admin/run-task         → Exécuter une tâche manuellement
 """
 
+import asyncio
 import hmac
 import logging
 import os
@@ -51,9 +52,11 @@ logger = logging.getLogger(__name__)
 
 # === Fix #2 : Cache en mémoire pour /api/predictions ===
 _predictions_cache = {"data": None, "expires": 0}
+_predictions_lock = asyncio.Lock()
 
 # === Fix #16 : Rate limiting simple pour /api/subscribe ===
 _rate_limit_store: dict[str, list[float]] = defaultdict(list)
+_rate_limit_lock = asyncio.Lock()
 
 _RATE_LIMIT_MAX_ENTRIES = 1000
 _RATE_LIMIT_PURGE_AGE = 3600  # 1 hour in seconds
@@ -111,6 +114,18 @@ def purge_old_data() -> None:
 async def lifespan(app: FastAPI):
     """Initialisation au démarrage, nettoyage à l'arrêt."""
     logger.info("=== TempoForecast démarrage ===")
+
+    # Fix audit v6 : avertir si le mot de passe admin n'est pas configuré
+    if not Config.ADMIN_PASSWORD:
+        import secrets
+        Config.ADMIN_PASSWORD = secrets.token_urlsafe(24)
+        logger.warning(
+            "[SECURITE] ADMIN_PASSWORD non défini ! "
+            "Un mot de passe aléatoire a été généré pour cette session : %s "
+            "Définissez ADMIN_PASSWORD dans .env pour le conserver.",
+            Config.ADMIN_PASSWORD,
+        )
+
     init_db()
     purge_old_data()  # Fix #10 : clean stale DB rows on startup
     start_scheduler()
@@ -308,105 +323,109 @@ async def api_predictions():
     if _predictions_cache["data"] and now < _predictions_cache["expires"]:
         return _predictions_cache["data"]
 
-    from database import get_db
-    from performance_tracker import get_accuracy_global
+    # Fix audit v6 : asyncio.Lock pour éviter les race conditions
+    # (deux requêtes simultanées pourraient remplir le cache en double)
+    async with _predictions_lock:
+        # Re-vérifier après acquisition du lock
+        now = time.time()
+        if _predictions_cache["data"] and now < _predictions_cache["expires"]:
+            return _predictions_cache["data"]
 
-    conn = get_db()
-    try:
-        # Lire les prédictions futures depuis la DB
-        today_str = date.today().isoformat()
-        rows = conn.execute(
-            """SELECT date, couleur_predite, probabilite_bleu, probabilite_blanc,
-                      probabilite_rouge, score_risque, temp_min_prevue, temp_max_prevue,
-                      pression_prevue, jours_rouges_restants, jours_blancs_restants,
-                      raison, horizon, timestamp_prediction, cycle_id,
-                      couleur_precedente, simulated, confirmed
-               FROM predictions
-               WHERE date >= ?
-               ORDER BY date ASC""",
-            (today_str,)
-        ).fetchall()
-    finally:
-        conn.close()
+        from database import get_db
+        from performance_tracker import get_accuracy_global
 
-    if rows:
-        predictions = []
-        for r in rows:
-            pred = {
-                "date": r["date"],
-                "couleur_predite": r["couleur_predite"],
-                "probabilite_bleu": r["probabilite_bleu"],
-                "probabilite_blanc": r["probabilite_blanc"],
-                "probabilite_rouge": r["probabilite_rouge"],
-                "score_risque": r["score_risque"],
-                "temp_min_prevue": r["temp_min_prevue"],
-                "temp_max_prevue": r["temp_max_prevue"],
-                "raison": r["raison"],
-                "horizon": r["horizon"],
-                "confirmed": bool(r["confirmed"]),
-                "simulated": bool(r["simulated"]),
+        conn = get_db()
+        try:
+            today_str = date.today().isoformat()
+            rows = conn.execute(
+                """SELECT date, couleur_predite, probabilite_bleu, probabilite_blanc,
+                          probabilite_rouge, score_risque, temp_min_prevue, temp_max_prevue,
+                          pression_prevue, jours_rouges_restants, jours_blancs_restants,
+                          raison, horizon, timestamp_prediction, cycle_id,
+                          couleur_precedente, simulated, confirmed
+                   FROM predictions
+                   WHERE date >= ?
+                   ORDER BY date ASC""",
+                (today_str,)
+            ).fetchall()
+        finally:
+            conn.close()
+
+        if rows:
+            predictions = []
+            for r in rows:
+                pred = {
+                    "date": r["date"],
+                    "couleur_predite": r["couleur_predite"],
+                    "probabilite_bleu": r["probabilite_bleu"],
+                    "probabilite_blanc": r["probabilite_blanc"],
+                    "probabilite_rouge": r["probabilite_rouge"],
+                    "score_risque": r["score_risque"],
+                    "temp_min_prevue": r["temp_min_prevue"],
+                    "temp_max_prevue": r["temp_max_prevue"],
+                    "raison": r["raison"],
+                    "horizon": r["horizon"],
+                    "confirmed": bool(r["confirmed"]),
+                    "simulated": bool(r["simulated"]),
+                }
+                if r["couleur_precedente"]:
+                    pred["couleur_precedente"] = r["couleur_precedente"]
+                predictions.append(pred)
+
+            accuracy = get_accuracy_global(30)
+            cycle_id = rows[0]["cycle_id"] if rows else ""
+            generated_at = rows[0]["timestamp_prediction"] if rows else ""
+
+            result = {
+                "status": "ok",
+                "predictions": predictions,
+                "accuracy": accuracy,
+                "generated_at": generated_at,
+                "cycle_id": cycle_id,
             }
-            # Fix v5 #3 : indiquer si la prédiction a changé
-            if r["couleur_precedente"]:
-                pred["couleur_precedente"] = r["couleur_precedente"]
-            predictions.append(pred)
+
+            _predictions_cache["data"] = result
+            _predictions_cache["expires"] = now + 300
+
+            return result
+
+        # Fallback premier lancement : aucune prédiction en DB
+        from weather_client import fetch_forecast_extended
+        from predictor import predict_range, store_prediction
+        from rte_client import get_consumption_score
+
+        forecasts = await fetch_forecast_extended()
+        if not forecasts:
+            return {
+                "status": "ok",
+                "predictions": [],
+                "accuracy": get_accuracy_global(30),
+                "generated_at": datetime.now().isoformat(),
+                "message": "Données météo temporairement indisponibles. "
+                           "Les prédictions seront disponibles après le prochain cycle (18h).",
+            }
+
+        simulated = any(f.get("description", "") == "donnees simulees" for f in forecasts)
+        rte_score = await get_consumption_score()
+        predictions = predict_range(forecasts, rte_score=rte_score, simulated=simulated)
+
+        cycle_id = f"{date.today().isoformat()}_init"
+        for pred in predictions:
+            store_prediction(pred, pred.get("horizon", "J-?"), cycle_id=cycle_id)
 
         accuracy = get_accuracy_global(30)
-        cycle_id = rows[0]["cycle_id"] if rows else ""
-        generated_at = rows[0]["timestamp_prediction"] if rows else ""
-
         result = {
             "status": "ok",
             "predictions": predictions,
             "accuracy": accuracy,
-            "generated_at": generated_at,
+            "generated_at": datetime.now().isoformat(),
             "cycle_id": cycle_id,
         }
 
-        # Cache 5 min (les données ne changent qu'au cycle scheduler)
         _predictions_cache["data"] = result
         _predictions_cache["expires"] = now + 300
 
         return result
-
-    # Fallback premier lancement : aucune prédiction en DB
-    # Générer à la volée et stocker pour les visiteurs suivants
-    from weather_client import fetch_forecast_extended
-    from predictor import predict_range, store_prediction
-    from rte_client import get_consumption_score
-
-    forecasts = await fetch_forecast_extended()
-    if not forecasts:
-        return {
-            "status": "ok",
-            "predictions": [],
-            "accuracy": get_accuracy_global(30),
-            "generated_at": datetime.now().isoformat(),
-            "message": "Données météo temporairement indisponibles. "
-                       "Les prédictions seront disponibles après le prochain cycle (18h).",
-        }
-
-    simulated = any(f.get("description", "") == "donnees simulees" for f in forecasts)
-    rte_score = await get_consumption_score()
-    predictions = predict_range(forecasts, rte_score=rte_score, simulated=simulated)
-
-    cycle_id = f"{date.today().isoformat()}_init"
-    for pred in predictions:
-        store_prediction(pred, pred.get("horizon", "J-?"), cycle_id=cycle_id)
-
-    accuracy = get_accuracy_global(30)
-    result = {
-        "status": "ok",
-        "predictions": predictions,
-        "accuracy": accuracy,
-        "generated_at": datetime.now().isoformat(),
-        "cycle_id": cycle_id,
-    }
-
-    _predictions_cache["data"] = result
-    _predictions_cache["expires"] = now + 300
-
-    return result
 
 
 @app.get("/api/history")
@@ -495,19 +514,18 @@ async def api_subscribe(
     if not _check_origin(request):
         raise HTTPException(status_code=403, detail="Origine de la requête non autorisée")
 
-    # Rate limiting par IP
+    # Fix audit v6 : asyncio.Lock pour le rate limiter
     client_ip = request.client.host if request.client else "unknown"
     now = time.time()
     window = Config.SUBSCRIBE_RATE_WINDOW
-    _rate_limit_store[client_ip] = [
-        t for t in _rate_limit_store[client_ip] if now - t < window
-    ]
-    if len(_rate_limit_store[client_ip]) >= Config.SUBSCRIBE_RATE_LIMIT:
-        raise HTTPException(status_code=429, detail="Trop de tentatives. Réessayez plus tard.")
-    _rate_limit_store[client_ip].append(now)
-
-    # Fix #9 : purge stale entries to prevent memory leak
-    _cleanup_rate_limit_store(now)
+    async with _rate_limit_lock:
+        _rate_limit_store[client_ip] = [
+            t for t in _rate_limit_store[client_ip] if now - t < window
+        ]
+        if len(_rate_limit_store[client_ip]) >= Config.SUBSCRIBE_RATE_LIMIT:
+            raise HTTPException(status_code=429, detail="Trop de tentatives. Réessayez plus tard.")
+        _rate_limit_store[client_ip].append(now)
+        _cleanup_rate_limit_store(now)
 
     from alerts import register_user
     result = register_user(phone, seuil_rouge, delai, alerte_blanc, recap_hebdo)

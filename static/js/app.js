@@ -32,8 +32,9 @@ async function loadToday() {
     if (!el) return;
     try {
         const resp = await fetch('/api/today');
+        if (!resp.ok) { el.innerHTML = '<p class="loading-state">Données non disponibles</p>'; return; }
         const data = await resp.json();
-        if (data.status === 'ok') {
+        if (data && data.status === 'ok') {
             renderTodayCard(el, data, "Aujourd'hui");
         } else {
             el.innerHTML = '<p class="loading-state">Données non disponibles</p>';
@@ -48,12 +49,14 @@ async function loadTomorrow() {
     if (!el) return;
     try {
         const resp = await fetch('/api/tomorrow');
+        if (!resp.ok) { el.innerHTML = '<p class="loading-state">Données non disponibles</p>'; return; }
         const data = await resp.json();
-        if (data.status === 'ok') {
+        if (data && data.status === 'ok') {
             renderTodayCard(el, data, 'Demain');
         } else {
             renderTodayCard(el, { couleur: 'UNKNOWN', date: '' }, 'Demain');
-            el.querySelector('.date-text').textContent = 'Disponible après 11h';
+            const dateEl = el.querySelector('.date-text');
+            if (dateEl) dateEl.textContent = 'Disponible après 11h';
         }
     } catch {
         el.innerHTML = '<p class="loading-state">Erreur de connexion</p>';
@@ -64,8 +67,9 @@ async function loadTomorrow() {
 async function loadRemaining() {
     try {
         const resp = await fetch('/api/remaining');
+        if (!resp.ok) { throw new Error(`HTTP ${resp.status}`); }
         const data = await resp.json();
-        if (data.status !== 'ok') {
+        if (!data || data.status !== 'ok') {
             setText('count-rouge', '?');
             setText('count-blanc', '?');
             setText('count-bleu', '?');
@@ -96,8 +100,9 @@ async function loadPredictions() {
 
     try {
         const resp = await fetch('/api/predictions');
+        if (!resp.ok) { throw new Error(`HTTP ${resp.status}`); }
         const data = await resp.json();
-        if (data.status !== 'ok') {
+        if (!data || data.status !== 'ok') {
             container.innerHTML = '<p class="loading-state">Erreur lors du chargement</p>';
             return;
         }
@@ -106,7 +111,7 @@ async function loadPredictions() {
         const alertEl = document.getElementById('alert-rouge');
         let hasRouge = false;
 
-        const preds = data.predictions;
+        const preds = data.predictions || [];
 
         if (preds.length === 0) {
             container.innerHTML = '<p class="loading-state">' +
@@ -201,8 +206,9 @@ async function loadPredictions() {
 async function loadBadge() {
     try {
         const resp = await fetch('/api/performance/badge');
+        if (!resp.ok) return;
         const data = await resp.json();
-        if (data.status !== 'ok') return;
+        if (!data || data.status !== 'ok') return;
 
         const el = document.getElementById('badge-text');
         if (el) {
@@ -224,21 +230,24 @@ async function loadBadge() {
 // ================================================================
 
 function renderTodayCard(el, data, label) {
-    const couleur = data.couleur || 'UNKNOWN';
+    const VALID_COULEURS = ['BLEU', 'BLANC', 'ROUGE', 'UNKNOWN'];
+    const couleur = VALID_COULEURS.includes(data.couleur) ? data.couleur : 'UNKNOWN';
     const dateStr = data.date ? formatDateFr(data.date) : '';
     el.innerHTML = `
-        <h3>${label}</h3>
+        <h3>${escapeHtml(label)}</h3>
         <div class="couleur-circle couleur-${couleur}">${couleur === 'UNKNOWN' ? '?' : couleur[0]}</div>
-        <div style="font-size:1.1rem;font-weight:600;margin:4px 0">${couleur === 'UNKNOWN' ? 'Inconnu' : couleur}</div>
-        <div class="date-text">${dateStr}</div>
+        <div style="font-size:1.1rem;font-weight:600;margin:4px 0">${couleur === 'UNKNOWN' ? 'Inconnu' : escapeHtml(couleur)}</div>
+        <div class="date-text">${escapeHtml(dateStr)}</div>
     `;
 }
 
 function createForecastCard(pred) {
-    const card = document.createElement('div');
-    card.className = `forecast-card color-${pred.couleur_predite}`;
+    const VALID_COULEURS = ['BLEU', 'BLANC', 'ROUGE'];
+    const couleur = VALID_COULEURS.includes(pred.couleur_predite) ? pred.couleur_predite : 'BLEU';
 
-    // Fix v5 : marquer les cartes confirmées
+    const card = document.createElement('div');
+    card.className = `forecast-card color-${couleur}`;
+
     if (pred.confirmed) {
         card.classList.add('confirmed');
     }
@@ -248,13 +257,12 @@ function createForecastCard(pred) {
     const dayNum = d.getDate();
     const month = MOIS[d.getMonth()];
 
-    // Confiance = probabilité de la couleur prédite
-    const probKey = `probabilite_${pred.couleur_predite.toLowerCase()}`;
+    const probKey = `probabilite_${couleur.toLowerCase()}`;
     const confidence = Math.round((pred[probKey] || 0) * 100);
 
     let tempHtml = '';
     if (pred.temp_min_prevue != null && pred.temp_max_prevue != null) {
-        tempHtml = `<div class="fc-temp">${pred.temp_min_prevue}° / ${pred.temp_max_prevue}°</div>`;
+        tempHtml = `<div class="fc-temp">${escapeHtml(String(pred.temp_min_prevue))}° / ${escapeHtml(String(pred.temp_max_prevue))}°</div>`;
     }
 
     let raisonHtml = '';
@@ -262,27 +270,25 @@ function createForecastCard(pred) {
         raisonHtml = `<div class="fc-raison">${escapeHtml(pred.raison)}</div>`;
     }
 
-    // Fix v5 #5 : badge confirmé EDF
     let confirmedHtml = '';
     if (pred.confirmed) {
         confirmedHtml = '<div class="fc-confirmed">Confirmé EDF</div>';
     }
 
-    // Fix v5 #3 : indicateur de changement
+    // Fix audit v6 : escape couleur_precedente
     let changedHtml = '';
     if (pred.couleur_precedente) {
-        changedHtml = `<div class="fc-changed">Était ${pred.couleur_precedente}</div>`;
+        changedHtml = `<div class="fc-changed">Était ${escapeHtml(pred.couleur_precedente)}</div>`;
     }
 
-    // Confiance : 100% si confirmé, sinon le score habituel
     const confidenceText = pred.confirmed
         ? 'Couleur officielle EDF'
         : `Confiance: <strong>${confidence}%</strong>`;
 
     card.innerHTML = `
-        <div class="fc-day">${dow}</div>
-        <div class="fc-date">${dayNum} ${month}</div>
-        <span class="fc-couleur ${pred.couleur_predite}">${pred.couleur_predite}</span>
+        <div class="fc-day">${escapeHtml(dow)}</div>
+        <div class="fc-date">${dayNum} ${escapeHtml(month)}</div>
+        <span class="fc-couleur ${couleur}">${escapeHtml(couleur)}</span>
         ${confirmedHtml}
         ${tempHtml}
         <div class="fc-confidence">${confidenceText}</div>

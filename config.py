@@ -51,7 +51,8 @@ class Config:
     TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER", "")
 
     # --- Admin ---
-    ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin_tempo_2024")
+    # Fix audit v6 : ne plus utiliser de mot de passe par défaut en dur
+    ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
 
     # --- Chiffrement telephone (RGPD) ---
     PHONE_ENCRYPTION_KEY = os.getenv("PHONE_ENCRYPTION_KEY", "")

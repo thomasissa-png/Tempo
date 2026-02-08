@@ -434,7 +434,13 @@ def _update_previous_precision_apres(conn):
 
 def export_monthly_csv(month: int, year: int) -> str:
     """Exporte les performances d'un mois en format CSV.
-    Retourne le contenu CSV comme string."""
+
+    Fix audit v6 : utilise le module csv pour un quoting correct
+    (gère les virgules et guillemets dans contexte_meteo).
+    """
+    import csv
+    import io
+
     conn = get_db()
     try:
         start = f"{year}-{month:02d}-01"
@@ -453,15 +459,20 @@ def export_monthly_csv(month: int, year: int) -> str:
             (start, end),
         ).fetchall()
 
-        lines = ["date_prediction,date_cible,jours_avance,correct,couleur_predite,"
-                  "couleur_reelle,score_risque,ecart_score,contexte_meteo"]
+        output = io.StringIO()
+        writer = csv.writer(output, quoting=csv.QUOTE_MINIMAL)
+        writer.writerow([
+            "date_prediction", "date_cible", "jours_avance", "correct",
+            "couleur_predite", "couleur_reelle", "score_risque",
+            "ecart_score", "contexte_meteo",
+        ])
         for r in rows:
-            lines.append(
-                f"{r['date_prediction']},{r['date_cible']},{r['jours_avance']},"
-                f"{r['correct']},{r['couleur_predite']},{r['couleur_reelle']},"
-                f"{r['score_risque_predit']},{r['ecart_score']},"
-                f"\"{r['contexte_meteo']}\""
-            )
-        return "\n".join(lines)
+            writer.writerow([
+                r["date_prediction"], r["date_cible"], r["jours_avance"],
+                r["correct"], r["couleur_predite"], r["couleur_reelle"],
+                r["score_risque_predit"], r["ecart_score"],
+                r["contexte_meteo"],
+            ])
+        return output.getvalue()
     finally:
         conn.close()

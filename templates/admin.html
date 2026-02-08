@@ -14,27 +14,27 @@
 </head>
 <body>
 
-<header>
+<header role="banner">
     <div class="container header-row">
         <a href="/" class="header-brand">
             <h1>TempoForecast — Admin</h1>
         </a>
-        <nav>
+        <nav aria-label="Navigation admin">
             <a href="/">Dashboard public</a>
-            <a href="/admin?auth=1" class="active">Admin</a>
+            <a href="/admin?auth=1" class="active" aria-current="page">Admin</a>
         </nav>
     </div>
 </header>
 
-<main class="container">
+<main class="container" role="main">
 
     <!-- Authentification -->
     <div style="margin:24px 0">
         <div class="form-group" style="max-width:400px">
             <label for="admin-pw">Mot de passe admin</label>
             <div style="display:flex;gap:8px">
-                <input type="password" id="admin-pw" placeholder="Mot de passe">
-                <button class="task-btn" onclick="loadAdminData()">Charger</button>
+                <input type="password" id="admin-pw" placeholder="Mot de passe" autocomplete="current-password">
+                <button class="task-btn" onclick="loadAdminData()" aria-label="Charger les données admin">Charger</button>
             </div>
         </div>
     </div>
@@ -123,7 +123,7 @@
         <div class="admin-card" style="margin-bottom:24px">
             <h3>Export CSV des performances</h3>
             <div style="display:flex;gap:8px;align-items:center">
-                <select id="csv-month">
+                <select id="csv-month" aria-label="Mois">
                     <option value="1">Janvier</option>
                     <option value="2">Février</option>
                     <option value="3">Mars</option>
@@ -137,7 +137,7 @@
                     <option value="11">Novembre</option>
                     <option value="12">Décembre</option>
                 </select>
-                <input type="number" id="csv-year" value="2026" style="width:80px;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm)">
+                <input type="number" id="csv-year" value="2026" aria-label="Année" style="width:80px;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm)">
                 <button class="task-btn" onclick="downloadCsv()">Télécharger CSV</button>
             </div>
         </div>
@@ -146,7 +146,7 @@
 
 </main>
 
-<footer>
+<footer role="contentinfo">
     <div class="container">
         <p>TempoForecast Admin &mdash; <a href="/">Retour au dashboard</a></p>
     </div>
@@ -165,6 +165,11 @@ async function loadAdminData() {
         const resp = await fetch('/api/performance', {
             headers: { 'Authorization': `Bearer ${adminPassword}` }
         });
+        if (!resp.ok) {
+            const errData = await resp.json().catch(() => ({}));
+            alert(errData.detail || `Erreur ${resp.status}`);
+            return;
+        }
         const data = await resp.json();
 
         if (data.status !== 'ok') {
@@ -182,12 +187,13 @@ async function loadAdminData() {
         document.getElementById('total-pred').textContent = g30.total;
 
         // Précision par horizon
+        // Fix audit v6 : escapeHtml sur toutes les valeurs dynamiques
         const horizonEl = document.getElementById('metrics-horizon');
         if (data.by_horizon.length > 0) {
             horizonEl.innerHTML = data.by_horizon.map(h =>
                 `<div class="metric-row">
-                    <span>${h.horizon} (${h.total} préd.)</span>
-                    <span class="metric-value">${h.precision}%</span>
+                    <span>${escapeHtml(String(h.horizon))} (${escapeHtml(String(h.total))} préd.)</span>
+                    <span class="metric-value">${escapeHtml(String(h.precision))}%</span>
                 </div>`
             ).join('');
         } else {
@@ -195,14 +201,16 @@ async function loadAdminData() {
         }
 
         // Matrice de confusion
+        // Fix audit v6 : escapeHtml sur les valeurs de la matrice
         const cm = data.confusion_matrix;
         const cmEl = document.getElementById('confusion-matrix');
+        const s = (v) => escapeHtml(String(v ?? 0));
         cmEl.innerHTML = `
             <table class="confusion-table">
                 <tr><th>Prédit \\ Réel</th><th>BLEU</th><th>BLANC</th><th>ROUGE</th></tr>
-                <tr><td><strong>BLEU</strong></td><td>${cm.BLEU.BLEU}</td><td>${cm.BLEU.BLANC}</td><td>${cm.BLEU.ROUGE}</td></tr>
-                <tr><td><strong>BLANC</strong></td><td>${cm.BLANC.BLEU}</td><td>${cm.BLANC.BLANC}</td><td>${cm.BLANC.ROUGE}</td></tr>
-                <tr><td><strong>ROUGE</strong></td><td>${cm.ROUGE.BLEU}</td><td>${cm.ROUGE.BLANC}</td><td>${cm.ROUGE.ROUGE}</td></tr>
+                <tr><td><strong>BLEU</strong></td><td>${s(cm.BLEU?.BLEU)}</td><td>${s(cm.BLEU?.BLANC)}</td><td>${s(cm.BLEU?.ROUGE)}</td></tr>
+                <tr><td><strong>BLANC</strong></td><td>${s(cm.BLANC?.BLEU)}</td><td>${s(cm.BLANC?.BLANC)}</td><td>${s(cm.BLANC?.ROUGE)}</td></tr>
+                <tr><td><strong>ROUGE</strong></td><td>${s(cm.ROUGE?.BLEU)}</td><td>${s(cm.ROUGE?.BLANC)}</td><td>${s(cm.ROUGE?.ROUGE)}</td></tr>
             </table>
         `;
 
@@ -223,10 +231,11 @@ async function loadAdminData() {
         }
 
         // Poids
+        // Fix audit v6 : escapeHtml sur les clés et valeurs
         const weights = data.current_weights;
         const wEl = document.getElementById('current-weights');
         wEl.innerHTML = Object.entries(weights).map(([k, v]) =>
-            `<div class="metric-row"><span>${k}</span><span class="metric-value">${(v * 100).toFixed(1)}%</span></div>`
+            `<div class="metric-row"><span>${escapeHtml(k)}</span><span class="metric-value">${escapeHtml((Number(v) * 100).toFixed(1))}%</span></div>`
         ).join('');
 
         // Graphiques
@@ -335,8 +344,8 @@ async function loadUserStats() {
         const el = document.getElementById('user-stats');
         if (data.status === 'ok') {
             el.innerHTML = `
-                <div class="metric-row"><span>Total inscrits</span><span class="metric-value">${data.total}</span></div>
-                <div class="metric-row"><span>Actifs</span><span class="metric-value">${data.actifs}</span></div>
+                <div class="metric-row"><span>Total inscrits</span><span class="metric-value">${escapeHtml(String(data.total))}</span></div>
+                <div class="metric-row"><span>Actifs</span><span class="metric-value">${escapeHtml(String(data.actifs))}</span></div>
             `;
         }
     } catch {

@@ -95,13 +95,13 @@
 <body>
 
 <!-- Fix #1 : header compact avec nav inline -->
-<header>
+<header role="banner">
     <div class="container header-row">
         <a href="/" class="header-brand">
             <h1>TempoForecast</h1>
         </a>
-        <nav>
-            <a href="/" class="active">Accueil</a>
+        <nav aria-label="Navigation principale">
+            <a href="/" class="active" aria-current="page">Accueil</a>
             <a href="#subscribe">Alertes SMS</a>
             <a href="#comment-ca-marche">Comment ça marche ?</a>
             <a href="/mentions-legales">Mentions légales</a>
@@ -109,7 +109,7 @@
     </div>
 </header>
 
-<main class="container">
+<main class="container" role="main">
 
     <!-- Fix #14 : noscript fallback -->
     <noscript>
@@ -120,8 +120,8 @@
     </noscript>
 
     <!-- Fix #7 : alerte jour rouge avec bouton fermer -->
-    <div class="alert-rouge" id="alert-rouge">
-        <span class="alert-icon">&#9888;&#65039;</span>
+    <div class="alert-rouge" id="alert-rouge" role="alert" aria-live="assertive">
+        <span class="alert-icon" aria-hidden="true">&#9888;&#65039;</span>
         <span class="alert-text"></span>
         <button class="alert-close" id="alert-close" aria-label="Fermer l'alerte">&times;</button>
     </div>
@@ -130,12 +130,12 @@
     <!-- Fix #S9 : H2 optimisé avec mots-clés -->
     <h2 class="section-title">Couleur Tempo EDF aujourd'hui et demain</h2>
     <p class="section-desc">Données en temps réel depuis l'API EDF. La couleur de demain est annoncée chaque jour vers 11h.</p>
-    <div class="today-section">
-        <div class="today-card" id="today-card">
-            <div class="loading-state"><div class="loader"></div></div>
+    <div class="today-section" role="region" aria-label="Couleur Tempo du jour et de demain">
+        <div class="today-card" id="today-card" aria-label="Couleur Tempo aujourd'hui">
+            <div class="loading-state"><div class="loader" aria-label="Chargement"></div></div>
         </div>
-        <div class="today-card" id="tomorrow-card">
-            <div class="loading-state"><div class="loader"></div></div>
+        <div class="today-card" id="tomorrow-card" aria-label="Couleur Tempo demain">
+            <div class="loading-state"><div class="loader" aria-label="Chargement"></div></div>
         </div>
     </div>
 
@@ -179,19 +179,19 @@
         22 jours rouges, 43 jours blancs et 208 jours bleus sur cette période.
         Voici combien il en reste :
     </p>
-    <div class="counters">
-        <div class="counter-card rouge">
-            <div class="count" id="count-rouge">&mdash;</div>
+    <div class="counters" role="region" aria-label="Jours restants par couleur">
+        <div class="counter-card rouge" aria-label="Jours rouges restants">
+            <div class="count" id="count-rouge" aria-live="polite">&mdash;</div>
             <div class="label">Jours rouges restants</div>
             <div class="counter-help">Prix x3 &mdash; les plus chers</div>
         </div>
-        <div class="counter-card blanc">
-            <div class="count" id="count-blanc">&mdash;</div>
+        <div class="counter-card blanc" aria-label="Jours blancs restants">
+            <div class="count" id="count-blanc" aria-live="polite">&mdash;</div>
             <div class="label">Jours blancs restants</div>
             <div class="counter-help">Prix intermédiaire</div>
         </div>
-        <div class="counter-card bleu">
-            <div class="count" id="count-bleu">&mdash;</div>
+        <div class="counter-card bleu" aria-label="Jours bleus restants">
+            <div class="count" id="count-bleu" aria-live="polite">&mdash;</div>
             <div class="label">Jours bleus restants</div>
             <div class="counter-help">Prix le plus avantageux</div>
         </div>
@@ -205,8 +205,8 @@
         Chaque carte indique la couleur prédite, la confiance de notre algorithme
         et les températures attendues. Plus le jour est proche, plus la prévision est fiable.
     </p>
-    <div id="forecast-container">
-        <div class="loading-state"><div class="loader"></div><p>Chargement des prévisions...</p></div>
+    <div id="forecast-container" role="region" aria-label="Prévisions Tempo 15 jours" aria-live="polite">
+        <div class="loading-state"><div class="loader" aria-label="Chargement"></div><p>Chargement des prévisions...</p></div>
     </div>
 
     <!-- Légende rapide -->
@@ -338,7 +338,7 @@
 
 </main>
 
-<footer>
+<footer role="contentinfo">
     <div class="container">
         <p><strong>TempoForecast</strong> &mdash; Service indépendant de prévision des jours Tempo, non affilié à EDF.</p>
         <p style="margin-top:4px">

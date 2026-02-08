@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 # Token cache en memoire
 _token_cache = {"token": None, "expires": 0}
+_token_lock = asyncio.Lock()
 
 
 # ================================================================
@@ -28,38 +29,47 @@ _token_cache = {"token": None, "expires": 0}
 # ================================================================
 
 async def _get_token() -> str | None:
-    """Obtient un token OAuth2 RTE (cache en memoire)."""
+    """Obtient un token OAuth2 RTE (cache en memoire).
+
+    Fix audit v6 : asyncio.Lock pour eviter les race conditions
+    (deux appels simultanes pourraient rafraichir le token en double).
+    """
     import time
     now = time.time()
     if _token_cache["token"] and now < _token_cache["expires"]:
         return _token_cache["token"]
 
-    if not Config.RTE_CLIENT_ID or not Config.RTE_CLIENT_SECRET:
-        return None
-
-    credentials = f"{Config.RTE_CLIENT_ID}:{Config.RTE_CLIENT_SECRET}"
-    b64 = base64.b64encode(credentials.encode()).decode()
-
-    try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.post(
-                f"{Config.RTE_API_BASE}/token/oauth/",
-                headers={
-                    "Authorization": f"Basic {b64}",
-                    "Content-Type": "application/x-www-form-urlencoded",
-                },
-                data="grant_type=client_credentials",
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            _token_cache["token"] = data["access_token"]
-            # Token valide 2h, on renouvelle a 1h50
-            _token_cache["expires"] = now + 6600
-            logger.info("[RTE] Token OAuth2 obtenu")
+    async with _token_lock:
+        # Re-verifier apres acquisition du lock
+        now = time.time()
+        if _token_cache["token"] and now < _token_cache["expires"]:
             return _token_cache["token"]
-    except Exception as e:
-        logger.warning(f"[RTE] Erreur authentification: {e}")
-        return None
+
+        if not Config.RTE_CLIENT_ID or not Config.RTE_CLIENT_SECRET:
+            return None
+
+        credentials = f"{Config.RTE_CLIENT_ID}:{Config.RTE_CLIENT_SECRET}"
+        b64 = base64.b64encode(credentials.encode()).decode()
+
+        try:
+            async with httpx.AsyncClient(timeout=10) as client:
+                resp = await client.post(
+                    f"{Config.RTE_API_BASE}/token/oauth/",
+                    headers={
+                        "Authorization": f"Basic {b64}",
+                        "Content-Type": "application/x-www-form-urlencoded",
+                    },
+                    data="grant_type=client_credentials",
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                _token_cache["token"] = data["access_token"]
+                _token_cache["expires"] = now + 6600
+                logger.info("[RTE] Token OAuth2 obtenu")
+                return _token_cache["token"]
+        except Exception as e:
+            logger.warning(f"[RTE] Erreur authentification: {e}")
+            return None
 
 
 # ================================================================
