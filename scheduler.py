@@ -118,7 +118,15 @@ async def task_daily_verification():
 # ================================================================
 
 async def task_daily_predictions():
-    """18h00 — Génère les prédictions J+1→J+15, envoie les alertes SMS."""
+    """18h00 — Génère les prédictions J+1→J+15, envoie les alertes SMS.
+
+    Fix v5 workflow :
+    - Génère un cycle_id unique pour traçabilité
+    - Détecte les changements vs cycle précédent
+    - Utilise la couleur officielle EDF pour J+1 si disponible (via actuals)
+    - Signale les prédictions basées sur météo simulée
+    - Stocke tout en DB = source unique de vérité pour l'API publique
+    """
     for attempt in range(2):
         try:
             from weather_client import fetch_forecast_extended, cache_weather
@@ -128,30 +136,52 @@ async def task_daily_predictions():
 
             logger.info("[Task 18h00] Début génération des prédictions")
 
+            # Fix v5 #7 : cycle_id unique
+            cycle_id = f"{date.today().isoformat()}_18h"
+
             # 1. Récupérer la météo
             forecasts = await fetch_forecast_extended()
             if not forecasts:
                 logger.warning("[Task 18h00] Pas de données météo, prédictions reportées")
                 return
 
+            # Fix v5 #6 : détecter si météo simulée
+            simulated = any(
+                f.get("description", "") == "donnees simulees" for f in forecasts
+            )
+            if simulated:
+                logger.warning("[Task 18h00] Données météo SIMULÉES (pas de clé API)")
+
             cache_weather(forecasts)
 
-            # 2. Générer les prédictions
+            # 2. Générer les prédictions (avec flag simulated + actuals J+1)
             rte_score = await get_consumption_score()
-            predictions = predict_range(forecasts, rte_score=rte_score)
+            predictions = predict_range(forecasts, rte_score=rte_score,
+                                        simulated=simulated)
 
-            # 3. Stocker et envoyer les alertes
+            # 3. Stocker avec cycle_id, détecter les changements, envoyer alertes
+            changes = []
             for pred in predictions:
                 horizon = pred.get("horizon", "J-?")
-                store_prediction(pred, horizon)
+                change = store_prediction(pred, horizon, cycle_id=cycle_id)
+                if change:
+                    changes.append(change)
 
-                # Alertes SMS uniquement pour J-1 à J-3
+                # Alertes SMS uniquement pour J-1 à J-3, pas pour les confirmées
+                if pred.get("confirmed"):
+                    continue
                 target = date.fromisoformat(pred["date"])
                 delta = (target - date.today()).days
                 if 1 <= delta <= 3 and pred["couleur_predite"] in ("ROUGE", "BLANC"):
                     send_alerts_for_prediction(target, pred)
 
-            logger.info(f"[Task 18h00] {len(predictions)} prédictions générées et stockées")
+            if changes:
+                logger.info(f"[Task 18h00] {len(changes)} changements détectés: "
+                            + ", ".join(f"{c['date']} {c['couleur_avant']}→{c['couleur_apres']}"
+                                        for c in changes))
+
+            logger.info(f"[Task 18h00] {len(predictions)} prédictions stockées "
+                        f"(cycle={cycle_id}, simulated={simulated})")
             return
         except Exception as e:
             logger.error(f"[Scheduler] task_daily_predictions attempt {attempt+1} failed: {e}")
@@ -211,8 +241,12 @@ async def task_weekly_recap():
                 logger.warning("[Task hebdo] Pas de données météo")
                 return
 
+            simulated = any(
+                f.get("description", "") == "donnees simulees" for f in forecasts
+            )
             rte_score = await get_consumption_score()
-            predictions = predict_range(forecasts, rte_score=rte_score)
+            predictions = predict_range(forecasts, rte_score=rte_score,
+                                        simulated=simulated)
             send_weekly_recap(predictions)
 
             logger.info("[Task hebdo] Récap envoyé")

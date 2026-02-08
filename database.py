@@ -1,13 +1,14 @@
-"""Gestion de la base de données SQLite — 7 tables.
+"""Gestion de la base de données SQLite — 8 tables.
 
 Tables :
-  - predictions    : prédictions générées par l'algorithme
-  - actuals        : couleurs réelles confirmées par EDF
-  - performance    : comparaison prédiction vs réalité (UNIQUE dedup Fix #7)
-  - users          : abonnés aux alertes SMS (phone_encrypted Fix #1)
-  - sms_logs       : historique des SMS envoyés
-  - weights_history: versions successives des poids de l'algorithme
-  - weather_cache  : cache des prévisions météo (Fix #17)
+  - predictions         : prédictions générées par l'algorithme
+  - prediction_changes  : historique des changements de couleur entre cycles
+  - actuals             : couleurs réelles confirmées par EDF
+  - performance         : comparaison prédiction vs réalité (UNIQUE dedup Fix #7)
+  - users               : abonnés aux alertes SMS (phone_encrypted Fix #1)
+  - sms_logs            : historique des SMS envoyés
+  - weights_history     : versions successives des poids de l'algorithme
+  - weather_cache       : cache des prévisions météo (Fix #17)
 """
 
 import sqlite3
@@ -224,6 +225,37 @@ def init_db():
         conn.execute("PRAGMA user_version = 3")
         logger.info("Migration v3 appliquee (sub-scores, index UNIQUE)")
 
+    if version < 4:
+        # Migration v4 — Workflow cohérent : cycle_id, couleur_precedente, simulated, confirmed
+        for col, coltype in [
+            ("cycle_id", "TEXT DEFAULT ''"),
+            ("couleur_precedente", "TEXT DEFAULT ''"),
+            ("simulated", "INTEGER DEFAULT 0"),
+            ("confirmed", "INTEGER DEFAULT 0"),
+        ]:
+            try:
+                conn.execute(f"ALTER TABLE predictions ADD COLUMN {col} {coltype}")
+            except sqlite3.OperationalError:
+                pass  # Colonne existe déjà
+
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS prediction_changes (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                date            TEXT    NOT NULL,
+                horizon         TEXT    NOT NULL,
+                couleur_avant   TEXT    NOT NULL,
+                couleur_apres   TEXT    NOT NULL,
+                score_avant     REAL    DEFAULT 0,
+                score_apres     REAL    DEFAULT 0,
+                cycle_id        TEXT    NOT NULL,
+                timestamp_change TEXT   NOT NULL
+            );
+            CREATE INDEX IF NOT EXISTS idx_pred_changes_date ON prediction_changes(date);
+            CREATE INDEX IF NOT EXISTS idx_pred_changes_cycle ON prediction_changes(cycle_id);
+        """)
+        conn.execute("PRAGMA user_version = 4")
+        logger.info("Migration v4 appliquee (cycle_id, prediction_changes)")
+
     # Poids initiaux si vide
     existing = conn.execute("SELECT COUNT(*) as c FROM weights_history").fetchone()
     if existing["c"] == 0:
@@ -239,7 +271,7 @@ def init_db():
 
     conn.commit()
     conn.close()
-    logger.info("Base de données initialisée avec 7 tables")
+    logger.info("Base de données initialisée avec 8 tables")
 
 
 # ================================================================

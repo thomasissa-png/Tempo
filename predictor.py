@@ -185,18 +185,24 @@ def predict_day(target_date: date, weather: dict | None = None,
 
 
 def predict_range(forecasts: list[dict],
-                  rte_score: dict | None = None) -> list[dict]:
+                  rte_score: dict | None = None,
+                  simulated: bool = False) -> list[dict]:
     """Predit la couleur pour chaque jour du forecast.
 
     Fix #2 : decremente les quotas simules pour que les predictions
     ulterieures ne predisent pas plus de rouges/blancs que le quota restant.
     Fix #11 : charge les actuals une seule fois (batch).
+    Fix v5 #5 : si J+1 a une couleur officielle dans actuals, l'utiliser.
+    Fix v5 #6 : propage le flag simulated (donnees meteo fallback).
     """
     remaining = get_remaining_days()
     weights = get_current_weights()
 
     # Fix #11 : pre-charger les actuals recents en une seule requete
     actuals_cache = _load_recent_actuals()
+
+    # Fix v5 #5 : pre-charger les actuals futurs (J+1) s'ils existent
+    actuals_future = _load_future_actuals()
 
     # Fix #2 : copier remaining pour decrementation simulee
     sim_remaining = dict(remaining)
@@ -205,6 +211,22 @@ def predict_range(forecasts: list[dict],
     for i, weather in enumerate(forecasts):
         target = date.fromisoformat(weather["date"])
         delta = (target - date.today()).days
+        target_str = target.isoformat()
+
+        # Fix v5 #5 : si la couleur officielle est connue pour cette date, l'utiliser
+        if target_str in actuals_future:
+            couleur_officielle = actuals_future[target_str]
+            pred = _result_confirmed(target, couleur_officielle, weather)
+            pred["horizon"] = f"J-{delta}" if delta > 0 else "J0"
+            pred["confirmed"] = True
+            pred["simulated"] = False
+            predictions.append(pred)
+            # Decrementer le quota meme pour les confirmees
+            if couleur_officielle == "ROUGE" and sim_remaining["ROUGE"] > 0:
+                sim_remaining["ROUGE"] -= 1
+            elif couleur_officielle == "BLANC" and sim_remaining["BLANC"] > 0:
+                sim_remaining["BLANC"] -= 1
+            continue
 
         # Fix #5 audit v4 : RTE fiable J+1 seulement, degrade J+2/J+3, ignore au-dela
         day_rte = rte_score
@@ -225,6 +247,8 @@ def predict_range(forecasts: list[dict],
                            rte_score=day_rte,
                            _actuals_cache=actuals_cache)
         pred["horizon"] = f"J-{delta}" if delta > 0 else "J0"
+        pred["confirmed"] = False
+        pred["simulated"] = simulated
         predictions.append(pred)
 
         # Fix #2 : decrementer le quota simule si on a predit rouge/blanc
@@ -237,6 +261,16 @@ def predict_range(forecasts: list[dict],
     return predictions
 
 
+def _result_confirmed(target_date: date, couleur: str,
+                      weather: dict | None = None) -> dict:
+    """Resultat pour une date dont la couleur officielle est connue."""
+    p_r = 1.0 if couleur == "ROUGE" else 0.0
+    p_b = 1.0 if couleur == "BLANC" else 0.0
+    p_bl = 1.0 if couleur == "BLEU" else 0.0
+    return _result(target_date, couleur, 100 if couleur == "ROUGE" else (50 if couleur == "BLANC" else 0),
+                   p_bl, p_b, p_r, weather, "Couleur officielle EDF")
+
+
 def _load_recent_actuals() -> dict[str, str]:
     """Charge les couleurs reelles des 7 derniers jours en une requete.
     Retourne {date_iso: couleur}. Fix #11."""
@@ -246,6 +280,21 @@ def _load_recent_actuals() -> dict[str, str]:
         rows = conn.execute(
             "SELECT date, couleur_reelle FROM actuals WHERE date >= ?",
             (since,)
+        ).fetchall()
+        return {row["date"]: row["couleur_reelle"] for row in rows}
+    finally:
+        conn.close()
+
+
+def _load_future_actuals() -> dict[str, str]:
+    """Charge les couleurs officielles pour aujourd'hui et demain.
+    Fix v5 #5 : permet d'utiliser la couleur EDF confirmee au lieu de la prediction."""
+    conn = get_db()
+    try:
+        today_str = date.today().isoformat()
+        rows = conn.execute(
+            "SELECT date, couleur_reelle FROM actuals WHERE date >= ?",
+            (today_str,)
         ).fetchall()
         return {row["date"]: row["couleur_reelle"] for row in rows}
     finally:
@@ -613,14 +662,47 @@ def _result(target_date: date, couleur: str, score: float,
     return result
 
 
-def store_prediction(pred: dict, horizon: str = "J-1"):
+def store_prediction(pred: dict, horizon: str = "J-1",
+                     cycle_id: str = "") -> dict | None:
     """Enregistre une prediction en base.
 
     Fix #3 : INSERT OR REPLACE avec UNIQUE(date, horizon) evite les doublons.
     Fix #2/#7 : stocke les 6 sub-scores pour l'apprentissage ML.
+    Fix v5 #3 : detecte les changements vs prediction precedente, retourne le changement.
+    Fix v5 #7 : stocke cycle_id, simulated, confirmed.
     """
     conn = get_db()
+    change = None
     try:
+        # Fix v5 #3 : recuperer la prediction precedente pour detecter les changements
+        prev = conn.execute(
+            "SELECT couleur_predite, score_risque FROM predictions WHERE date = ? AND horizon = ?",
+            (pred["date"], horizon)
+        ).fetchone()
+
+        couleur_precedente = ""
+        if prev and prev["couleur_predite"] != pred["couleur_predite"]:
+            couleur_precedente = prev["couleur_predite"]
+            change = {
+                "date": pred["date"],
+                "horizon": horizon,
+                "couleur_avant": prev["couleur_predite"],
+                "couleur_apres": pred["couleur_predite"],
+                "score_avant": prev["score_risque"],
+                "score_apres": pred["score_risque"],
+            }
+            # Enregistrer le changement
+            conn.execute(
+                """INSERT INTO prediction_changes
+                   (date, horizon, couleur_avant, couleur_apres,
+                    score_avant, score_apres, cycle_id, timestamp_change)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (pred["date"], horizon,
+                 prev["couleur_predite"], pred["couleur_predite"],
+                 prev["score_risque"], pred["score_risque"],
+                 cycle_id, datetime.now().isoformat()),
+            )
+
         conn.execute(
             """INSERT OR REPLACE INTO predictions
                (date, couleur_predite, probabilite_bleu, probabilite_blanc,
@@ -628,8 +710,9 @@ def store_prediction(pred: dict, horizon: str = "J-1"):
                 pression_prevue, jours_rouges_restants, jours_blancs_restants,
                 raison, horizon, timestamp_prediction,
                 score_temperature, score_budget, score_weekday,
-                score_gradient, score_clustering, score_rte)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                score_gradient, score_clustering, score_rte,
+                cycle_id, couleur_precedente, simulated, confirmed)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (pred["date"], pred["couleur_predite"],
              pred["probabilite_bleu"], pred["probabilite_blanc"],
              pred["probabilite_rouge"], pred["score_risque"],
@@ -640,10 +723,17 @@ def store_prediction(pred: dict, horizon: str = "J-1"):
              datetime.now().isoformat(),
              pred.get("score_temperature", 0), pred.get("score_budget", 0),
              pred.get("score_weekday", 0), pred.get("score_gradient", 0),
-             pred.get("score_clustering", 0), pred.get("score_rte", 0)),
+             pred.get("score_clustering", 0), pred.get("score_rte", 0),
+             cycle_id, couleur_precedente,
+             1 if pred.get("simulated") else 0,
+             1 if pred.get("confirmed") else 0),
         )
         conn.commit()
+        log_suffix = ""
+        if couleur_precedente:
+            log_suffix = f" [CHANGE: {couleur_precedente} -> {pred['couleur_predite']}]"
         logger.info(f"[Prediction] {pred['date']} -> {pred['couleur_predite']} "
-                     f"(score={pred['score_risque']}, {horizon})")
+                     f"(score={pred['score_risque']}, {horizon}, cycle={cycle_id}){log_suffix}")
+        return change
     finally:
         conn.close()

@@ -293,44 +293,118 @@ async def api_remaining():
 
 @app.get("/api/predictions")
 async def api_predictions():
-    """Génère et retourne les prédictions J+1 → J+15 (cache TTL 15min)."""
+    """Retourne les prédictions J+1 → J+15 depuis la DB (source unique).
+
+    Fix v5 #1/#2 : lit les prédictions stockées par le scheduler (18h)
+    au lieu de recalculer à chaque visite. Tous les visiteurs voient
+    la même chose. Cache mémoire court (5min) pour réduire les accès DB.
+
+    Fallback : si aucune prédiction n'existe en DB (premier lancement),
+    génère à la volée et stocke pour les visiteurs suivants.
+    """
     now = time.time()
 
-    # Fix #2 : utiliser le cache si encore valide
+    # Cache mémoire court — évite les accès DB répétés
     if _predictions_cache["data"] and now < _predictions_cache["expires"]:
         return _predictions_cache["data"]
 
-    from weather_client import fetch_forecast_extended
-    from predictor import predict_range
+    from database import get_db
     from performance_tracker import get_accuracy_global
+
+    conn = get_db()
+    try:
+        # Lire les prédictions futures depuis la DB
+        today_str = date.today().isoformat()
+        rows = conn.execute(
+            """SELECT date, couleur_predite, probabilite_bleu, probabilite_blanc,
+                      probabilite_rouge, score_risque, temp_min_prevue, temp_max_prevue,
+                      pression_prevue, jours_rouges_restants, jours_blancs_restants,
+                      raison, horizon, timestamp_prediction, cycle_id,
+                      couleur_precedente, simulated, confirmed
+               FROM predictions
+               WHERE date >= ?
+               ORDER BY date ASC""",
+            (today_str,)
+        ).fetchall()
+    finally:
+        conn.close()
+
+    if rows:
+        predictions = []
+        for r in rows:
+            pred = {
+                "date": r["date"],
+                "couleur_predite": r["couleur_predite"],
+                "probabilite_bleu": r["probabilite_bleu"],
+                "probabilite_blanc": r["probabilite_blanc"],
+                "probabilite_rouge": r["probabilite_rouge"],
+                "score_risque": r["score_risque"],
+                "temp_min_prevue": r["temp_min_prevue"],
+                "temp_max_prevue": r["temp_max_prevue"],
+                "raison": r["raison"],
+                "horizon": r["horizon"],
+                "confirmed": bool(r["confirmed"]),
+                "simulated": bool(r["simulated"]),
+            }
+            # Fix v5 #3 : indiquer si la prédiction a changé
+            if r["couleur_precedente"]:
+                pred["couleur_precedente"] = r["couleur_precedente"]
+            predictions.append(pred)
+
+        accuracy = get_accuracy_global(30)
+        cycle_id = rows[0]["cycle_id"] if rows else ""
+        generated_at = rows[0]["timestamp_prediction"] if rows else ""
+
+        result = {
+            "status": "ok",
+            "predictions": predictions,
+            "accuracy": accuracy,
+            "generated_at": generated_at,
+            "cycle_id": cycle_id,
+        }
+
+        # Cache 5 min (les données ne changent qu'au cycle scheduler)
+        _predictions_cache["data"] = result
+        _predictions_cache["expires"] = now + 300
+
+        return result
+
+    # Fallback premier lancement : aucune prédiction en DB
+    # Générer à la volée et stocker pour les visiteurs suivants
+    from weather_client import fetch_forecast_extended
+    from predictor import predict_range, store_prediction
     from rte_client import get_consumption_score
 
     forecasts = await fetch_forecast_extended()
     if not forecasts:
-        # Fix #17 audit v4 : message explicatif quand pas de donnees meteo
         return {
             "status": "ok",
             "predictions": [],
             "accuracy": get_accuracy_global(30),
             "generated_at": datetime.now().isoformat(),
-            "message": "Données météo temporairement indisponibles",
+            "message": "Données météo temporairement indisponibles. "
+                       "Les prédictions seront disponibles après le prochain cycle (18h).",
         }
 
+    simulated = any(f.get("description", "") == "donnees simulees" for f in forecasts)
     rte_score = await get_consumption_score()
-    predictions = predict_range(forecasts, rte_score=rte_score)
+    predictions = predict_range(forecasts, rte_score=rte_score, simulated=simulated)
 
-    # Badge de fiabilite
+    cycle_id = f"{date.today().isoformat()}_init"
+    for pred in predictions:
+        store_prediction(pred, pred.get("horizon", "J-?"), cycle_id=cycle_id)
+
     accuracy = get_accuracy_global(30)
-
     result = {
         "status": "ok",
         "predictions": predictions,
         "accuracy": accuracy,
         "generated_at": datetime.now().isoformat(),
+        "cycle_id": cycle_id,
     }
 
     _predictions_cache["data"] = result
-    _predictions_cache["expires"] = now + Config.PREDICTIONS_CACHE_TTL
+    _predictions_cache["expires"] = now + 300
 
     return result
 

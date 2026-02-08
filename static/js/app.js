@@ -88,6 +88,7 @@ async function loadRemaining() {
 }
 
 // Fix #6 : prévisions groupées par horizon
+// Fix v5 : lecture DB, indicateurs confirmed/simulated/changed
 async function loadPredictions() {
     const container = document.getElementById('forecast-container');
     if (!container) return;
@@ -107,10 +108,36 @@ async function loadPredictions() {
 
         const preds = data.predictions;
 
+        if (preds.length === 0) {
+            container.innerHTML = '<p class="loading-state">' +
+                escapeHtml(data.message || 'Aucune prédiction disponible. Revenez après 18h.') + '</p>';
+            return;
+        }
+
+        // Fix v5 #6 : avertissement si données simulées
+        const hasSimulated = preds.some(p => p.simulated);
+        if (hasSimulated) {
+            const warn = document.createElement('div');
+            warn.className = 'simulated-warning';
+            warn.innerHTML = '<strong>Données météo simulées</strong> — Clé API OpenWeather non configurée. ' +
+                'Les prédictions sont basées sur des moyennes saisonnières et sont moins fiables.';
+            container.appendChild(warn);
+        }
+
+        // Fix v5 #4 : afficher la date de dernière mise à jour
+        if (data.generated_at) {
+            const meta = document.createElement('div');
+            meta.className = 'forecast-meta';
+            const genDate = new Date(data.generated_at);
+            meta.textContent = `Dernière mise à jour : ${genDate.toLocaleDateString('fr-FR')} ` +
+                `à ${genDate.toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'})}`;
+            container.appendChild(meta);
+        }
+
         // Grouper les prédictions par horizon
-        const groupPrimary = preds.slice(0, 3);   // J+1 à J+3 : fiables
-        const groupMedium  = preds.slice(3, 7);    // J+4 à J+7 : moyennes
-        const groupFar     = preds.slice(7);        // J+8 à J+15 : indicatives
+        const groupPrimary = preds.slice(0, 3);
+        const groupMedium  = preds.slice(3, 7);
+        const groupFar     = preds.slice(7);
 
         if (groupPrimary.length > 0) {
             const label1 = document.createElement('div');
@@ -162,7 +189,7 @@ async function loadPredictions() {
             const rougePreds = preds.filter(p => p.couleur_predite === 'ROUGE');
             const first = rougePreds[0];
             alertEl.querySelector('.alert-text').textContent =
-                `Jour ROUGE prévu le ${formatDateFr(first.date)} ! Score de risque: ${first.score_risque}. Anticipez votre consommation.`;
+                `Jour ROUGE prévu le ${formatDateFr(first.date)} ! Anticipez votre consommation.`;
             alertEl.classList.add('visible');
         }
     } catch (e) {
@@ -211,6 +238,11 @@ function createForecastCard(pred) {
     const card = document.createElement('div');
     card.className = `forecast-card color-${pred.couleur_predite}`;
 
+    // Fix v5 : marquer les cartes confirmées
+    if (pred.confirmed) {
+        card.classList.add('confirmed');
+    }
+
     const d = new Date(pred.date);
     const dow = JOURS[d.getDay()];
     const dayNum = d.getDate();
@@ -230,12 +262,31 @@ function createForecastCard(pred) {
         raisonHtml = `<div class="fc-raison">${escapeHtml(pred.raison)}</div>`;
     }
 
+    // Fix v5 #5 : badge confirmé EDF
+    let confirmedHtml = '';
+    if (pred.confirmed) {
+        confirmedHtml = '<div class="fc-confirmed">Confirmé EDF</div>';
+    }
+
+    // Fix v5 #3 : indicateur de changement
+    let changedHtml = '';
+    if (pred.couleur_precedente) {
+        changedHtml = `<div class="fc-changed">Était ${pred.couleur_precedente}</div>`;
+    }
+
+    // Confiance : 100% si confirmé, sinon le score habituel
+    const confidenceText = pred.confirmed
+        ? 'Couleur officielle EDF'
+        : `Confiance: <strong>${confidence}%</strong>`;
+
     card.innerHTML = `
         <div class="fc-day">${dow}</div>
         <div class="fc-date">${dayNum} ${month}</div>
         <span class="fc-couleur ${pred.couleur_predite}">${pred.couleur_predite}</span>
+        ${confirmedHtml}
         ${tempHtml}
-        <div class="fc-confidence">Confiance: <strong>${confidence}%</strong></div>
+        <div class="fc-confidence">${confidenceText}</div>
+        ${changedHtml}
         ${raisonHtml}
     `;
 
