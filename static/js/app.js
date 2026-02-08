@@ -81,10 +81,11 @@ async function loadRemaining() {
         }
 
         const r = data.remaining;
-        setText('count-rouge', r.ROUGE);
-        setText('count-blanc', r.BLANC);
-        setText('count-bleu', r.BLEU);
-        setText('days-left', `${data.days_left_in_season} jours restants dans la saison`);
+        const t = data.totals;
+        setText('count-rouge', `${r.ROUGE}/${t ? t.ROUGE : 22}`);
+        setText('count-blanc', `${r.BLANC}/${t ? t.BLANC : 43}`);
+        setText('count-bleu', `${r.BLEU}/${t ? t.BLEU : 208}`);
+        setText('days-left', `${data.days_left_in_season} jours restants dans la saison (${data.season_start ? data.season_start.slice(0,4) : ''}–${data.season_end ? data.season_end.slice(0,4) : ''})`);
     } catch (e) {
         setText('count-rouge', '?');
         setText('count-blanc', '?');

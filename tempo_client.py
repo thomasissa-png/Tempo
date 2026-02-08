@@ -115,13 +115,22 @@ def count_used_days() -> dict:
         conn.close()
 
 
+def get_blue_days_total() -> int:
+    """Calcule le nombre total de jours bleus pour la saison en cours.
+    = nombre total de jours dans la saison - rouges (22) - blancs (43).
+    Varie selon les annees bissextiles (208 ou 209)."""
+    start, end = get_season_dates()
+    total_days = (end - start).days + 1
+    return total_days - Config.JOURS_ROUGES_TOTAL - Config.JOURS_BLANCS_TOTAL
+
+
 def get_remaining_days() -> dict:
     """Calcule les jours restants de chaque couleur pour la saison."""
     used = count_used_days()
     return {
         "ROUGE": max(0, Config.JOURS_ROUGES_TOTAL - used["ROUGE"]),
         "BLANC": max(0, Config.JOURS_BLANCS_TOTAL - used["BLANC"]),
-        "BLEU": max(0, Config.JOURS_BLEUS_TOTAL - used["BLEU"]),
+        "BLEU": max(0, get_blue_days_total() - used["BLEU"]),
     }
 
 

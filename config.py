@@ -60,7 +60,8 @@ class Config:
     # --- Regles Tempo saison ---
     JOURS_ROUGES_TOTAL = 22
     JOURS_BLANCS_TOTAL = 43
-    JOURS_BLEUS_TOTAL = 208
+    # Les jours bleus = total saison - rouges - blancs (varie si annee bissextile)
+    # Calculé dynamiquement dans tempo_client.get_blue_days_total()
 
     # --- Poids initiaux algorithme v2 ---
     # temperature (nationale ponderee) + budget + jour semaine/feries

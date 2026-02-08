@@ -357,7 +357,7 @@ def _score_budget_v2(remaining: dict, d_left: int, target_date: date) -> float:
     expected_remaining_pct = sum(
         Config.MONTHLY_RED_PROFILE.get(mo, 0.0) for mo in months_ahead
     )
-    expected_remaining = expected_remaining_pct * 22
+    expected_remaining = expected_remaining_pct * Config.JOURS_ROUGES_TOTAL
 
     actual_remaining = remaining["ROUGE"]
 

@@ -290,12 +290,17 @@ async def api_tomorrow():
 @app.get("/api/remaining")
 async def api_remaining():
     """Jours restants par couleur pour la saison en cours."""
-    from tempo_client import get_remaining_days, days_left_in_season, get_season_dates
+    from tempo_client import get_remaining_days, days_left_in_season, get_season_dates, get_blue_days_total
     remaining = get_remaining_days()
     start, end = get_season_dates()
     return {
         "status": "ok",
         "remaining": remaining,
+        "totals": {
+            "ROUGE": Config.JOURS_ROUGES_TOTAL,
+            "BLANC": Config.JOURS_BLANCS_TOTAL,
+            "BLEU": get_blue_days_total(),
+        },
         "days_left_in_season": days_left_in_season(),
         "season_start": start.isoformat(),
         "season_end": end.isoformat(),

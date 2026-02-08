@@ -180,25 +180,25 @@
 
     <!-- Compteurs jours restants -->
     <h2 class="section-title">Décompte saison Tempo en cours</h2>
-    <p class="section-desc">
-        La saison Tempo va du 1er septembre au 31 mai. EDF doit répartir exactement
-        22 jours rouges, 43 jours blancs et 208 jours bleus sur cette période.
-        Voici combien il en reste :
+    <p class="section-desc" id="season-desc">
+        Chaque saison Tempo (1<sup>er</sup> septembre → 31 mai), EDF répartit
+        22 jours rouges, 43 jours blancs et le reste en jours bleus.
+        Voici combien il en reste à placer cette saison :
     </p>
     <div class="counters" role="region" aria-label="Jours restants par couleur">
         <div class="counter-card rouge" aria-label="Jours rouges restants">
             <div class="count" id="count-rouge" aria-live="polite">&mdash;</div>
-            <div class="label">Jours rouges restants</div>
+            <div class="label">Jours rouges à placer</div>
             <div class="counter-help">Prix x3 &mdash; les plus chers</div>
         </div>
         <div class="counter-card blanc" aria-label="Jours blancs restants">
             <div class="count" id="count-blanc" aria-live="polite">&mdash;</div>
-            <div class="label">Jours blancs restants</div>
+            <div class="label">Jours blancs à placer</div>
             <div class="counter-help">Prix intermédiaire</div>
         </div>
         <div class="counter-card bleu" aria-label="Jours bleus restants">
             <div class="count" id="count-bleu" aria-live="polite">&mdash;</div>
-            <div class="label">Jours bleus restants</div>
+            <div class="label">Jours bleus à placer</div>
             <div class="counter-help">Prix le plus avantageux</div>
         </div>
     </div>
