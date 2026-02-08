@@ -14,7 +14,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Port
-EXPOSE 8000
+EXPOSE 5000
 
 # Demarrage
 CMD ["python", "main.py"]
