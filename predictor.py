@@ -166,9 +166,19 @@ def predict_day(target_date: date, weather: dict | None = None,
         temp_moy, temp_min, gradient_score, cold_wave, remaining,
         target_date, d_left, rte_score, cluster_score)
 
+    # Sub-scores pour stockage ML (Fix audit apprentissage #2)
+    sub_scores = {
+        "score_temperature": round(temp_score, 1),
+        "score_budget": round(budget_score, 1),
+        "score_weekday": round(dow_score, 1),
+        "score_gradient": round(gradient_score, 1),
+        "score_clustering": round(cluster_score, 1),
+        "score_rte": round(rte_s, 1),
+    }
+
     return _result(target_date, couleur, score_risque,
                    prob_bleu, prob_blanc, prob_rouge, weather, raison,
-                   remaining)
+                   remaining, sub_scores)
 
 
 def predict_range(forecasts: list[dict],
@@ -560,9 +570,10 @@ def _build_raison_v2(temp_moy: float, temp_min: float,
 def _result(target_date: date, couleur: str, score: float,
             p_bleu: float, p_blanc: float, p_rouge: float,
             weather: dict | None = None, raison: str = "",
-            remaining: dict | None = None) -> dict:
+            remaining: dict | None = None,
+            sub_scores: dict | None = None) -> dict:
     """Formate le resultat de prediction."""
-    return {
+    result = {
         "date": target_date.isoformat(),
         "couleur_predite": couleur,
         "probabilite_bleu": p_bleu,
@@ -576,19 +587,28 @@ def _result(target_date: date, couleur: str, score: float,
         "jours_blancs_restants": remaining["BLANC"] if remaining else None,
         "raison": raison,
     }
+    if sub_scores:
+        result.update(sub_scores)
+    return result
 
 
 def store_prediction(pred: dict, horizon: str = "J-1"):
-    """Enregistre une prediction en base."""
+    """Enregistre une prediction en base.
+
+    Fix #3 : INSERT OR REPLACE avec UNIQUE(date, horizon) evite les doublons.
+    Fix #2/#7 : stocke les 6 sub-scores pour l'apprentissage ML.
+    """
     conn = get_db()
     try:
         conn.execute(
-            """INSERT INTO predictions
+            """INSERT OR REPLACE INTO predictions
                (date, couleur_predite, probabilite_bleu, probabilite_blanc,
                 probabilite_rouge, score_risque, temp_min_prevue, temp_max_prevue,
                 pression_prevue, jours_rouges_restants, jours_blancs_restants,
-                raison, horizon, timestamp_prediction)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                raison, horizon, timestamp_prediction,
+                score_temperature, score_budget, score_weekday,
+                score_gradient, score_clustering, score_rte)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (pred["date"], pred["couleur_predite"],
              pred["probabilite_bleu"], pred["probabilite_blanc"],
              pred["probabilite_rouge"], pred["score_risque"],
@@ -596,7 +616,10 @@ def store_prediction(pred: dict, horizon: str = "J-1"):
              pred.get("pression_prevue"),
              pred.get("jours_rouges_restants"), pred.get("jours_blancs_restants"),
              pred.get("raison", ""), horizon,
-             datetime.now().isoformat()),
+             datetime.now().isoformat(),
+             pred.get("score_temperature", 0), pred.get("score_budget", 0),
+             pred.get("score_weekday", 0), pred.get("score_gradient", 0),
+             pred.get("score_clustering", 0), pred.get("score_rte", 0)),
         )
         conn.commit()
         logger.info(f"[Prediction] {pred['date']} -> {pred['couleur_predite']} "

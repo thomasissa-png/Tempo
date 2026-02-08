@@ -289,7 +289,10 @@ def _generate_fallback_forecast() -> list[dict]:
 # ================================================================
 
 def cache_weather(forecasts: list[dict]):
-    """Stocke les previsions dans weather_cache."""
+    """Stocke les previsions dans weather_cache.
+
+    Fix #9 : INSERT OR REPLACE avec UNIQUE(date) evite les doublons.
+    """
     if not forecasts:
         return
     conn = get_db()
@@ -297,7 +300,7 @@ def cache_weather(forecasts: list[dict]):
     try:
         for f in forecasts:
             conn.execute(
-                """INSERT INTO weather_cache
+                """INSERT OR REPLACE INTO weather_cache
                    (date, temp_min, temp_max, temp_moy, pressure, humidity,
                     wind_speed, description, fetched_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",

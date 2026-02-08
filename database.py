@@ -187,6 +187,33 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_weather_cache_date  ON weather_cache(date);
     """)
 
+    # === Migrations v3 — Système d'apprentissage ===
+
+    # Fix #2/#7 : Colonnes sub-scores dans predictions (features exactes du prédicteur)
+    for col in ["score_temperature", "score_budget", "score_weekday",
+                "score_gradient", "score_clustering", "score_rte"]:
+        try:
+            conn.execute(f"ALTER TABLE predictions ADD COLUMN {col} REAL DEFAULT 0")
+        except sqlite3.OperationalError:
+            pass  # Colonne existe déjà
+
+    # Fix #3 : Dédupliquer predictions et ajouter UNIQUE(date, horizon)
+    conn.execute("""DELETE FROM predictions WHERE id NOT IN
+        (SELECT MAX(id) FROM predictions GROUP BY date, horizon)""")
+    conn.execute("DROP INDEX IF EXISTS idx_predictions_date")
+    conn.execute("DROP INDEX IF EXISTS idx_predictions_horizon")
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_predictions_date_horizon "
+        "ON predictions(date, horizon)")
+
+    # Fix #9 : Dédupliquer weather_cache et ajouter UNIQUE(date)
+    conn.execute("""DELETE FROM weather_cache WHERE id NOT IN
+        (SELECT MAX(id) FROM weather_cache GROUP BY date)""")
+    conn.execute("DROP INDEX IF EXISTS idx_weather_cache_date")
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_weather_cache_date "
+        "ON weather_cache(date)")
+
     # Poids initiaux si vide
     existing = conn.execute("SELECT COUNT(*) as c FROM weights_history").fetchone()
     if existing["c"] == 0:

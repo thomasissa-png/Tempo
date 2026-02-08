@@ -8,10 +8,8 @@ Trois responsabilités :
 
 import json
 import logging
-import re
 from datetime import date, datetime, timedelta
 from database import get_db, get_current_weights
-from predictor import is_french_holiday
 from config import Config
 
 logger = logging.getLogger(__name__)
@@ -69,8 +67,15 @@ def evaluate_predictions_for_date(target_date: date, couleur_reelle: str):
 
 
 def _couleur_to_score(couleur: str) -> float:
-    """Score de référence pour chaque couleur (milieu de la fourchette)."""
-    return {"ROUGE": 85, "BLANC": 55, "BLEU": 20}.get(couleur, 20)
+    """Score de reference aligne sur les seuils de l'algorithme.
+
+    Fix #10 : milieu de chaque zone definie par SEUIL_ROUGE et SEUIL_BLANC.
+    """
+    return {
+        "ROUGE": (Config.SEUIL_ROUGE + 100) / 2,   # 82.5
+        "BLANC": (Config.SEUIL_BLANC + Config.SEUIL_ROUGE) / 2,  # 50.0
+        "BLEU": Config.SEUIL_BLANC / 2,             # 17.5
+    }.get(couleur, Config.SEUIL_BLANC / 2)
 
 
 # ================================================================
@@ -193,204 +198,186 @@ def get_performance_summary() -> dict:
 # ================================================================
 
 def recalculate_weights():
-    """Recalcule les poids de l'algorithme via régression logistique
-    sur l'historique des prédictions évaluées.
+    """Recalcule les poids de l'algorithme via regression logistique
+    sur l'historique des predictions evaluees.
 
-    Exécuté le 1er de chaque mois si >30 prédictions évaluées.
+    Corrections audit apprentissage :
+      Fix #1/#2 : utilise les sub-scores stockes (memes features qu'inference)
+      Fix #4 : bornes [0.05, 0.50] + lissage EMA avec anciens poids
+      Fix #5 : met a jour precision_apres de l'entree precedente
+      Fix #6 : class_weight='balanced' pour contrer desequilibre BLEU
+      Fix #8 : LIMIT 500 pour couvrir une saison complete
+      Fix #11 : split train/test 80/20 avec stratification
+      Fix #12 : entraine sur tous les horizons (sub-scores deja corrects)
     """
     conn = get_db()
     try:
-        # Vérifier qu'on a assez de données
+        # Verifier qu'on a assez de donnees evaluees
         count = conn.execute(
-            "SELECT COUNT(*) as c FROM performance WHERE jours_avance <= 3"
+            "SELECT COUNT(*) as c FROM performance WHERE jours_avance <= 5"
         ).fetchone()["c"]
 
         if count < 30:
-            logger.info(f"[Poids] Pas assez de données ({count}/30), report du recalcul")
+            logger.info(f"[Poids] Pas assez de donnees evaluees ({count}/30)")
             return None
 
-        # Récupérer les données d'entraînement
+        # Fix #5 : mettre a jour precision_apres de l'entree precedente
+        _update_previous_precision_apres(conn)
+
+        # Fix #1/#2 : utiliser les sub-scores stockes dans predictions
+        # Fix #8 : LIMIT 500 pour couvrir ~une saison
+        # Fix #12 : tous les horizons (pas juste J-1/J-2/J-3)
         rows = conn.execute(
-            """SELECT p.score_risque, p.temp_min_prevue, p.temp_max_prevue,
-                      p.pression_prevue, p.date, p.jours_rouges_restants,
-                      p.raison, a.couleur_reelle
+            """SELECT p.score_temperature, p.score_budget, p.score_weekday,
+                      p.score_gradient, p.score_clustering, p.score_rte,
+                      a.couleur_reelle
                FROM predictions p
                JOIN actuals a ON p.date = a.date
-               WHERE p.horizon IN ('J-1', 'J-2', 'J-3')
+               WHERE (p.score_temperature + p.score_budget + p.score_weekday
+                      + p.score_gradient + p.score_clustering + p.score_rte) > 0
                ORDER BY p.date DESC
-               LIMIT 200"""
+               LIMIT 500"""
         ).fetchall()
 
         if len(rows) < 30:
-            logger.info("[Poids] Pas assez de jointures prédiction-réalité")
+            logger.info(
+                f"[Poids] Pas assez de donnees avec sub-scores ({len(rows)}/30), "
+                "en attente d'accumulation de nouvelles predictions"
+            )
             return None
 
-        # Fix #4 : pre-fetch weather_cache and actuals for real feature computation
-        all_dates = set()
-        for row in rows:
-            d_str = row["date"]
-            all_dates.add(d_str)
-            prev_str = (date.fromisoformat(d_str) - timedelta(days=1)).isoformat()
-            all_dates.add(prev_str)
-
-        date_list = list(all_dates)
-        placeholders = ",".join("?" for _ in date_list)
-
-        weather_temps = {}
-        weather_rows = conn.execute(
-            f"SELECT date, temp_moy FROM weather_cache WHERE date IN ({placeholders})",
-            date_list,
-        ).fetchall()
-        for wr in weather_rows:
-            if wr["temp_moy"] is not None:
-                weather_temps[wr["date"]] = wr["temp_moy"]
-
-        actuals_colors = {}
-        actuals_rows = conn.execute(
-            f"SELECT date, couleur_reelle FROM actuals WHERE date IN ({placeholders})",
-            date_list,
-        ).fetchall()
-        for ar in actuals_rows:
-            actuals_colors[ar["date"]] = ar["couleur_reelle"]
-
-        # Préparer les features
         import numpy as np
         from sklearn.linear_model import LogisticRegression
-        from datetime import date as date_type
+        from sklearn.model_selection import train_test_split
 
         X = []
         y = []
+        label_map = {"BLEU": 0, "BLANC": 1, "ROUGE": 2}
+
         for row in rows:
-            d = date_type.fromisoformat(row["date"])
-            temp_min = row["temp_min_prevue"] or 5
-            temp_max = row["temp_max_prevue"] or 10
-            temp_moy = (temp_min + temp_max) / 2
-
-            rouge_restants = row["jours_rouges_restants"] or 0
-            # Simple normalization: 22 jours = 0, 0 jours = 100
-            budget_feature = max(0, min(100, (22 - rouge_restants) / 22 * 100))
-
-            is_weekday = 1 if d.weekday() <= 4 else 0
-            is_holiday = 1 if is_french_holiday(d) else 0
-            jour_semaine_feature = is_weekday * 70 + is_holiday * 30
-
-            # Fix #4 : gradient thermique — temp drop from weather_cache
-            date_str = row["date"]
-            prev_date_str = (d - timedelta(days=1)).isoformat()
-            curr_wt = weather_temps.get(date_str)
-            prev_wt = weather_temps.get(prev_date_str)
-            if curr_wt is not None and prev_wt is not None:
-                drop = prev_wt - curr_wt  # positive = colder today
-                if drop >= 8:
-                    gradient_feature = 90
-                elif drop >= 5:
-                    gradient_feature = 70
-                elif drop >= 3:
-                    gradient_feature = 50
-                elif drop >= 1:
-                    gradient_feature = 35
-                elif drop >= 0:
-                    gradient_feature = 25
-                elif drop >= -3:
-                    gradient_feature = 15
-                else:
-                    gradient_feature = 5
-            else:
-                gradient_feature = 30  # neutral when no weather data
-
-            # Fix #4 : clustering — previous day ROUGE in actuals
-            yesterday_rouge = actuals_colors.get(prev_date_str) == "ROUGE"
-            if yesterday_rouge:
-                if temp_moy < 2:
-                    clustering_feature = 90
-                elif temp_moy < 5:
-                    clustering_feature = 70
-                else:
-                    clustering_feature = 40
-            else:
-                prev_temp = weather_temps.get(prev_date_str, 10)
-                if prev_temp < 2 and temp_moy < 2:
-                    clustering_feature = 60
-                elif prev_temp < 4 and temp_moy < 4:
-                    clustering_feature = 40
-                else:
-                    clustering_feature = 20
-
-            # Fix #4 : consommation RTE — parse from prediction raison, default 50
-            rte_feature = 50
-            raison = row["raison"] or ""
-            if "conso" in raison.lower():
-                gw_match = re.search(r'(\d+)\s*GW', raison)
-                if gw_match:
-                    gw = int(gw_match.group(1))
-                    rte_feature = min(100, max(10, (gw - 40) * 2))
-                else:
-                    rte_feature = 70  # mentioned without value => was significant
-
             X.append([
-                _score_temp_feature(temp_moy),     # feature température
-                budget_feature,                     # feature jours_restants
-                jour_semaine_feature,               # feature jour_semaine
-                gradient_feature,                   # feature gradient_thermique
-                clustering_feature,                 # feature clustering
-                rte_feature,                        # feature consommation_rte
+                row["score_temperature"],
+                row["score_budget"],
+                row["score_weekday"],
+                row["score_gradient"],
+                row["score_clustering"],
+                row["score_rte"],
             ])
-
-            # Label : 0=BLEU, 1=BLANC, 2=ROUGE
-            label_map = {"BLEU": 0, "BLANC": 1, "ROUGE": 2}
             y.append(label_map.get(row["couleur_reelle"], 0))
 
         X = np.array(X)
         y = np.array(y)
 
-        # S'assurer qu'on a au moins 2 classes
-        if len(set(y)) < 2:
-            logger.info("[Poids] Pas assez de diversité dans les labels")
+        # Au moins 2 classes presentes
+        unique_classes = set(y)
+        if len(unique_classes) < 2:
+            logger.info("[Poids] Pas assez de diversite dans les labels")
             return None
 
-        # Régression logistique multinomiale
-        model = LogisticRegression(
-            multi_class="multinomial", max_iter=1000, C=1.0
-        )
-        model.fit(X, y)
+        # Fix #11 : split train/test 80/20 avec stratification
+        try:
+            X_train, X_test, y_train, y_test = train_test_split(
+                X, y, test_size=0.2, random_state=42, stratify=y
+            )
+        except ValueError:
+            # Stratification impossible si une classe a < 2 exemples
+            X_train, X_test, y_train, y_test = train_test_split(
+                X, y, test_size=0.2, random_state=42
+            )
 
-        # Extraire l'importance relative des features
-        # On utilise la norme L2 des coefficients par feature
+        # Fix #6 : class_weight='balanced' pour contrer le desequilibre
+        model = LogisticRegression(
+            multi_class="multinomial", max_iter=1000, C=1.0,
+            class_weight="balanced",
+        )
+        model.fit(X_train, y_train)
+
+        # Fix #11 : evaluer sur le test set
+        test_accuracy = round(model.score(X_test, y_test) * 100, 1)
+
+        # Extraire l'importance relative (norme L2 des coefficients)
         importance = np.sqrt((model.coef_ ** 2).sum(axis=0))
         total_imp = importance.sum()
-        new_weights = {
-            "temperature": round(float(importance[0] / total_imp), 4),
-            "jours_restants": round(float(importance[1] / total_imp), 4),
-            "jour_semaine": round(float(importance[2] / total_imp), 4),
-            "gradient_thermique": round(float(importance[3] / total_imp), 4),
-            "clustering": round(float(importance[4] / total_imp), 4),
-            "consommation_rte": round(float(importance[5] / total_imp), 4),
+        if total_imp == 0:
+            logger.warning("[Poids] Importance totale nulle, abandon")
+            return None
+
+        raw_weights = {
+            "temperature": float(importance[0] / total_imp),
+            "jours_restants": float(importance[1] / total_imp),
+            "jour_semaine": float(importance[2] / total_imp),
+            "gradient_thermique": float(importance[3] / total_imp),
+            "clustering": float(importance[4] / total_imp),
+            "consommation_rte": float(importance[5] / total_imp),
         }
 
-        # Calculer la précision avant/après
+        # Fix #4 : bornes [0.05, 0.50] — aucun facteur desactive ni dominant
+        WEIGHT_MIN = 0.05
+        WEIGHT_MAX = 0.50
+        bounded = {
+            k: max(WEIGHT_MIN, min(WEIGHT_MAX, v))
+            for k, v in raw_weights.items()
+        }
+        total_bounded = sum(bounded.values())
+        bounded = {k: v / total_bounded for k, v in bounded.items()}
+
+        # Fix #4 : lissage EMA (alpha=0.5) avec les anciens poids
         old_weights = get_current_weights()
+        ALPHA = 0.5
+        smoothed = {}
+        for key in bounded:
+            old_val = old_weights.get(key, bounded[key])
+            smoothed[key] = ALPHA * bounded[key] + (1 - ALPHA) * old_val
+
+        # Renormaliser apres lissage
+        total_smooth = sum(smoothed.values())
+        new_weights = {
+            k: round(v / total_smooth, 4) for k, v in smoothed.items()
+        }
+
         precision_avant = get_accuracy_global(30)["precision"]
 
-        # Sauvegarder
+        # Fix #4 : validation — deployer seulement si test accuracy > 40%
+        if test_accuracy < 40:
+            logger.warning(
+                f"[Poids] Test accuracy trop faible ({test_accuracy}%), "
+                "poids NON deployes"
+            )
+            conn.execute(
+                """INSERT INTO weights_history
+                   (date_update, weights_json, precision_avant, precision_apres,
+                    nb_predictions, commentaire, timestamp_update)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (datetime.now().strftime("%Y-%m-%d"),
+                 json.dumps(new_weights),
+                 precision_avant, test_accuracy, count,
+                 f"REJETE (test_acc={test_accuracy}%) — ancien: "
+                 f"{json.dumps(old_weights)}",
+                 datetime.now().isoformat()),
+            )
+            conn.commit()
+            return None
+
+        # Deployer les nouveaux poids
         conn.execute(
             """INSERT INTO weights_history
                (date_update, weights_json, precision_avant, precision_apres,
                 nb_predictions, commentaire, timestamp_update)
                VALUES (?, ?, ?, ?, ?, ?, ?)""",
-            (
-                datetime.now().strftime("%Y-%m-%d"),
-                json.dumps(new_weights),
-                precision_avant,
-                0,  # precision_apres sera calculée le mois suivant
-                count,
-                f"Recalcul auto - ancien: {json.dumps(old_weights)}",
-                datetime.now().isoformat(),
-            ),
+            (datetime.now().strftime("%Y-%m-%d"),
+             json.dumps(new_weights),
+             precision_avant, test_accuracy, count,
+             f"Recalcul auto (test_acc={test_accuracy}%) — "
+             f"ancien: {json.dumps(old_weights)}",
+             datetime.now().isoformat()),
         )
         conn.commit()
 
-        logger.info(f"[Poids] Nouveaux poids calculés : {new_weights}")
-        logger.info(f"[Poids] Anciens : {old_weights}")
+        logger.info(f"[Poids] Nouveaux poids deployes : {new_weights}")
+        logger.info(
+            f"[Poids] Anciens : {old_weights} | "
+            f"Test accuracy : {test_accuracy}%"
+        )
         return new_weights
 
     except ImportError:
@@ -403,31 +390,26 @@ def recalculate_weights():
         conn.close()
 
 
-def _score_temp_feature(temp_moy: float) -> float:
-    """Feature température normalisée pour le ML (basée sur temp_moy).
+def _update_previous_precision_apres(conn):
+    """Fix #5 : met a jour precision_apres de la derniere entree weights_history.
 
-    Fix #5 : alignée sur predictor._score_temperature_v2
-    (98, 90, 80, 68, 55, 40, 25, 15, 8, 3).
+    Appelee au debut de chaque recalcul mensuel pour enregistrer
+    la precision obtenue avec les poids du mois precedent.
     """
-    if temp_moy < -5:
-        return 98
-    if temp_moy < -2:
-        return 90
-    if temp_moy < 0:
-        return 80
-    if temp_moy < 2:
-        return 68
-    if temp_moy < 4:
-        return 55
-    if temp_moy < 6:
-        return 40
-    if temp_moy < 8:
-        return 25
-    if temp_moy < 10:
-        return 15
-    if temp_moy < 14:
-        return 8
-    return 3
+    last_entry = conn.execute(
+        "SELECT id, precision_apres FROM weights_history ORDER BY id DESC LIMIT 1"
+    ).fetchone()
+
+    if last_entry and last_entry["precision_apres"] == 0:
+        current_precision = get_accuracy_global(30)["precision"]
+        conn.execute(
+            "UPDATE weights_history SET precision_apres = ? WHERE id = ?",
+            (current_precision, last_entry["id"]),
+        )
+        logger.info(
+            f"[Poids] precision_apres mise a jour pour id={last_entry['id']}: "
+            f"{current_precision}%"
+        )
 
 
 
