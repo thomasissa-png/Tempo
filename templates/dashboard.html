@@ -94,13 +94,19 @@
 </head>
 <body>
 
-<!-- Fix #1 : header compact avec nav inline -->
+<a href="#main-content" class="skip-link">Aller au contenu principal</a>
+
 <header role="banner">
     <div class="container header-row">
         <a href="/" class="header-brand">
             <h1>TempoForecast</h1>
         </a>
-        <nav aria-label="Navigation principale">
+        <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu de navigation" aria-expanded="false" aria-controls="main-nav">
+            <span class="bar"></span>
+            <span class="bar"></span>
+            <span class="bar"></span>
+        </button>
+        <nav id="main-nav" aria-label="Navigation principale">
             <a href="/" class="active" aria-current="page">Accueil</a>
             <a href="#subscribe">Alertes SMS</a>
             <a href="#comment-ca-marche">Comment ça marche ?</a>
@@ -109,7 +115,7 @@
     </div>
 </header>
 
-<main class="container" role="main">
+<main id="main-content" class="container" role="main">
 
     <!-- Fix #14 : noscript fallback -->
     <noscript>
@@ -256,6 +262,7 @@
                     <input type="tel" id="phone" name="phone" placeholder="+33612345678" required
                            pattern="\+33[0-9]{9}" title="Format: +33 suivi de 9 chiffres">
                     <span class="form-hint">Format : +33 suivi de 9 chiffres (ex: +33612345678)</span>
+                    <span class="phone-feedback" id="phone-feedback" aria-live="polite"></span>
                 </div>
                 <div class="form-group">
                     <label for="seuil_rouge">À partir de quelle probabilité vous alerter ?</label>
@@ -302,36 +309,46 @@
         <div class="faq-list">
             <details class="faq-item">
                 <summary>C'est quoi l'offre Tempo EDF ?</summary>
+                <div class="faq-content">
                 <p>L'offre Tempo est un contrat d'électricité EDF où le prix du kWh varie selon la couleur du jour.
                     Il y a 3 couleurs : <strong>Bleu</strong> (300 jours/an, tarif très bas),
                     <strong>Blanc</strong> (43 jours/an, tarif moyen) et
                     <strong>Rouge</strong> (22 jours/an, tarif très élevé).
                     Cette offre est avantageuse si vous pouvez adapter votre consommation les jours rouges.</p>
+                </div>
             </details>
             <details class="faq-item">
                 <summary>Comment sont calculés les jours rouges ?</summary>
+                <div class="faq-content">
                 <p>EDF choisit les 22 jours rouges parmi les jours les plus froids de l'hiver,
                     quand la demande en électricité est la plus forte. C'est pourquoi notre algorithme
                     se base principalement sur les prévisions de température et la pression atmosphérique.</p>
+                </div>
             </details>
             <details class="faq-item" id="faq-fiabilite">
                 <summary>Quelle est la fiabilité de vos prévisions ?</summary>
+                <div class="faq-content">
                 <p>Notre précision dépend de l'horizon : les prévisions à J-1 (lendemain) sont les plus fiables.
                     Au-delà de J-3, les prévisions météo deviennent moins précises, donc nos estimations aussi.
                     Le badge de fiabilité en haut de page affiche notre précision réelle sur les 30 derniers jours.</p>
+                </div>
             </details>
             <details class="faq-item">
                 <summary>Que faire lors d'un jour rouge ?</summary>
+                <div class="faq-content">
                 <p>Reportez les usages gourmands en électricité : lave-linge, sèche-linge, lave-vaisselle,
                     four électrique, recharge de véhicule. Baissez le chauffage électrique si possible.
                     Un jour rouge bien géré peut vous faire économiser jusqu'à 10&euro; par rapport à un jour
                     de consommation normale.</p>
+                </div>
             </details>
             <details class="faq-item">
                 <summary>Est-ce que ce service est officiel EDF ?</summary>
+                <div class="faq-content">
                 <p>Non. TempoForecast est un service indépendant et gratuit. Nous utilisons les données
                     publiques de l'API Tempo et les prévisions météo pour faire nos propres estimations.
                     Seule la couleur annoncée par EDF (la veille à 11h) fait foi.</p>
+                </div>
             </details>
         </div>
     </section>
@@ -351,6 +368,8 @@
         </p>
     </div>
 </footer>
+
+<button class="back-to-top" id="back-to-top" aria-label="Retour en haut de page">&#8593;</button>
 
 <script src="/static/js/app.js"></script>
 </body>

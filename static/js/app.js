@@ -21,6 +21,9 @@ document.addEventListener('DOMContentLoaded', () => {
     setupSubscribeForm();
     setupWelcomeBanner();
     setupAlertDismiss();
+    setupHamburger();
+    setupBackToTop();
+    setupPhoneValidation();
 });
 
 // ================================================================
@@ -40,7 +43,7 @@ async function loadToday() {
             el.innerHTML = '<p class="loading-state">Données non disponibles</p>';
         }
     } catch {
-        el.innerHTML = '<p class="loading-state">Erreur de connexion</p>';
+        el.innerHTML = '<p class="loading-state">Erreur de connexion<br><button class="retry-btn" onclick="loadToday()">Réessayer</button></p>';
     }
 }
 
@@ -59,7 +62,7 @@ async function loadTomorrow() {
             if (dateEl) dateEl.textContent = 'Disponible après 11h';
         }
     } catch {
-        el.innerHTML = '<p class="loading-state">Erreur de connexion</p>';
+        el.innerHTML = '<p class="loading-state">Erreur de connexion<br><button class="retry-btn" onclick="loadTomorrow()">Réessayer</button></p>';
     }
 }
 
@@ -86,7 +89,7 @@ async function loadRemaining() {
         setText('count-rouge', '?');
         setText('count-blanc', '?');
         setText('count-bleu', '?');
-        setText('days-left', 'Erreur de connexion — réessayez plus tard');
+        setText('days-left', 'Erreur de connexion');
         console.error('Erreur chargement compteurs:', e);
     }
 }
@@ -198,7 +201,7 @@ async function loadPredictions() {
             alertEl.classList.add('visible');
         }
     } catch (e) {
-        container.innerHTML = '<p class="loading-state">Erreur de connexion au serveur</p>';
+        container.innerHTML = '<p class="loading-state">Erreur de connexion au serveur<br><button class="retry-btn" onclick="loadPredictions()">Réessayer</button></p>';
         console.error('Erreur prédictions:', e);
     }
 }
@@ -232,11 +235,12 @@ async function loadBadge() {
 function renderTodayCard(el, data, label) {
     const VALID_COULEURS = ['BLEU', 'BLANC', 'ROUGE', 'UNKNOWN'];
     const couleur = VALID_COULEURS.includes(data.couleur) ? data.couleur : 'UNKNOWN';
+    const couleurLabel = couleur === 'UNKNOWN' ? 'Inconnu' : couleur;
     const dateStr = data.date ? formatDateFr(data.date) : '';
     el.innerHTML = `
         <h3>${escapeHtml(label)}</h3>
-        <div class="couleur-circle couleur-${couleur}">${couleur === 'UNKNOWN' ? '?' : couleur[0]}</div>
-        <div style="font-size:1.1rem;font-weight:600;margin:4px 0">${couleur === 'UNKNOWN' ? 'Inconnu' : escapeHtml(couleur)}</div>
+        <div class="couleur-circle couleur-${couleur}" role="img" aria-label="Couleur ${escapeHtml(couleurLabel)}">${couleur === 'UNKNOWN' ? '?' : couleur[0]}</div>
+        <div style="font-size:1.1rem;font-weight:600;margin:4px 0">${escapeHtml(couleurLabel)}</div>
         <div class="date-text">${escapeHtml(dateStr)}</div>
     `;
 }
@@ -288,7 +292,7 @@ function createForecastCard(pred) {
     card.innerHTML = `
         <div class="fc-day">${escapeHtml(dow)}</div>
         <div class="fc-date">${dayNum} ${escapeHtml(month)}</div>
-        <span class="fc-couleur ${couleur}">${escapeHtml(couleur)}</span>
+        <span class="fc-couleur ${couleur}" role="img" aria-label="Couleur prédite : ${escapeHtml(couleur)}">${escapeHtml(couleur)}</span>
         ${confirmedHtml}
         ${tempHtml}
         <div class="fc-confidence">${confidenceText}</div>
@@ -356,6 +360,7 @@ function showFormResult(el, type, message) {
     el.className = `form-result ${type}`;
     el.textContent = message;
     el.style.display = 'block';
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 // ================================================================
@@ -415,4 +420,89 @@ function escapeHtml(str) {
     const div = document.createElement('div');
     div.appendChild(document.createTextNode(str));
     return div.innerHTML;
+}
+
+// ================================================================
+// HAMBURGER MENU (mobile)
+// ================================================================
+
+function setupHamburger() {
+    const btn = document.getElementById('hamburger-btn');
+    const nav = document.getElementById('main-nav');
+    if (!btn || !nav) return;
+
+    btn.addEventListener('click', () => {
+        const open = nav.classList.toggle('open');
+        btn.setAttribute('aria-expanded', open);
+    });
+
+    // Close menu when clicking a nav link
+    nav.querySelectorAll('a').forEach(link => {
+        link.addEventListener('click', () => {
+            nav.classList.remove('open');
+            btn.setAttribute('aria-expanded', 'false');
+        });
+    });
+
+    // Close menu when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!btn.contains(e.target) && !nav.contains(e.target)) {
+            nav.classList.remove('open');
+            btn.setAttribute('aria-expanded', 'false');
+        }
+    });
+}
+
+// ================================================================
+// BACK TO TOP BUTTON
+// ================================================================
+
+function setupBackToTop() {
+    const btn = document.getElementById('back-to-top');
+    if (!btn) return;
+
+    window.addEventListener('scroll', () => {
+        if (window.scrollY > 400) {
+            btn.classList.add('visible');
+        } else {
+            btn.classList.remove('visible');
+        }
+    }, { passive: true });
+
+    btn.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+}
+
+// ================================================================
+// REAL-TIME PHONE VALIDATION
+// ================================================================
+
+function setupPhoneValidation() {
+    const phoneInput = document.getElementById('phone');
+    const feedback = document.getElementById('phone-feedback');
+    if (!phoneInput || !feedback) return;
+
+    phoneInput.addEventListener('input', () => {
+        const val = phoneInput.value;
+        if (!val || val.length < 2) {
+            feedback.textContent = '';
+            feedback.className = 'phone-feedback';
+            return;
+        }
+
+        if (/^\+33[0-9]{9}$/.test(val)) {
+            feedback.textContent = 'Format valide';
+            feedback.className = 'phone-feedback valid';
+        } else if (/^\+33/.test(val) && val.length < 12) {
+            feedback.textContent = `Encore ${12 - val.length} chiffre(s)`;
+            feedback.className = 'phone-feedback';
+        } else if (/^\+33/.test(val) && val.length > 12) {
+            feedback.textContent = 'Trop de chiffres';
+            feedback.className = 'phone-feedback invalid';
+        } else if (!val.startsWith('+33')) {
+            feedback.textContent = 'Doit commencer par +33';
+            feedback.className = 'phone-feedback invalid';
+        }
+    });
 }

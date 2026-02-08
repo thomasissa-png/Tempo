@@ -13,13 +13,19 @@
 </head>
 <body>
 
-<!-- Fix #10 : nav harmonisée avec le dashboard -->
+<a href="#main-content" class="skip-link">Aller au contenu principal</a>
+
 <header role="banner">
     <div class="container header-row">
         <a href="/" class="header-brand">
             <h1>TempoForecast</h1>
         </a>
-        <nav aria-label="Navigation principale">
+        <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu de navigation" aria-expanded="false" aria-controls="main-nav">
+            <span class="bar"></span>
+            <span class="bar"></span>
+            <span class="bar"></span>
+        </button>
+        <nav id="main-nav" aria-label="Navigation principale">
             <a href="/">Accueil</a>
             <a href="/#subscribe">Alertes SMS</a>
             <a href="/#comment-ca-marche">Comment ça marche ?</a>
@@ -28,7 +34,7 @@
     </div>
 </header>
 
-<main class="container" role="main" style="max-width:800px">
+<main id="main-content" class="container" role="main" style="max-width:800px">
 
     <!-- Fix #9 : classes CSS au lieu de styles inline -->
     <div class="legal-section">
@@ -151,6 +157,19 @@ document.getElementById('unsubscribe-form').addEventListener('submit', async (e)
         <p>TempoForecast &mdash; <a href="/">Retour au dashboard</a></p>
     </div>
 </footer>
+
+<script>
+// Hamburger menu toggle
+(function() {
+    const btn = document.getElementById('hamburger-btn');
+    const nav = document.getElementById('main-nav');
+    if (!btn || !nav) return;
+    btn.addEventListener('click', () => {
+        const open = nav.classList.toggle('open');
+        btn.setAttribute('aria-expanded', open);
+    });
+})();
+</script>
 
 </body>
 </html>

@@ -14,19 +14,26 @@
 </head>
 <body>
 
+<a href="#main-content" class="skip-link">Aller au contenu principal</a>
+
 <header role="banner">
     <div class="container header-row">
         <a href="/" class="header-brand">
             <h1>TempoForecast — Admin</h1>
         </a>
-        <nav aria-label="Navigation admin">
+        <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu de navigation" aria-expanded="false" aria-controls="main-nav">
+            <span class="bar"></span>
+            <span class="bar"></span>
+            <span class="bar"></span>
+        </button>
+        <nav id="main-nav" aria-label="Navigation admin">
             <a href="/">Dashboard public</a>
             <a href="/admin?auth=1" class="active" aria-current="page">Admin</a>
         </nav>
     </div>
 </header>
 
-<main class="container" role="main">
+<main id="main-content" class="container" role="main">
 
     <!-- Authentification -->
     <div style="margin:24px 0">
@@ -379,6 +386,17 @@ function escapeHtml(str) {
     div.appendChild(document.createTextNode(String(str)));
     return div.innerHTML;
 }
+
+// Hamburger menu toggle
+(function() {
+    const btn = document.getElementById('hamburger-btn');
+    const nav = document.getElementById('main-nav');
+    if (!btn || !nav) return;
+    btn.addEventListener('click', () => {
+        const open = nav.classList.toggle('open');
+        btn.setAttribute('aria-expanded', open);
+    });
+})();
 </script>
 
 </body>
