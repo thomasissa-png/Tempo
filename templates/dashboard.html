@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TempoForecast — Prévision Jours Tempo EDF</title>
-    <meta name="description" content="Prévisions des jours Tempo EDF (Bleu/Blanc/Rouge) avec alertes SMS. Anticipez les jours rouges et optimisez votre consommation.">
+    <meta name="description" content="Anticipez les jours Tempo EDF rouges et blancs jusqu'a 15 jours a l'avance. Alertes SMS gratuites pour les 900 000 abonnes Tempo.">
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
@@ -12,22 +12,45 @@
 <header>
     <div class="container">
         <h1>TempoForecast</h1>
-        <p class="subtitle">Prévision intelligente des jours Tempo EDF — Anticipez les jours rouges</p>
+        <p class="subtitle">Anticipez les jours rouges Tempo jusqu'a 15 jours a l'avance</p>
         <nav>
             <a href="/" class="active">Dashboard</a>
-            <a href="/mentions-legales">Mentions légales</a>
+            <a href="#subscribe">Alertes SMS</a>
+            <a href="#comment-ca-marche">Comment ca marche ?</a>
+            <a href="/mentions-legales">Mentions legales</a>
         </nav>
     </div>
 </header>
 
 <main class="container">
 
-    <!-- Badge de fiabilité -->
+    <!-- Bandeau d'accueil pour les nouveaux visiteurs -->
+    <section class="welcome-banner">
+        <div class="welcome-content">
+            <h2>Vous etes abonne Tempo EDF ?</h2>
+            <p>
+                Avec l'offre Tempo, le prix de l'electricite varie selon la couleur du jour :
+                <strong class="color-tag bleu">BLEU</strong> (prix bas, 300 jours),
+                <strong class="color-tag blanc">BLANC</strong> (prix moyen, 43 jours) ou
+                <strong class="color-tag rouge">ROUGE</strong> (prix tres eleve, 22 jours).
+                Le probleme ? EDF annonce la couleur du lendemain seulement la veille a 11h.
+            </p>
+            <p>
+                <strong>TempoForecast vous aide a anticiper.</strong>
+                Notre algorithme analyse la meteo, la pression budgetaire de la saison
+                et l'historique EDF pour predire la couleur des 15 prochains jours.
+                Resultat : vous pouvez planifier vos lessives, votre chauffage et vos recharges
+                bien a l'avance.
+            </p>
+        </div>
+    </section>
+
+    <!-- Badge de fiabilite -->
     <div class="badge-fiabilite">
         <div class="badge-icon">&#9889;</div>
         <div>
-            <div class="badge-value" id="badge-value">—</div>
-            <div class="badge-text" id="badge-text">Chargement de la précision...</div>
+            <div class="badge-value" id="badge-value">&mdash;</div>
+            <div class="badge-text" id="badge-text">Chargement de la precision...</div>
         </div>
     </div>
 
@@ -38,6 +61,8 @@
     </div>
 
     <!-- Aujourd'hui / Demain -->
+    <h2 class="section-title">Couleur Tempo officielle</h2>
+    <p class="section-desc">Donnees en temps reel depuis l'API EDF. La couleur de demain est annoncee chaque jour vers 11h.</p>
     <div class="today-section">
         <div class="today-card" id="today-card">
             <div class="loading-state"><div class="loader"></div></div>
@@ -48,85 +73,179 @@
     </div>
 
     <!-- Compteurs jours restants -->
+    <h2 class="section-title">Decompte de la saison en cours</h2>
+    <p class="section-desc">
+        La saison Tempo va du 1er septembre au 31 mai. EDF doit repartir exactement
+        22 jours rouges, 43 jours blancs et 208 jours bleus sur cette periode.
+        Voici combien il en reste :
+    </p>
     <div class="counters">
         <div class="counter-card rouge">
-            <div class="count" id="count-rouge">—</div>
+            <div class="count" id="count-rouge">&mdash;</div>
             <div class="label">Jours rouges restants</div>
+            <div class="counter-help">Prix x3 &mdash; les plus chers</div>
         </div>
         <div class="counter-card blanc">
-            <div class="count" id="count-blanc">—</div>
+            <div class="count" id="count-blanc">&mdash;</div>
             <div class="label">Jours blancs restants</div>
+            <div class="counter-help">Prix intermediaire</div>
         </div>
         <div class="counter-card bleu">
-            <div class="count" id="count-bleu">—</div>
+            <div class="count" id="count-bleu">&mdash;</div>
             <div class="label">Jours bleus restants</div>
+            <div class="counter-help">Prix le plus avantageux</div>
         </div>
     </div>
-    <p style="text-align:center;color:var(--text-secondary);font-size:0.85rem;" id="days-left"></p>
+    <p class="days-left-text" id="days-left"></p>
 
-    <!-- Prévisions 15 jours -->
-    <h2 class="section-title">Prévisions des 15 prochains jours</h2>
+    <!-- Previsions 15 jours -->
+    <h2 class="section-title">Nos previsions pour les 15 prochains jours</h2>
+    <p class="section-desc">
+        Chaque carte indique la couleur predite, la confiance de notre algorithme
+        et les temperatures attendues. Plus le jour est proche, plus la prevision est fiable.
+    </p>
     <div class="forecast-grid" id="forecast-grid">
-        <div class="loading-state"><div class="loader"></div><p>Chargement...</p></div>
+        <div class="loading-state"><div class="loader"></div><p>Chargement des previsions...</p></div>
     </div>
+
+    <!-- Legende rapide -->
+    <div class="legend">
+        <div class="legend-item"><span class="legend-dot" style="background:var(--bleu)"></span> <strong>BLEU</strong> &mdash; Tarif avantageux, consommez librement</div>
+        <div class="legend-item"><span class="legend-dot" style="background:var(--blanc)"></span> <strong>BLANC</strong> &mdash; Tarif moyen, consommation normale</div>
+        <div class="legend-item"><span class="legend-dot" style="background:var(--rouge)"></span> <strong>ROUGE</strong> &mdash; Tarif eleve, reportez vos usages gourmands</div>
+    </div>
+
+    <!-- Comment ca marche -->
+    <section class="how-it-works" id="comment-ca-marche">
+        <h2>Comment ca marche ?</h2>
+        <div class="steps-grid">
+            <div class="step-card">
+                <div class="step-number">1</div>
+                <h3>Analyse meteo</h3>
+                <p>Nous analysons les previsions de temperature et de pression atmospherique. Les jours rouges tombent presque toujours pendant les vagues de froid hivernales.</p>
+            </div>
+            <div class="step-card">
+                <div class="step-number">2</div>
+                <h3>Pression budgetaire</h3>
+                <p>EDF doit placer 22 jours rouges par saison. S'il en reste beaucoup a poser en fin de saison, la probabilite augmente mecaniquement.</p>
+            </div>
+            <div class="step-card">
+                <div class="step-number">3</div>
+                <h3>Apprentissage continu</h3>
+                <p>Notre algorithme compare chaque jour ses previsions aux couleurs reelles annoncees par EDF, et ajuste ses parametres chaque mois pour s'ameliorer.</p>
+            </div>
+        </div>
+    </section>
 
     <!-- Inscription alertes SMS -->
     <section class="subscribe-section" id="subscribe">
         <h2>Recevez les alertes Tempo par SMS</h2>
         <p class="sub-desc">
-            Soyez prévenu avant les jours rouges pour adapter votre consommation.
-            Gratuit, sans engagement. 1 SMS/jour maximum.
+            Ne vous faites plus surprendre par un jour rouge. Recevez un SMS d'alerte
+            la veille (ou jusqu'a 3 jours avant) quand notre algorithme detecte un risque
+            de jour rouge ou blanc.
+            <strong>Gratuit, sans engagement, 1 SMS par jour maximum.</strong>
+            Desinscription a tout moment.
         </p>
 
         <form id="subscribe-form">
             <div class="form-grid">
                 <div class="form-group">
-                    <label for="phone">Numéro de téléphone</label>
+                    <label for="phone">Votre numero de mobile</label>
                     <input type="tel" id="phone" name="phone" placeholder="+33612345678" required
                            pattern="\+33[0-9]{9}" title="Format: +33 suivi de 9 chiffres">
+                    <span class="form-hint">Format : +33 suivi de 9 chiffres (ex: +33612345678)</span>
                 </div>
                 <div class="form-group">
-                    <label for="seuil_rouge">Seuil d'alerte rouge</label>
+                    <label for="seuil_rouge">A partir de quelle probabilite vous alerter ?</label>
                     <select id="seuil_rouge" name="seuil_rouge">
-                        <option value="70">70% de probabilité</option>
-                        <option value="80">80% de probabilité</option>
-                        <option value="90">90% de probabilité (prudent)</option>
+                        <option value="70">70% &mdash; Alerte des que le risque est serieux</option>
+                        <option value="80">80% &mdash; Equilibre entre prudence et frequence</option>
+                        <option value="90">90% &mdash; Alertes rares, quasi certaines</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label for="delai">Délai d'alerte</label>
+                    <label for="delai">Combien de temps avant le jour J ?</label>
                     <select id="delai" name="delai">
-                        <option value="1">J-1 (la veille)</option>
-                        <option value="2">J-2 (2 jours avant)</option>
-                        <option value="3">J-3 (3 jours avant)</option>
+                        <option value="1">J-1 &mdash; La veille (le plus fiable)</option>
+                        <option value="2">J-2 &mdash; 2 jours avant</option>
+                        <option value="3">J-3 &mdash; 3 jours avant (pour mieux planifier)</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>&nbsp;</label>
+                    <label>Options supplementaires</label>
                     <div class="form-checkbox">
                         <input type="checkbox" id="alerte_blanc" name="alerte_blanc" value="true">
-                        <label for="alerte_blanc">Alertes jours blancs aussi</label>
+                        <label for="alerte_blanc">M'alerter aussi pour les jours blancs</label>
                     </div>
                     <div class="form-checkbox" style="margin-top:8px">
                         <input type="checkbox" id="recap_hebdo" name="recap_hebdo" value="true">
-                        <label for="recap_hebdo">Récapitulatif hebdomadaire (dimanche)</label>
+                        <label for="recap_hebdo">Recap de la semaine a venir chaque dimanche soir</label>
                     </div>
                 </div>
             </div>
-            <button type="submit" class="btn">S'inscrire aux alertes</button>
+            <button type="submit" class="btn">S'inscrire gratuitement</button>
+            <p class="form-legal">
+                Votre numero est chiffre et stocke de maniere securisee. Nous ne le partageons avec personne.
+                <a href="/mentions-legales">En savoir plus (RGPD)</a>
+            </p>
         </form>
 
         <div id="form-result" class="form-result"></div>
+    </section>
+
+    <!-- FAQ rapide -->
+    <section class="faq-section">
+        <h2 class="section-title">Questions frequentes</h2>
+        <div class="faq-list">
+            <details class="faq-item">
+                <summary>C'est quoi l'offre Tempo EDF ?</summary>
+                <p>L'offre Tempo est un contrat d'electricite EDF ou le prix du kWh varie selon la couleur du jour.
+                    Il y a 3 couleurs : <strong>Bleu</strong> (300 jours/an, tarif tres bas),
+                    <strong>Blanc</strong> (43 jours/an, tarif moyen) et
+                    <strong>Rouge</strong> (22 jours/an, tarif tres eleve).
+                    Cette offre est avantageuse si vous pouvez adapter votre consommation les jours rouges.</p>
+            </details>
+            <details class="faq-item">
+                <summary>Comment sont calcules les jours rouges ?</summary>
+                <p>EDF choisit les 22 jours rouges parmi les jours les plus froids de l'hiver,
+                    quand la demande en electricite est la plus forte. C'est pourquoi notre algorithme
+                    se base principalement sur les previsions de temperature et la pression atmospherique.</p>
+            </details>
+            <details class="faq-item">
+                <summary>Quelle est la fiabilite de vos previsions ?</summary>
+                <p>Notre precision depend de l'horizon : les previsions a J-1 (lendemain) sont les plus fiables.
+                    Au-dela de J-3, les previsions meteo deviennent moins precises, donc nos estimations aussi.
+                    Le badge de fiabilite en haut de page affiche notre precision reelle sur les 30 derniers jours.</p>
+            </details>
+            <details class="faq-item">
+                <summary>Que faire lors d'un jour rouge ?</summary>
+                <p>Reportez les usages gourmands en electricite : lave-linge, seche-linge, lave-vaisselle,
+                    four electrique, recharge de vehicule. Baissez le chauffage electrique si possible.
+                    Un jour rouge bien gere peut vous faire economiser jusqu'a 10&euro; par rapport a un jour
+                    de consommation normale.</p>
+            </details>
+            <details class="faq-item">
+                <summary>Est-ce que ce service est officiel EDF ?</summary>
+                <p>Non. TempoForecast est un service independant et gratuit. Nous utilisons les donnees
+                    publiques de l'API Tempo et les previsions meteo pour faire nos propres estimations.
+                    Seule la couleur annoncee par EDF (la veille a 11h) fait foi.</p>
+            </details>
+        </div>
     </section>
 
 </main>
 
 <footer>
     <div class="container">
-        <p>TempoForecast &mdash; Prévisions non-officielles basées sur les données météo et l'historique EDF.</p>
+        <p><strong>TempoForecast</strong> &mdash; Service independant de prevision des jours Tempo, non affilie a EDF.</p>
         <p style="margin-top:4px">
-            Données : <a href="https://www.api-couleur-tempo.fr/" target="_blank" rel="noopener">API Tempo</a> &middot;
-            <a href="/mentions-legales">Mentions légales & RGPD</a>
+            Donnees : <a href="https://www.api-couleur-tempo.fr/" target="_blank" rel="noopener">API Tempo</a> &middot;
+            Meteo : OpenWeatherMap &middot;
+            <a href="/mentions-legales">Mentions legales & RGPD</a>
+        </p>
+        <p style="margin-top:8px;font-size:0.8rem;">
+            Seule la couleur officielle annoncee par EDF fait foi. Nos previsions sont indicatives et ne constituent pas un engagement.
         </p>
     </div>
 </footer>

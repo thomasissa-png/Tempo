@@ -410,6 +410,219 @@ nav a:hover, nav a.active {
     border: 1px solid #EF9A9A;
 }
 
+/* === Bandeau d'accueil === */
+.welcome-banner {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 28px 32px;
+    margin: 24px 0;
+    box-shadow: var(--shadow);
+    border-left: 5px solid var(--bleu);
+}
+
+.welcome-banner h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: var(--text);
+}
+
+.welcome-banner p {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+    margin-bottom: 10px;
+}
+
+.welcome-banner p:last-child { margin-bottom: 0; }
+
+.welcome-banner strong {
+    color: var(--text);
+}
+
+.color-tag {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    color: white;
+    vertical-align: middle;
+}
+
+.color-tag.bleu  { background: var(--bleu); }
+.color-tag.blanc { background: var(--blanc); }
+.color-tag.rouge { background: var(--rouge); }
+
+/* === Descriptions de section === */
+.section-desc {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin: -8px 0 16px;
+    line-height: 1.6;
+}
+
+/* === Aide sous les compteurs === */
+.counter-help {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 4px;
+    font-style: italic;
+}
+
+.days-left-text {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    margin-top: 4px;
+}
+
+/* === Legende couleurs === */
+.legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin: 20px 0 8px;
+    padding: 16px 20px;
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow);
+}
+
+.legend-item {
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* === Comment ca marche === */
+.how-it-works {
+    margin: 40px 0 32px;
+}
+
+.how-it-works h2 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 20px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--border);
+}
+
+.steps-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+.step-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 24px;
+    box-shadow: var(--shadow);
+    text-align: center;
+}
+
+.step-number {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #1565C0, #0D47A1);
+    color: white;
+    font-weight: 700;
+    font-size: 1.1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 12px;
+}
+
+.step-card h3 {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--text);
+}
+
+.step-card p {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+/* === FAQ === */
+.faq-section {
+    margin: 32px 0;
+}
+
+.faq-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.faq-item {
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+}
+
+.faq-item summary {
+    padding: 16px 20px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.faq-item summary::after {
+    content: '+';
+    font-size: 1.2rem;
+    color: var(--text-secondary);
+    transition: transform 0.2s;
+}
+
+.faq-item[open] summary::after {
+    content: '-';
+}
+
+.faq-item summary::-webkit-details-marker { display: none; }
+
+.faq-item p {
+    padding: 0 20px 16px;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+}
+
+/* === Formulaire: hints et legal === */
+.form-hint {
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+}
+
+.form-legal {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-top: 12px;
+    line-height: 1.5;
+}
+
+.form-legal a {
+    color: var(--bleu);
+    text-decoration: none;
+}
+
 /* === Footer === */
 footer {
     text-align: center;
@@ -452,7 +665,10 @@ footer a {
     .counters { grid-template-columns: 1fr; }
     .form-grid { grid-template-columns: 1fr; }
     .forecast-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
+    .steps-grid { grid-template-columns: 1fr; }
+    .legend { flex-direction: column; gap: 10px; }
     header h1 { font-size: 1.4rem; }
+    .welcome-banner { padding: 20px; }
 }
 
 @media (max-width: 480px) {
