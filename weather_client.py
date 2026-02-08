@@ -168,9 +168,9 @@ def _parse_openmeteo_daily(data: dict) -> list[dict]:
             "temp_min": round(t_min, 1),
             "temp_max": round(t_max, 1),
             "temp_moy": t_moy,
-            "humidity": humidity,
+            "humidity": humidity,  # ESTIMEE depuis WMO code (non fournie par Open-Meteo daily)
             "wind_speed": round(wind, 1),
-            "pressure": 1015,  # Open-Meteo daily n'inclut pas la pression MSL
+            "pressure": None,  # NON DISPONIBLE dans Open-Meteo daily — non utilise dans scoring
             "description": _WMO_DESCRIPTIONS.get(wmo, f"Code WMO {wmo}"),
             "precipitation": round(precip, 1),
             "weather_code": wmo,
@@ -254,9 +254,9 @@ def _merge_city_forecasts(city_forecasts: dict[str, list[dict]]) -> list[dict]:
             "temp_min": round(temp_min_weighted / total_weight, 1),
             "temp_max": round(temp_max_weighted / total_weight, 1),
             "temp_moy": round(temp_moy_weighted / total_weight, 1),
-            "humidity": round(humidity_weighted / total_weight, 1),
+            "humidity": round(humidity_weighted / total_weight, 1),  # Estimee
             "wind_speed": round(wind_weighted / total_weight, 1),
-            "pressure": 1015,
+            "pressure": None,  # Non disponible via Open-Meteo daily
             "description": "moyenne nationale ponderee",
             "city_details": city_details,
         })
@@ -332,7 +332,7 @@ def cache_weather(forecasts: list[dict]):
                     wind_speed, description, fetched_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (f["date"], f["temp_min"], f["temp_max"], f["temp_moy"],
-                 f.get("pressure", 1013), f.get("humidity", 50),
+                 f.get("pressure"), f.get("humidity", 50),
                  f.get("wind_speed", 10), f.get("description", ""), now),
             )
         conn.commit()

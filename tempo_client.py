@@ -69,24 +69,30 @@ def _parse_response(data: dict) -> dict | None:
 
 # === Stockage en base ===
 
-def store_actual(date_str: str, couleur: str, overwrite: bool = True):
-    """Enregistre une couleur réelle confirmée dans la table actuals.
+def store_actual(date_str: str, couleur: str, overwrite: bool = True,
+                 synthetic: bool = False):
+    """Enregistre une couleur dans la table actuals.
 
     Args:
         overwrite: Si True (défaut), utilise INSERT OR REPLACE (données officielles).
                    Si False, utilise INSERT OR IGNORE (backfill/seed — ne jamais
                    écraser une donnée existante).
+        synthetic: Si True, marque la donnée comme synthétique (estimée par
+                   seed_from_remaining, pas confirmée par l'API EDF).
+                   Les actuals synthétiques sont EXCLUS de l'évaluation de
+                   performance et de l'entraînement ML.
     """
     conn = get_db()
     try:
         mode = "INSERT OR REPLACE" if overwrite else "INSERT OR IGNORE"
         conn.execute(
-            f"""{mode} INTO actuals (date, couleur_reelle, timestamp_confirmation)
-               VALUES (?, ?, ?)""",
-            (date_str, couleur, datetime.now().isoformat()),
+            f"""{mode} INTO actuals (date, couleur_reelle, synthetic, timestamp_confirmation)
+               VALUES (?, ?, ?, ?)""",
+            (date_str, couleur, 1 if synthetic else 0, datetime.now().isoformat()),
         )
         conn.commit()
-        logger.info(f"[Tempo] Couleur réelle enregistrée : {date_str} = {couleur}")
+        tag = " [SYNTHETIQUE]" if synthetic else ""
+        logger.info(f"[Tempo] Couleur enregistrée : {date_str} = {couleur}{tag}")
     finally:
         conn.close()
 
@@ -174,7 +180,7 @@ def seed_from_remaining(remaining_rouge: int, remaining_blanc: int):
     while current <= yesterday and idx < len(colors_to_inject):
         if current.isoformat() not in existing_dates:
             couleur = colors_to_inject[idx]
-            store_actual(current.isoformat(), couleur, overwrite=False)
+            store_actual(current.isoformat(), couleur, overwrite=False, synthetic=True)
             injected[couleur] += 1
             existing_dates.add(current.isoformat())
             idx += 1
@@ -183,7 +189,7 @@ def seed_from_remaining(remaining_rouge: int, remaining_blanc: int):
     # Remplir le reste des jours manquants en BLEU
     while current <= yesterday:
         if current.isoformat() not in existing_dates:
-            store_actual(current.isoformat(), "BLEU", overwrite=False)
+            store_actual(current.isoformat(), "BLEU", overwrite=False, synthetic=True)
             injected["BLEU"] += 1
         current += timedelta(days=1)
 

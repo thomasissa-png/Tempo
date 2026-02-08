@@ -290,6 +290,8 @@ def recalculate_weights():
             return None
 
         # Fix ML-2 : filtrer sur jours_avance <= 5 pour horizons fiables
+        # Fix data-integrity : exclure les actuals synthétiques (seed_from_remaining)
+        # qui ne sont PAS des couleurs confirmées par l'API EDF
         rows = conn.execute(
             """SELECT p.score_temperature, p.score_budget, p.score_weekday,
                       p.score_gradient, p.score_clustering, p.score_rte,
@@ -297,6 +299,7 @@ def recalculate_weights():
                FROM predictions p
                JOIN actuals a ON p.date = a.date
                WHERE p.horizon IN ('J-1','J-2','J-3','J-4','J-5','J0')
+                 AND a.synthetic = 0
                  AND (p.score_temperature + p.score_budget + p.score_weekday
                       + p.score_gradient + p.score_clustering + p.score_rte) > 0
                ORDER BY p.date DESC

@@ -302,8 +302,10 @@ def _load_future_actuals() -> dict[str, str]:
     try:
         today = date.today()
         tomorrow = (today + timedelta(days=1)).isoformat()
+        # Fix data-integrity : exclure les actuals synthétiques (seed)
         rows = conn.execute(
-            "SELECT date, couleur_reelle FROM actuals WHERE date >= ? AND date <= ?",
+            """SELECT date, couleur_reelle FROM actuals
+               WHERE date >= ? AND date <= ? AND synthetic = 0""",
             (today.isoformat(), tomorrow)
         ).fetchall()
         return {row["date"]: row["couleur_reelle"] for row in rows}

@@ -120,6 +120,7 @@ def init_db():
             id                      INTEGER PRIMARY KEY AUTOINCREMENT,
             date                    TEXT    NOT NULL UNIQUE,
             couleur_reelle          TEXT    NOT NULL CHECK(couleur_reelle IN ('BLEU','BLANC','ROUGE')),
+            synthetic               INTEGER DEFAULT 0,
             timestamp_confirmation  TEXT    NOT NULL
         );
 
@@ -306,6 +307,21 @@ def init_db():
         conn.execute("PRAGMA user_version = 5")
         conn.commit()
         logger.info("Migration v5 appliquee (UNIQUE performance, model_version)")
+
+    if version < 6:
+        # Migration v6 — Marquage des actuals synthétiques
+        # Les actuals injectés par seed_from_remaining() ne sont pas des données EDF
+        # et ne doivent PAS servir à évaluer la performance ni entraîner le ML.
+        try:
+            conn.execute(
+                "ALTER TABLE actuals ADD COLUMN synthetic INTEGER DEFAULT 0"
+            )
+        except sqlite3.OperationalError:
+            pass  # Colonne existe déjà
+
+        conn.execute("PRAGMA user_version = 6")
+        conn.commit()
+        logger.info("Migration v6 appliquee (colonne synthetic sur actuals)")
 
     # Poids initiaux si vide
     existing = conn.execute("SELECT COUNT(*) as c FROM weights_history").fetchone()
