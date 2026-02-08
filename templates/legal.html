@@ -3,17 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TempoForecast — Mentions légales</title>
+    <title>Mentions légales et RGPD — TempoForecast</title>
+    <!-- Fix #S6 : meta description pour la page légale -->
+    <meta name="description" content="Mentions légales, politique de confidentialité et RGPD de TempoForecast. Découvrez comment vos données sont protégées et comment vous désinscrire des alertes SMS Tempo.">
+    <link rel="canonical" href="https://tempoforecast.fr/mentions-legales">
+    <link rel="alternate" hreflang="fr" href="https://tempoforecast.fr/mentions-legales">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%232196F3'/><path d='M50 5A45 45 0 0 1 95 50H5A45 45 0 0 1 50 5z' fill='%23F44336'/><circle cx='50' cy='50' r='20' fill='white'/></svg>" type="image/svg+xml">
     <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
 
+<!-- Fix #10 : nav harmonisée avec le dashboard -->
 <header>
-    <div class="container">
-        <h1>TempoForecast</h1>
-        <p class="subtitle">Mentions légales et politique de confidentialité</p>
+    <div class="container header-row">
+        <a href="/" class="header-brand">
+            <h1>TempoForecast</h1>
+        </a>
         <nav>
-            <a href="/">Dashboard</a>
+            <a href="/">Accueil</a>
+            <a href="/#subscribe">Alertes SMS</a>
+            <a href="/#comment-ca-marche">Comment ça marche ?</a>
             <a href="/mentions-legales" class="active">Mentions légales</a>
         </nav>
     </div>
@@ -21,9 +30,10 @@
 
 <main class="container" style="max-width:800px">
 
-    <div class="admin-card" style="margin:32px 0">
+    <!-- Fix #9 : classes CSS au lieu de styles inline -->
+    <div class="legal-section">
         <h3>1. Informations générales</h3>
-        <p style="margin-top:8px;font-size:0.9rem;line-height:1.7;color:var(--text-secondary)">
+        <p class="legal-text">
             TempoForecast est un service indépendant de prévision des jours Tempo EDF.
             Ce service n'est <strong>pas affilié à EDF</strong> ni à aucune entité du groupe EDF.
             Les prévisions sont fournies à titre indicatif uniquement et ne constituent pas
@@ -31,9 +41,9 @@
         </p>
     </div>
 
-    <div class="admin-card" style="margin:24px 0">
+    <div class="legal-section">
         <h3>2. Données personnelles et RGPD</h3>
-        <p style="margin-top:8px;font-size:0.9rem;line-height:1.7;color:var(--text-secondary)">
+        <p class="legal-text">
             <strong>Données collectées :</strong> Numéro de téléphone, stocké sous deux formes :
             un hash SHA-256 (irréversible, pour la déduplication) et un chiffrement Fernet AES-128
             (réversible, pour l'envoi des SMS). Les 4 derniers chiffres sont conservés en clair
@@ -49,9 +59,9 @@
         </p>
     </div>
 
-    <div class="admin-card" style="margin:24px 0">
+    <div class="legal-section">
         <h3>3. Politique SMS</h3>
-        <p style="margin-top:8px;font-size:0.9rem;line-height:1.7;color:var(--text-secondary)">
+        <p class="legal-text">
             <strong>Fréquence :</strong> Maximum 1 alerte par jour. Le récapitulatif hebdomadaire
             (optionnel) est envoyé le dimanche soir.<br><br>
             <strong>Opt-out :</strong> Répondez STOP à n'importe quel SMS pour vous désinscrire
@@ -61,9 +71,9 @@
         </p>
     </div>
 
-    <div class="admin-card" style="margin:24px 0">
+    <div class="legal-section">
         <h3>4. Sources de données</h3>
-        <p style="margin-top:8px;font-size:0.9rem;line-height:1.7;color:var(--text-secondary)">
+        <p class="legal-text">
             <strong>Couleurs Tempo :</strong> API officielle
             <a href="https://www.api-couleur-tempo.fr/" target="_blank" rel="noopener">api-couleur-tempo.fr</a><br><br>
             <strong>Météo :</strong> OpenWeatherMap (prévisions à 5-16 jours)<br><br>
@@ -73,9 +83,9 @@
         </p>
     </div>
 
-    <div class="admin-card" style="margin:24px 0">
+    <div class="legal-section">
         <h3>5. Limitation de responsabilité</h3>
-        <p style="margin-top:8px;font-size:0.9rem;line-height:1.7;color:var(--text-secondary)">
+        <p class="legal-text">
             Les prévisions fournies par TempoForecast sont des estimations statistiques.
             Elles ne garantissent pas la couleur réelle qui sera annoncée par EDF.
             TempoForecast ne saurait être tenu responsable des décisions prises
@@ -83,20 +93,17 @@
         </p>
     </div>
 
-    <div class="admin-card" style="margin:24px 0">
+    <div class="legal-section">
         <h3>6. Désinscription</h3>
-        <p style="margin-top:8px;font-size:0.9rem;line-height:1.7;color:var(--text-secondary)">
+        <p class="legal-text">
             Pour vous désinscrire des alertes SMS :
         </p>
-        <form id="unsubscribe-form" style="margin-top:12px">
-            <div style="display:flex;gap:8px;max-width:400px">
-                <input type="tel" id="unsub-phone" name="phone" placeholder="+33612345678" required
-                       pattern="\+33[0-9]{9}" title="Format: +33 suivi de 9 chiffres"
-                       style="flex:1;padding:10px;border:1px solid var(--border);border-radius:var(--radius-sm)">
-                <button type="submit" class="task-btn" style="background:var(--rouge)">Se désinscrire</button>
-            </div>
+        <form id="unsubscribe-form" class="unsub-form">
+            <input type="tel" id="unsub-phone" name="phone" placeholder="+33612345678" required
+                   pattern="\+33[0-9]{9}" title="Format: +33 suivi de 9 chiffres">
+            <button type="submit" class="task-btn" style="background:var(--rouge)">Se désinscrire</button>
         </form>
-        <div id="unsub-result" style="margin-top:12px;font-size:0.9rem;display:none;padding:12px;border-radius:8px"></div>
+        <div id="unsub-result" class="unsub-result"></div>
     </div>
 
 <script>

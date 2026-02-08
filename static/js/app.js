@@ -1,5 +1,5 @@
 /**
- * TempoForecast — JavaScript principal du dashboard.
+ * TempoForecast — JavaScript principal du dashboard v2.
  *
  * Charge les données depuis les endpoints FastAPI et anime le dashboard.
  */
@@ -19,6 +19,8 @@ document.addEventListener('DOMContentLoaded', () => {
     loadPredictions();
     loadBadge();
     setupSubscribeForm();
+    setupWelcomeBanner();
+    setupAlertDismiss();
 });
 
 // ================================================================
@@ -58,11 +60,18 @@ async function loadTomorrow() {
     }
 }
 
+// Fix #12 : état vide pour les compteurs
 async function loadRemaining() {
     try {
         const resp = await fetch('/api/remaining');
         const data = await resp.json();
-        if (data.status !== 'ok') return;
+        if (data.status !== 'ok') {
+            setText('count-rouge', '?');
+            setText('count-blanc', '?');
+            setText('count-bleu', '?');
+            setText('days-left', 'Données temporairement indisponibles');
+            return;
+        }
 
         const r = data.remaining;
         setText('count-rouge', r.ROUGE);
@@ -70,44 +79,94 @@ async function loadRemaining() {
         setText('count-bleu', r.BLEU);
         setText('days-left', `${data.days_left_in_season} jours restants dans la saison`);
     } catch (e) {
+        setText('count-rouge', '?');
+        setText('count-blanc', '?');
+        setText('count-bleu', '?');
+        setText('days-left', 'Erreur de connexion — réessayez plus tard');
         console.error('Erreur chargement compteurs:', e);
     }
 }
 
+// Fix #6 : prévisions groupées par horizon
 async function loadPredictions() {
-    const grid = document.getElementById('forecast-grid');
-    if (!grid) return;
-    grid.innerHTML = '<div class="loading-state"><div class="loader"></div><p>Chargement des prévisions...</p></div>';
+    const container = document.getElementById('forecast-container');
+    if (!container) return;
+    container.innerHTML = '<div class="loading-state"><div class="loader"></div><p>Chargement des prévisions...</p></div>';
 
     try {
         const resp = await fetch('/api/predictions');
         const data = await resp.json();
         if (data.status !== 'ok') {
-            grid.innerHTML = '<p class="loading-state">Erreur lors du chargement</p>';
+            container.innerHTML = '<p class="loading-state">Erreur lors du chargement</p>';
             return;
         }
 
-        grid.innerHTML = '';
+        container.innerHTML = '';
         const alertEl = document.getElementById('alert-rouge');
         let hasRouge = false;
 
-        data.predictions.forEach(pred => {
-            const card = createForecastCard(pred);
-            grid.appendChild(card);
-            if (pred.couleur_predite === 'ROUGE') hasRouge = true;
-        });
+        const preds = data.predictions;
 
-        // Afficher alerte rouge si nécessaire
-        if (alertEl && hasRouge) {
-            const rougePreds = data.predictions.filter(p => p.couleur_predite === 'ROUGE');
+        // Grouper les prédictions par horizon
+        const groupPrimary = preds.slice(0, 3);   // J+1 à J+3 : fiables
+        const groupMedium  = preds.slice(3, 7);    // J+4 à J+7 : moyennes
+        const groupFar     = preds.slice(7);        // J+8 à J+15 : indicatives
+
+        if (groupPrimary.length > 0) {
+            const label1 = document.createElement('div');
+            label1.className = 'forecast-group-label';
+            label1.textContent = 'Prévisions fiables (J+1 à J+3)';
+            container.appendChild(label1);
+
+            const grid1 = document.createElement('div');
+            grid1.className = 'forecast-grid forecast-grid-primary';
+            groupPrimary.forEach(pred => {
+                grid1.appendChild(createForecastCard(pred));
+                if (pred.couleur_predite === 'ROUGE') hasRouge = true;
+            });
+            container.appendChild(grid1);
+        }
+
+        if (groupMedium.length > 0) {
+            const label2 = document.createElement('div');
+            label2.className = 'forecast-group-label';
+            label2.textContent = 'Prévisions moyennes (J+4 à J+7)';
+            container.appendChild(label2);
+
+            const grid2 = document.createElement('div');
+            grid2.className = 'forecast-grid';
+            groupMedium.forEach(pred => {
+                grid2.appendChild(createForecastCard(pred));
+                if (pred.couleur_predite === 'ROUGE') hasRouge = true;
+            });
+            container.appendChild(grid2);
+        }
+
+        if (groupFar.length > 0) {
+            const label3 = document.createElement('div');
+            label3.className = 'forecast-group-label';
+            label3.textContent = 'Tendances indicatives (J+8 à J+15)';
+            container.appendChild(label3);
+
+            const grid3 = document.createElement('div');
+            grid3.className = 'forecast-grid';
+            groupFar.forEach(pred => {
+                grid3.appendChild(createForecastCard(pred));
+                if (pred.couleur_predite === 'ROUGE') hasRouge = true;
+            });
+            container.appendChild(grid3);
+        }
+
+        // Afficher alerte rouge si nécessaire (sauf si déjà fermée cette session)
+        if (alertEl && hasRouge && !sessionStorage.getItem('alert-rouge-dismissed')) {
+            const rougePreds = preds.filter(p => p.couleur_predite === 'ROUGE');
             const first = rougePreds[0];
-            const d = new Date(first.date);
             alertEl.querySelector('.alert-text').textContent =
                 `Jour ROUGE prévu le ${formatDateFr(first.date)} ! Score de risque: ${first.score_risque}. Anticipez votre consommation.`;
             alertEl.classList.add('visible');
         }
     } catch (e) {
-        grid.innerHTML = '<p class="loading-state">Erreur de connexion au serveur</p>';
+        container.innerHTML = '<p class="loading-state">Erreur de connexion au serveur</p>';
         console.error('Erreur prédictions:', e);
     }
 }
@@ -187,6 +246,7 @@ function createForecastCard(pred) {
 // FORMULAIRE INSCRIPTION SMS
 // ================================================================
 
+// Fix #8 : état de chargement sur le bouton
 function setupSubscribeForm() {
     const form = document.getElementById('subscribe-form');
     if (!form) return;
@@ -194,6 +254,7 @@ function setupSubscribeForm() {
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
         const resultEl = document.getElementById('form-result');
+        const btn = document.getElementById('subscribe-btn');
         resultEl.className = 'form-result';
         resultEl.style.display = 'none';
 
@@ -206,6 +267,11 @@ function setupSubscribeForm() {
             return;
         }
 
+        // Désactiver le bouton + spinner
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="btn-spinner"></span> Inscription en cours...';
+
         try {
             const resp = await fetch('/api/subscribe', {
                 method: 'POST',
@@ -217,10 +283,14 @@ function setupSubscribeForm() {
                 showFormResult(resultEl, 'success', data.message || 'Inscription réussie !');
                 form.reset();
             } else {
-                showFormResult(resultEl, 'error', data.detail || 'Erreur lors de l\'inscription');
+                showFormResult(resultEl, 'error', data.detail || "Erreur lors de l'inscription");
             }
         } catch {
             showFormResult(resultEl, 'error', 'Erreur de connexion au serveur');
+        } finally {
+            // Réactiver le bouton
+            btn.disabled = false;
+            btn.innerHTML = originalText;
         }
     });
 }
@@ -229,6 +299,42 @@ function showFormResult(el, type, message) {
     el.className = `form-result ${type}`;
     el.textContent = message;
     el.style.display = 'block';
+}
+
+// ================================================================
+// WELCOME BANNER (collapsible, remember via localStorage)
+// ================================================================
+
+function setupWelcomeBanner() {
+    const banner = document.getElementById('welcome-banner');
+    const closeBtn = document.getElementById('welcome-close');
+    if (!banner || !closeBtn) return;
+
+    // Cacher si déjà fermé
+    if (localStorage.getItem('welcome-dismissed')) {
+        banner.classList.add('hidden');
+        return;
+    }
+
+    closeBtn.addEventListener('click', () => {
+        banner.classList.add('hidden');
+        localStorage.setItem('welcome-dismissed', '1');
+    });
+}
+
+// ================================================================
+// Fix #7 : ALERTE ROUGE DISMISSABLE (sessionStorage)
+// ================================================================
+
+function setupAlertDismiss() {
+    const alertEl = document.getElementById('alert-rouge');
+    const closeBtn = document.getElementById('alert-close');
+    if (!alertEl || !closeBtn) return;
+
+    closeBtn.addEventListener('click', () => {
+        alertEl.classList.remove('visible');
+        sessionStorage.setItem('alert-rouge-dismissed', '1');
+    });
 }
 
 // ================================================================
@@ -246,7 +352,7 @@ function setText(id, text) {
     if (el) el.textContent = text;
 }
 
-// Fix #15 : Protection XSS — échapper le HTML dans les données injectées
+// Protection XSS — échapper le HTML dans les données injectées
 function escapeHtml(str) {
     if (!str) return '';
     const div = document.createElement('div');

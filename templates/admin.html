@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TempoForecast — Admin / Performance</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%232196F3'/><path d='M50 5A45 45 0 0 1 95 50H5A45 45 0 0 1 50 5z' fill='%23F44336'/><circle cx='50' cy='50' r='20' fill='white'/></svg>" type="image/svg+xml">
     <link rel="stylesheet" href="/static/css/style.css">
+    <!-- Fix #S8 : preconnect pour CDN -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"
             integrity="sha384-e1kSEwCaVTZnKiRDkBBbMLR5cMrqYOBNMu90RCMBB4RnXQ+LiY7SAFnFEeYz8dT"
             crossorigin="anonymous"></script>
@@ -12,12 +15,13 @@
 <body>
 
 <header>
-    <div class="container">
-        <h1>TempoForecast — Admin</h1>
-        <p class="subtitle">Dashboard de performance et gestion</p>
+    <div class="container header-row">
+        <a href="/" class="header-brand">
+            <h1>TempoForecast — Admin</h1>
+        </a>
         <nav>
             <a href="/">Dashboard public</a>
-            <a href="/admin" class="active">Admin</a>
+            <a href="/admin?auth=1" class="active">Admin</a>
         </nav>
     </div>
 </header>
@@ -115,7 +119,7 @@
             <div id="user-stats">Chargement...</div>
         </div>
 
-        <!-- Export CSV -->
+        <!-- Fix #11 : Export CSV avec tous les 12 mois -->
         <div class="admin-card" style="margin-bottom:24px">
             <h3>Export CSV des performances</h3>
             <div style="display:flex;gap:8px;align-items:center">
@@ -125,6 +129,9 @@
                     <option value="3">Mars</option>
                     <option value="4">Avril</option>
                     <option value="5">Mai</option>
+                    <option value="6">Juin</option>
+                    <option value="7">Juillet</option>
+                    <option value="8">Août</option>
                     <option value="9">Septembre</option>
                     <option value="10">Octobre</option>
                     <option value="11">Novembre</option>
@@ -147,7 +154,6 @@
 
 <script>
 let adminPassword = '';
-// Fix #23 : stocker les instances Chart pour les detruire avant recréation
 let chartHorizon = null;
 let chartWeights = null;
 
@@ -240,7 +246,6 @@ function renderHorizonChart(horizonData) {
     if (!ctx) return;
     if (horizonData.length === 0) return;
 
-    // Fix #23 : detruire l'ancien graphique avant d'en creer un nouveau
     if (chartHorizon) { chartHorizon.destroy(); }
     chartHorizon = new Chart(ctx, {
         type: 'bar',
@@ -273,9 +278,7 @@ function renderWeightsChart(weights) {
     const labels = Object.keys(weights).map(k => k.replace('_', ' '));
     const values = Object.values(weights).map(v => v * 100);
 
-    // Fix #23 : detruire l'ancien graphique avant d'en creer un nouveau
     if (chartWeights) { chartWeights.destroy(); }
-    // Fix #22 : 6 couleurs pour les 6 poids
     chartWeights = new Chart(ctx, {
         type: 'doughnut',
         data: {
@@ -361,7 +364,6 @@ async function downloadCsv() {
     }
 }
 
-// Fix #15 : échapper le HTML
 function escapeHtml(str) {
     if (!str) return '';
     const div = document.createElement('div');

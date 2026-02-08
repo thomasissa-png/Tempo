@@ -201,6 +201,43 @@ async def page_legal(request: Request):
     return templates.TemplateResponse("legal.html", {"request": request})
 
 
+# Fix #S7 : robots.txt et sitemap.xml pour le SEO
+@app.get("/robots.txt", response_class=PlainTextResponse)
+async def robots_txt():
+    """Robots.txt pour les moteurs de recherche."""
+    return (
+        "User-agent: *\n"
+        "Allow: /\n"
+        "Disallow: /admin\n"
+        "Disallow: /api/\n"
+        "\n"
+        "Sitemap: https://tempoforecast.fr/sitemap.xml\n"
+    )
+
+
+@app.get("/sitemap.xml", response_class=PlainTextResponse)
+async def sitemap_xml():
+    """Sitemap XML dynamique."""
+    today = date.today().isoformat()
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        "  <url>\n"
+        "    <loc>https://tempoforecast.fr/</loc>\n"
+        f"    <lastmod>{today}</lastmod>\n"
+        "    <changefreq>daily</changefreq>\n"
+        "    <priority>1.0</priority>\n"
+        "  </url>\n"
+        "  <url>\n"
+        "    <loc>https://tempoforecast.fr/mentions-legales</loc>\n"
+        "    <changefreq>monthly</changefreq>\n"
+        "    <priority>0.3</priority>\n"
+        "  </url>\n"
+        "</urlset>\n"
+    )
+    return PlainTextResponse(content=xml, media_type="application/xml")
+
+
 # ================================================================
 # Fix #24 : HEALTHCHECK
 # ================================================================
