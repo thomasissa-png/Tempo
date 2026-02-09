@@ -54,6 +54,17 @@ logger = logging.getLogger(__name__)
 _predictions_cache = {"data": None, "expires": 0}
 _predictions_lock = asyncio.Lock()
 
+
+def invalidate_predictions_cache():
+    """Invalide le cache mémoire des prédictions.
+
+    Appelée par le scheduler après confirmation EDF (11h30) ou
+    après génération de nouvelles prédictions (18h00) pour que
+    les visiteurs voient immédiatement les données à jour.
+    """
+    _predictions_cache["data"] = None
+    _predictions_cache["expires"] = 0
+
 # === Fix #16 : Rate limiting simple pour /api/subscribe ===
 _rate_limit_store: dict[str, list[float]] = defaultdict(list)
 _rate_limit_lock = asyncio.Lock()

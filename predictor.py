@@ -755,3 +755,42 @@ def store_prediction(pred: dict, horizon: str = "J-1",
         return change
     finally:
         conn.close()
+
+
+def confirm_prediction(date_str: str, couleur_officielle: str) -> int:
+    """Met a jour toutes les predictions pour une date avec la couleur EDF officielle.
+
+    Appelee par task_daily_verification (11h30) quand EDF confirme une couleur.
+    Met a jour la table predictions pour que /api/predictions reflète immédiatement
+    la couleur officielle au lieu de l'ancienne prediction.
+
+    Retourne le nombre de lignes mises a jour.
+    """
+    p_r = 1.0 if couleur_officielle == "ROUGE" else 0.0
+    p_b = 1.0 if couleur_officielle == "BLANC" else 0.0
+    p_bl = 1.0 if couleur_officielle == "BLEU" else 0.0
+    score = 100 if couleur_officielle == "ROUGE" else (50 if couleur_officielle == "BLANC" else 0)
+
+    conn = get_db()
+    try:
+        cursor = conn.execute(
+            """UPDATE predictions
+               SET couleur_predite = ?,
+                   probabilite_bleu = ?, probabilite_blanc = ?, probabilite_rouge = ?,
+                   score_risque = ?,
+                   confirmed = 1,
+                   simulated = 0,
+                   raison = 'Couleur officielle EDF'
+               WHERE date = ? AND confirmed = 0""",
+            (couleur_officielle, p_bl, p_b, p_r, score, date_str),
+        )
+        conn.commit()
+        updated = cursor.rowcount
+        if updated > 0:
+            logger.info(
+                f"[Prediction] {date_str} confirmé {couleur_officielle} "
+                f"({updated} horizon(s) mis à jour)"
+            )
+        return updated
+    finally:
+        conn.close()

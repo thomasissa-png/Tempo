@@ -73,14 +73,22 @@ def stop_scheduler():
 
 async def task_daily_verification():
     """11h30 — Récupère la couleur EDF du jour, évalue les prédictions,
-    envoie alertes officielles si rouge/blanc confirmé pour demain."""
+    envoie alertes officielles si rouge/blanc confirmé pour demain.
+
+    Fix: met à jour la table predictions + invalide le cache mémoire
+    pour que /api/predictions reflète immédiatement les couleurs officielles.
+    """
     for attempt in range(2):
         try:
             from tempo_client import fetch_tempo_today, fetch_tempo_tomorrow, store_actual
             from performance_tracker import evaluate_predictions_for_date
+            from predictor import confirm_prediction
             from alerts import send_official_alerts
+            from app import invalidate_predictions_cache
 
             logger.info("[Task 11h30] Début vérification quotidienne")
+
+            predictions_updated = False
 
             # 1. Couleur du jour (déjà en cours)
             today_data = await fetch_tempo_today()
@@ -94,15 +102,30 @@ async def task_daily_verification():
                     today_data["couleur"]
                 )
 
+                # Mettre à jour les prédictions en DB avec la couleur officielle
+                updated = confirm_prediction(today_data["date"], today_data["couleur"])
+                if updated:
+                    predictions_updated = True
+
             # 2. Couleur de demain (annoncée à 11h par EDF)
             tomorrow_data = await fetch_tempo_tomorrow()
             if tomorrow_data:
                 store_actual(tomorrow_data["date"], tomorrow_data["couleur"])
                 logger.info(f"[Task 11h30] Demain: {tomorrow_data['couleur']}")
 
+                # Mettre à jour les prédictions en DB avec la couleur officielle
+                updated = confirm_prediction(tomorrow_data["date"], tomorrow_data["couleur"])
+                if updated:
+                    predictions_updated = True
+
                 # Envoyer alerte officielle si rouge ou blanc
                 tomorrow_date = date.fromisoformat(tomorrow_data["date"])
                 send_official_alerts(tomorrow_date, tomorrow_data["couleur"])
+
+            # Invalider le cache pour que les visiteurs voient les confirmations
+            if predictions_updated:
+                invalidate_predictions_cache()
+                logger.info("[Task 11h30] Cache prédictions invalidé (couleurs confirmées)")
 
             logger.info("[Task 11h30] Vérification terminée")
             return
@@ -184,6 +207,11 @@ async def task_daily_predictions():
 
             logger.info(f"[Task 18h00] {len(predictions)} prédictions stockées "
                         f"(cycle={cycle_id}, simulated={simulated})")
+
+            # Invalider le cache pour que les visiteurs voient les nouvelles prédictions
+            from app import invalidate_predictions_cache
+            invalidate_predictions_cache()
+
             return
         except Exception as e:
             logger.error(f"[Scheduler] task_daily_predictions attempt {attempt+1} failed: {e}")
