@@ -1252,6 +1252,51 @@ footer a {
     .back-to-top { bottom: 16px; right: 16px; }
 }
 
+/* === Bloc désinscription (BUG-02 QA) === */
+.unsubscribe-block {
+    margin-top: 24px;
+    text-align: center;
+}
+.unsub-toggle {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+.link-btn {
+    background: none;
+    border: none;
+    color: var(--bleu);
+    cursor: pointer;
+    font-size: 0.9rem;
+    text-decoration: underline;
+    padding: 0;
+}
+.link-btn:hover { color: var(--rouge); }
+.unsub-form.hidden { display: none; }
+.unsub-form {
+    margin-top: 12px;
+    animation: fadeIn 0.2s ease;
+}
+.form-inline {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+.form-inline input[type="tel"] {
+    max-width: 220px;
+}
+.btn-unsub {
+    padding: 10px 20px;
+    background: var(--text-secondary);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+.btn-unsub:hover { background: var(--rouge); }
+
 /* === Admin dashboard === */
 .admin-grid {
     display: grid;

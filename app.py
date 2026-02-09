@@ -626,6 +626,35 @@ async def api_unsubscribe(request: Request, phone: str = Form(...)):
     return result
 
 
+@app.post("/api/sms/incoming")
+async def api_sms_incoming(request: Request):
+    """Webhook Twilio pour SMS entrants (STOP/START).
+
+    Twilio envoie From, Body, etc. en POST form-data.
+    Retourne du TwiML pour répondre automatiquement.
+    BUG-01 QA : endpoint manquant pour l'opt-out par SMS.
+    """
+    from alerts import handle_incoming_sms
+
+    form = await request.form()
+    from_number = form.get("From", "")
+    body = form.get("Body", "")
+
+    if not from_number or not body:
+        raise HTTPException(status_code=400, detail="Missing From or Body")
+
+    response_text = handle_incoming_sms(from_number, body)
+
+    # Réponse TwiML pour que Twilio envoie un SMS de confirmation
+    twiml = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        "<Response>"
+        f"<Message>{response_text}</Message>"
+        "</Response>"
+    )
+    return PlainTextResponse(content=twiml, media_type="application/xml")
+
+
 @app.get("/api/users/stats")
 async def api_user_stats(request: Request, authorization: str | None = Header(None)):
     """Stats utilisateurs (admin)."""

@@ -14,10 +14,26 @@ import httpx
 import logging
 import asyncio
 import base64
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from config import Config
 
 logger = logging.getLogger(__name__)
+
+_PARIS_TZ = ZoneInfo("Europe/Paris")
+
+
+def _paris_offset_str(d: date) -> str:
+    """Retourne l'offset timezone Paris pour une date donnée ('+01:00' ou '+02:00').
+    Gère automatiquement le changement heure d'été/hiver (BUG-06 QA)."""
+    dt = datetime(d.year, d.month, d.day, 0, 0, 0, tzinfo=_PARIS_TZ)
+    offset = dt.utcoffset()
+    total_seconds = int(offset.total_seconds())
+    hours, remainder = divmod(abs(total_seconds), 3600)
+    minutes = remainder // 60
+    sign = "+" if total_seconds >= 0 else "-"
+    return f"{sign}{hours:02d}:{minutes:02d}"
+
 
 # Token cache en memoire
 _token_cache = {"token": None, "expires": 0}
@@ -85,8 +101,9 @@ async def fetch_consumption_forecast() -> dict | None:
     if not token:
         return None
 
-    tomorrow = (date.today() + timedelta(days=1)).isoformat()
-    after = (date.today() + timedelta(days=2)).isoformat()
+    tomorrow = date.today() + timedelta(days=1)
+    after = date.today() + timedelta(days=2)
+    tz_offset = _paris_offset_str(tomorrow)
 
     try:
         async with httpx.AsyncClient(timeout=15) as client:
@@ -95,8 +112,8 @@ async def fetch_consumption_forecast() -> dict | None:
                 headers={"Authorization": f"Bearer {token}"},
                 params={
                     "type": "D-1",
-                    "start_date": f"{tomorrow}T00:00:00+01:00",
-                    "end_date": f"{after}T00:00:00+01:00",
+                    "start_date": f"{tomorrow.isoformat()}T00:00:00{tz_offset}",
+                    "end_date": f"{after.isoformat()}T00:00:00{tz_offset}",
                 },
             )
             if resp.status_code in (401, 403):
@@ -116,7 +133,7 @@ async def fetch_consumption_forecast() -> dict | None:
                 return None
 
             return {
-                "date": tomorrow,
+                "date": tomorrow.isoformat(),
                 "peak_mw": round(max(values)),
                 "mean_mw": round(sum(values) / len(values)),
             }
@@ -136,15 +153,16 @@ async def fetch_nuclear_availability() -> dict | None:
 
     try:
         async with httpx.AsyncClient(timeout=15) as client:
-            today_str = date.today().isoformat()
-            tomorrow_str = (date.today() + timedelta(days=1)).isoformat()
+            today_d = date.today()
+            tomorrow_d = today_d + timedelta(days=1)
+            tz_offset = _paris_offset_str(today_d)
             resp = await client.get(
                 f"{Config.RTE_API_BASE}/open_api/generation_forecast/v2/forecasts",
                 headers={"Authorization": f"Bearer {token}"},
                 params={
                     "production_type": "NUCLEAR",
-                    "start_date": f"{today_str}T00:00:00+01:00",
-                    "end_date": f"{tomorrow_str}T00:00:00+01:00",
+                    "start_date": f"{today_d.isoformat()}T00:00:00{tz_offset}",
+                    "end_date": f"{tomorrow_d.isoformat()}T00:00:00{tz_offset}",
                 },
             )
             if resp.status_code in (401, 403):

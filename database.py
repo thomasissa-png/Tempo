@@ -72,9 +72,22 @@ def decrypt_phone(encrypted: str) -> str:
     return _get_fernet().decrypt(encrypted.encode()).decode()
 
 
+def _get_hmac_key() -> bytes:
+    """Clé HMAC pour le hachage des numéros de téléphone.
+    Utilise PHONE_ENCRYPTION_KEY ou dérive d'ADMIN_PASSWORD."""
+    key_source = Config.PHONE_ENCRYPTION_KEY or Config.ADMIN_PASSWORD or "tempoforecast"
+    return hashlib.sha256(
+        (key_source + ":phone_hmac_salt_v1").encode()
+    ).digest()
+
+
 def hash_phone(phone: str) -> str:
-    """Hash SHA-256 du numéro (lookup / déduplication uniquement)."""
-    return hashlib.sha256(phone.strip().encode()).hexdigest()
+    """HMAC-SHA256 du numéro (lookup / déduplication).
+    Utilise une clé secrète pour empêcher les attaques par rainbow table."""
+    import hmac as _hmac
+    return _hmac.new(
+        _get_hmac_key(), phone.strip().encode(), hashlib.sha256
+    ).hexdigest()
 
 
 # ================================================================
@@ -351,6 +364,42 @@ def init_db():
         conn.execute("PRAGMA user_version = 7")
         conn.commit()
         logger.info("Migration v7 appliquee (table learning_journal)")
+
+    if version < 8:
+        # Migration v8 — HMAC phone hash + colonne couleur_originale
+        # (a) Rehash tous les users existants avec HMAC au lieu de SHA-256 brut
+        try:
+            users = conn.execute(
+                "SELECT id, phone_encrypted FROM users WHERE phone_encrypted != ''"
+            ).fetchall()
+            rehashed = 0
+            for u in users:
+                try:
+                    phone = decrypt_phone(u["phone_encrypted"])
+                    new_hash = hash_phone(phone)
+                    conn.execute(
+                        "UPDATE users SET phone_hash = ? WHERE id = ?",
+                        (new_hash, u["id"]),
+                    )
+                    rehashed += 1
+                except Exception:
+                    pass  # Skip les users dont le chiffrement a changé
+            if rehashed:
+                logger.info(f"Migration v8: {rehashed} phone hashes migrés vers HMAC")
+        except Exception as e:
+            logger.warning(f"Migration v8 rehash: {e}")
+
+        # (b) Ajouter couleur_originale pour préserver les prédictions avant confirmation
+        try:
+            conn.execute(
+                "ALTER TABLE predictions ADD COLUMN couleur_originale TEXT DEFAULT ''"
+            )
+        except sqlite3.OperationalError:
+            pass  # Colonne existe déjà
+
+        conn.execute("PRAGMA user_version = 8")
+        conn.commit()
+        logger.info("Migration v8 appliquee (HMAC phone hash, couleur_originale)")
 
     # Poids initiaux si vide
     existing = conn.execute("SELECT COUNT(*) as c FROM weights_history").fetchone()

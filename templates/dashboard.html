@@ -297,6 +297,18 @@
         </form>
 
         <div id="form-result" class="form-result"></div>
+
+        <!-- Désinscription (BUG-02 QA : formulaire manquant) -->
+        <div class="unsubscribe-block" id="unsubscribe-block">
+            <p class="unsub-toggle">D&eacute;j&agrave; inscrit ? <button type="button" class="link-btn" id="show-unsubscribe">Se d&eacute;sinscrire</button></p>
+            <form id="unsubscribe-form" class="unsub-form hidden">
+                <div class="form-group form-inline">
+                    <input type="tel" id="unsub-phone" name="phone" placeholder="06 12 34 56 78" required>
+                    <button type="submit" class="btn btn-unsub" id="unsub-btn">Me d&eacute;sinscrire</button>
+                </div>
+                <div id="unsub-result" class="form-result"></div>
+            </form>
+        </div>
     </section>
 
     <!-- FAQ pratique pour Jean-Pierre -->

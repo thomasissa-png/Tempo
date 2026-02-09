@@ -1,0 +1,358 @@
+"""Tests pour les 7 corrections QA (BUG-01 à BUG-07)."""
+
+import os
+import sys
+import hashlib
+import sqlite3
+import pytest
+from datetime import date, datetime, timedelta
+from unittest.mock import patch, MagicMock
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+# ================================================================
+# BUG-07 : Hash phone HMAC (pas SHA-256 brut)
+# ================================================================
+
+class TestHmacPhoneHash:
+    def test_hash_is_not_raw_sha256(self):
+        """Le hash ne doit PAS être un simple SHA-256 sans clé."""
+        from database import hash_phone
+        phone = "+33612345678"
+        raw_sha = hashlib.sha256(phone.encode()).hexdigest()
+        hmac_hash = hash_phone(phone)
+        assert hmac_hash != raw_sha, "hash_phone utilise encore du SHA-256 brut"
+
+    def test_hash_deterministic(self):
+        """Le même numéro donne le même hash."""
+        from database import hash_phone
+        h1 = hash_phone("+33612345678")
+        h2 = hash_phone("+33612345678")
+        assert h1 == h2
+
+    def test_different_phones_different_hashes(self):
+        """Deux numéros différents donnent des hashes différents."""
+        from database import hash_phone
+        h1 = hash_phone("+33612345678")
+        h2 = hash_phone("+33698765432")
+        assert h1 != h2
+
+    def test_hash_is_hex_64_chars(self):
+        """Le hash est un hex de 64 caractères (SHA-256)."""
+        from database import hash_phone
+        h = hash_phone("+33612345678")
+        assert len(h) == 64
+        assert all(c in "0123456789abcdef" for c in h)
+
+
+# ================================================================
+# BUG-03 : confirm_prediction préserve couleur_originale
+# ================================================================
+
+class TestConfirmPreservesOriginal:
+    def test_couleur_originale_saved(self):
+        """confirm_prediction sauvegarde couleur_originale avant écrasement."""
+        from database import get_db
+        from predictor import store_prediction, confirm_prediction
+
+        pred = {
+            "date": (date.today() + timedelta(days=1)).isoformat(),
+            "couleur_predite": "BLANC",
+            "probabilite_bleu": 0.1,
+            "probabilite_blanc": 0.6,
+            "probabilite_rouge": 0.3,
+            "score_risque": 52.0,
+            "temp_min_prevue": 2.0,
+            "temp_max_prevue": 8.0,
+            "pression_prevue": None,
+            "jours_rouges_restants": 10,
+            "jours_blancs_restants": 20,
+            "raison": "Test",
+            "horizon": "J-1",
+            "timestamp_prediction": datetime.now().isoformat(),
+            "score_temperature": 50,
+            "score_budget": 40,
+            "score_weekday": 30,
+            "score_gradient": 20,
+            "score_clustering": 10,
+            "score_rte": 15,
+        }
+        store_prediction(pred, "J-1", cycle_id="test_cycle")
+
+        target_date = pred["date"]
+        confirm_prediction(target_date, "ROUGE")
+
+        conn = get_db()
+        try:
+            row = conn.execute(
+                "SELECT couleur_predite, couleur_originale, confirmed FROM predictions WHERE date = ?",
+                (target_date,)
+            ).fetchone()
+            assert row is not None
+            assert row["confirmed"] == 1
+            assert row["couleur_predite"] == "ROUGE"  # écrasé par la couleur officielle
+            assert row["couleur_originale"] == "BLANC"  # original préservé
+        finally:
+            conn.close()
+
+    def test_couleur_originale_not_overwritten_twice(self):
+        """Si déjà confirmé, couleur_originale n'est pas ré-écrasée."""
+        from database import get_db
+        from predictor import store_prediction, confirm_prediction
+
+        target = (date.today() + timedelta(days=2)).isoformat()
+        pred = {
+            "date": target,
+            "couleur_predite": "BLANC",
+            "probabilite_bleu": 0.1, "probabilite_blanc": 0.6, "probabilite_rouge": 0.3,
+            "score_risque": 52.0,
+            "temp_min_prevue": 2.0, "temp_max_prevue": 8.0, "pression_prevue": None,
+            "jours_rouges_restants": 10, "jours_blancs_restants": 20,
+            "raison": "Test", "horizon": "J-2",
+            "timestamp_prediction": datetime.now().isoformat(),
+            "score_temperature": 50, "score_budget": 40, "score_weekday": 30,
+            "score_gradient": 20, "score_clustering": 10, "score_rte": 15,
+        }
+        store_prediction(pred, "J-2", cycle_id="cycle1")
+
+        # Première confirmation
+        confirm_prediction(target, "ROUGE")
+
+        # Deuxième appel ne devrait rien changer (already confirmed)
+        updated = confirm_prediction(target, "BLEU")
+        assert updated == 0  # Rien à mettre à jour
+
+
+# ================================================================
+# BUG-05 : Préférences mises à jour lors de la réinscription
+# ================================================================
+
+class TestReactivationPreferences:
+    def test_preferences_updated_on_reactivation(self):
+        """Les nouvelles préférences sont appliquées lors de la réactivation."""
+        from alerts import register_user, unsubscribe_user
+        from database import get_db
+
+        # Inscription initiale
+        result = register_user("+33612345678", seuil_rouge=70, delai=1,
+                               alerte_blanc=False, recap_hebdo=False)
+        assert result.get("success")
+        user_id = result["user_id"]
+
+        # Désinscription
+        unsubscribe_user("+33612345678")
+
+        # Réinscription avec nouvelles préférences
+        result2 = register_user("+33612345678", seuil_rouge=90, delai=3,
+                                alerte_blanc=True, recap_hebdo=True)
+        assert result2.get("success")
+
+        # Vérifier les préférences en DB
+        conn = get_db()
+        try:
+            user = conn.execute("SELECT * FROM users WHERE id = ?", (user_id,)).fetchone()
+            assert user["actif"] == 1
+            assert user["seuil_alerte_rouge"] == 90
+            assert user["delai_alerte"] == 3
+            assert user["alerte_blanc"] == 1
+            assert user["recap_hebdo"] == 1
+        finally:
+            conn.close()
+
+
+# ================================================================
+# BUG-04 : Pas de doublon SMS prédiction + officiel même jour
+# ================================================================
+
+class TestSmsDedupCrossType:
+    def test_official_skipped_if_prediction_sent_today(self):
+        """L'alerte officielle est skip si une prédiction a déjà été envoyée."""
+        from database import get_db, encrypt_phone, hash_phone
+        from alerts import send_official_alerts
+
+        conn = get_db()
+        now = datetime.now().isoformat()
+        phone_h = hash_phone("+33611111111")
+        phone_enc = encrypt_phone("+33611111111")
+
+        # Créer un user
+        conn.execute(
+            """INSERT INTO users (phone_hash, phone_encrypted, phone_last4,
+               seuil_alerte_rouge, delai_alerte, alerte_blanc, recap_hebdo,
+               actif, created_at, updated_at)
+               VALUES (?, ?, '1111', 70, 1, 0, 0, 1, ?, ?)""",
+            (phone_h, phone_enc, now, now)
+        )
+
+        # Simuler un SMS de prédiction déjà envoyé aujourd'hui
+        conn.execute(
+            """INSERT INTO sms_logs (user_id, type_alerte, couleur, message_body,
+               date_envoi, statut, twilio_sid, erreur)
+               VALUES (1, 'prediction_rouge', 'ROUGE', 'test', ?, 'simulated', 'SIM1', '')""",
+            (now,)
+        )
+        conn.commit()
+        conn.close()
+
+        # Tenter d'envoyer une alerte officielle → devrait être skip
+        tomorrow = date.today() + timedelta(days=1)
+        send_official_alerts(tomorrow, "ROUGE")
+
+        conn = get_db()
+        try:
+            count = conn.execute(
+                "SELECT COUNT(*) as c FROM sms_logs WHERE type_alerte = 'officiel'"
+            ).fetchone()["c"]
+            assert count == 0, "L'alerte officielle ne devrait pas être envoyée (dédup cross-type)"
+        finally:
+            conn.close()
+
+
+# ================================================================
+# BUG-01 : Webhook Twilio STOP
+# ================================================================
+
+class TestIncomingSmsHandler:
+    def test_stop_unsubscribes(self):
+        """Répondre STOP désactive l'utilisateur."""
+        from alerts import register_user, handle_incoming_sms
+        from database import get_db
+
+        register_user("+33622222222")
+
+        response = handle_incoming_sms("+33622222222", "STOP")
+        assert "désinscrit" in response.lower()
+
+        conn = get_db()
+        try:
+            user = conn.execute(
+                "SELECT actif FROM users WHERE phone_last4 = '2222'"
+            ).fetchone()
+            assert user["actif"] == 0
+        finally:
+            conn.close()
+
+    def test_start_resubscribes(self):
+        """Répondre START réactive l'utilisateur."""
+        from alerts import register_user, unsubscribe_user, handle_incoming_sms
+        from database import get_db
+
+        register_user("+33633333333")
+        unsubscribe_user("+33633333333")
+
+        response = handle_incoming_sms("+33633333333", "START")
+        assert "réinscrit" in response.lower()
+
+        conn = get_db()
+        try:
+            user = conn.execute(
+                "SELECT actif FROM users WHERE phone_last4 = '3333'"
+            ).fetchone()
+            assert user["actif"] == 1
+        finally:
+            conn.close()
+
+    def test_stop_variants(self):
+        """Les variantes ARRET, QUIT, CANCEL fonctionnent aussi."""
+        from alerts import register_user, handle_incoming_sms
+        from database import get_db, hash_phone
+
+        for i, keyword in enumerate(["ARRET", "QUIT", "CANCEL"], start=4):
+            phone = f"+3360000000{i}"
+            register_user(phone)
+            resp = handle_incoming_sms(phone, keyword)
+            assert "désinscrit" in resp.lower(), f"Keyword '{keyword}' devrait désinscrire"
+
+    def test_unknown_message(self):
+        """Un message inconnu renvoie l'aide."""
+        from alerts import handle_incoming_sms
+        response = handle_incoming_sms("+33600000000", "Bonjour")
+        assert "STOP" in response and "START" in response
+
+
+# ================================================================
+# BUG-06 : Timezone DST RTE
+# ================================================================
+
+class TestRteTimezone:
+    def test_paris_offset_winter(self):
+        """En hiver, l'offset Paris est +01:00."""
+        from rte_client import _paris_offset_str
+        d = date(2026, 1, 15)  # Janvier = hiver
+        assert _paris_offset_str(d) == "+01:00"
+
+    def test_paris_offset_summer(self):
+        """En été, l'offset Paris est +02:00."""
+        from rte_client import _paris_offset_str
+        d = date(2026, 7, 15)  # Juillet = été
+        assert _paris_offset_str(d) == "+02:00"
+
+    def test_paris_offset_march_transition(self):
+        """Fin mars, l'offset passe de +01:00 à +02:00."""
+        from rte_client import _paris_offset_str
+        # 2026: dernier dimanche de mars = 29 mars
+        d_before = date(2026, 3, 28)  # Samedi avant
+        d_after = date(2026, 3, 30)   # Lundi après
+        assert _paris_offset_str(d_before) == "+01:00"
+        assert _paris_offset_str(d_after) == "+02:00"
+
+
+# ================================================================
+# BUG-02 : Endpoint unsubscribe fonctionne
+# ================================================================
+
+class TestUnsubscribeEndpoint:
+    def test_unsubscribe_user_flow(self):
+        """L'inscription puis désinscription fonctionne correctement."""
+        from alerts import register_user, unsubscribe_user
+        from database import get_db
+
+        result = register_user("+33644444444")
+        assert result.get("success")
+
+        result2 = unsubscribe_user("+33644444444")
+        assert result2.get("success")
+
+        conn = get_db()
+        try:
+            user = conn.execute(
+                "SELECT actif FROM users WHERE phone_last4 = '4444'"
+            ).fetchone()
+            assert user["actif"] == 0
+        finally:
+            conn.close()
+
+    def test_unsubscribe_unknown_number(self):
+        """Désinscription d'un numéro inconnu retourne une erreur."""
+        from alerts import unsubscribe_user
+        result = unsubscribe_user("+33699999999")
+        assert "error" in result
+
+
+# ================================================================
+# Migration v8 : test intégrité
+# ================================================================
+
+class TestMigrationV8:
+    def test_db_has_couleur_originale_column(self):
+        """La migration v8 a ajouté la colonne couleur_originale."""
+        from database import get_db
+        conn = get_db()
+        try:
+            # Vérifier que la colonne existe
+            info = conn.execute("PRAGMA table_info(predictions)").fetchall()
+            columns = [row[1] for row in info]
+            assert "couleur_originale" in columns
+        finally:
+            conn.close()
+
+    def test_db_version_is_8(self):
+        """La version de la DB est 8 après migration."""
+        from database import get_db
+        conn = get_db()
+        try:
+            version = conn.execute("PRAGMA user_version").fetchone()[0]
+            assert version == 8
+        finally:
+            conn.close()

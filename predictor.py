@@ -912,6 +912,13 @@ def confirm_prediction(date_str: str, couleur_officielle: str) -> int:
 
     conn = get_db()
     try:
+        # Sauvegarder la couleur originale avant écrasement (BUG-03 QA)
+        conn.execute(
+            """UPDATE predictions
+               SET couleur_originale = couleur_predite
+               WHERE date = ? AND confirmed = 0 AND couleur_originale = ''""",
+            (date_str,),
+        )
         cursor = conn.execute(
             """UPDATE predictions
                SET couleur_predite = ?,

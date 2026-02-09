@@ -216,12 +216,16 @@ def send_official_alerts(target_date: date, couleur: str):
 
         message = format_alert_officiel(target_date, couleur)
 
+        today_str = date.today().isoformat()
+
         for user in users:
+            # Dédup cross-type : pas d'alerte officielle si déjà reçu
+            # une prédiction OU un officiel aujourd'hui (BUG-04 QA)
             existing = conn.execute(
                 """SELECT id FROM sms_logs
                    WHERE user_id = ? AND date_envoi LIKE ?
-                   AND type_alerte = 'officiel'""",
-                (user["id"], f"{date.today().isoformat()}%"),
+                   AND type_alerte IN ('officiel', 'prediction_rouge', 'prediction_blanc')""",
+                (user["id"], f"{today_str}%"),
             ).fetchone()
 
             if existing:
@@ -313,13 +317,18 @@ def register_user(phone_number: str, seuil_rouge: int = 70,
             if existing["actif"]:
                 return {"error": "Ce numéro est déjà inscrit."}
             else:
-                # Réactiver + mettre à jour le chiffré (la clé a pu changer)
+                # Réactiver + mettre à jour chiffré ET préférences (BUG-05 QA)
                 conn.execute(
-                    "UPDATE users SET actif = 1, phone_encrypted = ?, updated_at = ? WHERE id = ?",
-                    (phone_enc, now, existing["id"]),
+                    """UPDATE users SET actif = 1, phone_encrypted = ?,
+                       seuil_alerte_rouge = ?, delai_alerte = ?,
+                       alerte_blanc = ?, recap_hebdo = ?,
+                       updated_at = ? WHERE id = ?""",
+                    (phone_enc, seuil_rouge, delai,
+                     int(alerte_blanc), int(recap_hebdo),
+                     now, existing["id"]),
                 )
                 conn.commit()
-                return {"success": True, "user_id": existing["id"], "message": "Compte réactivé !"}
+                return {"success": True, "user_id": existing["id"], "message": "Compte réactivé avec vos nouvelles préférences !"}
 
         cursor = conn.execute(
             """INSERT INTO users
@@ -369,6 +378,32 @@ def get_user_count() -> dict:
         return {"total": total, "actifs": actifs}
     finally:
         conn.close()
+
+
+def handle_incoming_sms(from_number: str, body: str) -> str:
+    """Traite un SMS entrant (webhook Twilio). Gère STOP/START.
+    Retourne le message de réponse TwiML."""
+    body_clean = body.strip().upper()
+    phone_clean = from_number.strip().replace(" ", "")
+
+    if body_clean in ("STOP", "ARRET", "DESINSCRIRE", "QUIT", "CANCEL"):
+        result = unsubscribe_user(phone_clean)
+        if result.get("success"):
+            logger.info(f"[SMS IN] Désinscription par SMS: ****{phone_clean[-4:]}")
+            return "Vous êtes désinscrit de TempoForecast. Répondez START pour vous réinscrire."
+        else:
+            logger.info(f"[SMS IN] Tentative STOP numéro inconnu: ****{phone_clean[-4:]}")
+            return "Ce numéro n'est pas inscrit à TempoForecast."
+
+    if body_clean in ("START", "OUI", "INSCRIRE"):
+        result = register_user(phone_clean)
+        if result.get("success"):
+            logger.info(f"[SMS IN] Réinscription par SMS: ****{phone_clean[-4:]}")
+            return "Vous êtes réinscrit aux alertes TempoForecast !"
+        else:
+            return result.get("error", "Erreur lors de la réinscription.")
+
+    return "TempoForecast : répondez STOP pour vous désinscrire ou START pour vous réinscrire."
 
 
 def cleanup_inactive_users(months: int = 6):

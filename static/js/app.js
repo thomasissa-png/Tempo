@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupHamburger();
     setupBackToTop();
     setupPhoneValidation();
+    setupUnsubscribeForm();
 });
 
 // ================================================================
@@ -718,5 +719,65 @@ function setupPhoneValidation() {
 
         feedback.textContent = 'Tapez un numéro en 06 ou 07';
         feedback.className = 'phone-feedback invalid';
+    });
+}
+
+// ================================================================
+// FORMULAIRE DÉSINSCRIPTION (BUG-02 QA)
+// ================================================================
+
+function setupUnsubscribeForm() {
+    const toggleBtn = document.getElementById('show-unsubscribe');
+    const form = document.getElementById('unsubscribe-form');
+    if (!toggleBtn || !form) return;
+
+    toggleBtn.addEventListener('click', () => {
+        form.classList.toggle('hidden');
+    });
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const resultEl = document.getElementById('unsub-result');
+        const btn = document.getElementById('unsub-btn');
+        resultEl.className = 'form-result';
+        resultEl.style.display = 'none';
+
+        const rawPhone = document.getElementById('unsub-phone').value;
+        const phone = normalizePhone(rawPhone);
+
+        if (!phone) {
+            showFormResult(resultEl, 'error',
+                'Numéro non reconnu. Tapez votre numéro au format 06 12 34 56 78');
+            return;
+        }
+
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Désinscription...';
+
+        try {
+            const formData = new FormData();
+            formData.set('phone', phone);
+
+            const resp = await fetch('/api/unsubscribe', {
+                method: 'POST',
+                body: formData,
+            });
+            const data = await resp.json();
+
+            if (resp.ok) {
+                showFormResult(resultEl, 'success',
+                    data.message || 'Désinscription effectuée. Vous ne recevrez plus de SMS.');
+                form.reset();
+            } else {
+                showFormResult(resultEl, 'error',
+                    data.detail || 'Numéro non trouvé dans nos inscrits.');
+            }
+        } catch {
+            showFormResult(resultEl, 'error', 'Erreur de connexion au serveur');
+        } finally {
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
     });
 }

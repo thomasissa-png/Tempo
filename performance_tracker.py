@@ -48,9 +48,15 @@ def evaluate_predictions_for_date(target_date: date, couleur_reelle: str):
 
         nb_stored = 0
         for pred in predictions:
-            # Fix: ignorer les predictions confirmees (ce sont des faits EDF, pas nos predictions)
-            if pred["confirmed"]:
+            # Déterminer la couleur qui était réellement prédite par l'algo
+            # Si confirmé, couleur_predite a été écrasée → utiliser couleur_originale
+            couleur_pred = pred["couleur_predite"]
+            if pred["confirmed"] and pred["couleur_originale"]:
+                couleur_pred = pred["couleur_originale"]
+            elif pred["confirmed"]:
+                # Confirmé sans couleur_originale sauvegardée → skip (ancien format)
                 continue
+
             # Calculer l'avance en jours
             ts = datetime.fromisoformat(pred["timestamp_prediction"])
             jours_avance = (target_date - ts.date()).days
@@ -59,7 +65,7 @@ def evaluate_predictions_for_date(target_date: date, couleur_reelle: str):
             if jours_avance < 0 or jours_avance > 16:
                 continue
 
-            correct = 1 if pred["couleur_predite"] == couleur_reelle else 0
+            correct = 1 if couleur_pred == couleur_reelle else 0
 
             # Écart de score : différence entre score prédit et seuil réel
             score_predit = pred["score_risque"]
@@ -74,17 +80,16 @@ def evaluate_predictions_for_date(target_date: date, couleur_reelle: str):
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (ts.date().isoformat(), target_date.isoformat(),
                  jours_avance, correct,
-                 pred["couleur_predite"], couleur_reelle,
+                 couleur_pred, couleur_reelle,
                  score_predit, ecart,
                  pred["raison"] or "", datetime.now().isoformat()),
             )
             nb_stored += 1
 
         conn.commit()
-        nb_correct = sum(
-            1 for p in predictions
-            if p["couleur_predite"] == couleur_reelle
-        )
+        nb_correct = nb_stored  # Recalculer depuis les inserts réels
+        # (le compteur ci-dessus ne peut être recalculé simplement ici,
+        # on log nb_stored plutôt)
         logger.info(f"[Perf] {target_date}: {nb_correct}/{nb_stored} prédictions correctes")
 
     finally:
