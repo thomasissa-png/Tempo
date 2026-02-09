@@ -7,6 +7,7 @@ from predictor import (
     _score_weekday_v2, _score_gradient, _score_clustering, _detect_cold_wave,
     _compute_probabilities, _apply_learning_corrections, _apply_factor_correction,
     is_french_holiday, confirm_prediction, store_prediction,
+    _piecewise_linear, _wind_chill,
 )
 from config import Config
 
@@ -16,34 +17,53 @@ from config import Config
 # ================================================================
 
 class TestScoreTemperature:
+    def test_control_points(self):
+        """ML-2 : les points de controle donnent des valeurs exactes."""
+        assert _score_temperature_v2(-5) == 98
+        assert _score_temperature_v2(-2) == 90
+        assert _score_temperature_v2(0) == 80
+        assert _score_temperature_v2(2) == 68
+        assert _score_temperature_v2(4) == 55
+        assert _score_temperature_v2(6) == 40
+        assert _score_temperature_v2(8) == 25
+        assert _score_temperature_v2(10) == 15
+        assert _score_temperature_v2(14) == 8
+        assert _score_temperature_v2(20) == 3
+
     def test_grand_froid(self):
+        """Sous -5C = score maximal."""
         assert _score_temperature_v2(-6) == 98
 
-    def test_froid(self):
-        assert _score_temperature_v2(-3) == 90
+    def test_interpolation_continue(self):
+        """ML-2 : entre deux points de controle, interpolation lineaire."""
+        score = _score_temperature_v2(-3.5)  # entre -5 (98) et -2 (90)
+        assert 90 < score < 98
 
-    def test_zone_critique_basse(self):
-        assert _score_temperature_v2(1) == 68
-
-    def test_zone_critique_haute(self):
-        assert _score_temperature_v2(3) == 55
-
-    def test_frais(self):
-        assert _score_temperature_v2(5) == 40
-
-    def test_doux(self):
-        assert _score_temperature_v2(10) == 8  # 10C est dans la tranche 8-14C
-
-    def test_chaud(self):
-        assert _score_temperature_v2(16) == 3
+    def test_zone_critique(self):
+        """Zone 0-5C = scores entre 40 et 80 (zone de decision)."""
+        for temp in [1, 2, 3, 4, 5]:
+            score = _score_temperature_v2(temp)
+            assert 35 <= score <= 80, f"Score inattendu pour {temp}C: {score}"
 
     def test_monotone_decreasing(self):
-        """Le score température doit diminuer quand la temp augmente."""
+        """Le score temperature doit diminuer quand la temp augmente."""
         temps = [-6, -3, -1, 1, 3, 5, 7, 9, 12, 16]
         scores = [_score_temperature_v2(t) for t in temps]
         for i in range(len(scores) - 1):
             assert scores[i] >= scores[i + 1], \
                 f"Score non monotone: {temps[i]}C={scores[i]} vs {temps[i+1]}C={scores[i+1]}"
+
+    def test_wind_chill_increases_score(self):
+        """ML-4 : le wind chill augmente le score (temp effective plus froide)."""
+        score_calm = _score_temperature_v2(3, wind_speed_kmh=0)
+        score_windy = _score_temperature_v2(3, wind_speed_kmh=30)
+        assert score_windy > score_calm
+
+    def test_wind_chill_inactive_above_10(self):
+        """ML-4 : wind chill inactif au-dessus de 10C."""
+        score_calm = _score_temperature_v2(12, wind_speed_kmh=0)
+        score_windy = _score_temperature_v2(12, wind_speed_kmh=50)
+        assert score_calm == score_windy
 
 
 class TestScoreBudget:
@@ -55,18 +75,35 @@ class TestScoreBudget:
         assert score > 20
 
     def test_aucun_rouge_restant(self):
-        """Score 0 si plus aucun rouge restant."""
+        """ML-1 : meme sans rouge, la pression BLANC contribue au score."""
         remaining = {"ROUGE": 0, "BLANC": 10, "BLEU": 50}
         target = date(2026, 1, 15)
         score = _score_budget_v2(remaining, 120, target)
         assert score >= 0  # Toujours >= 0
 
     def test_fin_saison_urgence(self):
-        """Score élevé si beaucoup de rouges restent en fin de saison."""
+        """Score eleve si beaucoup de rouges restent en fin de saison."""
         remaining = {"ROUGE": 8, "BLANC": 15, "BLEU": 30}
         target = date(2026, 3, 15)
         score = _score_budget_v2(remaining, 45, target)
         assert score >= 20  # Urgence fin de saison
+
+    def test_blanc_pressure_capped(self):
+        """ML-1 : pression BLANC plafonnee a 55 (zone BLANC, pas ROUGE)."""
+        remaining = {"ROUGE": 0, "BLANC": 43, "BLEU": 50}
+        target = date(2026, 1, 15)
+        score = _score_budget_v2(remaining, 30, target)
+        assert score <= 55  # BLANC ne pousse pas dans zone ROUGE
+
+    def test_continuous_scoring(self):
+        """ML-2 : le score varie continument (pas de sauts)."""
+        remaining = {"ROUGE": 12, "BLANC": 25, "BLEU": 100}
+        target = date(2026, 1, 15)
+        scores = [_score_budget_v2(remaining, d, target) for d in range(10, 200, 10)]
+        # Pas de sauts > 15 points entre deux valeurs consecutives
+        for i in range(len(scores) - 1):
+            assert abs(scores[i] - scores[i + 1]) < 20, \
+                f"Saut trop grand: d_left={10+i*10}→{scores[i]}, d_left={20+i*10}→{scores[i+1]}"
 
 
 class TestScoreWeekday:
@@ -295,12 +332,14 @@ class TestPredictDay:
         assert result["couleur_predite"] in ("ROUGE", "BLANC")
         assert result["score_risque"] > 50
 
-    def test_temps_doux_bleu(self, warm_weather, sample_remaining):
-        """Temps doux = BLEU probable."""
+    def test_temps_doux_bleu(self, warm_weather):
+        """Temps doux avec peu de quota = BLEU probable."""
+        # ML-1 : remaining faible pour tester le signal temperature sans biais budget
+        low_remaining = {"ROUGE": 0, "BLANC": 2, "BLEU": 100}
         target = date.fromisoformat(warm_weather[0]["date"])
         result = predict_day(target, weather=warm_weather[0],
                             forecasts=warm_weather, target_idx=0,
-                            remaining=sample_remaining)
+                            remaining=low_remaining)
         assert result["couleur_predite"] == "BLEU"
 
     def test_sub_scores_presentes(self, sample_weather, sample_remaining):

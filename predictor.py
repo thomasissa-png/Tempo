@@ -82,6 +82,50 @@ def is_french_holiday(d: date) -> bool:
 
 
 # ================================================================
+# HELPERS ML : interpolation continue + wind chill
+# ================================================================
+
+def _piecewise_linear(x: float, points: list[tuple[float, float]]) -> float:
+    """Interpolation lineaire par morceaux entre des points de controle.
+    ML-2 : remplace les step functions par des transitions continues.
+    points = [(x0, y0), (x1, y1), ...] tries par x croissant."""
+    if x <= points[0][0]:
+        return points[0][1]
+    if x >= points[-1][0]:
+        return points[-1][1]
+    for i in range(len(points) - 1):
+        x0, y0 = points[i]
+        x1, y1 = points[i + 1]
+        if x0 <= x <= x1:
+            t = (x - x0) / (x1 - x0)
+            return y0 + t * (y1 - y0)
+    return points[-1][1]
+
+
+def _wind_chill(temp: float, wind_speed_kmh: float) -> float:
+    """Indice de refroidissement eolien (formule nord-americaine).
+    ML-4 : applicable quand temp <= 10C et vent >= 4.8 km/h."""
+    if temp > 10 or wind_speed_kmh < 4.8:
+        return temp
+    wc = (13.12 + 0.6215 * temp
+          - 11.37 * (wind_speed_kmh ** 0.16)
+          + 0.3965 * temp * (wind_speed_kmh ** 0.16))
+    return min(temp, wc)
+
+
+# Points de controle pour scoring continu (ML-2)
+_TEMP_SCORE_POINTS = [
+    (-5, 98), (-2, 90), (0, 80), (2, 68), (4, 55),
+    (6, 40), (8, 25), (10, 15), (14, 8), (20, 3),
+]
+
+_GRADIENT_SCORE_POINTS = [
+    (-5, 5), (-3, 15), (0, 25), (1, 35), (3, 50),
+    (5, 70), (8, 90), (12, 98),
+]
+
+
+# ================================================================
 # PREDICTION PRINCIPALE
 # ================================================================
 
@@ -121,12 +165,13 @@ def predict_day(target_date: date, weather: dict | None = None,
     temp_min = weather.get("temp_min", 5) if weather else 5
     temp_max = weather.get("temp_max", 10) if weather else 10
     temp_moy = weather.get("temp_moy", 7.5) if weather else 7.5
+    wind_speed = weather.get("wind_speed", 10) if weather else 10  # ML-4
 
     # Fix meteo #1 : qualite de la meteo (api / climatology / simulated)
     forecast_quality = weather.get("forecast_quality", "api") if weather else "simulated"
 
-    # === 1. Score temperature (recalibre zone 0-5C) ===
-    temp_score = _score_temperature_v2(temp_moy)
+    # === 1. Score temperature (recalibre + wind chill ML-4) ===
+    temp_score = _score_temperature_v2(temp_moy, wind_speed)
 
     # === 2. Score budget (profil mensuel) ===
     budget_score = _score_budget_v2(remaining, d_left, target_date)
@@ -360,48 +405,54 @@ def _load_future_actuals() -> dict[str, str]:
 # FONCTIONS DE SCORING v2
 # ================================================================
 
-def _score_temperature_v2(temp_moy_nationale: float) -> float:
-    """Score 0-100 base sur la temperature moyenne nationale ponderee.
+def _score_temperature_v2(temp_moy_nationale: float, wind_speed_kmh: float = 0.0) -> float:
+    """Score 0-100 base sur la temperature effective (avec wind chill).
 
-    Recalibre sur 20 ans d'historique :
-    - La zone critique est 0-5C (la ou se prennent les decisions)
-    - Les grands froids < -5C sont rares mais quasi certains rouge
+    ML-2 : interpolation piecewise-linear (plus de step functions).
+    ML-4 : integre le wind chill quand T<=10C et vent>=4.8 km/h.
+
+    Points de controle calibres sur 20 ans d'historique :
+    - Zone critique 0-5C (la ou se prennent les decisions)
+    - Grands froids < -5C quasi certains rouge
     """
-    if temp_moy_nationale < -5:
-        return 98  # Grand froid national = quasi certain rouge
-    if temp_moy_nationale < -2:
-        return 90
-    if temp_moy_nationale < 0:
-        return 80
-    if temp_moy_nationale < 2:
-        return 68  # Zone haute de decision
-    if temp_moy_nationale < 4:
-        return 55  # Zone moyenne de decision (la plus frequente pour rouge)
-    if temp_moy_nationale < 6:
-        return 40  # Zone basse, possible blanc
-    if temp_moy_nationale < 8:
-        return 25
-    if temp_moy_nationale < 10:
-        return 15
-    if temp_moy_nationale < 14:
-        return 8
-    return 3  # Doux, quasi impossible rouge
+    temp_effective = _wind_chill(temp_moy_nationale, wind_speed_kmh)
+    return round(_piecewise_linear(temp_effective, _TEMP_SCORE_POINTS), 1)
 
 
 def _score_budget_v2(remaining: dict, d_left: int, target_date: date) -> float:
-    """Score 0-100 base sur la pression budgetaire avec profil mensuel.
+    """Score 0-100 base sur la pression budgetaire ROUGE et BLANC combinee.
 
-    Compare le rythme reel d'utilisation des jours rouges au profil
-    historique de distribution sur 20 saisons.
+    ML-1 : ajout signal BLANC (43 jours/saison ignores auparavant).
+    ML-2 : fonctions continues (piecewise-linear) au lieu de step functions.
     """
     if d_left <= 0:
         return 0
 
     month = target_date.month
-    expected_pct = Config.MONTHLY_RED_PROFILE.get(month, 0.0)
 
-    # Combien de jours rouges "devrait-il" rester a ce stade de la saison ?
-    # Fix #4 audit v4 : exclure le mois courant (deja partiellement ecoule)
+    # --- Pression ROUGE ---
+    rouge_pressure = _compute_budget_pressure(
+        remaining["ROUGE"], d_left, month,
+        Config.MONTHLY_RED_PROFILE, Config.JOURS_ROUGES_TOTAL)
+
+    # --- Pression BLANC (ML-1 : signal manquant) ---
+    blanc_pressure = _compute_budget_pressure(
+        remaining["BLANC"], d_left, month,
+        Config.MONTHLY_WHITE_PROFILE, Config.JOURS_BLANCS_TOTAL)
+    # BLANC plafonne a 55 : pousse dans zone BLANC (35-65) mais pas ROUGE (>65)
+    blanc_pressure = min(55, blanc_pressure)
+
+    # Le score global est le max des deux pressions
+    return min(100, max(rouge_pressure, blanc_pressure))
+
+
+def _compute_budget_pressure(actual_remaining: int, d_left: int, month: int,
+                              monthly_profile: dict, total_days: int) -> float:
+    """Calcule le score de pression budgetaire pour un type de jour.
+    ML-2 : scoring continu (piecewise-linear)."""
+    expected_pct = monthly_profile.get(month, 0.0)
+
+    # Jours restants attendus (mois futurs seulement)
     months_ahead = []
     m = month
     while True:
@@ -409,40 +460,30 @@ def _score_budget_v2(remaining: dict, d_left: int, target_date: date) -> float:
         if m == 6:
             break
         months_ahead.append(m)
-    expected_remaining_pct = sum(
-        Config.MONTHLY_RED_PROFILE.get(mo, 0.0) for mo in months_ahead
-    )
-    expected_remaining = expected_remaining_pct * Config.JOURS_ROUGES_TOTAL
+    expected_remaining = sum(
+        monthly_profile.get(mo, 0.0) for mo in months_ahead
+    ) * total_days
 
-    actual_remaining = remaining["ROUGE"]
+    score = 0.0
 
-    score = 0
-
-    # Si plus de rouges restent que prevu, pression accrue
+    # Ratio actual/expected → score continu (ML-2)
     if expected_remaining > 0:
         ratio = actual_remaining / expected_remaining
-        if ratio > 2.0:
-            score += 50  # Forte pression : beaucoup de retard
-        elif ratio > 1.5:
-            score += 35
-        elif ratio > 1.2:
-            score += 20
-        elif ratio > 1.0:
-            score += 10
+        score += _piecewise_linear(ratio, [
+            (0.5, 0), (1.0, 10), (1.2, 20), (1.5, 35), (2.0, 50), (3.0, 60),
+        ])
 
-    # Boost le mois ou les rouges sont historiquement concentres
-    if expected_pct >= 0.25:  # Janvier
-        score += 25
-    elif expected_pct >= 0.15:  # Decembre, Fevrier
-        score += 15
-    elif expected_pct >= 0.05:  # Novembre, Mars
-        score += 5
+    # Boost mensuel continu (ML-2)
+    score += _piecewise_linear(expected_pct, [
+        (0.0, 0), (0.05, 5), (0.15, 15), (0.25, 25), (0.35, 25),
+    ])
 
-    # Urgence fin de saison
-    if d_left < 30 and actual_remaining > 3:
-        score += 25
-    elif d_left < 60 and actual_remaining > 8:
-        score += 15
+    # Urgence fin de saison continue (ML-2)
+    if actual_remaining > 0 and d_left > 0:
+        density = actual_remaining / d_left
+        score += _piecewise_linear(density, [
+            (0.0, 0), (0.05, 5), (0.1, 15), (0.2, 25), (0.5, 40),
+        ])
 
     return min(100, score)
 
@@ -466,7 +507,7 @@ def _score_weekday_v2(target_date: date) -> float:
 def _score_gradient(forecasts: list[dict], target_idx: int) -> float:
     """Score 0-100 base sur le gradient thermique (chute de temperature).
 
-    Remplace la pression atmospherique (correction #4).
+    ML-2 : interpolation piecewise-linear (plus de step functions).
     Une chute brutale de temperature entre J-1 et J est un signal fort.
     """
     if not forecasts or target_idx <= 0 or target_idx >= len(forecasts):
@@ -479,20 +520,7 @@ def _score_gradient(forecasts: list[dict], target_idx: int) -> float:
     curr_moy = curr.get("temp_moy", 10)
     drop = prev_moy - curr_moy  # Positif = il fait plus froid
 
-    if drop >= 8:
-        return 90  # Chute brutale (>8C en 1 jour)
-    if drop >= 5:
-        return 70  # Forte chute
-    if drop >= 3:
-        return 50
-    if drop >= 1:
-        return 35
-    if drop >= 0:
-        return 25  # Stable
-    # Il se rechauffe
-    if drop >= -3:
-        return 15
-    return 5  # Fort rechauffement = risque rouge tres faible
+    return round(_piecewise_linear(drop, _GRADIENT_SCORE_POINTS), 1)
 
 
 def _score_clustering(target_date: date, forecasts: list[dict],
@@ -503,6 +531,7 @@ def _score_clustering(target_date: date, forecasts: list[dict],
     Correction #5 : si la veille est rouge/prevue rouge et que le froid
     continue, forte probabilite de jour rouge consecutif.
     Fix #11 : utilise actuals_cache au lieu d'ouvrir une connexion DB.
+    ML-7 : saturation hebdomadaire (EDF place rarement 4+ rouges/semaine).
     """
     yesterday = target_date - timedelta(days=1)
     yesterday_str = yesterday.isoformat()
@@ -517,27 +546,40 @@ def _score_clustering(target_date: date, forecasts: list[dict],
         if delta <= 1:
             yesterday_was_red = _check_yesterday_color(yesterday)
 
+    score = 20  # Pas de continuite detectee (defaut)
+
     if yesterday_was_red:
         # La veille etait rouge. Le froid continue-t-il ?
-        # Fix #3 audit v4 : target_idx >= 0 au lieu de > 0
         if target_idx >= 0 and target_idx < len(forecasts):
             curr_temp = forecasts[target_idx].get("temp_moy", 10)
             if curr_temp < 2:
-                return 90  # Rouge hier + froid qui continue = tres probable
-            if curr_temp < 5:
-                return 70
-            return 40  # Rouge hier mais radoucissement
-
-    # Verifier si J-1 est predit rouge dans les previsions courantes
-    if target_idx > 0 and target_idx < len(forecasts):
+                score = 90  # Rouge hier + froid qui continue = tres probable
+            elif curr_temp < 5:
+                score = 70
+            else:
+                score = 40  # Rouge hier mais radoucissement
+    elif target_idx > 0 and target_idx < len(forecasts):
+        # Verifier si J-1 est predit rouge dans les previsions courantes
         prev_temp = forecasts[target_idx - 1].get("temp_moy", 10)
         curr_temp = forecasts[target_idx].get("temp_moy", 10)
         if prev_temp < 2 and curr_temp < 2:
-            return 60  # Froid persistant J-1 et J
-        if prev_temp < 4 and curr_temp < 4:
-            return 40
+            score = 60  # Froid persistant J-1 et J
+        elif prev_temp < 4 and curr_temp < 4:
+            score = 40
 
-    return 20  # Pas de continuite detectee
+    # ML-7 : Saturation hebdomadaire — EDF place rarement 4+ rouges/semaine
+    if actuals_cache and score > 20:
+        week_start = target_date - timedelta(days=target_date.weekday())
+        reds_this_week = sum(
+            1 for i in range(7)
+            if actuals_cache.get((week_start + timedelta(days=i)).isoformat()) == "ROUGE"
+        )
+        if reds_this_week >= 3:
+            score = max(10, int(score * 0.3))  # Forte attenuation
+        elif reds_this_week >= 2:
+            score = int(score * 0.7)  # Attenuation moderee
+
+    return score
 
 
 def _check_yesterday_color(yesterday: date) -> bool:
@@ -604,12 +646,12 @@ def _compute_probabilities(score: float, remaining: dict) -> tuple[float, float,
     if remaining["ROUGE"] == 0 and remaining["BLANC"] == 0:
         return (0.0, 0.0, 1.0)  # Seul BLEU possible
 
-    # Probabilite rouge via sigmoide centree sur SEUIL_ROUGE
-    # steepness 0.12 => transition douce sur ~20 points autour du seuil
-    p_rouge = _sigmoid(score, Config.SEUIL_ROUGE, 0.12)
+    # ML-6 : steepness augmentee pour transitions plus nettes autour des seuils
+    # 0.15 pour ROUGE (decision critique, transition sur ~15 points)
+    p_rouge = _sigmoid(score, Config.SEUIL_ROUGE, 0.15)
 
-    # Probabilite blanc via sigmoide centree sur SEUIL_BLANC
-    p_blanc = _sigmoid(score, Config.SEUIL_BLANC, 0.08) * (1.0 - p_rouge)
+    # 0.10 pour BLANC (transition progressive sur ~20 points)
+    p_blanc = _sigmoid(score, Config.SEUIL_BLANC, 0.10) * (1.0 - p_rouge)
 
     # Appliquer les contraintes de quota
     if remaining["ROUGE"] == 0:

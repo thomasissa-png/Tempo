@@ -20,6 +20,7 @@ Fix audit ML :
 """
 
 import json
+import math
 import logging
 from datetime import date, datetime, timedelta
 from database import get_db, get_current_weights
@@ -385,11 +386,11 @@ def recalculate_weights():
             cv_std = 0
             logger.warning("[Poids] Cross-validation impossible (classe trop rare)")
 
-        # Fix ML-5 : seuil validation 55% (random baseline = 33%)
-        if cv_accuracy < 55:
+        # ML-3 : seuil validation 70% (baseline Always-BLEU ≈ 76%)
+        if cv_accuracy < 70:
             logger.warning(
                 f"[Poids] CV accuracy trop faible ({cv_accuracy}% ± {cv_std}%), "
-                "poids NON deployes"
+                "poids NON deployes (seuil=70%)"
             )
             conn.execute(
                 """INSERT INTO weights_history
@@ -400,11 +401,52 @@ def recalculate_weights():
                  json.dumps(get_current_weights()),
                  get_accuracy_global(30)["precision"], cv_accuracy, count,
                  f"REJETE (cv_acc={cv_accuracy}% ± {cv_std}%)",
-                 "logreg_v3_interactions_cv5",
+                 "logreg_v4_ml_improvements",
                  datetime.now().isoformat()),
             )
             conn.commit()
             return None
+
+        # ML-3 : Holdout temporel — train sur 80% anciens, validation sur 20% recents
+        holdout_accuracy = None
+        n_rows = len(X)
+        if n_rows >= 80:
+            split_idx = int(n_rows * 0.8)
+            # rows sont ORDER BY date DESC → indices bas = recent, hauts = ancien
+            X_train_t = X_scaled[split_idx:]
+            y_train_t = y[split_idx:]
+            X_val_t = X_scaled[:split_idx]
+            y_val_t = y[:split_idx]
+
+            try:
+                model_holdout = LogisticRegression(
+                    multi_class="multinomial", max_iter=1000, C=1.0,
+                    class_weight="balanced",
+                )
+                if len(set(y_train_t)) >= 2:
+                    model_holdout.fit(X_train_t, y_train_t)
+                    holdout_accuracy = round(model_holdout.score(X_val_t, y_val_t) * 100, 1)
+                    if holdout_accuracy < 65:
+                        logger.warning(
+                            f"[Poids] Holdout temporel accuracy trop faible "
+                            f"({holdout_accuracy}%), poids NON deployes"
+                        )
+                        conn.execute(
+                            """INSERT INTO weights_history
+                               (date_update, weights_json, precision_avant, precision_apres,
+                                nb_predictions, commentaire, model_version, timestamp_update)
+                               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                            (datetime.now().strftime("%Y-%m-%d"),
+                             json.dumps(get_current_weights()),
+                             get_accuracy_global(30)["precision"], holdout_accuracy, count,
+                             f"REJETE holdout (holdout={holdout_accuracy}%, cv={cv_accuracy}%)",
+                             "logreg_v4_ml_improvements",
+                             datetime.now().isoformat()),
+                        )
+                        conn.commit()
+                        return None
+            except Exception as e:
+                logger.warning(f"[Poids] Holdout temporel echoue: {e}")
 
         # Entraîner le modèle final sur toutes les données
         model.fit(X_scaled, y)
@@ -474,7 +516,7 @@ def recalculate_weights():
              f"Recalcul auto (cv_acc={cv_accuracy}% ± {cv_std}%, "
              f"alpha={ALPHA:.2f}, n={len(rows)}) — "
              f"ancien: {json.dumps(old_weights)}",
-             "logreg_v3_interactions_cv5",
+             "logreg_v4_ml_improvements",
              datetime.now().isoformat()),
         )
         conn.commit()
@@ -1074,7 +1116,7 @@ def _analyze_prediction_volatility(conn, since: str) -> list[dict]:
 # ================================================================
 
 def get_active_learnings() -> dict:
-    """Retourne les corrections actives groupées par type.
+    """Retourne les corrections actives avec decay temporel (ML-5).
 
     Format retourné :
     {
@@ -1084,13 +1126,14 @@ def get_active_learnings() -> dict:
         "weekday":   {"weekend": -1.5},
     }
 
+    ML-5 : les corrections perdent du poids avec le temps (demi-vie ~45 jours).
     Seules les corrections avec confidence >= 0.3 et |correction| > 0.5
     sont retournées (les autres sont du bruit statistique).
     """
     conn = get_db()
     try:
         rows = conn.execute(
-            """SELECT pattern_type, pattern_key, correction_score
+            """SELECT pattern_type, pattern_key, correction_score, date_analysis
                FROM learning_journal
                WHERE active = 1
                  AND confidence >= 0.3
@@ -1098,11 +1141,25 @@ def get_active_learnings() -> dict:
         ).fetchall()
 
         corrections = {}
+        today = date.today()
         for r in rows:
             ptype = r["pattern_type"]
             if ptype not in corrections:
                 corrections[ptype] = {}
-            corrections[ptype][r["pattern_key"]] = r["correction_score"]
+
+            # ML-5 : Temporal decay (demi-vie ~45 jours)
+            raw_correction = r["correction_score"]
+            try:
+                analysis_date = date.fromisoformat(r["date_analysis"])
+                age_days = max(0, (today - analysis_date).days)
+                decay = math.exp(-age_days * 0.693 / 45)  # ln(2)/45
+            except (ValueError, TypeError):
+                decay = 0.5  # Fallback si date invalide
+
+            decayed_correction = raw_correction * decay
+            # Ignorer les corrections devenues negligeables apres decay
+            if abs(decayed_correction) > 0.3:
+                corrections[ptype][r["pattern_key"]] = decayed_correction
 
         return corrections
     except Exception:

@@ -92,6 +92,23 @@ class Config:
     assert abs(sum(MONTHLY_RED_PROFILE.values()) - 1.0) < 0.02, \
         f"MONTHLY_RED_PROFILE doit sommer a ~1.0, got {sum(MONTHLY_RED_PROFILE.values())}"
 
+    # --- Profil mensuel de distribution des jours BLANCS (ML-1) ---
+    # Base sur 20 saisons d'historique (% des 43 jours blancs par mois)
+    MONTHLY_WHITE_PROFILE = {
+        9: 0.00,   # Septembre : 0%
+        10: 0.05,  # Octobre : ~5% (2 jours)
+        11: 0.09,  # Novembre : ~9% (4 jours)
+        12: 0.15,  # Decembre : ~15% (6-7 jours)
+        1: 0.21,   # Janvier : ~21% (9 jours)
+        2: 0.18,   # Fevrier : ~18% (8 jours)
+        3: 0.15,   # Mars : ~15% (6-7 jours)
+        4: 0.10,   # Avril : ~10% (4-5 jours)
+        5: 0.07,   # Mai : ~7% (3 jours)
+    }
+
+    assert abs(sum(MONTHLY_WHITE_PROFILE.values()) - 1.0) < 0.02, \
+        f"MONTHLY_WHITE_PROFILE doit sommer a ~1.0, got {sum(MONTHLY_WHITE_PROFILE.values())}"
+
     # --- Seuils de scoring ---
     SEUIL_ROUGE = 65   # abaisse de 70 a 65 pour meilleur recall
     SEUIL_BLANC = 35   # abaisse de 40 a 35
