@@ -323,9 +323,11 @@ def recalculate_weights():
         from sklearn.model_selection import cross_val_score
         from sklearn.preprocessing import StandardScaler
 
+        # 6 features de base + 4 interactions clés
         feature_names = [
             "temperature", "jours_restants", "jour_semaine",
             "gradient_thermique", "clustering", "consommation_rte",
+            "temp_x_budget", "gradient_x_temp", "cluster_x_gradient", "temp_x_rte",
         ]
 
         X = []
@@ -333,13 +335,19 @@ def recalculate_weights():
         label_map = {"BLEU": 0, "BLANC": 1, "ROUGE": 2}
 
         for row in rows:
+            t = row["score_temperature"]
+            b = row["score_budget"]
+            w = row["score_weekday"]
+            g = row["score_gradient"]
+            c = row["score_clustering"]
+            r = row["score_rte"]
             X.append([
-                row["score_temperature"],
-                row["score_budget"],
-                row["score_weekday"],
-                row["score_gradient"],
-                row["score_clustering"],
-                row["score_rte"],
+                t, b, w, g, c, r,
+                # Interactions : produits normalisés sur [0, 100]
+                (t * b) / 100,       # froid + pression budgétaire
+                (g * t) / 100,       # chute de temp + temp basse
+                (c * g) / 100,       # clustering + gradient
+                (t * r) / 100,       # temp basse + forte conso
             ])
             y.append(label_map.get(row["couleur_reelle"], 0))
 
@@ -387,7 +395,7 @@ def recalculate_weights():
                  json.dumps(get_current_weights()),
                  get_accuracy_global(30)["precision"], cv_accuracy, count,
                  f"REJETE (cv_acc={cv_accuracy}% ± {cv_std}%)",
-                 "logreg_v2.1_scaler_cv5",
+                 "logreg_v3_interactions_cv5",
                  datetime.now().isoformat()),
             )
             conn.commit()
@@ -397,17 +405,22 @@ def recalculate_weights():
         model.fit(X_scaled, y)
 
         # Fix ML-11 : permutation importance
+        # Seules les 6 features de base contribuent aux poids de l'algorithme
+        base_feature_names = [
+            "temperature", "jours_restants", "jour_semaine",
+            "gradient_thermique", "clustering", "consommation_rte",
+        ]
         try:
             from sklearn.inspection import permutation_importance
             perm_result = permutation_importance(
                 model, X_scaled, y, n_repeats=10, random_state=42
             )
-            importance = perm_result.importances_mean
+            importance = perm_result.importances_mean[:6]  # 6 features de base
             # Rendre positif (certaines importances peuvent être négatives)
             importance = np.maximum(importance, 0.01)
         except Exception:
             # Fallback norme L2 si permutation échoue
-            importance = np.sqrt((model.coef_ ** 2).sum(axis=0))
+            importance = np.sqrt((model.coef_ ** 2).sum(axis=0))[:6]
 
         total_imp = importance.sum()
         if total_imp == 0:
@@ -416,7 +429,7 @@ def recalculate_weights():
 
         raw_weights = {
             k: float(importance[i] / total_imp)
-            for i, k in enumerate(feature_names)
+            for i, k in enumerate(base_feature_names)
         }
 
         # Bornes [0.05, 0.50] — aucun facteur desactive ni dominant
@@ -456,7 +469,7 @@ def recalculate_weights():
              f"Recalcul auto (cv_acc={cv_accuracy}% ± {cv_std}%, "
              f"alpha={ALPHA:.2f}, n={len(rows)}) — "
              f"ancien: {json.dumps(old_weights)}",
-             "logreg_v2.1_scaler_cv5",
+             "logreg_v3_interactions_cv5",
              datetime.now().isoformat()),
         )
         conn.commit()
@@ -621,10 +634,12 @@ def analyze_error_patterns(days: int = 90) -> list[dict]:
 
     Dimensions analysées :
       1. Par horizon (J-1 à J-15) — dégradation naturelle avec la distance
-      2. Par confusion de couleur (ROUGE prédit → réellement BLEU, etc.)
+      2. Par confusion de couleur ciblée (contexte-aware)
       3. Par tranche de température (zone critique 0-5°C)
       4. Par mois de la saison (profil saisonnier)
       5. Par jour de semaine (semaine vs weekend)
+      6. Par facteur de scoring (attribution d'erreur aux sub-scores)
+      7. Volatilité des prédictions (stabilité inter-cycles)
 
     Les corrections sont stockées dans learning_journal et appliquées
     automatiquement par le prédicteur lors des prochaines prédictions.
@@ -652,11 +667,35 @@ def analyze_error_patterns(days: int = 90) -> list[dict]:
         ).fetchall()
         temp_map = {r["date"]: r["temp_min"] for r in temp_rows}
 
-        # Convertir en dicts et enrichir avec la température
+        # Sub-scores par date pour l'attribution par facteur
+        sub_score_rows = conn.execute(
+            """SELECT date, horizon,
+                      score_temperature, score_budget, score_weekday,
+                      score_gradient, score_clustering, score_rte,
+                      couleur_predite, score_risque
+               FROM predictions
+               WHERE date >= ?
+                 AND (score_temperature + score_budget + score_weekday
+                      + score_gradient + score_clustering + score_rte) > 0""",
+            (since,)
+        ).fetchall()
+        sub_score_map = {}
+        for r in sub_score_rows:
+            sub_score_map[r["date"]] = {
+                "score_temperature": r["score_temperature"],
+                "score_budget": r["score_budget"],
+                "score_weekday": r["score_weekday"],
+                "score_gradient": r["score_gradient"],
+                "score_clustering": r["score_clustering"],
+                "score_rte": r["score_rte"],
+            }
+
+        # Convertir en dicts et enrichir avec la température et sub-scores
         rows = []
         for r in perf_rows:
             d = {k: r[k] for k in r.keys()}
             d["_temp_min"] = temp_map.get(d["date_cible"])
+            d["_sub_scores"] = sub_score_map.get(d["date_cible"])
             rows.append(d)
 
         all_patterns = []
@@ -665,6 +704,8 @@ def analyze_error_patterns(days: int = 90) -> list[dict]:
         all_patterns.extend(_analyze_by_temp_range(rows))
         all_patterns.extend(_analyze_by_month(rows))
         all_patterns.extend(_analyze_by_weekday(rows))
+        all_patterns.extend(_analyze_factor_contributions(rows))
+        all_patterns.extend(_analyze_prediction_volatility(conn, since))
 
         # Stocker dans learning_journal
         now = datetime.now().isoformat()
@@ -879,6 +920,147 @@ def _analyze_by_weekday(rows: list[dict]) -> list[dict]:
             "sample_size": len(group),
             "correction": correction, "confidence": confidence,
         })
+    return patterns
+
+
+def _analyze_factor_contributions(rows: list[dict]) -> list[dict]:
+    """Attribution d'erreur aux sub-scores individuels.
+
+    Pour chaque prédiction incorrecte, identifie quel(s) sub-score(s) ont le
+    plus contribué à l'erreur. Produit des corrections par facteur qui seront
+    appliquées directement aux sub-scores (avant la somme pondérée).
+
+    pattern_type='factor', pattern_key='temperature:over' ou 'budget:under', etc.
+    """
+    factor_names = [
+        "score_temperature", "score_budget", "score_weekday",
+        "score_gradient", "score_clustering", "score_rte",
+    ]
+    factor_short = {
+        "score_temperature": "temperature",
+        "score_budget": "budget",
+        "score_weekday": "weekday",
+        "score_gradient": "gradient",
+        "score_clustering": "clustering",
+        "score_rte": "rte",
+    }
+
+    # Accumuler les écarts par facteur et direction
+    from collections import defaultdict
+    factor_errors = defaultdict(lambda: {"over_sum": 0.0, "under_sum": 0.0,
+                                          "over_n": 0, "under_n": 0, "total": 0})
+
+    for r in rows:
+        sub_scores = r.get("_sub_scores")
+        if not sub_scores:
+            continue
+        if r["correct"] == 1:
+            continue  # On ne s'intéresse qu'aux erreurs
+
+        predicted_rank = _color_rank(r["couleur_predite"])
+        actual_rank = _color_rank(r["couleur_reelle"])
+        is_over = predicted_rank > actual_rank  # On a prédit trop haut
+
+        for fname in factor_names:
+            val = sub_scores.get(fname, 50)
+            entry = factor_errors[fname]
+            entry["total"] += 1
+            if is_over:
+                # Ce sub-score a contribué à sur-prédire si sa valeur est haute
+                entry["over_sum"] += val
+                entry["over_n"] += 1
+            else:
+                # Ce sub-score a contribué à sous-prédire si sa valeur est basse
+                entry["under_sum"] += val
+                entry["under_n"] += 1
+
+    patterns = []
+    for fname, stats in factor_errors.items():
+        if stats["total"] < 5:
+            continue
+        short = factor_short[fname]
+
+        # Sur-prédiction : le facteur donnait des scores trop élevés
+        if stats["over_n"] >= 3:
+            avg_over = stats["over_sum"] / stats["over_n"]
+            if avg_over > 55:  # Sub-score moyen élevé quand on sur-prédit
+                magnitude = min(1.0, (avg_over - 50) / 50)
+                correction = -magnitude * 6.0 * min(1.0, stats["over_n"] / 20)
+                confidence = min(1.0, stats["over_n"] / 20)
+                patterns.append({
+                    "type": "factor", "key": f"{short}:over",
+                    "observation": f"{fname} moyen={avg_over:.0f} lors de {stats['over_n']} "
+                                   f"sur-prédictions",
+                    "accuracy": 0.0,
+                    "bias_direction": "over", "bias_magnitude": round(magnitude, 3),
+                    "sample_size": stats["over_n"],
+                    "correction": round(correction, 2), "confidence": round(confidence, 2),
+                })
+
+        # Sous-prédiction : le facteur donnait des scores trop bas
+        if stats["under_n"] >= 3:
+            avg_under = stats["under_sum"] / stats["under_n"]
+            if avg_under < 45:  # Sub-score moyen bas quand on sous-prédit
+                magnitude = min(1.0, (50 - avg_under) / 50)
+                correction = magnitude * 6.0 * min(1.0, stats["under_n"] / 20)
+                confidence = min(1.0, stats["under_n"] / 20)
+                patterns.append({
+                    "type": "factor", "key": f"{short}:under",
+                    "observation": f"{fname} moyen={avg_under:.0f} lors de {stats['under_n']} "
+                                   f"sous-prédictions",
+                    "accuracy": 0.0,
+                    "bias_direction": "under", "bias_magnitude": round(magnitude, 3),
+                    "sample_size": stats["under_n"],
+                    "correction": round(correction, 2), "confidence": round(confidence, 2),
+                })
+
+    return patterns
+
+
+def _analyze_prediction_volatility(conn, since: str) -> list[dict]:
+    """Analyse la stabilité des prédictions via la table prediction_changes.
+
+    Détecte les dates avec une volatilité excessive (changements fréquents
+    de couleur entre cycles), signe d'un score proche d'un seuil.
+
+    pattern_type='volatility', pattern_key='high_volatility' ou 'threshold_proximity'
+    """
+    try:
+        changes = conn.execute(
+            """SELECT date, COUNT(*) as nb_changes,
+                      GROUP_CONCAT(couleur_avant || '->' || couleur_apres) as transitions
+               FROM prediction_changes
+               WHERE date >= ?
+               GROUP BY date
+               HAVING COUNT(*) >= 2
+               ORDER BY COUNT(*) DESC""",
+            (since,)
+        ).fetchall()
+    except Exception:
+        return []
+
+    if not changes:
+        return []
+
+    total_volatile_dates = len(changes)
+    avg_changes = sum(r["nb_changes"] for r in changes) / total_volatile_dates
+
+    patterns = []
+    if total_volatile_dates >= 3:
+        confidence = min(1.0, total_volatile_dates / 15)
+        patterns.append({
+            "type": "volatility", "key": "high_volatility",
+            "observation": f"{total_volatile_dates} dates avec changements multiples "
+                          f"(moy={avg_changes:.1f} changes/date). "
+                          f"Scores proches des seuils.",
+            "accuracy": 0.0,
+            "bias_direction": "balanced",
+            "bias_magnitude": round(min(1.0, avg_changes / 5), 3),
+            "sample_size": total_volatile_dates,
+            "correction": 0.0,  # Informatif, pas de correction directe
+            "confidence": round(confidence, 2),
+        })
+
     return patterns
 
 

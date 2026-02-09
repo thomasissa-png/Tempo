@@ -72,6 +72,11 @@ _rate_limit_lock = asyncio.Lock()
 _RATE_LIMIT_MAX_ENTRIES = 1000
 _RATE_LIMIT_PURGE_AGE = 3600  # 1 hour in seconds
 
+# Rate limiting pour les endpoints admin (protection brute-force)
+_admin_rate_limit_store: dict[str, list[float]] = defaultdict(list)
+_ADMIN_RATE_LIMIT = 10  # max 10 tentatives
+_ADMIN_RATE_WINDOW = 300  # par fenêtre de 5 minutes
+
 
 def _cleanup_rate_limit_store(now: float) -> None:
     """Fix #9 : purge stale rate-limit entries to prevent memory leak."""
@@ -166,13 +171,24 @@ templates = Jinja2Templates(directory="templates")
 
 
 # === Vérification admin (Fix #6 : via header Authorization) ===
-def verify_admin(authorization: str | None):
-    """Vérifie le mot de passe admin depuis le header Authorization: Bearer <password>."""
+def verify_admin(authorization: str | None, client_ip: str = "unknown"):
+    """Vérifie le mot de passe admin depuis le header Authorization: Bearer <password>.
+    Rate limiting inclus pour protéger contre le brute-force."""
+    # Rate limiting admin
+    now = time.time()
+    _admin_rate_limit_store[client_ip] = [
+        t for t in _admin_rate_limit_store[client_ip] if now - t < _ADMIN_RATE_WINDOW
+    ]
+    if len(_admin_rate_limit_store[client_ip]) >= _ADMIN_RATE_LIMIT:
+        raise HTTPException(status_code=429, detail="Trop de tentatives admin. Réessayez plus tard.")
+
     if not authorization or not authorization.startswith("Bearer "):
+        _admin_rate_limit_store[client_ip].append(now)
         raise HTTPException(status_code=403, detail="Header Authorization manquant")
     password = authorization[len("Bearer "):]
     # Fix #15 : constant-time comparison to prevent timing attacks
     if not hmac.compare_digest(password, Config.ADMIN_PASSWORD):
+        _admin_rate_limit_store[client_ip].append(now)
         raise HTTPException(status_code=403, detail="Mot de passe admin incorrect")
 
 
@@ -278,8 +294,18 @@ async def sitemap_xml():
 
 @app.get("/health")
 async def health():
-    """Health check endpoint — returns OK status and current server timestamp."""
-    return {"status": "ok", "timestamp": datetime.now().isoformat()}
+    """Health check endpoint — vérifie la connectivité DB et retourne le statut."""
+    from database import get_db
+    db_ok = False
+    try:
+        conn = get_db()
+        conn.execute("SELECT 1").fetchone()
+        db_ok = True
+        conn.close()
+    except Exception:
+        pass
+    status = "ok" if db_ok else "degraded"
+    return {"status": status, "db": db_ok, "timestamp": datetime.now().isoformat()}
 
 
 # ================================================================
@@ -493,9 +519,9 @@ async def api_history(days: int = 30):
 # ================================================================
 
 @app.get("/api/performance")
-async def api_performance(authorization: str | None = Header(None)):
+async def api_performance(request: Request, authorization: str | None = Header(None)):
     """Métriques de performance complètes (admin, Fix #3)."""
-    verify_admin(authorization)
+    verify_admin(authorization, request.client.host if request.client else "unknown")
     from performance_tracker import get_performance_summary
     return {"status": "ok", **get_performance_summary()}
 
@@ -517,10 +543,10 @@ async def api_performance_badge():
 
 
 @app.get("/api/performance/csv")
-async def api_performance_csv(month: int = None, year: int = None,
+async def api_performance_csv(request: Request, month: int = None, year: int = None,
                                authorization: str | None = Header(None)):
     """Export CSV des performances mensuelles (admin only)."""
-    verify_admin(authorization)
+    verify_admin(authorization, request.client.host if request.client else "unknown")
     from performance_tracker import export_monthly_csv
 
     if not month:
@@ -537,9 +563,9 @@ async def api_performance_csv(month: int = None, year: int = None,
 
 
 @app.get("/api/learning")
-async def api_learning(authorization: str | None = Header(None)):
+async def api_learning(request: Request, authorization: str | None = Header(None)):
     """Journal d'apprentissage — patterns d'erreurs et corrections actives (admin)."""
-    verify_admin(authorization)
+    verify_admin(authorization, request.client.host if request.client else "unknown")
     from performance_tracker import get_learning_summary, get_active_learnings
     return {
         "status": "ok",
@@ -601,9 +627,9 @@ async def api_unsubscribe(request: Request, phone: str = Form(...)):
 
 
 @app.get("/api/users/stats")
-async def api_user_stats(authorization: str | None = Header(None)):
+async def api_user_stats(request: Request, authorization: str | None = Header(None)):
     """Stats utilisateurs (admin)."""
-    verify_admin(authorization)
+    verify_admin(authorization, request.client.host if request.client else "unknown")
     from alerts import get_user_count
     return {"status": "ok", **get_user_count()}
 
@@ -618,16 +644,17 @@ async def admin_run_task(request: Request, task: str = Form(...)):
     Fix #8 audit v4 : ajout check CSRF."""
     if not _check_origin(request):
         raise HTTPException(status_code=403, detail="Origine de la requête non autorisée")
-    verify_admin(request.headers.get("Authorization"))
+    client_ip = request.client.host if request.client else "unknown"
+    verify_admin(request.headers.get("Authorization"), client_ip)
     from scheduler import run_task_now
     result = await run_task_now(task)
     return {"status": "ok", "result": result}
 
 
 @app.get("/admin/weights-history")
-async def admin_weights_history(authorization: str | None = Header(None)):
+async def admin_weights_history(request: Request, authorization: str | None = Header(None)):
     """Historique des versions de poids."""
-    verify_admin(authorization)
+    verify_admin(authorization, request.client.host if request.client else "unknown")
     from database import get_db
     import json
 
@@ -648,9 +675,9 @@ async def admin_weights_history(authorization: str | None = Header(None)):
 
 
 @app.get("/admin/sms-logs")
-async def admin_sms_logs(authorization: str | None = Header(None), limit: int = 50):
+async def admin_sms_logs(request: Request, authorization: str | None = Header(None), limit: int = 50):
     """Derniers SMS envoyés."""
-    verify_admin(authorization)
+    verify_admin(authorization, request.client.host if request.client else "unknown")
     from database import get_db
 
     conn = get_db()

@@ -150,6 +150,18 @@ def predict_day(target_date: date, weather: dict | None = None,
     # === Bonus vague de froid (hors poids) ===
     cold_wave = _detect_cold_wave(forecasts or [], target_idx)
 
+    # === Corrections par facteur du journal d'apprentissage ===
+    # Appliquées AVANT la somme pondérée pour cibler les sub-scores fautifs
+    learning_adjustment = 0.0
+    if _learnings and _learnings.get("factor"):
+        factor_corrections = _learnings["factor"]
+        temp_score = _apply_factor_correction(temp_score, factor_corrections, "temperature")
+        budget_score = _apply_factor_correction(budget_score, factor_corrections, "budget")
+        dow_score = _apply_factor_correction(dow_score, factor_corrections, "weekday")
+        gradient_score = _apply_factor_correction(gradient_score, factor_corrections, "gradient")
+        cluster_score = _apply_factor_correction(cluster_score, factor_corrections, "clustering")
+        rte_s = _apply_factor_correction(rte_s, factor_corrections, "rte")
+
     # === Score composite pondere ===
     base_score = (
         temp_score * w_temp
@@ -165,8 +177,8 @@ def predict_day(target_date: date, weather: dict | None = None,
     if forecast_quality == "simulated":
         score_risque = score_risque * 0.5 + 50 * 0.5
 
-    # === Corrections du journal d'apprentissage ===
-    learning_adjustment = 0.0
+    # === Corrections contextuelles du journal d'apprentissage ===
+    # (horizon, température, mois, jour de semaine — ajustements au score composite)
     if _learnings:
         horizon_days = max(0, (target_date - date.today()).days)
         score_before = score_risque
@@ -196,7 +208,7 @@ def predict_day(target_date: date, weather: dict | None = None,
         sign = "+" if learning_adjustment > 0 else ""
         raison += f" · Corr. apprentissage ({sign}{learning_adjustment:.0f}pts)"
 
-    # Sub-scores pour stockage ML (Fix audit apprentissage #2)
+    # Sub-scores pour stockage ML — valeurs après correction par facteur
     sub_scores = {
         "score_temperature": round(temp_score, 1),
         "score_budget": round(budget_score, 1),
@@ -262,14 +274,16 @@ def predict_range(forecasts: list[dict],
                 sim_remaining["BLANC"] -= 1
             continue
 
-        # Fix #5 audit v4 : RTE fiable J+1 seulement, degrade J+2/J+3, ignore au-dela
+        # Fix #5 audit v4 : RTE fiable J+1, degrade progressivement J+2→J+6
+        # Fix audit v7 : courbe plus douce — signal RTE pertinent jusqu'à J+5-6
+        # (les tendances de consommation restent valides sur une semaine)
         day_rte = rte_score
         if rte_score and rte_score.get("available") and delta > 1:
-            if delta > 3:
-                day_rte = None  # Au-dela de J+3, RTE non pertinent
+            if delta > 6:
+                day_rte = None  # Au-delà de J+6, RTE non pertinent
             else:
-                # Attenuation lineaire vers neutre (50)
-                blend = max(0.0, 1.0 - (delta - 1) / 3.0)
+                # Atténuation exponentielle douce : 1.0 à J+1, ~0.37 à J+4, ~0.14 à J+6
+                blend = max(0.0, math.exp(-(delta - 1) / 3.0))
                 day_rte = {
                     **rte_score,
                     "score": round(rte_score["score"] * blend + 50 * (1 - blend)),
@@ -683,6 +697,20 @@ def _build_raison_v2(temp_moy: float, temp_min: float,
 # CORRECTIONS JOURNAL D'APPRENTISSAGE
 # ================================================================
 
+def _apply_factor_correction(sub_score: float, factor_corrections: dict,
+                              factor_name: str) -> float:
+    """Applique une correction d'apprentissage à un sub-score individuel.
+
+    Les corrections 'over' et 'under' pour ce facteur sont combinées.
+    Plafonnées à [-10, +10] points par facteur.
+    """
+    adj = 0.0
+    adj += factor_corrections.get(f"{factor_name}:over", 0)
+    adj += factor_corrections.get(f"{factor_name}:under", 0)
+    adj = max(-10.0, min(10.0, adj))
+    return max(0, min(100, sub_score + adj))
+
+
 MOIS_KEYS = {
     9: "sept", 10: "oct", 11: "nov", 12: "dec",
     1: "jan", 2: "fev", 3: "mars", 4: "avr", 5: "mai",
@@ -692,13 +720,17 @@ MOIS_KEYS = {
 def _apply_learning_corrections(score: float, target_date: date,
                                 horizon_days: int, temp_moy: float,
                                 learnings: dict) -> float:
-    """Applique les corrections du journal d'apprentissage au score.
+    """Applique les corrections contextuelles du journal d'apprentissage au score.
 
     Ajustements additifs bases sur les biais detectes par dimension :
     - horizon : degradation naturelle avec la distance
     - temp_range : biais dans certaines tranches de temperature
     - month : biais saisonnier par mois
     - weekday : biais semaine vs weekend
+    - color_confusion : correction ciblee selon la couleur predite actuelle
+
+    Note: les corrections par facteur (sub-scores) sont appliquées en amont
+    dans predict_day via _apply_factor_correction().
 
     Total plafonne a [-15, +15] points pour eviter les corrections excessives.
     """
@@ -734,6 +766,22 @@ def _apply_learning_corrections(score: float, target_date: date,
     # 4. Correction semaine/weekend
     day_key = "weekend" if target_date.weekday() >= 5 else "semaine"
     total_adj += learnings.get("weekday", {}).get(day_key, 0)
+
+    # 5. Correction ciblee color_confusion — s'applique en fonction du score actuel
+    # Ex: si on est dans la zone ROUGE (score >= SEUIL_ROUGE) et qu'on a un biais
+    # ROUGE->BLEU, appliquer la correction qui baisse le score
+    confusion_corrections = learnings.get("color_confusion", {})
+    if confusion_corrections:
+        if score >= Config.SEUIL_ROUGE:
+            # On va prédire ROUGE — appliquer les corrections des confusions ROUGE->X
+            for key, corr in confusion_corrections.items():
+                if key.startswith("ROUGE->"):
+                    total_adj += corr * 0.5  # Atténué à 50% pour éviter surréaction
+        elif score >= Config.SEUIL_BLANC:
+            # On va prédire BLANC
+            for key, corr in confusion_corrections.items():
+                if key.startswith("BLANC->"):
+                    total_adj += corr * 0.5
 
     # Plafonnement
     MAX_TOTAL = 15.0
