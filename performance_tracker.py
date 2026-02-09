@@ -45,6 +45,9 @@ def evaluate_predictions_for_date(target_date: date, couleur_reelle: str):
 
         nb_stored = 0
         for pred in predictions:
+            # Fix: ignorer les predictions confirmees (ce sont des faits EDF, pas nos predictions)
+            if pred["confirmed"]:
+                continue
             # Calculer l'avance en jours
             ts = datetime.fromisoformat(pred["timestamp_prediction"])
             jours_avance = (target_date - ts.date()).days
@@ -485,7 +488,8 @@ def _update_previous_precision_apres(conn):
                 "UPDATE weights_history SET precision_apres = ? WHERE id = ?",
                 (current_precision, last_entry["id"]),
             )
-            conn.commit()
+            # Pas de conn.commit() ici — le commit sera fait par l'appelant
+            # (recalculate_weights) pour garder la transaction atomique
             logger.info(
                 f"[Poids] precision_apres mise a jour pour id={last_entry['id']}: "
                 f"{current_precision}%"

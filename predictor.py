@@ -280,12 +280,13 @@ def _result_confirmed(target_date: date, couleur: str,
 
 def _load_recent_actuals() -> dict[str, str]:
     """Charge les couleurs reelles des 7 derniers jours en une requete.
-    Retourne {date_iso: couleur}. Fix #11."""
+    Retourne {date_iso: couleur}. Fix #11.
+    Fix data-integrity : exclut les actuals synthetiques (backfill)."""
     conn = get_db()
     try:
         since = (date.today() - timedelta(days=7)).isoformat()
         rows = conn.execute(
-            "SELECT date, couleur_reelle FROM actuals WHERE date >= ?",
+            "SELECT date, couleur_reelle FROM actuals WHERE date >= ? AND synthetic = 0",
             (since,)
         ).fetchall()
         return {row["date"]: row["couleur_reelle"] for row in rows}

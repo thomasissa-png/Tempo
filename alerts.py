@@ -276,7 +276,7 @@ def _log_sms(conn, user_id: int, type_alerte: str, couleur: str,
            VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
         (user_id, type_alerte, couleur, message,
          datetime.now().isoformat(),
-         "sent" if sid else "failed",
+         statut if sid else "failed",
          sid or "",
          erreur),
     )

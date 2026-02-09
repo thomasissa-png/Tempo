@@ -101,17 +101,77 @@ def store_actual(date_str: str, couleur: str, overwrite: bool = True,
 
 async def fetch_edf_remaining() -> dict | None:
     """Récupère les compteurs officiels EDF via /joursTempo.
-    Retourne {"ROUGE": n, "BLANC": n, "BLEU": n} ou None."""
+
+    L'API a changé de format : elle renvoie maintenant un historique
+    jour par jour au lieu d'un résumé avec les compteurs.
+    Format actuel : liste de {"dateJour": "2025-11-04", "codeJour": 1|2|3,
+                               "periode": "2025-2026", ...}
+    On filtre la saison en cours, exclut les jours "Inconnu" (codeJour absent
+    ou invalide), compte les utilisés et calcule les restants.
+
+    Retourne {"ROUGE": restants, "BLANC": restants, "BLEU": restants} ou None.
+    """
     try:
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.get(f"{Config.TEMPO_API_BASE}/joursTempo")
             resp.raise_for_status()
             data = resp.json()
-            return {
-                "ROUGE": data.get("PARAM_NB_J_ROUGE", 0),
-                "BLANC": data.get("PARAM_NB_J_BLANC", 0),
-                "BLEU": data.get("PARAM_NB_J_BLEU", 0),
+
+            # Ancien format (dict avec PARAM_NB_J_*) — rétrocompatibilité
+            if isinstance(data, dict) and "PARAM_NB_J_ROUGE" in data:
+                return {
+                    "ROUGE": data.get("PARAM_NB_J_ROUGE", 0),
+                    "BLANC": data.get("PARAM_NB_J_BLANC", 0),
+                    "BLEU": data.get("PARAM_NB_J_BLEU", 0),
+                }
+
+            # Nouveau format : liste d'entrées jour par jour
+            if not isinstance(data, list):
+                logger.warning(f"[Tempo] /joursTempo format inattendu: {type(data).__name__}")
+                return None
+
+            # Filtrer la saison en cours
+            start, end = get_season_dates()
+            season_str = f"{start.year}-{end.year}"  # ex: "2025-2026"
+            start_str = start.isoformat()
+            end_str = end.isoformat()
+
+            used = {"ROUGE": 0, "BLANC": 0, "BLEU": 0}
+            for entry in data:
+                code = entry.get("codeJour")
+                if code not in CODE_TO_COULEUR:
+                    continue  # Jour inconnu ou futur non déterminé
+
+                # Filtre par période si le champ existe
+                periode = entry.get("periode", "")
+                date_jour = entry.get("dateJour", "")
+
+                if periode:
+                    if periode != season_str:
+                        continue
+                elif date_jour:
+                    # Filtre de secours par date
+                    if date_jour < start_str or date_jour > end_str:
+                        continue
+                else:
+                    continue  # Pas de date ni période — ignorer
+
+                couleur = CODE_TO_COULEUR[code]
+                used[couleur] += 1
+
+            remaining = {
+                "ROUGE": max(0, Config.JOURS_ROUGES_TOTAL - used["ROUGE"]),
+                "BLANC": max(0, Config.JOURS_BLANCS_TOTAL - used["BLANC"]),
+                "BLEU": max(0, get_blue_days_total() - used["BLEU"]),
             }
+
+            logger.info(
+                f"[Tempo] Compteurs EDF (via historique): "
+                f"utilisés R={used['ROUGE']} B={used['BLANC']} BL={used['BLEU']} "
+                f"→ restants R={remaining['ROUGE']} B={remaining['BLANC']} BL={remaining['BLEU']}"
+            )
+            return remaining
+
     except Exception as e:
         logger.error(f"[Tempo] Erreur fetch /joursTempo : {e}")
         return None
@@ -315,14 +375,16 @@ def get_season_dates() -> tuple[date, date]:
 
 
 def count_used_days() -> dict:
-    """Compte les jours utilisés de chaque couleur cette saison."""
+    """Compte les jours utilisés de chaque couleur cette saison.
+    Fix data-integrity : exclut les actuals synthetiques pour que
+    get_remaining_days() reflète les vrais compteurs EDF."""
     start, end = get_season_dates()
     conn = get_db()
     try:
         rows = conn.execute(
             """SELECT couleur_reelle, COUNT(*) as cnt
                FROM actuals
-               WHERE date >= ? AND date <= ?
+               WHERE date >= ? AND date <= ? AND synthetic = 0
                GROUP BY couleur_reelle""",
             (start.isoformat(), end.isoformat()),
         ).fetchall()
