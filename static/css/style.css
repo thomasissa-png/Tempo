@@ -302,7 +302,7 @@ nav a:hover, nav a.active {
 }
 
 .fc-confirmed {
-    font-size: 0.7rem;
+    font-size: 0.8rem;
     font-weight: 600;
     color: #2E7D32;
     background: #E8F5E9;
@@ -313,13 +313,72 @@ nav a:hover, nav a.active {
 }
 
 .fc-changed {
-    font-size: 0.7rem;
+    font-size: 0.8rem;
     color: #E65100;
     background: #FFF3E0;
     padding: 2px 8px;
     border-radius: 8px;
     display: inline-block;
     margin-top: 4px;
+}
+
+/* === Cartes ROUGE proéminentes === */
+.forecast-card.color-ROUGE {
+    border-left-width: 6px;
+    box-shadow: 0 2px 12px rgba(244,67,54,0.2);
+}
+
+.forecast-card.color-ROUGE .fc-couleur {
+    font-size: 0.95rem;
+    padding: 4px 14px;
+}
+
+.forecast-grid-primary .forecast-card.color-ROUGE {
+    box-shadow: 0 4px 20px rgba(244,67,54,0.25);
+}
+
+/* Conseil jour rouge inline */
+.fc-tip {
+    font-size: 0.8rem;
+    color: #C62828;
+    background: #FFEBEE;
+    padding: 4px 8px;
+    border-radius: 6px;
+    margin-top: 6px;
+    line-height: 1.4;
+    font-weight: 500;
+}
+
+/* Conseil jour dans today-card */
+.today-tip {
+    font-size: 0.9rem;
+    margin-top: 10px;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    line-height: 1.5;
+}
+
+.today-tip.tip-rouge {
+    background: #FFEBEE;
+    color: #C62828;
+    font-weight: 600;
+}
+
+.today-tip.tip-blanc {
+    background: #FFF3E0;
+    color: #E65100;
+}
+
+.today-tip.tip-bleu {
+    background: #E3F2FD;
+    color: #1565C0;
+}
+
+/* Prix dans les today-cards */
+.today-price {
+    font-size: 0.85rem;
+    margin-top: 6px;
+    font-weight: 500;
 }
 
 .simulated-warning {
@@ -348,13 +407,81 @@ nav a:hover, nav a.active {
     border-bottom: 2px solid var(--border);
 }
 
-/* Fix #6 : groupes de prévisions par horizon */
+/* Résumé hebdomadaire */
+.week-summary {
+    margin: 24px 0 8px;
+}
+
+.week-summary:empty {
+    display: none;
+}
+
+.week-summary-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 18px 24px;
+    box-shadow: var(--shadow);
+    border-left: 5px solid var(--bleu);
+}
+
+.week-summary-card.has-rouge {
+    border-left-color: var(--rouge);
+    background: #FFF8F7;
+}
+
+.week-summary-title {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+}
+
+.week-summary-text {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.week-summary-text strong {
+    color: var(--text);
+}
+
+.week-summary-dots {
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+}
+
+.week-dot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    min-width: 46px;
+}
+
+.week-dot-circle {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: white;
+}
+
+.week-dot-label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+/* Groupes de prévisions par horizon */
 .forecast-group-label {
-    font-size: 0.85rem;
+    font-size: 0.95rem;
     font-weight: 600;
     color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
     margin: 20px 0 10px;
     padding: 4px 0;
 }
@@ -436,13 +563,13 @@ nav a:hover, nav a.active {
 .fc-couleur.ROUGE { background: var(--rouge); color: white; }
 
 .forecast-card .fc-temp {
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     color: var(--text-secondary);
     margin-top: 6px;
 }
 
 .forecast-card .fc-confidence {
-    font-size: 0.75rem;
+    font-size: 0.85rem;
     color: var(--text-secondary);
     margin-top: 4px;
 }
@@ -452,11 +579,11 @@ nav a:hover, nav a.active {
 }
 
 .forecast-card .fc-raison {
-    font-size: 0.7rem;
+    font-size: 0.8rem;
     color: var(--text-secondary);
     margin-top: 6px;
     font-style: italic;
-    line-height: 1.3;
+    line-height: 1.4;
 }
 
 /* === Alerte rouge overlay (ne pousse pas le contenu) === */
@@ -597,10 +724,9 @@ nav a:hover, nav a.active {
 
 /* === Aide sous les compteurs === */
 .counter-help {
-    font-size: 0.75rem;
+    font-size: 0.8rem;
     color: var(--text-secondary);
     margin-top: 4px;
-    font-style: italic;
 }
 
 .days-left-text {
@@ -880,15 +1006,21 @@ nav a:hover, nav a.active {
 
 /* === Formulaire: hints et legal === */
 .form-hint {
-    font-size: 0.78rem;
+    font-size: 0.85rem;
     color: var(--text-secondary);
 }
 
 .form-legal {
-    font-size: 0.8rem;
+    font-size: 0.85rem;
     color: var(--text-secondary);
     margin-top: 12px;
     line-height: 1.5;
+}
+
+/* Bouton subscribe plus visible */
+.btn.btn-subscribe {
+    font-size: 1.05rem;
+    padding: 14px 32px;
 }
 
 .form-legal a {
@@ -1004,7 +1136,7 @@ footer a {
 
 /* === Phone validation feedback === */
 .phone-feedback {
-    font-size: 0.78rem;
+    font-size: 0.85rem;
     margin-top: 2px;
     min-height: 1.2em;
 }
@@ -1100,8 +1232,8 @@ footer a {
     /* Counter cards compact on mobile */
     .counter-card { padding: 12px 8px; }
     .counter-card .count { font-size: 1.6rem; }
-    .counter-card .label { font-size: 0.75rem; }
-    .counter-help { font-size: 0.68rem; }
+    .counter-card .label { font-size: 0.8rem; }
+    .counter-help { font-size: 0.75rem; }
 
     /* Alert overlay position adjustment */
     .alert-rouge { bottom: 16px; }
@@ -1113,8 +1245,8 @@ footer a {
     .container { padding: 0 12px; }
     .today-section { grid-template-columns: 1fr; }
     .counter-card .count { font-size: 1.4rem; }
-    .counter-card .label { font-size: 0.7rem; }
-    .counter-help { display: none; }
+    .counter-card .label { font-size: 0.75rem; }
+    .counter-help { font-size: 0.7rem; }
 
     /* Back-to-top adjust when alert is visible */
     .back-to-top { bottom: 16px; right: 16px; }

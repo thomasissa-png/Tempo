@@ -1,12 +1,20 @@
 /**
- * TempoForecast — JavaScript principal du dashboard v2.
+ * TempoForecast — JavaScript principal du dashboard v3.
  *
- * Charge les données depuis les endpoints FastAPI et anime le dashboard.
+ * Refonte UX : langage humain, conseils actionnables, format tel FR,
+ * résumé hebdomadaire, prix concrets.
  */
 
 const JOURS = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
 const JOURS_FULL = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
 const MOIS = ['jan', 'fév', 'mar', 'avr', 'mai', 'jun', 'jul', 'aoû', 'sep', 'oct', 'nov', 'déc'];
+
+// Tarifs indicatifs Tempo 2025 (€/kWh TTC)
+const TARIFS = {
+    BLEU:  { hp: 0.1296, hc: 0.1044 },
+    BLANC: { hp: 0.1486, hc: 0.1140 },
+    ROUGE: { hp: 0.7562, hc: 0.1568 },
+};
 
 // ================================================================
 // INITIALISATION
@@ -57,16 +65,19 @@ async function loadTomorrow() {
         if (data && data.status === 'ok') {
             renderTodayCard(el, data, 'Demain');
         } else {
-            renderTodayCard(el, { couleur: 'UNKNOWN', date: '' }, 'Demain');
-            const dateEl = el.querySelector('.date-text');
-            if (dateEl) dateEl.textContent = 'Disponible après 11h';
+            // Couleur de demain pas encore connue
+            el.innerHTML = `
+                <h3>DEMAIN</h3>
+                <div class="couleur-circle couleur-UNKNOWN" role="img" aria-label="En attente">?</div>
+                <div style="font-size:1.1rem;font-weight:600;margin:4px 0;color:var(--text-secondary)">En attente</div>
+                <div class="date-text">EDF annonce la couleur de demain vers 11h.<br>Revenez d'ici quelques minutes !</div>
+            `;
         }
     } catch {
         el.innerHTML = '<p class="loading-state">Erreur de connexion<br><button class="retry-btn" onclick="loadTomorrow()">Réessayer</button></p>';
     }
 }
 
-// Fix #12 : état vide pour les compteurs
 async function loadRemaining() {
     try {
         const resp = await fetch('/api/remaining');
@@ -98,8 +109,6 @@ async function loadRemaining() {
     }
 }
 
-// Fix #6 : prévisions groupées par horizon
-// Fix v5 : lecture DB, indicateurs confirmed/simulated/changed
 async function loadPredictions() {
     const container = document.getElementById('forecast-container');
     if (!container) return;
@@ -122,21 +131,21 @@ async function loadPredictions() {
 
         if (preds.length === 0) {
             container.innerHTML = '<p class="loading-state">' +
-                escapeHtml(data.message || 'Aucune prédiction disponible. Revenez après 18h.') + '</p>';
+                escapeHtml(data.message || 'Aucune prévision disponible. Revenez après 18h.') + '</p>';
             return;
         }
 
-        // Fix v5 #6 : avertissement si données simulées
+        // Avertissement si données simulées
         const hasSimulated = preds.some(p => p.simulated);
         if (hasSimulated) {
             const warn = document.createElement('div');
             warn.className = 'simulated-warning';
-            warn.innerHTML = '<strong>Données météo simulées</strong> — Open-Meteo temporairement indisponible. ' +
-                'Les prédictions sont basées sur des moyennes saisonnières et sont moins fiables.';
+            warn.innerHTML = '<strong>Prévisions météo temporairement indisponibles</strong> — ' +
+                'Les prédictions sont basées sur des moyennes saisonnières et sont donc moins fiables que d\'habitude.';
             container.appendChild(warn);
         }
 
-        // Fix v5 #4 + I-7 : afficher la date de dernière mise à jour (avec validation)
+        // Date de dernière mise à jour
         if (data.generated_at) {
             const genDate = new Date(data.generated_at);
             if (!isNaN(genDate.getTime())) {
@@ -148,7 +157,10 @@ async function loadPredictions() {
             }
         }
 
-        // Grouper les prédictions par horizon
+        // Résumé de la semaine
+        renderWeekSummary(preds);
+
+        // Grouper les prédictions par horizon avec labels humains
         const groupPrimary = preds.slice(0, 3);
         const groupMedium  = preds.slice(3, 7);
         const groupFar     = preds.slice(7);
@@ -156,7 +168,7 @@ async function loadPredictions() {
         if (groupPrimary.length > 0) {
             const label1 = document.createElement('div');
             label1.className = 'forecast-group-label';
-            label1.textContent = 'Prévisions fiables (J+1 à J+3)';
+            label1.textContent = 'Les 3 prochains jours — prévisions fiables';
             container.appendChild(label1);
 
             const grid1 = document.createElement('div');
@@ -171,7 +183,7 @@ async function loadPredictions() {
         if (groupMedium.length > 0) {
             const label2 = document.createElement('div');
             label2.className = 'forecast-group-label';
-            label2.textContent = 'Prévisions moyennes (J+4 à J+7)';
+            label2.textContent = 'Cette semaine — prévisions moyennes';
             container.appendChild(label2);
 
             const grid2 = document.createElement('div');
@@ -186,7 +198,7 @@ async function loadPredictions() {
         if (groupFar.length > 0) {
             const label3 = document.createElement('div');
             label3.className = 'forecast-group-label';
-            label3.textContent = 'Tendances indicatives (J+8 à J+15)';
+            label3.textContent = 'Semaine prochaine et au-delà — tendances indicatives';
             container.appendChild(label3);
 
             const grid3 = document.createElement('div');
@@ -198,12 +210,13 @@ async function loadPredictions() {
             container.appendChild(grid3);
         }
 
-        // Afficher alerte rouge si nécessaire (sauf si déjà fermée cette session)
+        // Alerte rouge si nécessaire
         if (alertEl && hasRouge && !sessionStorage.getItem('alert-rouge-dismissed')) {
             const rougePreds = preds.filter(p => p.couleur_predite === 'ROUGE');
             const first = rougePreds[0];
-            alertEl.querySelector('.alert-text').textContent =
-                `Jour ROUGE prévu le ${formatDateFr(first.date)} ! Anticipez votre consommation.`;
+            const dateStr = formatDateFr(first.date);
+            alertEl.querySelector('.alert-text').innerHTML =
+                `<strong>Jour rouge prévu ${dateStr} !</strong> Reportez vos machines et baissez le chauffage.`;
             alertEl.classList.add('visible');
         }
     } catch (e) {
@@ -223,7 +236,7 @@ async function loadBadge() {
         if (el) {
             if (data.total_predictions > 0) {
                 document.getElementById('badge-value').textContent = `${data.precision_30j}%`;
-                el.textContent = data.label;
+                el.textContent = `Précision de nos prévisions sur les 30 derniers jours`;
             } else {
                 document.getElementById('badge-value').textContent = '—';
                 el.textContent = 'Précision en cours de calcul (pas encore assez de données)';
@@ -235,19 +248,131 @@ async function loadBadge() {
 }
 
 // ================================================================
+// RÉSUMÉ DE LA SEMAINE
+// ================================================================
+
+function renderWeekSummary(preds) {
+    const container = document.getElementById('week-summary');
+    if (!container) return;
+
+    // Prendre les 7 premiers jours
+    const weekPreds = preds.slice(0, 7);
+    if (weekPreds.length === 0) return;
+
+    const rougeCount = weekPreds.filter(p => p.couleur_predite === 'ROUGE').length;
+    const blancCount = weekPreds.filter(p => p.couleur_predite === 'BLANC').length;
+
+    // Construire le texte du résumé
+    let summaryText = '';
+    if (rougeCount === 0 && blancCount === 0) {
+        summaryText = 'Bonne nouvelle : <strong>aucun jour rouge ni blanc</strong> en vue cette semaine. Consommez normalement !';
+    } else {
+        const parts = [];
+        if (rougeCount > 0) {
+            const rougeDays = weekPreds
+                .filter(p => p.couleur_predite === 'ROUGE')
+                .map(p => { const d = new Date(p.date); return JOURS_FULL[d.getDay()]; });
+            parts.push(`<strong style="color:var(--rouge)">${rougeCount} jour${rougeCount > 1 ? 's' : ''} rouge${rougeCount > 1 ? 's' : ''}</strong> (${rougeDays.join(', ')})`);
+        }
+        if (blancCount > 0) {
+            const blancDays = weekPreds
+                .filter(p => p.couleur_predite === 'BLANC')
+                .map(p => { const d = new Date(p.date); return JOURS_FULL[d.getDay()]; });
+            parts.push(`<strong>${blancCount} jour${blancCount > 1 ? 's' : ''} blanc${blancCount > 1 ? 's' : ''}</strong> (${blancDays.join(', ')})`);
+        }
+        summaryText = parts.join(' et ') + ' en vue. <strong>Planifiez vos machines les jours bleus.</strong>';
+    }
+
+    // Dots visuels
+    let dotsHtml = '<div class="week-summary-dots">';
+    weekPreds.forEach(p => {
+        const d = new Date(p.date);
+        const dayLabel = JOURS[d.getDay()];
+        const couleur = p.couleur_predite;
+        const bg = couleur === 'ROUGE' ? 'var(--rouge)' : couleur === 'BLANC' ? 'var(--blanc)' : 'var(--bleu)';
+        dotsHtml += `
+            <div class="week-dot">
+                <div class="week-dot-circle" style="background:${bg}">${couleur[0]}</div>
+                <span class="week-dot-label">${escapeHtml(dayLabel)}</span>
+            </div>`;
+    });
+    dotsHtml += '</div>';
+
+    const card = document.createElement('div');
+    card.className = 'week-summary-card' + (rougeCount > 0 ? ' has-rouge' : '');
+    card.innerHTML = `
+        <div class="week-summary-title">Résumé des 7 prochains jours</div>
+        <div class="week-summary-text">${summaryText}</div>
+        ${dotsHtml}
+    `;
+    container.innerHTML = '';
+    container.appendChild(card);
+}
+
+// ================================================================
 // RENDU DES COMPOSANTS
 // ================================================================
+
+/**
+ * Retourne un conseil actionnable selon la couleur.
+ */
+function getTipForColor(couleur) {
+    switch (couleur) {
+        case 'ROUGE':
+            return { text: 'Reportez lessive, sèche-linge, four et recharge VE', css: 'tip-rouge' };
+        case 'BLANC':
+            return { text: 'Tarif moyen — pas de précaution particulière', css: 'tip-blanc' };
+        case 'BLEU':
+            return { text: 'Tarif avantageux — consommez librement !', css: 'tip-bleu' };
+        default:
+            return null;
+    }
+}
+
+/**
+ * Retourne un label de prix pour la couleur.
+ */
+function getPriceLabel(couleur) {
+    const t = TARIFS[couleur];
+    if (!t) return '';
+    return `HP ${t.hp.toFixed(2).replace('.', ',')} €/kWh`;
+}
+
+/**
+ * Convertit une confiance (0-100%) en label humain.
+ */
+function confidenceToLabel(confidence) {
+    if (confidence >= 85) return 'Très probable';
+    if (confidence >= 70) return 'Probable';
+    if (confidence >= 55) return 'Assez probable';
+    if (confidence >= 40) return 'Incertain';
+    return 'Peu probable';
+}
 
 function renderTodayCard(el, data, label) {
     const VALID_COULEURS = ['BLEU', 'BLANC', 'ROUGE', 'UNKNOWN'];
     const couleur = VALID_COULEURS.includes(data.couleur) ? data.couleur : 'UNKNOWN';
     const couleurLabel = couleur === 'UNKNOWN' ? 'Inconnu' : couleur;
     const dateStr = data.date ? formatDateFr(data.date) : '';
+
+    let tipHtml = '';
+    const tip = getTipForColor(couleur);
+    if (tip) {
+        tipHtml = `<div class="today-tip ${tip.css}">${escapeHtml(tip.text)}</div>`;
+    }
+
+    let priceHtml = '';
+    if (couleur !== 'UNKNOWN') {
+        priceHtml = `<div class="today-price" style="color:${couleur === 'ROUGE' ? 'var(--rouge)' : 'var(--text-secondary)'}">${escapeHtml(getPriceLabel(couleur))}</div>`;
+    }
+
     el.innerHTML = `
         <h3>${escapeHtml(label)}</h3>
         <div class="couleur-circle couleur-${couleur}" role="img" aria-label="Couleur ${escapeHtml(couleurLabel)}">${couleur === 'UNKNOWN' ? '?' : couleur[0]}</div>
         <div style="font-size:1.1rem;font-weight:600;margin:4px 0">${escapeHtml(couleurLabel)}</div>
+        ${priceHtml}
         <div class="date-text">${escapeHtml(dateStr)}</div>
+        ${tipHtml}
     `;
 }
 
@@ -275,25 +400,33 @@ function createForecastCard(pred) {
         tempHtml = `<div class="fc-temp">${escapeHtml(String(pred.temp_min_prevue))}° / ${escapeHtml(String(pred.temp_max_prevue))}°</div>`;
     }
 
+    // Raison simplifiée — pas de jargon technique
     let raisonHtml = '';
     if (pred.raison && pred.raison !== 'Conditions normales') {
-        raisonHtml = `<div class="fc-raison">${escapeHtml(pred.raison)}</div>`;
+        raisonHtml = `<div class="fc-raison">${escapeHtml(simplifyRaison(pred.raison))}</div>`;
     }
 
     let confirmedHtml = '';
     if (pred.confirmed) {
-        confirmedHtml = '<div class="fc-confirmed">Confirmé EDF</div>';
+        confirmedHtml = '<div class="fc-confirmed">Confirmé par EDF</div>';
     }
 
-    // Fix audit v6 : escape couleur_precedente
     let changedHtml = '';
     if (pred.couleur_precedente) {
         changedHtml = `<div class="fc-changed">Était ${escapeHtml(pred.couleur_precedente)}</div>`;
     }
 
+    // Tip actionnable pour les jours ROUGE
+    let tipHtml = '';
+    if (couleur === 'ROUGE' && !pred.confirmed) {
+        tipHtml = '<div class="fc-tip">Reportez vos machines !</div>';
+    }
+
+    // Confiance en langage humain
+    const confidenceLabel = confidenceToLabel(confidence);
     const confidenceText = pred.confirmed
         ? 'Couleur officielle EDF'
-        : `Confiance: <strong>${confidence}%</strong>`;
+        : `${escapeHtml(confidenceLabel)} (${confidence}%)`;
 
     card.innerHTML = `
         <div class="fc-day">${escapeHtml(dow)}</div>
@@ -304,16 +437,70 @@ function createForecastCard(pred) {
         <div class="fc-confidence">${confidenceText}</div>
         ${changedHtml}
         ${raisonHtml}
+        ${tipHtml}
     `;
 
     return card;
+}
+
+/**
+ * Transforme la raison technique en texte compréhensible.
+ */
+function simplifyRaison(raison) {
+    if (!raison) return '';
+
+    // Remplacements de termes techniques
+    let s = raison;
+
+    // Patterns techniques → humain
+    if (/vague.+froid/i.test(s)) return 'Vague de froid détectée';
+    if (/chute.+temp/i.test(s)) return 'Forte baisse des températures';
+    if (/budget.*[8-9]\d?%|urgence.*budget/i.test(s)) return 'Beaucoup de jours rouges encore à placer';
+
+    // Nettoyer les termes techniques résiduels
+    s = s.replace(/Score temp \d+/gi, 'Froid')
+         .replace(/Budget \d+[A-Z]?\/\d+j?/gi, 'Pression budgétaire')
+         .replace(/Gradient -?\d+°C/gi, 'Chute de température')
+         .replace(/\bMardi \(pic\)/gi, 'Mardi (jour à risque)')
+         .replace(/Conso RTE.*/gi, 'Forte demande électrique')
+         .replace(/\s*·\s*/g, ' — ');
+
+    // Limiter la longueur
+    if (s.length > 60) s = s.substring(0, 57) + '...';
+
+    return s;
 }
 
 // ================================================================
 // FORMULAIRE INSCRIPTION SMS
 // ================================================================
 
-// Fix #8 : état de chargement sur le bouton
+/**
+ * Normalise un numéro de téléphone français vers le format +33.
+ * Accepte : 06 12 34 56 78, 0612345678, +33612345678, 33612345678
+ */
+function normalizePhone(input) {
+    // Retirer espaces, points, tirets
+    let cleaned = input.replace(/[\s.\-()]/g, '');
+
+    // 06... ou 07... → +33...
+    if (/^0[67]\d{8}$/.test(cleaned)) {
+        return '+33' + cleaned.substring(1);
+    }
+
+    // 336... ou 337... (sans le +)
+    if (/^33[67]\d{8}$/.test(cleaned)) {
+        return '+' + cleaned;
+    }
+
+    // Déjà au bon format
+    if (/^\+33[67]\d{8}$/.test(cleaned)) {
+        return cleaned;
+    }
+
+    return null; // Format non reconnu
+}
+
 function setupSubscribeForm() {
     const form = document.getElementById('subscribe-form');
     if (!form) return;
@@ -325,14 +512,18 @@ function setupSubscribeForm() {
         resultEl.className = 'form-result';
         resultEl.style.display = 'none';
 
-        const formData = new FormData(form);
+        const rawPhone = form.elements.phone.value;
+        const phone = normalizePhone(rawPhone);
 
-        // Validation basique du numéro
-        const phone = formData.get('phone');
-        if (!phone.match(/^\+33[0-9]{9}$/)) {
-            showFormResult(resultEl, 'error', 'Format invalide. Utilisez +33 suivi de 9 chiffres (ex: +33612345678)');
+        if (!phone) {
+            showFormResult(resultEl, 'error',
+                'Numéro non reconnu. Tapez votre numéro au format 06 12 34 56 78 ou +33612345678');
             return;
         }
+
+        // Remplacer la valeur du champ par le format normalisé pour l'envoi
+        const formData = new FormData(form);
+        formData.set('phone', phone);
 
         // Désactiver le bouton + spinner
         const originalText = btn.textContent;
@@ -347,7 +538,8 @@ function setupSubscribeForm() {
             const data = await resp.json();
 
             if (resp.ok) {
-                showFormResult(resultEl, 'success', data.message || 'Inscription réussie !');
+                showFormResult(resultEl, 'success',
+                    data.message || 'Inscription réussie ! Vous recevrez un SMS avant chaque jour cher.');
                 form.reset();
             } else {
                 showFormResult(resultEl, 'error', data.detail || "Erreur lors de l'inscription");
@@ -355,7 +547,6 @@ function setupSubscribeForm() {
         } catch {
             showFormResult(resultEl, 'error', 'Erreur de connexion au serveur');
         } finally {
-            // Réactiver le bouton
             btn.disabled = false;
             btn.innerHTML = originalText;
         }
@@ -378,7 +569,6 @@ function setupWelcomeBanner() {
     const closeBtn = document.getElementById('welcome-close');
     if (!banner || !closeBtn) return;
 
-    // Cacher si déjà fermé
     if (localStorage.getItem('welcome-dismissed')) {
         banner.classList.add('hidden');
         return;
@@ -391,7 +581,7 @@ function setupWelcomeBanner() {
 }
 
 // ================================================================
-// Fix #7 : ALERTE ROUGE DISMISSABLE (sessionStorage)
+// ALERTE ROUGE DISMISSABLE (sessionStorage)
 // ================================================================
 
 function setupAlertDismiss() {
@@ -420,7 +610,6 @@ function setText(id, text) {
     if (el) el.textContent = text;
 }
 
-// Protection XSS — échapper le HTML dans les données injectées
 function escapeHtml(str) {
     if (!str) return '';
     const div = document.createElement('div');
@@ -442,7 +631,6 @@ function setupHamburger() {
         btn.setAttribute('aria-expanded', open);
     });
 
-    // Close menu when clicking a nav link
     nav.querySelectorAll('a').forEach(link => {
         link.addEventListener('click', () => {
             nav.classList.remove('open');
@@ -450,7 +638,6 @@ function setupHamburger() {
         });
     });
 
-    // Close menu when clicking outside
     document.addEventListener('click', (e) => {
         if (!btn.contains(e.target) && !nav.contains(e.target)) {
             nav.classList.remove('open');
@@ -481,7 +668,7 @@ function setupBackToTop() {
 }
 
 // ================================================================
-// REAL-TIME PHONE VALIDATION
+// VALIDATION TÉLÉPHONE (temps réel, format FR)
 // ================================================================
 
 function setupPhoneValidation() {
@@ -490,25 +677,46 @@ function setupPhoneValidation() {
     if (!phoneInput || !feedback) return;
 
     phoneInput.addEventListener('input', () => {
-        const val = phoneInput.value;
+        const val = phoneInput.value.replace(/[\s.\-()]/g, '');
+
         if (!val || val.length < 2) {
             feedback.textContent = '';
             feedback.className = 'phone-feedback';
             return;
         }
 
-        if (/^\+33[0-9]{9}$/.test(val)) {
-            feedback.textContent = 'Format valide';
-            feedback.className = 'phone-feedback valid';
-        } else if (/^\+33/.test(val) && val.length < 12) {
-            feedback.textContent = `Encore ${12 - val.length} chiffre(s)`;
-            feedback.className = 'phone-feedback';
-        } else if (/^\+33/.test(val) && val.length > 12) {
-            feedback.textContent = 'Trop de chiffres';
-            feedback.className = 'phone-feedback invalid';
-        } else if (!val.startsWith('+33')) {
-            feedback.textContent = 'Doit commencer par +33';
-            feedback.className = 'phone-feedback invalid';
+        // Format FR : 06/07
+        if (/^0[67]/.test(val)) {
+            if (/^0[67]\d{8}$/.test(val)) {
+                feedback.textContent = 'Numéro valide';
+                feedback.className = 'phone-feedback valid';
+            } else if (val.length < 10) {
+                feedback.textContent = `Encore ${10 - val.length} chiffre(s)`;
+                feedback.className = 'phone-feedback';
+            } else if (val.length > 10) {
+                feedback.textContent = 'Trop de chiffres';
+                feedback.className = 'phone-feedback invalid';
+            }
+            return;
         }
+
+        // Format international +33
+        if (/^\+?33/.test(val)) {
+            const digits = val.replace(/^\+?33/, '');
+            if (/^[67]\d{8}$/.test(digits)) {
+                feedback.textContent = 'Numéro valide';
+                feedback.className = 'phone-feedback valid';
+            } else if (digits.length < 9) {
+                feedback.textContent = `Encore ${9 - digits.length} chiffre(s)`;
+                feedback.className = 'phone-feedback';
+            } else {
+                feedback.textContent = 'Vérifiez le numéro';
+                feedback.className = 'phone-feedback invalid';
+            }
+            return;
+        }
+
+        feedback.textContent = 'Tapez un numéro en 06 ou 07';
+        feedback.className = 'phone-feedback invalid';
     });
 }
