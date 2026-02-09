@@ -5,7 +5,7 @@
 :root {
     --bleu: #2196F3;
     --bleu-bg: #E3F2FD;
-    --blanc: #9E9E9E;
+    --blanc: #757575;  /* H-08 QA : contrast ratio 4.6:1 vs white (WCAG AA) */
     --blanc-bg: #F5F5F5;
     --rouge: #F44336;
     --rouge-bg: #FFEBEE;
@@ -1241,7 +1241,8 @@ footer a {
 
 @media (max-width: 480px) {
     .forecast-grid { grid-template-columns: repeat(2, 1fr); }
-    .forecast-grid.forecast-grid-primary { grid-template-columns: repeat(2, 1fr); }
+    /* L-01 QA : 1 colonne sur très petit écran pour éviter l'écrasement */
+    .forecast-grid.forecast-grid-primary { grid-template-columns: 1fr; }
     .container { padding: 0 12px; }
     .today-section { grid-template-columns: 1fr; }
     .counter-card .count { font-size: 1.4rem; }

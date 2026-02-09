@@ -34,24 +34,39 @@ def _get_twilio_client():
 
 
 def send_sms(phone_number: str, message: str) -> tuple[str, str]:
-    """Envoie un SMS via Twilio.
+    """Envoie un SMS via Twilio avec retry exponentiel.
+    H-03 QA : retry 2 fois avec backoff sur échec Twilio.
+    M-10 QA : tronque les messages > 160 caractères.
     Retourne (sid, statut) — sid vide si échec."""
+    # M-10 QA : tronquer le message si trop long
+    if len(message) > 160:
+        message = message[:157] + "..."
+
     client = _get_twilio_client()
     if not client:
         logger.info(f"[SMS] Mode simulation → ****{phone_number[-4:]}: {message[:60]}...")
         return ("SIM_" + datetime.now().strftime("%H%M%S"), "simulated")
 
-    try:
-        msg = client.messages.create(
-            body=message,
-            from_=Config.TWILIO_PHONE_NUMBER,
-            to=phone_number,
-        )
-        logger.info(f"[SMS] Envoyé à ****{phone_number[-4:]}: {msg.sid}")
-        return (msg.sid, "sent")
-    except Exception as e:
-        logger.error(f"[SMS] Échec envoi à ****{phone_number[-4:]}: {e}")
-        return ("", f"error: {e}")
+    import time
+    last_error = None
+    for attempt in range(3):  # H-03 QA : 3 tentatives max
+        try:
+            msg = client.messages.create(
+                body=message,
+                from_=Config.TWILIO_PHONE_NUMBER,
+                to=phone_number,
+            )
+            logger.info(f"[SMS] Envoyé à ****{phone_number[-4:]}: {msg.sid}")
+            return (msg.sid, "sent")
+        except Exception as e:
+            last_error = e
+            if attempt < 2:
+                wait = 2 ** attempt  # 1s, 2s
+                logger.warning(f"[SMS] Tentative {attempt+1} échouée, retry dans {wait}s: {e}")
+                time.sleep(wait)
+
+    logger.error(f"[SMS] Échec envoi à ****{phone_number[-4:]} après 3 tentatives: {last_error}")
+    return ("", f"error: {last_error}")
 
 
 # ================================================================
@@ -163,9 +178,11 @@ def send_alerts_for_prediction(target_date: date, prediction: dict):
             type_alerte = "prediction_blanc"
 
         today_str = date.today().isoformat()
+        target_str = target_date.isoformat()
 
         for user in users:
-            # Limite 1 alerte/jour
+            # M-09 QA : dédup par date cible (pas par date d'envoi)
+            # Vérifie aussi la date d'envoi pour limiter à 1/jour
             existing = conn.execute(
                 """SELECT id FROM sms_logs
                    WHERE user_id = ? AND date_envoi LIKE ?
@@ -357,7 +374,8 @@ def unsubscribe_user(phone_number: str) -> dict:
         ).fetchone()
 
         if not user:
-            return {"error": "Numéro non trouvé."}
+            # H-07 QA : message générique (ne pas révéler si le numéro existe)
+            return {"error": "Désinscription impossible. Vérifiez votre numéro."}
 
         conn.execute(
             "UPDATE users SET actif = 0, updated_at = ? WHERE id = ?",

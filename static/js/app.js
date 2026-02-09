@@ -9,12 +9,19 @@ const JOURS = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
 const JOURS_FULL = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
 const MOIS = ['jan', 'fév', 'mar', 'avr', 'mai', 'jun', 'jul', 'aoû', 'sep', 'oct', 'nov', 'déc'];
 
-// Tarifs indicatifs Tempo 2025 (€/kWh TTC)
+// Tarifs indicatifs Tempo 2026 (€/kWh TTC — vérifiez sur votre contrat EDF)
 const TARIFS = {
     BLEU:  { hp: 0.1296, hc: 0.1044 },
     BLANC: { hp: 0.1486, hc: 0.1140 },
     ROUGE: { hp: 0.7562, hc: 0.1568 },
 };
+
+// M-04 QA : helper fetch avec timeout (10s par défaut)
+function fetchWithTimeout(url, options = {}, timeoutMs = 10000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer));
+}
 
 // ================================================================
 // INITIALISATION
@@ -43,7 +50,7 @@ async function loadToday() {
     const el = document.getElementById('today-card');
     if (!el) return;
     try {
-        const resp = await fetch('/api/today');
+        const resp = await fetchWithTimeout('/api/today');
         if (!resp.ok) { el.innerHTML = '<p class="loading-state">Données non disponibles</p>'; return; }
         const data = await resp.json();
         if (data && data.status === 'ok') {
@@ -60,7 +67,7 @@ async function loadTomorrow() {
     const el = document.getElementById('tomorrow-card');
     if (!el) return;
     try {
-        const resp = await fetch('/api/tomorrow');
+        const resp = await fetchWithTimeout('/api/tomorrow');
         if (!resp.ok) { el.innerHTML = '<p class="loading-state">Données non disponibles</p>'; return; }
         const data = await resp.json();
         if (data && data.status === 'ok') {
@@ -81,7 +88,7 @@ async function loadTomorrow() {
 
 async function loadRemaining() {
     try {
-        const resp = await fetch('/api/remaining');
+        const resp = await fetchWithTimeout('/api/remaining');
         if (!resp.ok) { throw new Error(`HTTP ${resp.status}`); }
         const data = await resp.json();
         if (!data || data.status !== 'ok') {
@@ -116,7 +123,7 @@ async function loadPredictions() {
     container.innerHTML = '<div class="loading-state"><div class="loader"></div><p>Chargement des prévisions...</p></div>';
 
     try {
-        const resp = await fetch('/api/predictions');
+        const resp = await fetchWithTimeout('/api/predictions');
         if (!resp.ok) { throw new Error(`HTTP ${resp.status}`); }
         const data = await resp.json();
         if (!data || data.status !== 'ok') {
@@ -228,7 +235,7 @@ async function loadPredictions() {
 
 async function loadBadge() {
     try {
-        const resp = await fetch('/api/performance/badge');
+        const resp = await fetchWithTimeout('/api/performance/badge');
         if (!resp.ok) return;
         const data = await resp.json();
         if (!data || data.status !== 'ok') return;
@@ -532,7 +539,7 @@ function setupSubscribeForm() {
         btn.innerHTML = '<span class="btn-spinner"></span> Inscription en cours...';
 
         try {
-            const resp = await fetch('/api/subscribe', {
+            const resp = await fetchWithTimeout('/api/subscribe', {
                 method: 'POST',
                 body: formData,
             });
@@ -570,14 +577,17 @@ function setupWelcomeBanner() {
     const closeBtn = document.getElementById('welcome-close');
     if (!banner || !closeBtn) return;
 
-    if (localStorage.getItem('welcome-dismissed')) {
-        banner.classList.add('hidden');
-        return;
-    }
+    // L-04 QA : try/catch pour localStorage (peut être désactivé)
+    try {
+        if (localStorage.getItem('welcome-dismissed')) {
+            banner.classList.add('hidden');
+            return;
+        }
+    } catch { /* localStorage indisponible */ }
 
     closeBtn.addEventListener('click', () => {
         banner.classList.add('hidden');
-        localStorage.setItem('welcome-dismissed', '1');
+        try { localStorage.setItem('welcome-dismissed', '1'); } catch { /* ok */ }
     });
 }
 
@@ -759,7 +769,7 @@ function setupUnsubscribeForm() {
             const formData = new FormData();
             formData.set('phone', phone);
 
-            const resp = await fetch('/api/unsubscribe', {
+            const resp = await fetchWithTimeout('/api/unsubscribe', {
                 method: 'POST',
                 body: formData,
             });

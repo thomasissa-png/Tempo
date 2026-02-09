@@ -323,6 +323,8 @@ function renderWeightsChart(weights) {
 }
 
 async function runTask(taskName) {
+    // M-08 QA : confirmation avant exécution
+    if (!confirm(`Êtes-vous sûr de vouloir exécuter la tâche "${taskName}" ?`)) return;
     const resultEl = document.getElementById('task-result');
     resultEl.textContent = `Exécution de "${taskName}"...`;
 

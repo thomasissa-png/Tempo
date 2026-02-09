@@ -10,6 +10,7 @@ Tâches planifiées :
 
 import asyncio
 import logging
+import uuid
 from datetime import date, datetime
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -98,11 +99,10 @@ async def task_daily_verification():
 
             logger.info("[Task 11h30] Début vérification quotidienne")
 
-            # Rattrapage : évaluer les jours manqués des 7 derniers jours
-            evaluate_missed_days(lookback=7)
-
             predictions_updated = False
 
+            # M-02 QA : récupérer les couleurs AVANT le rattrapage
+            # (sinon evaluate_missed_days n'a pas les données du jour)
             # 1. Couleur du jour (déjà en cours)
             today_data = await fetch_tempo_today()
             if today_data:
@@ -134,6 +134,9 @@ async def task_daily_verification():
                 # Envoyer alerte officielle si rouge ou blanc
                 tomorrow_date = date.fromisoformat(tomorrow_data["date"])
                 send_official_alerts(tomorrow_date, tomorrow_data["couleur"])
+
+            # M-02 QA : rattrapage APRÈS avoir récupéré les couleurs du jour
+            evaluate_missed_days(lookback=7)
 
             # Invalider le cache pour que les visiteurs voient les confirmations
             if predictions_updated:
@@ -172,8 +175,8 @@ async def task_daily_predictions():
 
             logger.info("[Task 18h00] Début génération des prédictions")
 
-            # Fix v5 #7 + ML-21 : cycle_id unique avec timestamp
-            cycle_id = f"{date.today().isoformat()}_18h_{datetime.now().strftime('%H%M%S')}"
+            # M-03 QA : cycle_id unique garanti avec UUID (pas de collision si retry)
+            cycle_id = f"{date.today().isoformat()}_18h_{uuid.uuid4().hex[:8]}"
 
             # 1. Récupérer la météo
             forecasts = await fetch_forecast_extended()

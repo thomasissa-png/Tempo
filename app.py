@@ -199,25 +199,37 @@ def _check_origin(request: Request) -> bool:
     Checks the Origin header first, then the Referer header.  If neither is
     present the request is assumed to come from a non-browser client (e.g. curl,
     mobile app) and is allowed through.
+
+    M-11 QA : case-insensitive comparison, strip default ports.
     """
     origin = request.headers.get("origin")
     referer = request.headers.get("referer")
-    host = request.headers.get("host", "")
+    host = request.headers.get("host", "").lower()
 
     # Non-browser clients typically send neither header — allow them.
     if not origin and not referer:
         return True
 
+    def _normalize_netloc(netloc: str) -> str:
+        """Normalize: lowercase, strip default ports."""
+        netloc = netloc.lower()
+        # Strip default ports
+        if netloc.endswith(":443") or netloc.endswith(":80"):
+            netloc = netloc.rsplit(":", 1)[0]
+        return netloc
+
+    # Strip default port from host header too
+    host_normalized = _normalize_netloc(host)
+
     if origin:
-        # Origin is like "https://example.com" — extract host part.
         from urllib.parse import urlparse
         parsed = urlparse(origin)
-        return parsed.netloc == host
+        return _normalize_netloc(parsed.netloc) == host_normalized
 
     if referer:
         from urllib.parse import urlparse
         parsed = urlparse(referer)
-        return parsed.netloc == host
+        return _normalize_netloc(parsed.netloc) == host_normalized
 
     return False
 
@@ -410,6 +422,9 @@ async def api_predictions():
                    ORDER BY date ASC""",
                 (today_str,)
             ).fetchall()
+        except Exception as e:
+            logger.error(f"[API predictions] Erreur DB: {e}")
+            rows = []
         finally:
             conn.close()
 
@@ -447,7 +462,7 @@ async def api_predictions():
             }
 
             _predictions_cache["data"] = result
-            _predictions_cache["expires"] = now + 300
+            _predictions_cache["expires"] = now + Config.PREDICTIONS_CACHE_TTL
 
             return result
 
@@ -489,7 +504,7 @@ async def api_predictions():
         }
 
         _predictions_cache["data"] = result
-        _predictions_cache["expires"] = now + 300
+        _predictions_cache["expires"] = now + Config.PREDICTIONS_CACHE_TTL
 
         return result
 
@@ -554,6 +569,12 @@ async def api_performance_csv(request: Request, month: int = None, year: int = N
     if not year:
         year = date.today().year
 
+    # M-06 QA : valider month et year
+    if not (1 <= month <= 12):
+        raise HTTPException(status_code=400, detail="Mois invalide (1-12)")
+    if not (2020 <= year <= 2030):
+        raise HTTPException(status_code=400, detail="Année invalide (2020-2030)")
+
     csv_content = export_monthly_csv(month, year)
     return PlainTextResponse(
         content=csv_content,
@@ -613,6 +634,10 @@ async def api_subscribe(
         _rate_limit_store[client_ip].append(now)
         _cleanup_rate_limit_store(now)
 
+    # M-05 QA : valider seuil_rouge et delai
+    seuil_rouge = max(0, min(100, seuil_rouge))
+    delai = max(1, min(3, delai))
+
     from alerts import register_user
     result = register_user(phone, seuil_rouge, delai, alerte_blanc, recap_hebdo)
     if "error" in result:
@@ -627,10 +652,28 @@ async def api_unsubscribe(request: Request, phone: str = Form(...)):
     if not _check_origin(request):
         raise HTTPException(status_code=403, detail="Origine de la requête non autorisée")
 
+    # H-06 QA : rate limiting sur la désinscription
+    client_ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    window = Config.SUBSCRIBE_RATE_WINDOW
+    async with _rate_limit_lock:
+        _rate_limit_store[client_ip] = [
+            t for t in _rate_limit_store[client_ip] if now - t < window
+        ]
+        if len(_rate_limit_store[client_ip]) >= Config.SUBSCRIBE_RATE_LIMIT:
+            raise HTTPException(status_code=429, detail="Trop de tentatives. Réessayez plus tard.")
+        _rate_limit_store[client_ip].append(now)
+
+    # H-06 QA : validation format téléphone
+    phone_clean = phone.strip().replace(" ", "")
+    if not phone_clean.startswith("+33") or len(phone_clean) != 12 or not phone_clean[3:].isdigit():
+        raise HTTPException(status_code=400, detail="Format invalide. Utilisez +33XXXXXXXXX.")
+
     from alerts import unsubscribe_user
     result = unsubscribe_user(phone)
     if "error" in result:
-        raise HTTPException(status_code=404, detail=result["error"])
+        # H-07 QA : message générique (ne pas révéler si le numéro existe)
+        raise HTTPException(status_code=400, detail="Désinscription impossible. Vérifiez votre numéro.")
     return result
 
 
@@ -641,8 +684,29 @@ async def api_sms_incoming(request: Request):
     Twilio envoie From, Body, etc. en POST form-data.
     Retourne du TwiML pour répondre automatiquement.
     BUG-01 QA : endpoint manquant pour l'opt-out par SMS.
+    BUG-05 QA : vérification de la signature Twilio.
     """
     from alerts import handle_incoming_sms
+
+    # BUG-05 QA : vérifier la signature Twilio si le token est configuré
+    if Config.TWILIO_AUTH_TOKEN:
+        try:
+            from twilio.request_validator import RequestValidator
+            validator = RequestValidator(Config.TWILIO_AUTH_TOKEN)
+            signature = request.headers.get("X-Twilio-Signature", "")
+            # Construire l'URL complète de la requête
+            url = str(request.url)
+            form_data = dict(await request.form())
+            if not validator.validate(url, form_data, signature):
+                logger.warning("[SMS IN] Signature Twilio invalide")
+                raise HTTPException(status_code=403, detail="Invalid signature")
+        except ImportError:
+            # Module twilio non installé, skip la vérification
+            pass
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.warning(f"[SMS IN] Erreur vérification signature: {e}")
 
     form = await request.form()
     from_number = form.get("From", "")
@@ -715,6 +779,8 @@ async def admin_weights_history(request: Request, authorization: str | None = He
 async def admin_sms_logs(request: Request, authorization: str | None = Header(None), limit: int = 50):
     """Derniers SMS envoyés."""
     verify_admin(authorization, request.client.host if request.client else "unknown")
+    # H-05 QA : valider le paramètre limit
+    limit = max(1, min(limit, 500))
     from database import get_db
 
     conn = get_db()

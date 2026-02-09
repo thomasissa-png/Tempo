@@ -109,8 +109,8 @@
         </p>
         <form id="unsubscribe-form" class="unsub-form">
             <label for="unsub-phone" class="sr-only">Numéro de téléphone</label>
-            <input type="tel" id="unsub-phone" name="phone" placeholder="+33612345678" required
-                   pattern="\+33[0-9]{9}" title="Format: +33 suivi de 9 chiffres"
+            <input type="tel" id="unsub-phone" name="phone" placeholder="06 12 34 56 78" required
+                   title="Format: 06/07 XX XX XX XX ou +33 6/7 XX XX XX XX"
                    aria-label="Numéro de téléphone pour désinscription">
             <button type="submit" class="task-btn" style="background:var(--rouge)">Se désinscrire</button>
         </form>
@@ -118,15 +118,25 @@
     </div>
 
 <script>
+// BUG-04 QA : accepter les formats FR courants (06/07) en plus de +33
+function normalizeLegalPhone(input) {
+    let cleaned = input.replace(/[\s.\-()]/g, '');
+    if (/^0[67]\d{8}$/.test(cleaned)) return '+33' + cleaned.substring(1);
+    if (/^33[67]\d{8}$/.test(cleaned)) return '+' + cleaned;
+    if (/^\+33[67]\d{8}$/.test(cleaned)) return cleaned;
+    return null;
+}
+
 document.getElementById('unsubscribe-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const phone = document.getElementById('unsub-phone').value;
+    const rawPhone = document.getElementById('unsub-phone').value;
     const resultEl = document.getElementById('unsub-result');
-    if (!/^\+33[0-9]{9}$/.test(phone)) {
+    const phone = normalizeLegalPhone(rawPhone);
+    if (!phone) {
         resultEl.style.display = 'block';
         resultEl.style.background = '#FFEBEE';
         resultEl.style.color = '#C62828';
-        resultEl.textContent = 'Format invalide. Utilisez +33 suivi de 9 chiffres.';
+        resultEl.textContent = 'Format invalide. Tapez votre numéro au format 06 12 34 56 78 ou +33612345678.';
         return;
     }
     try {

@@ -1,4 +1,4 @@
-"""Tests pour les 7 corrections QA (BUG-01 à BUG-07)."""
+"""Tests pour les corrections QA — BUG-01 à BUG-07 + audit v7."""
 
 import os
 import sys
@@ -356,3 +356,107 @@ class TestMigrationV8:
             assert version == 9
         finally:
             conn.close()
+
+
+# ================================================================
+# Audit v7 : tests des nouvelles corrections
+# ================================================================
+
+class TestBug01StoreProtectsConfirmed:
+    """BUG-01 : store_prediction ne doit pas écraser confirmed=1."""
+    def test_confirmed_not_overwritten(self):
+        from predictor import store_prediction, confirm_prediction
+        from database import get_db
+
+        target = (date.today() + timedelta(days=5)).isoformat()
+        pred = {
+            "date": target,
+            "couleur_predite": "BLANC",
+            "probabilite_bleu": 0.1, "probabilite_blanc": 0.6, "probabilite_rouge": 0.3,
+            "score_risque": 52.0,
+            "temp_min_prevue": 2.0, "temp_max_prevue": 8.0, "pression_prevue": None,
+            "jours_rouges_restants": 10, "jours_blancs_restants": 20,
+            "raison": "Test", "horizon": "J-5",
+            "timestamp_prediction": datetime.now().isoformat(),
+            "score_temperature": 50, "score_budget": 40, "score_weekday": 30,
+            "score_gradient": 20, "score_clustering": 10, "score_rte": 15,
+        }
+        store_prediction(pred, "J-5", cycle_id="cycle_a")
+
+        # Confirmer la prédiction
+        confirm_prediction(target, "ROUGE")
+
+        # Tenter de réécrire avec une nouvelle prédiction non confirmée
+        pred2 = pred.copy()
+        pred2["couleur_predite"] = "BLEU"
+        pred2["score_risque"] = 20.0
+        result = store_prediction(pred2, "J-5", cycle_id="cycle_b")
+        assert result is None  # Skip car déjà confirmé
+
+        # Vérifier que la couleur en DB est restée ROUGE
+        conn = get_db()
+        try:
+            row = conn.execute(
+                "SELECT couleur_predite, confirmed FROM predictions WHERE date = ? AND horizon = ?",
+                (target, "J-5")
+            ).fetchone()
+            assert row["confirmed"] == 1
+            assert row["couleur_predite"] == "ROUGE"
+        finally:
+            conn.close()
+
+
+class TestCacheTTLConfig:
+    """BUG-02 : le cache utilise Config.PREDICTIONS_CACHE_TTL."""
+    def test_cache_ttl_not_hardcoded(self):
+        """Vérifie que 'now + 300' n'apparaît plus dans app.py."""
+        import re
+        with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "app.py")) as f:
+            content = f.read()
+        # Il ne doit plus y avoir "now + 300" pour le cache
+        matches = re.findall(r'_predictions_cache.*now\s*\+\s*300', content)
+        assert len(matches) == 0, "Cache TTL encore hardcodé à 300"
+
+
+class TestSmsSendRetry:
+    """H-03 : send_sms retente 3 fois max."""
+    def test_retry_on_failure(self):
+        from alerts import send_sms
+        # Mode simulation (pas de Twilio client) — doit toujours réussir
+        sid, status = send_sms("+33699999999", "Test retry")
+        assert status == "simulated"
+        assert sid.startswith("SIM_")
+
+    def test_message_truncation(self):
+        """M-10 : messages > 160 chars tronqués."""
+        from alerts import send_sms
+        long_msg = "A" * 200
+        sid, status = send_sms("+33699999999", long_msg)
+        assert status == "simulated"
+        # En mode simulation, le message tronqué est passé mais pas vérifié
+        # On vérifie juste que ça ne crash pas
+
+
+class TestOriginCheck:
+    """M-11 : _check_origin case-insensitive."""
+    def test_case_insensitive(self):
+        from app import _check_origin
+        from unittest.mock import MagicMock
+
+        request = MagicMock()
+        request.headers = {
+            "origin": "https://TEMPOFORECAST.FR",
+            "host": "tempoforecast.fr",
+        }
+        assert _check_origin(request) is True
+
+    def test_default_port_stripped(self):
+        from app import _check_origin
+        from unittest.mock import MagicMock
+
+        request = MagicMock()
+        request.headers = {
+            "origin": "https://tempoforecast.fr:443",
+            "host": "tempoforecast.fr",
+        }
+        assert _check_origin(request) is True

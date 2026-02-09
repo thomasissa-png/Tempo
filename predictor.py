@@ -881,15 +881,21 @@ def store_prediction(pred: dict, horizon: str = "J-1",
     Fix #2/#7 : stocke les 6 sub-scores pour l'apprentissage ML.
     Fix v5 #3 : detecte les changements vs prediction precedente, retourne le changement.
     Fix v5 #7 : stocke cycle_id, simulated, confirmed.
+    BUG-01 QA : ne pas ecraser une prediction confirmee (confirmed=1) par une nouvelle prediction.
     """
     conn = get_db()
     change = None
     try:
-        # Fix v5 #3 : recuperer la prediction precedente pour detecter les changements
+        # BUG-01 QA : vérifier si la prediction existante est déjà confirmée
         prev = conn.execute(
-            "SELECT couleur_predite, score_risque FROM predictions WHERE date = ? AND horizon = ?",
+            "SELECT couleur_predite, score_risque, confirmed FROM predictions WHERE date = ? AND horizon = ?",
             (pred["date"], horizon)
         ).fetchone()
+
+        # Ne pas écraser une prediction confirmée sauf si la nouvelle est aussi confirmée
+        if prev and prev["confirmed"] == 1 and not pred.get("confirmed"):
+            logger.debug(f"[Prediction] {pred['date']} {horizon} déjà confirmée, skip")
+            return None
 
         couleur_precedente = ""
         if prev and prev["couleur_predite"] != pred["couleur_predite"]:
