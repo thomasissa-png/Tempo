@@ -1,9 +1,12 @@
 """Système d'auto-amélioration — vérification, évaluation et recalcul des poids.
 
-Trois responsabilités :
+Responsabilités :
   1. Vérification quotidienne (11h30) : compare prédictions vs couleur réelle
   2. Calcul de métriques : précision, recall, F1, matrice de confusion
   3. Recalcul mensuel des poids via régression logistique (scikit-learn)
+  4. Journal d'apprentissage : détection de patterns d'erreurs systématiques
+  5. Corrections de biais : ajustements appliqués aux prédictions futures
+  6. Évaluation rattrapage : évalue rétroactivement les jours manqués
 
 Fix audit ML :
   - ML-1/ML-2 : filtre horizon <= 5 dans évaluation et entraînement
@@ -541,5 +544,445 @@ def export_monthly_csv(month: int, year: int) -> str:
                 r["contexte_meteo"],
             ])
         return output.getvalue()
+    finally:
+        conn.close()
+
+
+# ================================================================
+# 5. JOURNAL D'APPRENTISSAGE — Analyse des patterns d'erreurs
+# ================================================================
+
+MOIS_MAP = {
+    9: "sept", 10: "oct", 11: "nov", 12: "dec",
+    1: "jan", 2: "fev", 3: "mars", 4: "avr", 5: "mai",
+}
+
+
+def _color_rank(couleur: str) -> int:
+    """Rang ordinal d'une couleur pour comparer la direction de l'erreur."""
+    return {"BLEU": 0, "BLANC": 1, "ROUGE": 2}.get(couleur, 0)
+
+
+def _compute_bias(group: list[dict]) -> tuple[float, float, float, str, float]:
+    """Calcule le biais directionnel pour un groupe de prédictions.
+
+    Returns: (accuracy, over_rate, under_rate, direction, magnitude)
+    - over = on prédit trop haut (ex: ROUGE prédit, BLEU réel)
+    - under = on prédit trop bas (ex: BLEU prédit, ROUGE réel)
+    """
+    total = len(group)
+    if total == 0:
+        return (0, 0, 0, "balanced", 0)
+
+    correct = sum(1 for r in group if r["correct"] == 1)
+    over = sum(1 for r in group
+               if _color_rank(r["couleur_predite"]) > _color_rank(r["couleur_reelle"]))
+    under = sum(1 for r in group
+                if _color_rank(r["couleur_predite"]) < _color_rank(r["couleur_reelle"]))
+
+    accuracy = correct / total
+    over_rate = over / total
+    under_rate = under / total
+
+    if over_rate > under_rate + 0.1:
+        direction = "over"
+    elif under_rate > over_rate + 0.1:
+        direction = "under"
+    else:
+        direction = "balanced"
+
+    magnitude = abs(over_rate - under_rate)
+    return (accuracy, over_rate, under_rate, direction, magnitude)
+
+
+def _compute_correction(bias_direction: str, bias_magnitude: float,
+                        sample_size: int, max_correction: float = 8.0
+                        ) -> tuple[float, float]:
+    """Calcule la correction de score et la confiance.
+
+    Returns: (correction_score, confidence)
+    - correction négative = on prédit trop haut → réduire le score
+    - correction positive = on prédit trop bas → augmenter le score
+    """
+    confidence = min(1.0, sample_size / 30)
+
+    if bias_direction == "over":
+        correction = -bias_magnitude * max_correction * confidence
+    elif bias_direction == "under":
+        correction = bias_magnitude * max_correction * confidence
+    else:
+        correction = 0.0
+
+    return (round(correction, 2), round(confidence, 2))
+
+
+def analyze_error_patterns(days: int = 90) -> list[dict]:
+    """Analyse les patterns d'erreurs systématiques et stocke les corrections.
+
+    Dimensions analysées :
+      1. Par horizon (J-1 à J-15) — dégradation naturelle avec la distance
+      2. Par confusion de couleur (ROUGE prédit → réellement BLEU, etc.)
+      3. Par tranche de température (zone critique 0-5°C)
+      4. Par mois de la saison (profil saisonnier)
+      5. Par jour de semaine (semaine vs weekend)
+
+    Les corrections sont stockées dans learning_journal et appliquées
+    automatiquement par le prédicteur lors des prochaines prédictions.
+    """
+    conn = get_db()
+    try:
+        since = (date.today() - timedelta(days=days)).isoformat()
+
+        perf_rows = conn.execute(
+            "SELECT * FROM performance WHERE date_cible >= ?",
+            (since,)
+        ).fetchall()
+
+        if len(perf_rows) < 20:
+            logger.info(f"[Learning] Pas assez de données ({len(perf_rows)}/20)")
+            return []
+
+        # Températures prévues par date (pour l'analyse temp_range)
+        temp_rows = conn.execute(
+            """SELECT date, AVG(temp_min_prevue) as temp_min
+               FROM predictions
+               WHERE date >= ? AND temp_min_prevue IS NOT NULL
+               GROUP BY date""",
+            (since,)
+        ).fetchall()
+        temp_map = {r["date"]: r["temp_min"] for r in temp_rows}
+
+        # Convertir en dicts et enrichir avec la température
+        rows = []
+        for r in perf_rows:
+            d = {k: r[k] for k in r.keys()}
+            d["_temp_min"] = temp_map.get(d["date_cible"])
+            rows.append(d)
+
+        all_patterns = []
+        all_patterns.extend(_analyze_by_horizon(rows))
+        all_patterns.extend(_analyze_color_confusion(rows))
+        all_patterns.extend(_analyze_by_temp_range(rows))
+        all_patterns.extend(_analyze_by_month(rows))
+        all_patterns.extend(_analyze_by_weekday(rows))
+
+        # Stocker dans learning_journal
+        now = datetime.now().isoformat()
+        stored = 0
+        for p in all_patterns:
+            conn.execute(
+                """INSERT OR REPLACE INTO learning_journal
+                   (date_analysis, pattern_type, pattern_key, observation,
+                    accuracy, bias_direction, bias_magnitude,
+                    sample_size, correction_score, confidence, active, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)""",
+                (date.today().isoformat(), p["type"], p["key"],
+                 p["observation"], p["accuracy"], p["bias_direction"],
+                 p["bias_magnitude"], p["sample_size"],
+                 p["correction"], p["confidence"], now),
+            )
+            stored += 1
+
+        conn.commit()
+        logger.info(f"[Learning] {stored} patterns analysés et stockés "
+                    f"(sur {len(rows)} évaluations, {days}j)")
+        return all_patterns
+
+    except Exception as e:
+        logger.error(f"[Learning] Erreur analyse patterns: {e}")
+        return []
+    finally:
+        conn.close()
+
+
+def _analyze_by_horizon(rows: list[dict]) -> list[dict]:
+    """Biais par horizon de prédiction (J-0 à J-15)."""
+    from collections import defaultdict
+    groups = defaultdict(list)
+    for r in rows:
+        groups[r["jours_avance"]].append(r)
+
+    patterns = []
+    for horizon, group in sorted(groups.items()):
+        if len(group) < 5:
+            continue
+
+        accuracy, over_rate, under_rate, direction, magnitude = _compute_bias(group)
+        correction, confidence = _compute_correction(direction, magnitude, len(group))
+
+        key = f"J-{horizon}"
+        obs = (f"Précision {accuracy*100:.0f}% · "
+               f"{'sur' if direction == 'over' else 'sous' if direction == 'under' else 'pas de '}"
+               f"-prédiction {magnitude*100:.0f}% · n={len(group)}")
+
+        patterns.append({
+            "type": "horizon", "key": key, "observation": obs,
+            "accuracy": round(accuracy, 3),
+            "bias_direction": direction, "bias_magnitude": round(magnitude, 3),
+            "sample_size": len(group),
+            "correction": correction, "confidence": confidence,
+        })
+    return patterns
+
+
+def _analyze_color_confusion(rows: list[dict]) -> list[dict]:
+    """Confusions systématiques entre couleurs (ex: ROUGE prédit → BLEU réel)."""
+    from collections import defaultdict
+    confusions = defaultdict(int)
+    totals_predicted = defaultdict(int)
+
+    for r in rows:
+        totals_predicted[r["couleur_predite"]] += 1
+        if r["couleur_predite"] != r["couleur_reelle"]:
+            key = f"{r['couleur_predite']}->{r['couleur_reelle']}"
+            confusions[key] += 1
+
+    patterns = []
+    for confusion, count in confusions.items():
+        predicted, actual = confusion.split("->")
+        total_pred = totals_predicted.get(predicted, 1)
+
+        if count < 3:
+            continue
+
+        rate = count / total_pred
+        direction = "over" if _color_rank(predicted) > _color_rank(actual) else "under"
+        correction, confidence = _compute_correction(
+            direction, rate, count, max_correction=6.0)
+
+        patterns.append({
+            "type": "color_confusion", "key": confusion,
+            "observation": f"{count} cas ({rate*100:.0f}% des {predicted} prédits) "
+                          f"→ réellement {actual}",
+            "accuracy": round(1 - rate, 3),
+            "bias_direction": direction, "bias_magnitude": round(rate, 3),
+            "sample_size": count,
+            "correction": correction, "confidence": confidence,
+        })
+    return patterns
+
+
+def _analyze_by_temp_range(rows: list[dict]) -> list[dict]:
+    """Biais par tranche de température prévisionnelle."""
+    from collections import defaultdict
+
+    def _temp_bucket(temp):
+        if temp is None:
+            return None
+        if temp < -2:
+            return "<-2C"
+        if temp < 0:
+            return "-2_0C"
+        if temp < 2:
+            return "0_2C"
+        if temp < 5:
+            return "2_5C"
+        if temp < 8:
+            return "5_8C"
+        if temp < 12:
+            return "8_12C"
+        return ">12C"
+
+    groups = defaultdict(list)
+    for r in rows:
+        bucket = _temp_bucket(r.get("_temp_min"))
+        if bucket:
+            groups[bucket].append(r)
+
+    order = ["<-2C", "-2_0C", "0_2C", "2_5C", "5_8C", "8_12C", ">12C"]
+    patterns = []
+    for range_key in order:
+        group = groups.get(range_key, [])
+        if len(group) < 5:
+            continue
+
+        accuracy, over_rate, under_rate, direction, magnitude = _compute_bias(group)
+        correction, confidence = _compute_correction(direction, magnitude, len(group))
+
+        obs = (f"Précision {accuracy*100:.0f}% · "
+               f"{'sur' if direction == 'over' else 'sous' if direction == 'under' else 'pas de '}"
+               f"-prédiction {magnitude*100:.0f}% · n={len(group)}")
+
+        patterns.append({
+            "type": "temp_range", "key": range_key, "observation": obs,
+            "accuracy": round(accuracy, 3),
+            "bias_direction": direction, "bias_magnitude": round(magnitude, 3),
+            "sample_size": len(group),
+            "correction": correction, "confidence": confidence,
+        })
+    return patterns
+
+
+def _analyze_by_month(rows: list[dict]) -> list[dict]:
+    """Biais par mois de la saison Tempo."""
+    from collections import defaultdict
+    groups = defaultdict(list)
+
+    for r in rows:
+        try:
+            month = int(r["date_cible"].split("-")[1])
+            month_key = MOIS_MAP.get(month, str(month))
+            groups[month_key].append(r)
+        except (ValueError, IndexError):
+            continue
+
+    patterns = []
+    for month_key, group in groups.items():
+        if len(group) < 5:
+            continue
+
+        accuracy, over_rate, under_rate, direction, magnitude = _compute_bias(group)
+        correction, confidence = _compute_correction(direction, magnitude, len(group))
+
+        obs = (f"Précision {accuracy*100:.0f}% · "
+               f"{'sur' if direction == 'over' else 'sous' if direction == 'under' else 'pas de '}"
+               f"-prédiction {magnitude*100:.0f}% · n={len(group)}")
+
+        patterns.append({
+            "type": "month", "key": month_key, "observation": obs,
+            "accuracy": round(accuracy, 3),
+            "bias_direction": direction, "bias_magnitude": round(magnitude, 3),
+            "sample_size": len(group),
+            "correction": correction, "confidence": confidence,
+        })
+    return patterns
+
+
+def _analyze_by_weekday(rows: list[dict]) -> list[dict]:
+    """Biais semaine vs weekend."""
+    groups = {"semaine": [], "weekend": []}
+
+    for r in rows:
+        try:
+            d = date.fromisoformat(r["date_cible"])
+            key = "weekend" if d.weekday() >= 5 else "semaine"
+            groups[key].append(r)
+        except (ValueError, AttributeError):
+            continue
+
+    patterns = []
+    for day_type, group in groups.items():
+        if len(group) < 5:
+            continue
+
+        accuracy, over_rate, under_rate, direction, magnitude = _compute_bias(group)
+        correction, confidence = _compute_correction(direction, magnitude, len(group))
+
+        obs = (f"Précision {accuracy*100:.0f}% · "
+               f"{'sur' if direction == 'over' else 'sous' if direction == 'under' else 'pas de '}"
+               f"-prédiction {magnitude*100:.0f}% · n={len(group)}")
+
+        patterns.append({
+            "type": "weekday", "key": day_type, "observation": obs,
+            "accuracy": round(accuracy, 3),
+            "bias_direction": direction, "bias_magnitude": round(magnitude, 3),
+            "sample_size": len(group),
+            "correction": correction, "confidence": confidence,
+        })
+    return patterns
+
+
+# ================================================================
+# 6. CORRECTIONS ACTIVES (lues par le prédicteur)
+# ================================================================
+
+def get_active_learnings() -> dict:
+    """Retourne les corrections actives groupées par type.
+
+    Format retourné :
+    {
+        "horizon":   {"J-3": -2.5, "J-5": -4.0},
+        "temp_range": {"2_5C": -3.0},
+        "month":     {"jan": 2.0},
+        "weekday":   {"weekend": -1.5},
+    }
+
+    Seules les corrections avec confidence >= 0.3 et |correction| > 0.5
+    sont retournées (les autres sont du bruit statistique).
+    """
+    conn = get_db()
+    try:
+        rows = conn.execute(
+            """SELECT pattern_type, pattern_key, correction_score
+               FROM learning_journal
+               WHERE active = 1
+                 AND confidence >= 0.3
+                 AND ABS(correction_score) > 0.5"""
+        ).fetchall()
+
+        corrections = {}
+        for r in rows:
+            ptype = r["pattern_type"]
+            if ptype not in corrections:
+                corrections[ptype] = {}
+            corrections[ptype][r["pattern_key"]] = r["correction_score"]
+
+        return corrections
+    except Exception:
+        # Table peut ne pas exister si migration pas encore faite
+        return {}
+    finally:
+        conn.close()
+
+
+def get_learning_summary() -> list[dict]:
+    """Résumé du journal d'apprentissage pour le dashboard admin."""
+    conn = get_db()
+    try:
+        rows = conn.execute(
+            """SELECT pattern_type, pattern_key, observation,
+                      accuracy, bias_direction, bias_magnitude,
+                      sample_size, correction_score, confidence,
+                      date_analysis
+               FROM learning_journal
+               WHERE active = 1
+               ORDER BY ABS(correction_score) DESC"""
+        ).fetchall()
+        return [dict(r) for r in rows]
+    except Exception:
+        return []
+    finally:
+        conn.close()
+
+
+# ================================================================
+# 7. ÉVALUATION RATTRAPAGE (jours manqués)
+# ================================================================
+
+def evaluate_missed_days(lookback: int = 7) -> int:
+    """Évalue rétroactivement les prédictions pour les jours non encore évalués.
+
+    Pour chaque jour des N derniers jours ayant un actual confirmé (non synthétique)
+    mais aucune entrée dans performance, lance evaluate_predictions_for_date().
+
+    Retourne le nombre de jours rattrapés.
+    """
+    conn = get_db()
+    try:
+        since = (date.today() - timedelta(days=lookback)).isoformat()
+
+        rows = conn.execute(
+            """SELECT a.date, a.couleur_reelle
+               FROM actuals a
+               WHERE a.date >= ? AND a.date < ? AND a.synthetic = 0
+               AND NOT EXISTS (
+                   SELECT 1 FROM performance p WHERE p.date_cible = a.date
+               )""",
+            (since, date.today().isoformat())
+        ).fetchall()
+
+        evaluated = 0
+        for r in rows:
+            try:
+                target = date.fromisoformat(r["date"])
+                evaluate_predictions_for_date(target, r["couleur_reelle"])
+                evaluated += 1
+            except Exception as e:
+                logger.error(f"[Learning] Erreur rattrapage {r['date']}: {e}")
+
+        if evaluated:
+            logger.info(f"[Learning] {evaluated} jour(s) manqué(s) évalué(s) "
+                       f"en rattrapage (lookback={lookback}j)")
+        return evaluated
     finally:
         conn.close()

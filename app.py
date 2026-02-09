@@ -536,6 +536,18 @@ async def api_performance_csv(month: int = None, year: int = None,
     )
 
 
+@app.get("/api/learning")
+async def api_learning(authorization: str | None = Header(None)):
+    """Journal d'apprentissage — patterns d'erreurs et corrections actives (admin)."""
+    verify_admin(authorization)
+    from performance_tracker import get_learning_summary, get_active_learnings
+    return {
+        "status": "ok",
+        "journal": get_learning_summary(),
+        "active_corrections": get_active_learnings(),
+    }
+
+
 # ================================================================
 # API : ALERTES SMS
 # ================================================================

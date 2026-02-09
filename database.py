@@ -323,6 +323,34 @@ def init_db():
         conn.commit()
         logger.info("Migration v6 appliquee (colonne synthetic sur actuals)")
 
+    if version < 7:
+        # Migration v7 — Journal d'apprentissage continu
+        # Stocke les patterns d'erreurs détectés et les corrections de biais
+        # pour améliorer les prédictions futures.
+        conn.executescript("""
+            CREATE TABLE IF NOT EXISTS learning_journal (
+                id               INTEGER PRIMARY KEY AUTOINCREMENT,
+                date_analysis    TEXT    NOT NULL,
+                pattern_type     TEXT    NOT NULL,
+                pattern_key      TEXT    NOT NULL,
+                observation      TEXT    NOT NULL,
+                accuracy         REAL    DEFAULT 0,
+                bias_direction   TEXT    DEFAULT '',
+                bias_magnitude   REAL    DEFAULT 0,
+                sample_size      INTEGER NOT NULL,
+                correction_score REAL    DEFAULT 0,
+                confidence       REAL    DEFAULT 0,
+                active           INTEGER DEFAULT 1,
+                created_at       TEXT    NOT NULL,
+                UNIQUE(pattern_type, pattern_key)
+            );
+            CREATE INDEX IF NOT EXISTS idx_learning_active
+                ON learning_journal(active);
+        """)
+        conn.execute("PRAGMA user_version = 7")
+        conn.commit()
+        logger.info("Migration v7 appliquee (table learning_journal)")
+
     # Poids initiaux si vide
     existing = conn.execute("SELECT COUNT(*) as c FROM weights_history").fetchone()
     if existing["c"] == 0:

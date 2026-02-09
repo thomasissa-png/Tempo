@@ -11,6 +11,11 @@ Facteurs de scoring (sur 100, poids ajustables) :
 Bonus hors-poids :
   - Vague de froid (3+ jours consecutifs < 2C national) : +15-25 pts
 
+Corrections automatiques (journal d'apprentissage) :
+  - Biais par horizon, temperature, mois, jour de semaine
+  - Appliquees au score avant determination de la couleur
+  - Plafonnees a [-15, +15] points
+
 Corrections audit v2.1 :
   - Fix #2 : predict_range decremente les quotas simules
   - Fix #6 : probabilites recalibrees (sigmoide reelle)
@@ -85,7 +90,8 @@ def predict_day(target_date: date, weather: dict | None = None,
                 remaining: dict | None = None,
                 weights: dict | None = None,
                 rte_score: dict | None = None,
-                _actuals_cache: dict | None = None) -> dict:
+                _actuals_cache: dict | None = None,
+                _learnings: dict | None = None) -> dict:
     """Predit la couleur Tempo pour une date donnee (algorithme v2.1)."""
     # Hors saison = toujours BLEU
     if not is_in_season(target_date):
@@ -159,6 +165,15 @@ def predict_day(target_date: date, weather: dict | None = None,
     if forecast_quality == "simulated":
         score_risque = score_risque * 0.5 + 50 * 0.5
 
+    # === Corrections du journal d'apprentissage ===
+    learning_adjustment = 0.0
+    if _learnings:
+        horizon_days = max(0, (target_date - date.today()).days)
+        score_before = score_risque
+        score_risque = _apply_learning_corrections(
+            score_risque, target_date, horizon_days, temp_moy, _learnings)
+        learning_adjustment = score_risque - score_before
+
     # === Determiner la couleur predite ===
     if score_risque >= Config.SEUIL_ROUGE and remaining["ROUGE"] > 0:
         couleur = "ROUGE"
@@ -175,6 +190,11 @@ def predict_day(target_date: date, weather: dict | None = None,
     raison = _build_raison_v2(
         temp_moy, temp_min, gradient_score, cold_wave, remaining,
         target_date, d_left, rte_score, cluster_score, forecast_quality)
+
+    # Note apprentissage si correction significative
+    if abs(learning_adjustment) >= 2:
+        sign = "+" if learning_adjustment > 0 else ""
+        raison += f" · Corr. apprentissage ({sign}{learning_adjustment:.0f}pts)"
 
     # Sub-scores pour stockage ML (Fix audit apprentissage #2)
     sub_scores = {
@@ -210,6 +230,13 @@ def predict_range(forecasts: list[dict],
 
     # Fix v5 #5 : pre-charger les actuals futurs (J+1) s'ils existent
     actuals_future = _load_future_actuals()
+
+    # Charger les corrections d'apprentissage une seule fois
+    try:
+        from performance_tracker import get_active_learnings
+        learnings = get_active_learnings()
+    except Exception:
+        learnings = {}
 
     # Fix #2 : copier remaining pour decrementation simulee
     sim_remaining = dict(remaining)
@@ -252,7 +279,8 @@ def predict_range(forecasts: list[dict],
                            forecasts=forecasts, target_idx=i,
                            remaining=sim_remaining, weights=weights,
                            rte_score=day_rte,
-                           _actuals_cache=actuals_cache)
+                           _actuals_cache=actuals_cache,
+                           _learnings=learnings)
         pred["horizon"] = f"J-{delta}" if delta > 0 else ("J0" if delta == 0 else f"J+{-delta}")
         pred["confirmed"] = False
         pred["simulated"] = simulated
@@ -649,6 +677,69 @@ def _build_raison_v2(temp_moy: float, temp_min: float,
         raisons.append("Forte pression quota rouge")
 
     return " · ".join(raisons) if raisons else "Conditions normales"
+
+
+# ================================================================
+# CORRECTIONS JOURNAL D'APPRENTISSAGE
+# ================================================================
+
+MOIS_KEYS = {
+    9: "sept", 10: "oct", 11: "nov", 12: "dec",
+    1: "jan", 2: "fev", 3: "mars", 4: "avr", 5: "mai",
+}
+
+
+def _apply_learning_corrections(score: float, target_date: date,
+                                horizon_days: int, temp_moy: float,
+                                learnings: dict) -> float:
+    """Applique les corrections du journal d'apprentissage au score.
+
+    Ajustements additifs bases sur les biais detectes par dimension :
+    - horizon : degradation naturelle avec la distance
+    - temp_range : biais dans certaines tranches de temperature
+    - month : biais saisonnier par mois
+    - weekday : biais semaine vs weekend
+
+    Total plafonne a [-15, +15] points pour eviter les corrections excessives.
+    """
+    total_adj = 0.0
+
+    # 1. Correction par horizon
+    horizon_key = f"J-{horizon_days}"
+    total_adj += learnings.get("horizon", {}).get(horizon_key, 0)
+
+    # 2. Correction par tranche de temperature
+    temp_ranges = learnings.get("temp_range", {})
+    if temp_ranges:
+        if temp_moy < -2:
+            tkey = "<-2C"
+        elif temp_moy < 0:
+            tkey = "-2_0C"
+        elif temp_moy < 2:
+            tkey = "0_2C"
+        elif temp_moy < 5:
+            tkey = "2_5C"
+        elif temp_moy < 8:
+            tkey = "5_8C"
+        elif temp_moy < 12:
+            tkey = "8_12C"
+        else:
+            tkey = ">12C"
+        total_adj += temp_ranges.get(tkey, 0)
+
+    # 3. Correction par mois
+    month_key = MOIS_KEYS.get(target_date.month, "")
+    total_adj += learnings.get("month", {}).get(month_key, 0)
+
+    # 4. Correction semaine/weekend
+    day_key = "weekend" if target_date.weekday() >= 5 else "semaine"
+    total_adj += learnings.get("weekday", {}).get(day_key, 0)
+
+    # Plafonnement
+    MAX_TOTAL = 15.0
+    total_adj = max(-MAX_TOTAL, min(MAX_TOTAL, total_adj))
+
+    return max(0, min(100, score + total_adj))
 
 
 # ================================================================

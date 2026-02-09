@@ -1,10 +1,10 @@
 """Scheduler APScheduler — tâches automatisées TempoForecast.
 
 Tâches planifiées :
-  - 11h30 quotidien : vérification couleur EDF + évaluation performance
+  - 11h30 quotidien : vérification couleur EDF + évaluation performance + rattrapage
   - 18h00 quotidien : génération prédictions J+1→J+15 + alertes SMS
-  - 1er du mois      : recalcul poids algorithme
-  - Dimanche 20h     : récapitulatif hebdomadaire SMS
+  - 1er du mois      : recalcul poids algorithme + analyse patterns d'erreurs
+  - Dimanche 20h     : analyse patterns + récapitulatif hebdomadaire SMS
 """
 
 import asyncio
@@ -81,12 +81,15 @@ async def task_daily_verification():
     for attempt in range(2):
         try:
             from tempo_client import fetch_tempo_today, fetch_tempo_tomorrow, store_actual
-            from performance_tracker import evaluate_predictions_for_date
+            from performance_tracker import evaluate_predictions_for_date, evaluate_missed_days
             from predictor import confirm_prediction
             from alerts import send_official_alerts
             from app import invalidate_predictions_cache
 
             logger.info("[Task 11h30] Début vérification quotidienne")
+
+            # Rattrapage : évaluer les jours manqués des 7 derniers jours
+            evaluate_missed_days(lookback=7)
 
             predictions_updated = False
 
@@ -229,9 +232,16 @@ async def task_monthly_weights():
     for attempt in range(2):
         try:
             from performance_tracker import recalculate_weights, get_accuracy_global
+            from performance_tracker import analyze_error_patterns, evaluate_missed_days
             from alerts import cleanup_inactive_users
 
             logger.info("[Task mensuel] Début recalcul des poids")
+
+            # Rattrapage + analyse avant recalcul
+            evaluate_missed_days(lookback=30)
+            patterns = analyze_error_patterns(days=90)
+            if patterns:
+                logger.info(f"[Task mensuel] {len(patterns)} patterns d'erreurs détectés")
 
             new_weights = recalculate_weights()
             if new_weights:
@@ -263,8 +273,14 @@ async def task_weekly_recap():
             from predictor import predict_range
             from rte_client import get_consumption_score
             from alerts import send_weekly_recap
+            from performance_tracker import analyze_error_patterns
 
             logger.info("[Task hebdo] Début récap hebdomadaire")
+
+            # Analyse hebdo des patterns d'erreurs avant de générer le récap
+            patterns = analyze_error_patterns(days=90)
+            if patterns:
+                logger.info(f"[Task hebdo] {len(patterns)} patterns d'erreurs mis à jour")
 
             forecasts = await fetch_forecast_extended()
             if not forecasts:
@@ -301,6 +317,13 @@ async def run_task_now(task_name: str) -> str:
         await backfill_season_actuals()
         return "Backfill des actuals de la saison terminé"
 
+    if task_name == "analyze":
+        from performance_tracker import analyze_error_patterns, evaluate_missed_days
+        missed = evaluate_missed_days(lookback=30)
+        patterns = analyze_error_patterns(days=90)
+        return (f"Analyse terminée : {missed} jours rattrapés, "
+                f"{len(patterns)} patterns détectés")
+
     tasks = {
         "verification": task_daily_verification,
         "predictions": task_daily_predictions,
@@ -308,7 +331,8 @@ async def run_task_now(task_name: str) -> str:
         "recap": task_weekly_recap,
     }
     if task_name not in tasks:
-        return f"Tâche inconnue: {task_name}. Disponibles: {list(tasks.keys()) + ['backfill']}"
+        available = list(tasks.keys()) + ["backfill", "analyze"]
+        return f"Tâche inconnue: {task_name}. Disponibles: {available}"
 
     await tasks[task_name]()
     return f"Tâche '{task_name}' exécutée avec succès"
