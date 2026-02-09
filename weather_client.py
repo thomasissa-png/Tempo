@@ -304,7 +304,7 @@ def _generate_fallback_forecast() -> list[dict]:
             "temp_moy": round((t_min + t_max) / 2, 1),
             "humidity": round(rng.uniform(50, 85), 1),
             "wind_speed": round(rng.uniform(5, 25), 1),
-            "pressure": round(rng.uniform(1005, 1035), 1),
+            "pressure": None,  # Non disponible — coherent avec Open-Meteo
             "description": "donnees simulees",
             "forecast_quality": "simulated",
         })
