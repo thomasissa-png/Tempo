@@ -191,7 +191,7 @@ async def task_daily_predictions():
                 for f in forecasts
             )
             if simulated:
-                logger.warning("[Task 18h00] Données météo SIMULÉES (pas de clé API)")
+                logger.warning("[Task 18h00] Données météo SIMULÉES (Open-Meteo injoignable, fallback saisonnier)")
 
             cache_weather(forecasts)
 
