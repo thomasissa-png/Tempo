@@ -559,7 +559,7 @@ nav a:hover, nav a.active {
 }
 
 .fc-couleur.BLEU  { background: var(--bleu); color: white; }
-.fc-couleur.BLANC { background: var(--blanc); color: #212121; }
+.fc-couleur.BLANC { background: var(--blanc); color: white; }
 .fc-couleur.ROUGE { background: var(--rouge); color: white; }
 
 .forecast-card .fc-temp {
@@ -1386,6 +1386,367 @@ footer a {
 
 @media (max-width: 768px) {
     .admin-grid { grid-template-columns: 1fr; }
+}
+
+/* ================================================================
+   P-01 to P-22 : UX audit — parcours nouveau visiteur (Paul)
+   ================================================================ */
+
+/* P-01 : Baseline header */
+.header-baseline {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 400;
+    opacity: 0.85;
+    letter-spacing: 0;
+    margin-top: 1px;
+}
+
+/* P-03 : Mini CTA banner */
+.cta-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
+    border: 1px solid var(--bleu);
+    border-radius: var(--radius-sm);
+    padding: 12px 20px;
+    margin: 16px 0;
+}
+
+.cta-banner-text {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #0D47A1;
+}
+
+.cta-banner-btn {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 20px;
+    background: linear-gradient(135deg, #1565C0 0%, #0D47A1 100%);
+    color: white;
+    text-decoration: none;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: transform 0.15s, box-shadow 0.2s;
+}
+
+.cta-banner-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(13,71,161,0.3);
+}
+
+/* P-05 : Résumé prochain jour rouge */
+.next-rouge-summary {
+    margin: 16px 0;
+}
+
+.next-rouge-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    border-radius: var(--radius-sm);
+    background: var(--rouge-bg);
+    border-left: 5px solid var(--rouge);
+    box-shadow: var(--shadow);
+}
+
+.next-rouge-card.next-rouge-confirmed {
+    background: #FFF3E0;
+    border-left-color: #E65100;
+}
+
+.next-rouge-card.next-rouge-safe {
+    background: #E8F5E9;
+    border-left-color: #2E7D32;
+}
+
+.next-rouge-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.next-rouge-card strong {
+    display: block;
+    font-size: 1rem;
+    color: var(--text);
+}
+
+.next-rouge-detail {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+.next-rouge-detail a {
+    color: var(--bleu);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+/* P-06 : Contexte humain sous les compteurs */
+.counter-context {
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin-top: 8px;
+    line-height: 1.5;
+}
+
+/* P-08 : Infographie savings dans welcome banner */
+.savings-comparison {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 16px 0;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.savings-item {
+    text-align: center;
+    padding: 12px 16px;
+    border-radius: var(--radius-sm);
+    min-width: 140px;
+}
+
+.savings-bad {
+    background: #FFEBEE;
+    border: 1px solid var(--rouge);
+}
+
+.savings-good {
+    background: #E8F5E9;
+    border: 1px solid #4CAF50;
+}
+
+.savings-label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.savings-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+}
+
+.savings-bad .savings-value { color: var(--rouge); }
+.savings-good .savings-value { color: #2E7D32; }
+
+.savings-detail {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    margin-top: 2px;
+}
+
+.savings-arrow {
+    font-size: 1.5rem;
+    color: var(--text-secondary);
+    font-weight: 700;
+}
+
+.savings-result {
+    width: 100%;
+    text-align: center;
+    font-size: 0.95rem;
+    color: #2E7D32;
+    font-weight: 600;
+    margin-top: 4px;
+}
+
+/* P-09 : Aperçu SMS */
+.sms-preview {
+    margin-bottom: 20px;
+}
+
+.sms-preview-label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.sms-bubble {
+    display: inline-block;
+    background: #E3F2FD;
+    border-radius: 16px 16px 16px 4px;
+    padding: 12px 18px;
+    font-size: 0.9rem;
+    color: var(--text);
+    line-height: 1.5;
+    max-width: 420px;
+    box-shadow: var(--shadow);
+    position: relative;
+}
+
+/* P-10 : Progressive disclosure formulaire */
+.form-simple {
+    max-width: 400px;
+}
+
+.form-advanced {
+    margin-top: 12px;
+}
+
+.form-advanced-toggle {
+    font-size: 0.9rem;
+    color: var(--bleu);
+    cursor: pointer;
+    font-weight: 600;
+    padding: 8px 0;
+    list-style: none;
+}
+
+.form-advanced-toggle::-webkit-details-marker { display: none; }
+
+.form-advanced-toggle::before {
+    content: '+ ';
+}
+
+.form-advanced[open] .form-advanced-toggle::before {
+    content: '- ';
+}
+
+/* P-13 : Labels source (Officiel / Prévision) */
+.source-label {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 2px 10px;
+    border-radius: 10px;
+    margin-right: 6px;
+    vertical-align: middle;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.label-officiel {
+    background: #E8F5E9;
+    color: #2E7D32;
+}
+
+.label-prediction {
+    background: #E3F2FD;
+    color: #1565C0;
+}
+
+/* P-11 : Note fréquence MAJ */
+.update-freq {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+/* P-15 : Bandeau hors-saison */
+.hors-saison-banner {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px 24px;
+    background: #FFF8E1;
+    border: 1px solid #FFD54F;
+    border-radius: var(--radius);
+    margin: 20px 0;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.hors-saison-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+}
+
+/* P-04 : Social proof */
+.social-proof {
+    color: #2E7D32;
+    font-weight: 700;
+}
+
+/* P-19 : Scénario concret dans welcome */
+.welcome-scenario {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    background: var(--bg);
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--bleu);
+    margin-top: 8px;
+}
+
+/* P-03 : CTA dans welcome banner */
+.btn-cta-welcome {
+    display: inline-flex;
+    align-items: center;
+    margin-top: 12px;
+    padding: 10px 24px;
+    background: var(--rouge);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: transform 0.15s, box-shadow 0.2s;
+}
+
+.btn-cta-welcome:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(244,67,54,0.3);
+}
+
+/* P-21 : Barres de progression des compteurs */
+.counter-progress {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    margin-top: 8px;
+    overflow: hidden;
+}
+
+.counter-progress-fill {
+    height: 100%;
+    border-radius: 3px;
+    width: 0%;
+    transition: width 0.8s ease;
+}
+
+.rouge-fill { background: var(--rouge); }
+.blanc-fill { background: var(--blanc); }
+.bleu-fill  { background: var(--bleu); }
+
+/* P-22 : Animation d'entrée des cartes forecast */
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.fc-animate {
+    animation: fadeInUp 0.3s ease forwards;
+    opacity: 0;
+}
+
+/* Responsive adjustments for new elements */
+@media (max-width: 768px) {
+    .cta-banner { flex-direction: column; text-align: center; gap: 8px; }
+    .savings-comparison { gap: 8px; }
+    .savings-item { min-width: 120px; padding: 10px 12px; }
+    .savings-value { font-size: 1.3rem; }
+    .header-baseline { font-size: 0.75rem; }
+    .sms-bubble { max-width: 100%; }
+}
+
+@media (max-width: 480px) {
+    .savings-arrow { display: none; }
+    .savings-comparison { flex-direction: column; }
+    .next-rouge-card { flex-direction: column; text-align: center; }
+    .hors-saison-banner { flex-direction: column; text-align: center; }
 }
 
 /* === Fix audit v6 : Accessibilité === */

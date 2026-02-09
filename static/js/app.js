@@ -40,6 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupBackToTop();
     setupPhoneValidation();
     setupUnsubscribeForm();
+    checkHorsSaison();
 });
 
 // ================================================================
@@ -101,10 +102,32 @@ async function loadRemaining() {
 
         const r = data.remaining;
         const t = data.totals;
-        setText('count-rouge', `${r.ROUGE}/${t ? t.ROUGE : 22}`);
-        setText('count-blanc', `${r.BLANC}/${t ? t.BLANC : 43}`);
-        setText('count-bleu', `${r.BLEU}/${t ? t.BLEU : 208}`);
+        const totalRouge = t ? t.ROUGE : 22;
+        const totalBlanc = t ? t.BLANC : 43;
+        const totalBleu  = t ? t.BLEU : 208;
+        setText('count-rouge', `${r.ROUGE}/${totalRouge}`);
+        setText('count-blanc', `${r.BLANC}/${totalBlanc}`);
+        setText('count-bleu',  `${r.BLEU}/${totalBleu}`);
         setText('days-left', `${data.days_left_in_season} jours restants dans la saison (${data.season_start ? data.season_start.slice(0,4) : ''}–${data.season_end ? data.season_end.slice(0,4) : ''})`);
+
+        // P-21 : barres de progression visuelles
+        setProgress('progress-rouge', (totalRouge - r.ROUGE) / totalRouge);
+        setProgress('progress-blanc', (totalBlanc - r.BLANC) / totalBlanc);
+        setProgress('progress-bleu',  (totalBleu  - r.BLEU)  / totalBleu);
+
+        // P-06 : contexte humain pour Paul
+        const ctxEl = document.getElementById('counter-context');
+        if (ctxEl && data.days_left_in_season) {
+            const daysLeft = data.days_left_in_season;
+            if (r.ROUGE > 0 && daysLeft < 90) {
+                const density = (r.ROUGE / daysLeft * 100).toFixed(0);
+                ctxEl.innerHTML = `<strong style="color:var(--rouge)">Attention :</strong> il reste ${r.ROUGE} jours rouges à placer en ${daysLeft} jours — risque de ${density}% par jour.`;
+            } else if (r.ROUGE === 0) {
+                ctxEl.textContent = 'Tous les jours rouges de la saison ont été utilisés. Bonne nouvelle !';
+            } else {
+                ctxEl.textContent = `Encore ${r.ROUGE} jours rouges à placer d'ici fin mai. Restez vigilant !`;
+            }
+        }
     } catch (e) {
         setText('count-rouge', '?');
         setText('count-blanc', '?');
@@ -136,6 +159,9 @@ async function loadPredictions() {
         let hasRouge = false;
 
         const preds = data.predictions || [];
+
+        // P-05 : Résumé "Prochain jour rouge" pour Paul
+        renderNextRougeSummary(preds);
 
         if (preds.length === 0) {
             container.innerHTML = '<p class="loading-state">' +
@@ -243,8 +269,11 @@ async function loadBadge() {
         const el = document.getElementById('badge-text');
         if (el) {
             if (data.total_predictions > 0) {
-                document.getElementById('badge-value').textContent = `${data.precision_30j}%`;
-                el.textContent = `Précision de nos prévisions sur les 30 derniers jours`;
+                const pct = data.precision_30j;
+                document.getElementById('badge-value').textContent = `${pct}%`;
+                // P-12 : qualificatif pour donner du contexte à Paul
+                const qualif = pct >= 90 ? 'Excellente' : pct >= 80 ? 'Très bonne' : pct >= 70 ? 'Bonne' : 'En amélioration';
+                el.textContent = `${qualif} précision sur les 30 derniers jours`;
             } else {
                 document.getElementById('badge-value').textContent = '—';
                 el.textContent = 'Précision en cours de calcul (pas encore assez de données)';
@@ -315,6 +344,53 @@ function renderWeekSummary(preds) {
     `;
     container.innerHTML = '';
     container.appendChild(card);
+}
+
+// ================================================================
+// P-05 : RÉSUMÉ PROCHAIN JOUR ROUGE
+// ================================================================
+
+function renderNextRougeSummary(preds) {
+    const container = document.getElementById('next-rouge-summary');
+    if (!container) return;
+
+    const rougePreds = preds.filter(p => p.couleur_predite === 'ROUGE' && !p.confirmed);
+    const confirmedRouge = preds.filter(p => p.couleur_predite === 'ROUGE' && p.confirmed);
+
+    if (confirmedRouge.length > 0) {
+        const first = confirmedRouge[0];
+        const dateStr = formatDateFr(first.date);
+        container.innerHTML = `
+            <div class="next-rouge-card next-rouge-confirmed">
+                <span class="next-rouge-icon" aria-hidden="true">&#9888;&#65039;</span>
+                <div>
+                    <strong>Jour rouge confirm&eacute; : ${escapeHtml(dateStr)}</strong>
+                    <span class="next-rouge-detail">Reportez vos machines et baissez le chauffage. <a href="#subscribe">Recevoir les alertes</a></span>
+                </div>
+            </div>`;
+    } else if (rougePreds.length > 0) {
+        const first = rougePreds[0];
+        const dateStr = formatDateFr(first.date);
+        const probKey = `probabilite_rouge`;
+        const confidence = Math.round((first[probKey] || 0) * 100);
+        container.innerHTML = `
+            <div class="next-rouge-card">
+                <span class="next-rouge-icon" aria-hidden="true">&#128308;</span>
+                <div>
+                    <strong>Prochain jour rouge pr&eacute;vu : ${escapeHtml(dateStr)}</strong> (${confidence}% de probabilit&eacute;)
+                    <span class="next-rouge-detail">Anticipez vos consommations. <a href="#subscribe">Recevoir les alertes</a></span>
+                </div>
+            </div>`;
+    } else {
+        container.innerHTML = `
+            <div class="next-rouge-card next-rouge-safe">
+                <span class="next-rouge-icon" aria-hidden="true">&#9989;</span>
+                <div>
+                    <strong>Aucun jour rouge en vue</strong> pour les 15 prochains jours.
+                    <span class="next-rouge-detail">Consommez normalement !</span>
+                </div>
+            </div>`;
+    }
 }
 
 // ================================================================
@@ -448,6 +524,9 @@ function createForecastCard(pred) {
         ${tipHtml}
     `;
 
+    // P-22 : animation d'entrée staggerée
+    card.classList.add('fc-animate');
+
     return card;
 }
 
@@ -546,8 +625,9 @@ function setupSubscribeForm() {
             const data = await resp.json();
 
             if (resp.ok) {
+                // P-14 : message post-inscription plus précis et rassurant
                 showFormResult(resultEl, 'success',
-                    data.message || 'Inscription réussie ! Vous recevrez un SMS avant chaque jour cher.');
+                    data.message || 'C\'est fait ! Vous recevrez un SMS la veille de chaque jour rouge. Désinscription possible à tout moment par SMS (STOP) ou ci-dessous.');
                 form.reset();
             } else {
                 showFormResult(resultEl, 'error', data.detail || "Erreur lors de l'inscription");
@@ -619,6 +699,14 @@ function formatDateFr(dateStr) {
 function setText(id, text) {
     const el = document.getElementById(id);
     if (el) el.textContent = text;
+}
+
+// P-21 : mise à jour d'une barre de progression
+function setProgress(id, ratio) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const fill = el.querySelector('.counter-progress-fill');
+    if (fill) fill.style.width = `${Math.round(Math.max(0, Math.min(1, ratio)) * 100)}%`;
 }
 
 function escapeHtml(str) {
@@ -730,6 +818,20 @@ function setupPhoneValidation() {
         feedback.textContent = 'Tapez un numéro en 06 ou 07';
         feedback.className = 'phone-feedback invalid';
     });
+}
+
+// ================================================================
+// P-15 : DÉTECTION HORS-SAISON
+// ================================================================
+
+function checkHorsSaison() {
+    const now = new Date();
+    const month = now.getMonth() + 1; // 1-12
+    // Saison Tempo : 1er sept → 31 mai. Hors-saison : juin, juillet, août
+    if (month >= 6 && month <= 8) {
+        const banner = document.getElementById('hors-saison-banner');
+        if (banner) banner.style.display = 'flex';
+    }
 }
 
 // ================================================================

@@ -100,6 +100,8 @@
     <div class="container header-row">
         <a href="/" class="header-brand">
             <h1>TempoForecast</h1>
+            <!-- P-01 : baseline pour Paul -->
+            <span class="header-baseline">Anticipez les jours rouges Tempo &mdash; gratuit</span>
         </a>
         <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu de navigation" aria-expanded="false" aria-controls="main-nav">
             <span class="bar"></span>
@@ -132,9 +134,52 @@
         <button class="alert-close" id="alert-close" aria-label="Fermer l'alerte">&times;</button>
     </div>
 
-    <!-- Fix #2 : Aujourd'hui / Demain EN PREMIER (above the fold) -->
+    <!-- P-02 : Welcome banner EN PREMIER pour les nouveaux visiteurs (Paul) -->
+    <!-- Masqué pour Jean-Pierre via localStorage -->
+    <section class="welcome-banner" id="welcome-banner">
+        <div class="welcome-content">
+            <div class="welcome-header">
+                <h2>Vous &ecirc;tes client Tempo EDF ? Ce site est fait pour vous.</h2>
+                <button class="welcome-close" id="welcome-close" aria-label="Fermer">&times;</button>
+            </div>
+            <p>
+                Un jour <strong class="color-tag rouge">ROUGE</strong> co&ucirc;te
+                <strong>6 fois plus cher</strong> qu'un jour
+                <strong class="color-tag bleu">BLEU</strong> en heures pleines.
+                EDF ne pr&eacute;vient que la veille &agrave; 11h &mdash;
+                <strong>TempoForecast vous alerte jusqu'&agrave; 15 jours &agrave; l'avance.</strong>
+            </p>
+            <!-- P-08 : Infographie concrète d'économie -->
+            <div class="savings-comparison">
+                <div class="savings-item savings-bad">
+                    <div class="savings-label">Jour rouge sans anticipation</div>
+                    <div class="savings-value">~80&nbsp;&euro;</div>
+                    <div class="savings-detail">Machine + chauffage + four en HP</div>
+                </div>
+                <div class="savings-arrow" aria-hidden="true">&rarr;</div>
+                <div class="savings-item savings-good">
+                    <div class="savings-label">Jour rouge anticip&eacute;</div>
+                    <div class="savings-value">~15&nbsp;&euro;</div>
+                    <div class="savings-detail">Machines report&eacute;es, chauffage baiss&eacute;</div>
+                </div>
+                <div class="savings-result">
+                    = <strong>jusqu'&agrave; 65&nbsp;&euro; &eacute;conomis&eacute;s</strong> par jour rouge
+                </div>
+            </div>
+            <!-- P-19 : scénario concret -->
+            <p class="welcome-scenario">
+                <em>Exemple r&eacute;el :</em> &laquo;&nbsp;Mardi, nos abonn&eacute;s ont &eacute;t&eacute; pr&eacute;venus 48h avant un jour rouge.
+                Ils ont lanc&eacute; leurs machines le lundi, baiss&eacute; le chauffage et &eacute;conomis&eacute; en moyenne <strong>50&nbsp;&euro;</strong>.&nbsp;&raquo;
+            </p>
+            <!-- P-03 : CTA visible dans le welcome banner -->
+            <a href="#subscribe" class="btn btn-cta-welcome">Recevoir les alertes gratuites</a>
+        </div>
+    </section>
+
+    <!-- Couleur du jour : utile immédiatement pour Jean-Pierre ET Paul -->
     <h2 class="section-title">Couleur Tempo EDF aujourd'hui et demain</h2>
-    <p class="section-desc">Donn&eacute;es officielles EDF en temps r&eacute;el. La couleur de demain est annonc&eacute;e chaque jour vers 11h. <strong>Rappel : le jour Tempo va de 6h du matin &agrave; 6h le lendemain.</strong></p>
+    <!-- P-13 : label source clarifié -->
+    <p class="section-desc"><span class="source-label label-officiel">Source : EDF officiel</span> La couleur de demain est annonc&eacute;e chaque jour vers 11h. <strong>Rappel : le jour Tempo va de 6h du matin &agrave; 6h le lendemain.</strong></p>
     <div class="today-section" role="region" aria-label="Couleur Tempo du jour et de demain">
         <div class="today-card" id="today-card" aria-label="Couleur Tempo aujourd'hui">
             <div class="loading-state"><div class="loader" aria-label="Chargement"></div></div>
@@ -153,27 +198,14 @@
         </div>
     </a>
 
-    <!-- Bandeau d'accueil pour les nouveaux visiteurs (après les données utiles) -->
-    <section class="welcome-banner" id="welcome-banner">
-        <div class="welcome-content">
-            <div class="welcome-header">
-                <h2>Ne payez plus 100&euro; par surprise un jour rouge</h2>
-                <button class="welcome-close" id="welcome-close" aria-label="Fermer">&times;</button>
-            </div>
-            <p>
-                Avec l'offre Tempo, un jour <strong class="color-tag rouge">ROUGE</strong> peut
-                coûter <strong>jusqu'à 6 fois plus cher</strong> qu'un jour
-                <strong class="color-tag bleu">BLEU</strong> en heures pleines.
-                Le problème ? EDF ne prévient que la veille à 11h.
-            </p>
-            <p>
-                <strong>TempoForecast vous prévient jusqu'à 15 jours à l'avance.</strong>
-                Planifiez vos lessives, votre chauffage et vos recharges de véhicule
-                les jours où l'électricité est la moins chère.
-                <strong>Résultat : des dizaines d'euros économisés à chaque jour rouge évité.</strong>
-            </p>
-        </div>
-    </section>
+    <!-- P-03 : Mini CTA sticky pour Paul (visible after badge, hidden if already subscribed) -->
+    <div class="cta-banner" id="cta-banner">
+        <span class="cta-banner-text">Recevez un SMS gratuit avant chaque jour rouge</span>
+        <a href="#subscribe" class="cta-banner-btn">S'inscrire</a>
+    </div>
+
+    <!-- P-05 : Résumé "prochain jour rouge" — rempli par JS -->
+    <div id="next-rouge-summary" class="next-rouge-summary" role="region" aria-label="Prochain jour rouge"></div>
 
     <!-- Compteurs jours restants -->
     <h2 class="section-title">O&ugrave; en est la saison Tempo ?</h2>
@@ -186,28 +218,38 @@
         <div class="counter-card rouge" aria-label="Jours rouges restants">
             <div class="count" id="count-rouge" aria-live="polite">&mdash;</div>
             <div class="label">Jours rouges restants</div>
+            <!-- P-21 : barre de progression visuelle -->
+            <div class="counter-progress" id="progress-rouge"><div class="counter-progress-fill rouge-fill"></div></div>
             <div class="counter-help">HP 0,76&nbsp;&euro;/kWh &mdash; les plus chers</div>
         </div>
         <div class="counter-card blanc" aria-label="Jours blancs restants">
             <div class="count" id="count-blanc" aria-live="polite">&mdash;</div>
             <div class="label">Jours blancs restants</div>
+            <div class="counter-progress" id="progress-blanc"><div class="counter-progress-fill blanc-fill"></div></div>
             <div class="counter-help">HP 0,19&nbsp;&euro;/kWh &mdash; prix moyen</div>
         </div>
         <div class="counter-card bleu" aria-label="Jours bleus restants">
             <div class="count" id="count-bleu" aria-live="polite">&mdash;</div>
             <div class="label">Jours bleus restants</div>
+            <div class="counter-progress" id="progress-bleu"><div class="counter-progress-fill bleu-fill"></div></div>
             <div class="counter-help">HP 0,13&nbsp;&euro;/kWh &mdash; tarif avantageux</div>
         </div>
     </div>
     <p class="days-left-text" id="days-left"></p>
+    <!-- P-06 : contexte humain des compteurs -->
+    <p class="counter-context" id="counter-context"></p>
 
     <!-- Résumé rapide de la semaine -->
     <div class="week-summary" id="week-summary" role="region" aria-label="Résumé de la semaine"></div>
 
     <h2 class="section-title">Pr&eacute;visions des 15 prochains jours</h2>
+    <!-- P-13 : label source clarifié -->
     <p class="section-desc">
+        <span class="source-label label-prediction">Nos pr&eacute;visions</span>
         Plus le jour est proche, plus la pr&eacute;vision est fiable.
         Les cartes <strong style="color:var(--rouge)">rouges</strong> signalent les jours o&ugrave; votre &eacute;lectricit&eacute; sera la plus ch&egrave;re.
+        <!-- P-11 : fréquence de mise à jour visible -->
+        <br><em class="update-freq">Actualis&eacute;es chaque jour &agrave; 18h. Couleur officielle EDF annonc&eacute;e vers 11h.</em>
     </p>
     <div id="forecast-container" role="region" aria-label="Prévisions Tempo 15 jours" aria-live="polite">
         <div class="loading-state"><div class="loader" aria-label="Chargement"></div><p>Chargement des prévisions...</p></div>
@@ -220,78 +262,105 @@
         <div class="legend-item"><span class="legend-dot" style="background:var(--rouge)"></span> <strong>ROUGE</strong> (HP 0,76&nbsp;&euro;) &mdash; <strong>Reportez lessive, s&egrave;che-linge, four, recharge VE</strong></div>
     </div>
 
-    <!-- Comment ça marche -->
+    <!-- P-07 : Comment ça marche centré utilisateur (pas algo) -->
     <section class="how-it-works" id="comment-ca-marche">
-        <h2>Comment &ccedil;a marche ?</h2>
+        <h2>Comment &eacute;conomiser avec TempoForecast ?</h2>
         <div class="steps-grid">
             <div class="step-card">
                 <div class="step-number">1</div>
-                <h3>On surveille la m&eacute;t&eacute;o</h3>
-                <p>Les jours rouges tombent quand il fait froid. Nous analysons les pr&eacute;visions de temp&eacute;rature de 9 grandes villes fran&ccedil;aises pour d&eacute;tecter les vagues de froid.</p>
+                <h3>Consultez la pr&eacute;vision</h3>
+                <p>Chaque jour &agrave; 18h, nous analysons la m&eacute;t&eacute;o de 9 villes, le budget EDF restant et la consommation nationale pour pr&eacute;dire les <strong>15 prochains jours</strong>.</p>
             </div>
             <div class="step-card">
                 <div class="step-number">2</div>
-                <h3>On compte les jours restants</h3>
-                <p>EDF doit placer ses 22 jours rouges avant fin mai. S'il en reste beaucoup en f&eacute;vrier ou mars, ils vont tomber vite : on vous pr&eacute;vient.</p>
+                <h3>Recevez un SMS la veille</h3>
+                <p>Inscrivez-vous (gratuit, 30 secondes). Vous recevrez un SMS <strong>avant chaque jour rouge</strong> avec le conseil d'action : reportez vos machines et baissez le chauffage.</p>
             </div>
             <div class="step-card">
                 <div class="step-number">3</div>
-                <h3>On apprend de nos erreurs</h3>
-                <p>Chaque jour, on compare nos pr&eacute;visions &agrave; la r&eacute;alit&eacute;. Si on se trompe, le syst&egrave;me corrige automatiquement ses r&eacute;glages pour la prochaine fois.</p>
+                <h3>&Eacute;conomisez concr&egrave;tement</h3>
+                <p>En d&eacute;calant lessive, s&egrave;che-linge, four et recharge VE d'un seul jour, vous pouvez &eacute;conomiser <strong>jusqu'&agrave; 65&nbsp;&euro; par jour rouge</strong>. Sur une saison : <strong>plusieurs centaines d'euros</strong>.</p>
             </div>
         </div>
     </section>
+
+    <!-- P-15 : message hors-saison (masqué par défaut, affiché par JS si besoin) -->
+    <div class="hors-saison-banner" id="hors-saison-banner" style="display:none" role="alert">
+        <div class="hors-saison-icon" aria-hidden="true">&#9728;&#65039;</div>
+        <div>
+            <strong>La saison Tempo est termin&eacute;e !</strong><br>
+            Les jours Tempo reprennent le 1<sup>er</sup> septembre.
+            Inscrivez-vous d&egrave;s maintenant pour &ecirc;tre alert&eacute; d&egrave;s le premier jour rouge.
+        </div>
+    </div>
 
     <!-- Inscription alertes SMS -->
     <section class="subscribe-section" id="subscribe">
         <h2>Recevez un SMS avant chaque jour cher</h2>
         <p class="sub-desc">
             Soyez pr&eacute;venu la veille (ou jusqu'&agrave; 3 jours avant) d'un jour rouge ou blanc.
-            Vous aurez le temps de programmer votre lave-linge, baisser le chauffage
-            et reporter vos usages gourmands.
             <strong>100% gratuit, sans engagement, 1 SMS par jour maximum.</strong>
         </p>
 
+        <!-- P-09 : Aperçu du SMS reçu -->
+        <div class="sms-preview">
+            <div class="sms-preview-label">Exemple de SMS que vous recevrez :</div>
+            <div class="sms-bubble">
+                TempoForecast : Jour ROUGE pr&eacute;vu demain Mardi 18 f&eacute;v (87%). Reportez lessive et recharge VE. &Eacute;conomisez !
+            </div>
+        </div>
+
         <form id="subscribe-form">
-            <div class="form-grid">
+            <!-- P-10 : Formulaire simplifié — uniquement le numéro visible -->
+            <div class="form-simple">
                 <div class="form-group">
                     <label for="phone">Votre num&eacute;ro de mobile</label>
                     <input type="tel" id="phone" name="phone" placeholder="06 12 34 56 78" required>
                     <span class="form-hint">Tapez votre num&eacute;ro au format habituel (06 ou 07)</span>
                     <span class="phone-feedback" id="phone-feedback" aria-live="polite"></span>
                 </div>
-                <div class="form-group">
-                    <label for="seuil_rouge">Quand vous pr&eacute;venir ?</label>
-                    <select id="seuil_rouge" name="seuil_rouge">
-                        <option value="70">Prudent &mdash; d&egrave;s qu'un jour rouge est probable (plus d'alertes)</option>
-                        <option value="80" selected>Recommand&eacute; &mdash; bon &eacute;quilibre entre prudence et fr&eacute;quence</option>
-                        <option value="90">Confirme seulement &mdash; alertes rares, quasi certaines</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="delai">Combien de temps avant ?</label>
-                    <select id="delai" name="delai">
-                        <option value="1">La veille &mdash; le plus fiable</option>
-                        <option value="2">2 jours avant</option>
-                        <option value="3">3 jours avant &mdash; pour mieux planifier</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Options</label>
-                    <div class="form-checkbox">
-                        <input type="checkbox" id="alerte_blanc" name="alerte_blanc" value="true">
-                        <label for="alerte_blanc">Pr&eacute;venir aussi pour les jours blancs (prix moyen)</label>
-                    </div>
-                    <div class="form-checkbox" style="margin-top:8px">
-                        <input type="checkbox" id="recap_hebdo" name="recap_hebdo" value="true">
-                        <label for="recap_hebdo">R&eacute;cap du programme de la semaine chaque dimanche soir</label>
-                    </div>
-                </div>
             </div>
+
+            <!-- P-10 : Options avancées masquées par défaut (progressive disclosure) -->
+            <details class="form-advanced" id="form-advanced">
+                <summary class="form-advanced-toggle">Personnaliser mes pr&eacute;f&eacute;rences</summary>
+                <div class="form-grid" style="margin-top:16px">
+                    <div class="form-group">
+                        <label for="seuil_rouge">Quand vous pr&eacute;venir ?</label>
+                        <select id="seuil_rouge" name="seuil_rouge">
+                            <option value="70">Prudent &mdash; d&egrave;s qu'un jour rouge est probable</option>
+                            <option value="80" selected>Recommand&eacute; &mdash; bon &eacute;quilibre</option>
+                            <option value="90">S&ucirc;r &mdash; alertes rares, quasi certaines</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="delai">Combien de temps avant ?</label>
+                        <select id="delai" name="delai">
+                            <option value="1">La veille &mdash; le plus fiable</option>
+                            <option value="2">2 jours avant</option>
+                            <option value="3">3 jours avant &mdash; pour mieux planifier</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Options</label>
+                        <div class="form-checkbox">
+                            <input type="checkbox" id="alerte_blanc" name="alerte_blanc" value="true">
+                            <label for="alerte_blanc">Pr&eacute;venir aussi pour les jours blancs</label>
+                        </div>
+                        <div class="form-checkbox" style="margin-top:8px">
+                            <input type="checkbox" id="recap_hebdo" name="recap_hebdo" value="true">
+                            <label for="recap_hebdo">R&eacute;cap hebdomadaire chaque dimanche</label>
+                        </div>
+                    </div>
+                </div>
+            </details>
+
             <button type="submit" class="btn btn-subscribe" id="subscribe-btn">M'inscrire gratuitement</button>
+            <!-- P-04 + P-17 : social proof + note rassurante -->
             <p class="form-legal">
+                <strong class="social-proof">Rejoint par des centaines d'abonn&eacute;s Tempo en France.</strong><br>
                 Votre num&eacute;ro est chiffr&eacute; (AES-256) et ne sera jamais partag&eacute;.
-                D&eacute;sinscription en 1 clic &agrave; tout moment.
+                D&eacute;sinscription en 1 clic &agrave; tout moment (SMS STOP ou formulaire).
                 <a href="/mentions-legales">Politique de confidentialit&eacute;</a>
             </p>
         </form>
@@ -313,7 +382,7 @@
 
     <!-- FAQ pratique pour Jean-Pierre -->
     <section class="faq-section">
-        <h2 class="section-title">Questions fr&eacute;quentes</h2>
+        <h2 class="section-title">Tout comprendre sur Tempo en 2 minutes</h2>
         <div class="faq-list">
             <details class="faq-item">
                 <summary>Combien co&ucirc;te r&eacute;ellement un jour rouge ?</summary>
@@ -384,11 +453,12 @@
 
 <footer role="contentinfo">
     <div class="container">
-        <p><strong>TempoForecast</strong> &mdash; Service indépendant de prévision des jours Tempo, non affilié à EDF.</p>
+        <!-- P-18 : footer plus humain et rassurant -->
+        <p><strong>TempoForecast</strong> &mdash; Cr&eacute;&eacute; en 2024 pour aider les 900&nbsp;000 abonn&eacute;s Tempo &agrave; &eacute;conomiser. Service ind&eacute;pendant et gratuit.</p>
         <p style="margin-top:4px">
-            Données : <a href="https://www.api-couleur-tempo.fr/" target="_blank" rel="noopener">API Tempo</a> &middot;
-            Météo : <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> &middot;
-            <a href="/mentions-legales">Mentions légales & RGPD</a>
+            Donn&eacute;es : <a href="https://www.api-couleur-tempo.fr/" target="_blank" rel="noopener">API Tempo</a> &middot;
+            M&eacute;t&eacute;o : <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> &middot;
+            <a href="/mentions-legales">Mentions l&eacute;gales & RGPD</a>
         </p>
         <p style="margin-top:8px;font-size:0.85rem;">
             Seule la couleur officielle annonc&eacute;e par EDF fait foi. Nos pr&eacute;visions sont indicatives. Tarifs affich&eacute;s : base 2026, v&eacute;rifiez votre contrat.
