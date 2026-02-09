@@ -184,21 +184,11 @@ async def task_daily_predictions():
                 logger.warning("[Task 18h00] Pas de données météo, prédictions reportées")
                 return
 
-            # Fix v5 #6 : détecter si météo simulée (via quality ou description)
-            simulated = any(
-                f.get("forecast_quality") == "simulated"
-                or f.get("description", "") == "donnees simulees"
-                for f in forecasts
-            )
-            if simulated:
-                logger.warning("[Task 18h00] Données météo SIMULÉES (Open-Meteo injoignable, fallback saisonnier)")
-
             cache_weather(forecasts)
 
-            # 2. Générer les prédictions (avec flag simulated + actuals J+1)
+            # 2. Générer les prédictions
             rte_score = await get_consumption_score()
-            predictions = predict_range(forecasts, rte_score=rte_score,
-                                        simulated=simulated)
+            predictions = predict_range(forecasts, rte_score=rte_score)
 
             # 3. Stocker avec cycle_id, détecter les changements, envoyer alertes
             changes = []
@@ -300,14 +290,8 @@ async def task_weekly_recap():
                 logger.warning("[Task hebdo] Pas de données météo")
                 return
 
-            simulated = any(
-                f.get("forecast_quality") == "simulated"
-                or f.get("description", "") == "donnees simulees"
-                for f in forecasts
-            )
             rte_score = await get_consumption_score()
-            predictions = predict_range(forecasts, rte_score=rte_score,
-                                        simulated=simulated)
+            predictions = predict_range(forecasts, rte_score=rte_score)
             send_weekly_recap(predictions)
 
             logger.info("[Task hebdo] Récap envoyé")

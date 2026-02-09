@@ -10,7 +10,6 @@ a partir des previsions de 9 villes representatives de la France.
 import httpx
 import logging
 import asyncio
-import random
 from datetime import datetime, date, timedelta
 from config import Config
 from database import get_db
@@ -65,14 +64,18 @@ _WMO_DESCRIPTIONS = {
 # ================================================================
 
 async def fetch_forecast() -> list[dict]:
-    """Previsions 16 jours, moyenne ponderee sur 9 villes via Open-Meteo."""
+    """Previsions 16 jours, moyenne ponderee sur 9 villes via Open-Meteo.
+
+    Retourne une liste vide si Open-Meteo est injoignable.
+    On ne genere PAS de donnees simulees : mieux vaut ne pas predire
+    que de predire sur du bruit (moyennes saisonnieres aleatoires).
+    """
     city_forecasts = await _fetch_all_cities()
     if not city_forecasts:
-        logger.warning("[Meteo] Open-Meteo indisponible — donnees simulees")
-        return _generate_fallback_forecast()
+        logger.warning("[Meteo] Open-Meteo indisponible — pas de predictions ce cycle")
+        return []
 
     result = _merge_city_forecasts(city_forecasts)
-    # Toutes les donnees Open-Meteo sont des previsions modele fiables
     for day in result:
         day["forecast_quality"] = "api"
 
@@ -264,51 +267,6 @@ def _merge_city_forecasts(city_forecasts: dict[str, list[dict]]) -> list[dict]:
     return result
 
 
-# ================================================================
-# FALLBACK (si Open-Meteo indisponible)
-# ================================================================
-
-# Normales saisonnieres nationales ponderees (min, max) par mois
-_SEASONAL_NORMALS = {
-    1: (-1, 6),   2: (-1, 7),   3: (2, 11),  4: (5, 15),
-    5: (9, 19),   6: (12, 23),  7: (14, 26),  8: (14, 25),
-    9: (11, 21),  10: (7, 16),  11: (3, 10),  12: (0, 7),
-}
-
-
-def _generate_fallback_forecast() -> list[dict]:
-    """Donnees meteo simulees — moyennes saisonnieres nationales ponderees.
-
-    Utilise uniquement quand Open-Meteo est inaccessible.
-    Variations min/max independantes, mois de la date cible.
-    """
-    today = date.today()
-
-    result = []
-    for i in range(16):
-        d = today + timedelta(days=i)
-        month = d.month
-        base_min, base_max = _SEASONAL_NORMALS.get(month, (3, 10))
-
-        rng = random.Random(today.toordinal() + i)
-        var_min = rng.uniform(-4, 4)
-        var_max = rng.uniform(-4, 4)
-        t_min = round(base_min + var_min, 1)
-        t_max = round(base_max + var_max, 1)
-        if t_min >= t_max:
-            t_max = t_min + 2.0
-        result.append({
-            "date": d.isoformat(),
-            "temp_min": t_min,
-            "temp_max": t_max,
-            "temp_moy": round((t_min + t_max) / 2, 1),
-            "humidity": round(rng.uniform(50, 85), 1),
-            "wind_speed": round(rng.uniform(5, 25), 1),
-            "pressure": None,  # Non disponible — coherent avec Open-Meteo
-            "description": "donnees simulees",
-            "forecast_quality": "simulated",
-        })
-    return result
 
 
 # ================================================================

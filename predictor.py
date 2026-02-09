@@ -228,10 +228,6 @@ def predict_day(target_date: date, weather: dict | None = None,
     )
     score_risque = min(100, base_score + cold_wave)
 
-    # Attenuation si meteo simulee (Open-Meteo indisponible, fallback saisonnier)
-    if forecast_quality == "simulated":
-        score_risque = score_risque * 0.5 + 50 * 0.5
-
     # === Corrections contextuelles du journal d'apprentissage ===
     # (horizon, température, mois, jour de semaine — ajustements au score composite)
     if _learnings:

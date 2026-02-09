@@ -353,15 +353,15 @@ class TestPredictDay:
             assert key in result, f"Missing sub-score: {key}"
             assert 0 <= result[key] <= 100
 
-    def test_simulated_weather_attenuation(self, sample_weather, sample_remaining):
-        """Météo simulée atténue le score vers 50."""
+    def test_no_simulated_fallback(self, sample_weather, sample_remaining):
+        """Pas d'atténuation simulée — Open-Meteo down = pas de prédiction."""
         target = date.fromisoformat(sample_weather[0]["date"])
-        sample_weather[0]["forecast_quality"] = "simulated"
+        # forecast_quality "api" est le seul cas réel
+        sample_weather[0]["forecast_quality"] = "api"
         result = predict_day(target, weather=sample_weather[0],
                             forecasts=sample_weather, target_idx=0,
                             remaining=sample_remaining)
-        # Score doit être plus proche de 50 que sans atténuation
-        assert 20 <= result["score_risque"] <= 80
+        assert result["score_risque"] >= 0
 
 
 # ================================================================
@@ -389,12 +389,12 @@ class TestPredictRange:
         for r in results:
             assert "confirmed" in r
 
-    def test_simulated_flag_propagation(self, sample_weather):
-        """Le flag simulated est propagé."""
-        results = predict_range(sample_weather, simulated=True)
+    def test_simulated_flag_defaults_false(self, sample_weather):
+        """Les prédictions normales ne sont pas marquées simulées."""
+        results = predict_range(sample_weather)
         non_confirmed = [r for r in results if not r.get("confirmed")]
         for r in non_confirmed:
-            assert r["simulated"] is True
+            assert r["simulated"] is False
 
 
 # ================================================================
