@@ -62,6 +62,10 @@ def evaluate_predictions_for_date(target_date: date, couleur_reelle: str):
 
         nb_stored = 0
         for pred in predictions:
+            # Ne jamais évaluer les prédictions basées sur données simulées
+            if pred["simulated"]:
+                continue
+
             # Déterminer la couleur qui était réellement prédite par l'algo
             # Si confirmé, couleur_predite a été écrasée → utiliser couleur_originale
             couleur_pred = pred["couleur_predite"]
@@ -336,6 +340,7 @@ def recalculate_weights():
                JOIN actuals a ON p.date = a.date
                WHERE p.horizon IN ('J-1','J-2','J-3','J-4','J-5','J0')
                  AND a.synthetic = 0
+                 AND p.simulated = 0
                  AND (p.score_temperature + p.score_budget + p.score_weekday
                       + p.score_gradient + p.score_clustering + p.score_rte) > 0
                ORDER BY p.date DESC"""
@@ -1325,6 +1330,7 @@ def validate_correction_impact() -> dict | None:
                FROM predictions p
                JOIN actuals a ON p.date = a.date
                WHERE p.date >= ? AND a.synthetic = 0
+                 AND p.simulated = 0
                  AND p.horizon IN ('J-1','J-2','J-3')
                  AND p.score_temperature_raw > 0""",
             (since,)

@@ -212,7 +212,7 @@ async def task_daily_predictions():
                                         for c in changes))
 
             logger.info(f"[Task 18h00] {len(predictions)} prédictions stockées "
-                        f"(cycle={cycle_id}, simulated={simulated})")
+                        f"(cycle={cycle_id})")
 
             # Invalider le cache pour que les visiteurs voient les nouvelles prédictions
             from app import invalidate_predictions_cache

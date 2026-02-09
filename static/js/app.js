@@ -169,16 +169,6 @@ async function loadPredictions() {
             return;
         }
 
-        // Avertissement si données simulées
-        const hasSimulated = preds.some(p => p.simulated);
-        if (hasSimulated) {
-            const warn = document.createElement('div');
-            warn.className = 'simulated-warning';
-            warn.innerHTML = '<strong>Prévisions météo temporairement indisponibles</strong> — ' +
-                'Les prédictions sont basées sur des moyennes saisonnières et sont donc moins fiables que d\'habitude.';
-            container.appendChild(warn);
-        }
-
         // Date de dernière mise à jour
         if (data.generated_at) {
             const genDate = new Date(data.generated_at);

@@ -167,8 +167,7 @@ def predict_day(target_date: date, weather: dict | None = None,
     temp_moy = weather.get("temp_moy", 7.5) if weather else 7.5
     wind_speed = weather.get("wind_speed", 10) if weather else 10  # ML-4
 
-    # Fix meteo #1 : qualite de la meteo (api / climatology / simulated)
-    forecast_quality = weather.get("forecast_quality", "api") if weather else "simulated"
+    forecast_quality = weather.get("forecast_quality", "api") if weather else "api"
 
     # === 1. Score temperature (recalibre + wind chill ML-4) ===
     temp_score = _score_temperature_v2(temp_moy, wind_speed)
@@ -277,15 +276,13 @@ def predict_day(target_date: date, weather: dict | None = None,
 
 
 def predict_range(forecasts: list[dict],
-                  rte_score: dict | None = None,
-                  simulated: bool = False) -> list[dict]:
+                  rte_score: dict | None = None) -> list[dict]:
     """Predit la couleur pour chaque jour du forecast.
 
-    Fix #2 : decremente les quotas simules pour que les predictions
+    Fix #2 : decremente les quotas au fur et a mesure pour que les predictions
     ulterieures ne predisent pas plus de rouges/blancs que le quota restant.
     Fix #11 : charge les actuals une seule fois (batch).
     Fix v5 #5 : si J+1 a une couleur officielle dans actuals, l'utiliser.
-    Fix v5 #6 : propage le flag simulated (donnees meteo fallback).
     """
     remaining = get_remaining_days()
     weights = get_current_weights()
@@ -350,7 +347,7 @@ def predict_range(forecasts: list[dict],
                            _learnings=learnings)
         pred["horizon"] = f"J-{delta}" if delta > 0 else ("J0" if delta == 0 else f"J+{-delta}")
         pred["confirmed"] = False
-        pred["simulated"] = simulated
+        pred["simulated"] = False
         predictions.append(pred)
 
         # Fix #2 : decrementer le quota simule si on a predit rouge/blanc
@@ -690,10 +687,6 @@ def _build_raison_v2(temp_moy: float, temp_min: float,
                      forecast_quality: str = "api") -> str:
     """Construit une explication humaine de la prediction v2."""
     raisons = []
-
-    # Signaler la qualite degradee si Open-Meteo indisponible
-    if forecast_quality == "simulated":
-        raisons.append("Meteo simulee (confiance faible)")
 
     # Temperature nationale
     if temp_moy < -2:
