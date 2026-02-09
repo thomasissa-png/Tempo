@@ -1,14 +1,15 @@
 """Gestion de la base de données SQLite — 8 tables.
 
 Tables :
-  - predictions         : prédictions générées par l'algorithme
+  - predictions         : prédictions générées par l'algorithme (+ raw sub-scores v9)
   - prediction_changes  : historique des changements de couleur entre cycles
   - actuals             : couleurs réelles confirmées par EDF
-  - performance         : comparaison prédiction vs réalité (UNIQUE dedup Fix #7)
+  - performance         : comparaison prédiction vs réalité (UNIQUE multi-horizon v9)
   - users               : abonnés aux alertes SMS (phone_encrypted Fix #1)
   - sms_logs            : historique des SMS envoyés
-  - weights_history     : versions successives des poids de l'algorithme
+  - weights_history     : versions successives des poids (+ rollback v9)
   - weather_cache       : cache des prévisions météo (Fix #17)
+  - learning_journal    : patterns d'erreurs et corrections (versioned v9)
 """
 
 import sqlite3
@@ -138,7 +139,7 @@ def init_db():
             timestamp_confirmation  TEXT    NOT NULL
         );
 
-        -- Fix #7 + ML-3 : UNIQUE(date_prediction, date_cible) evite doublons
+        -- D-1 : UNIQUE(date_prediction, date_cible, jours_avance) multi-horizon
         CREATE TABLE IF NOT EXISTS performance (
             id                   INTEGER PRIMARY KEY AUTOINCREMENT,
             date_prediction      TEXT    NOT NULL,
@@ -151,7 +152,7 @@ def init_db():
             ecart_score          REAL    DEFAULT 0,
             contexte_meteo       TEXT    DEFAULT '',
             timestamp_evaluation TEXT    NOT NULL,
-            UNIQUE(date_prediction, date_cible)
+            UNIQUE(date_prediction, date_cible, jours_avance)
         );
 
         -- Fix #1 : phone_encrypted (Fernet) pour pouvoir envoyer les SMS
@@ -401,6 +402,98 @@ def init_db():
         conn.commit()
         logger.info("Migration v8 appliquee (HMAC phone hash, couleur_originale)")
 
+    if version < 9:
+        # Migration v9 — Learning system improvements (audit)
+
+        # C-1: Raw sub-scores (before corrections) for uncontaminated ML training
+        for col in ["score_temperature_raw", "score_budget_raw", "score_weekday_raw",
+                     "score_gradient_raw", "score_clustering_raw", "score_rte_raw"]:
+            try:
+                conn.execute(f"ALTER TABLE predictions ADD COLUMN {col} REAL DEFAULT 0")
+            except sqlite3.OperationalError:
+                pass  # Colonne existe déjà
+
+        # D-1: Fix performance UNIQUE to include jours_avance for multi-horizon evals
+        try:
+            conn.executescript("""
+                CREATE TABLE IF NOT EXISTS performance_v9 (
+                    id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+                    date_prediction      TEXT    NOT NULL,
+                    date_cible           TEXT    NOT NULL,
+                    jours_avance         INTEGER NOT NULL,
+                    correct              INTEGER NOT NULL,
+                    couleur_predite      TEXT    NOT NULL,
+                    couleur_reelle       TEXT    NOT NULL,
+                    score_risque_predit  REAL    DEFAULT 0,
+                    ecart_score          REAL    DEFAULT 0,
+                    contexte_meteo       TEXT    DEFAULT '',
+                    timestamp_evaluation TEXT    NOT NULL,
+                    UNIQUE(date_prediction, date_cible, jours_avance)
+                );
+                INSERT OR IGNORE INTO performance_v9
+                    SELECT * FROM performance;
+                DROP TABLE performance;
+                ALTER TABLE performance_v9 RENAME TO performance;
+                CREATE INDEX IF NOT EXISTS idx_performance_cible
+                    ON performance(date_cible);
+                CREATE INDEX IF NOT EXISTS idx_performance_avance
+                    ON performance(jours_avance);
+            """)
+        except sqlite3.OperationalError as e:
+            logger.warning(f"Migration v9 performance: {e}")
+
+        # A-5: Learning journal history — versioned by date_analysis
+        # Replace UNIQUE(pattern_type, pattern_key) with UNIQUE(pattern_type, pattern_key, date_analysis)
+        try:
+            conn.executescript("""
+                CREATE TABLE IF NOT EXISTS learning_journal_v9 (
+                    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+                    date_analysis    TEXT    NOT NULL,
+                    pattern_type     TEXT    NOT NULL,
+                    pattern_key      TEXT    NOT NULL,
+                    observation      TEXT    NOT NULL,
+                    accuracy         REAL    DEFAULT 0,
+                    bias_direction   TEXT    DEFAULT '',
+                    bias_magnitude   REAL    DEFAULT 0,
+                    sample_size      INTEGER NOT NULL,
+                    correction_score REAL    DEFAULT 0,
+                    confidence       REAL    DEFAULT 0,
+                    active           INTEGER DEFAULT 1,
+                    created_at       TEXT    NOT NULL,
+                    disabled_at      TEXT    DEFAULT NULL,
+                    UNIQUE(pattern_type, pattern_key, date_analysis)
+                );
+                INSERT OR IGNORE INTO learning_journal_v9
+                    (id, date_analysis, pattern_type, pattern_key, observation,
+                     accuracy, bias_direction, bias_magnitude, sample_size,
+                     correction_score, confidence, active, created_at)
+                    SELECT id, date_analysis, pattern_type, pattern_key, observation,
+                           accuracy, bias_direction, bias_magnitude, sample_size,
+                           correction_score, confidence, active, created_at
+                    FROM learning_journal;
+                DROP TABLE learning_journal;
+                ALTER TABLE learning_journal_v9 RENAME TO learning_journal;
+                CREATE INDEX IF NOT EXISTS idx_learning_active
+                    ON learning_journal(active);
+                CREATE INDEX IF NOT EXISTS idx_learning_date
+                    ON learning_journal(date_analysis);
+            """)
+        except sqlite3.OperationalError as e:
+            logger.warning(f"Migration v9 learning_journal: {e}")
+
+        # W-5: Rollback tracking in weights_history
+        try:
+            conn.execute(
+                "ALTER TABLE weights_history ADD COLUMN rollback_of INTEGER DEFAULT NULL"
+            )
+        except sqlite3.OperationalError:
+            pass
+
+        conn.execute("PRAGMA user_version = 9")
+        conn.commit()
+        logger.info("Migration v9 appliquee (raw sub-scores, perf multi-horizon, "
+                    "learning history, rollback)")
+
     # Poids initiaux si vide
     existing = conn.execute("SELECT COUNT(*) as c FROM weights_history").fetchone()
     if existing["c"] == 0:
@@ -416,7 +509,7 @@ def init_db():
 
     conn.commit()
     conn.close()
-    logger.info("Base de données initialisée avec 8 tables")
+    logger.info("Base de données initialisée avec 9 tables")
 
 
 # ================================================================

@@ -574,6 +574,14 @@ async def api_learning(request: Request, authorization: str | None = Header(None
     }
 
 
+@app.get("/api/learning/health")
+async def api_learning_health(request: Request, authorization: str | None = Header(None)):
+    """Métriques de santé du système d'apprentissage (admin)."""
+    verify_admin(authorization, request.client.host if request.client else "unknown")
+    from performance_tracker import get_learning_health
+    return {"status": "ok", **get_learning_health()}
+
+
 # ================================================================
 # API : ALERTES SMS
 # ================================================================

@@ -347,12 +347,12 @@ class TestMigrationV8:
         finally:
             conn.close()
 
-    def test_db_version_is_8(self):
-        """La version de la DB est 8 après migration."""
+    def test_db_version_is_current(self):
+        """La version de la DB est à jour après migration."""
         from database import get_db
         conn = get_db()
         try:
             version = conn.execute("PRAGMA user_version").fetchone()[0]
-            assert version == 8
+            assert version == 9
         finally:
             conn.close()

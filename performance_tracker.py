@@ -7,8 +7,10 @@ Responsabilités :
   4. Journal d'apprentissage : détection de patterns d'erreurs systématiques
   5. Corrections de biais : ajustements appliqués aux prédictions futures
   6. Évaluation rattrapage : évalue rétroactivement les jours manqués
+  7. Validation des corrections (A-1) + kill-switch (C-3)
+  8. Auto-rollback poids (W-5)
 
-Fix audit ML :
+Fix audit ML + Learning System Audit :
   - ML-1/ML-2 : filtre horizon <= 5 dans évaluation et entraînement
   - ML-4 : métriques precision/recall/F1 par classe
   - ML-5 : seuil validation 55% (au lieu de 40%)
@@ -17,6 +19,17 @@ Fix audit ML :
   - ML-11 : permutation importance au lieu de norme L2
   - ML-12 : ALPHA adaptatif selon quantité de données
   - ML-15 : precision_apres mise à jour indépendamment
+  - C-1 : entraînement sur raw sub-scores (avant corrections)
+  - D-1 : UNIQUE(date_prediction, date_cible, jours_avance)
+  - A-1 : validation impact des corrections
+  - A-2 : Wilson interval confidence
+  - W-2 : vérification balance des classes dans holdout
+  - W-3 : n_repeats=30 pour permutation importance
+  - W-5 : auto-rollback si precision chute
+  - W-6 : plus de LIMIT 300 (toutes les données)
+  - C-3 : kill-switch corrections nocives
+  - A-5 : historique versionné des corrections
+  - A-6 : garde anti double-exécution
 """
 
 import json
@@ -301,12 +314,23 @@ def recalculate_weights():
             logger.info(f"[Poids] Pas assez de donnees evaluees ({count}/60)")
             return None
 
-        # Fix ML-2 : filtrer sur jours_avance <= 5 pour horizons fiables
+        # C-1 : entraîner sur raw sub-scores (avant corrections) si disponibles
+        # W-6 : plus de LIMIT 300 — utiliser toutes les données disponibles
         # Fix data-integrity : exclure les actuals synthétiques (seed_from_remaining)
-        # qui ne sont PAS des couleurs confirmées par l'API EDF
         rows = conn.execute(
-            """SELECT p.score_temperature, p.score_budget, p.score_weekday,
-                      p.score_gradient, p.score_clustering, p.score_rte,
+            """SELECT
+                      COALESCE(NULLIF(p.score_temperature_raw, 0), p.score_temperature)
+                          as score_temperature,
+                      COALESCE(NULLIF(p.score_budget_raw, 0), p.score_budget)
+                          as score_budget,
+                      COALESCE(NULLIF(p.score_weekday_raw, 0), p.score_weekday)
+                          as score_weekday,
+                      COALESCE(NULLIF(p.score_gradient_raw, 0), p.score_gradient)
+                          as score_gradient,
+                      COALESCE(NULLIF(p.score_clustering_raw, 0), p.score_clustering)
+                          as score_clustering,
+                      COALESCE(NULLIF(p.score_rte_raw, 0), p.score_rte)
+                          as score_rte,
                       a.couleur_reelle
                FROM predictions p
                JOIN actuals a ON p.date = a.date
@@ -314,8 +338,7 @@ def recalculate_weights():
                  AND a.synthetic = 0
                  AND (p.score_temperature + p.score_budget + p.score_weekday
                       + p.score_gradient + p.score_clustering + p.score_rte) > 0
-               ORDER BY p.date DESC
-               LIMIT 300"""
+               ORDER BY p.date DESC"""
         ).fetchall()
 
         if len(rows) < 60:
@@ -423,7 +446,10 @@ def recalculate_weights():
                     multi_class="multinomial", max_iter=1000, C=1.0,
                     class_weight="balanced",
                 )
-                if len(set(y_train_t)) >= 2:
+                # W-2 : vérifier balance des classes dans train ET validation
+                train_classes = set(y_train_t)
+                val_classes = set(y_val_t)
+                if len(train_classes) >= 2 and len(val_classes) >= 2:
                     model_holdout.fit(X_train_t, y_train_t)
                     holdout_accuracy = round(model_holdout.score(X_val_t, y_val_t) * 100, 1)
                     if holdout_accuracy < 65:
@@ -459,8 +485,9 @@ def recalculate_weights():
         ]
         try:
             from sklearn.inspection import permutation_importance
+            # W-3 : n_repeats=30 pour résultats plus stables
             perm_result = permutation_importance(
-                model, X_scaled, y, n_repeats=10, random_state=42
+                model, X_scaled, y, n_repeats=30, random_state=42
             )
             importance = perm_result.importances_mean[:6]  # 6 features de base
             # Rendre positif (certaines importances peuvent être négatives)
@@ -539,24 +566,64 @@ def recalculate_weights():
 
 
 def _update_previous_precision_apres(conn):
-    """Met à jour precision_apres de la dernière entrée weights_history."""
+    """Met à jour precision_apres de la dernière entrée weights_history.
+
+    W-5 : Auto-rollback si la précision a chuté de plus de 5 points
+    par rapport à precision_avant (signe de poids dégradés).
+    """
     try:
         last_entry = conn.execute(
-            "SELECT id, precision_apres FROM weights_history ORDER BY id DESC LIMIT 1"
+            """SELECT id, precision_avant, precision_apres, rollback_of
+               FROM weights_history ORDER BY id DESC LIMIT 1"""
         ).fetchone()
 
-        if last_entry and last_entry["precision_apres"] == 0:
-            current_precision = get_accuracy_global(30)["precision"]
-            conn.execute(
-                "UPDATE weights_history SET precision_apres = ? WHERE id = ?",
-                (current_precision, last_entry["id"]),
-            )
-            # Pas de conn.commit() ici — le commit sera fait par l'appelant
-            # (recalculate_weights) pour garder la transaction atomique
-            logger.info(
-                f"[Poids] precision_apres mise a jour pour id={last_entry['id']}: "
-                f"{current_precision}%"
-            )
+        if not last_entry or last_entry["precision_apres"] != 0:
+            return
+
+        current_precision = get_accuracy_global(30)["precision"]
+        conn.execute(
+            "UPDATE weights_history SET precision_apres = ? WHERE id = ?",
+            (current_precision, last_entry["id"]),
+        )
+        logger.info(
+            f"[Poids] precision_apres mise a jour pour id={last_entry['id']}: "
+            f"{current_precision}%"
+        )
+
+        # W-5: Auto-rollback if precision dropped by more than 5 percentage points
+        precision_avant = last_entry["precision_avant"]
+        rollback_of = last_entry["rollback_of"]
+        if (precision_avant > 0
+                and current_precision < precision_avant - 5
+                and rollback_of is None):  # Don't rollback a rollback
+
+            prev = conn.execute(
+                "SELECT id, weights_json FROM weights_history WHERE id < ? ORDER BY id DESC LIMIT 1",
+                (last_entry["id"],)
+            ).fetchone()
+
+            if prev:
+                conn.execute(
+                    """INSERT INTO weights_history
+                       (date_update, weights_json, precision_avant, precision_apres,
+                        nb_predictions, commentaire, model_version,
+                        timestamp_update, rollback_of)
+                       VALUES (?, ?, ?, 0, 0, ?, ?, ?, ?)""",
+                    (datetime.now().strftime("%Y-%m-%d"),
+                     prev["weights_json"],
+                     current_precision,
+                     f"AUTO-ROLLBACK (precision {precision_avant:.1f}% → "
+                     f"{current_precision:.1f}%, delta="
+                     f"{current_precision - precision_avant:.1f}%)",
+                     "rollback_v9",
+                     datetime.now().isoformat(),
+                     last_entry["id"]),
+                )
+                logger.warning(
+                    f"[Poids] AUTO-ROLLBACK: precision {precision_avant:.1f}% → "
+                    f"{current_precision:.1f}%, retour aux poids id={prev['id']}"
+                )
+
     except Exception as e:
         logger.error(f"[Poids] Erreur mise a jour precision_apres: {e}")
 
@@ -655,6 +722,17 @@ def _compute_bias(group: list[dict]) -> tuple[float, float, float, str, float]:
     return (accuracy, over_rate, under_rate, direction, magnitude)
 
 
+def _wilson_lower_bound(p: float, n: int, z: float = 1.96) -> float:
+    """Wilson score interval lower bound (95% CI).
+    A-2 : estimation conservative de la proportion réelle."""
+    if n <= 0 or p <= 0:
+        return 0.0
+    denominator = 1 + z ** 2 / n
+    center = p + z ** 2 / (2 * n)
+    spread = z * math.sqrt(p * (1 - p) / n + z ** 2 / (4 * n ** 2))
+    return max(0.0, (center - spread) / denominator)
+
+
 def _compute_correction(bias_direction: str, bias_magnitude: float,
                         sample_size: int, max_correction: float = 8.0
                         ) -> tuple[float, float]:
@@ -663,20 +741,30 @@ def _compute_correction(bias_direction: str, bias_magnitude: float,
     Returns: (correction_score, confidence)
     - correction négative = on prédit trop haut → réduire le score
     - correction positive = on prédit trop bas → augmenter le score
+
+    A-2 : Wilson interval pour estimation conservative du biais.
+    Remplace min(1, n/30) par sqrt(n/30) + Wilson lower bound.
     """
-    confidence = min(1.0, sample_size / 30)
+    if sample_size <= 0:
+        return (0.0, 0.0)
+
+    # A-2: Wilson lower bound on magnitude for conservative estimate
+    conservative_magnitude = _wilson_lower_bound(bias_magnitude, sample_size)
+
+    # Confidence from sample size (sqrt scaling = less aggressive than linear)
+    confidence = min(1.0, math.sqrt(sample_size / 30))
 
     if bias_direction == "over":
-        correction = -bias_magnitude * max_correction * confidence
+        correction = -conservative_magnitude * max_correction * confidence
     elif bias_direction == "under":
-        correction = bias_magnitude * max_correction * confidence
+        correction = conservative_magnitude * max_correction * confidence
     else:
         correction = 0.0
 
     return (round(correction, 2), round(confidence, 2))
 
 
-def analyze_error_patterns(days: int = 90) -> list[dict]:
+def analyze_error_patterns(days: int = 90, force: bool = False) -> list[dict]:
     """Analyse les patterns d'erreurs systématiques et stocke les corrections.
 
     Dimensions analysées :
@@ -690,9 +778,21 @@ def analyze_error_patterns(days: int = 90) -> list[dict]:
 
     Les corrections sont stockées dans learning_journal et appliquées
     automatiquement par le prédicteur lors des prochaines prédictions.
+
+    A-5 : les anciennes corrections sont préservées (historique versionné).
+    A-6 : garde anti double-exécution (skip si déjà analysé aujourd'hui).
     """
     conn = get_db()
     try:
+        # A-6 : éviter double exécution le même jour
+        if not force:
+            last_analysis = conn.execute(
+                "SELECT MAX(date_analysis) as last FROM learning_journal"
+            ).fetchone()
+            if last_analysis and last_analysis["last"] == date.today().isoformat():
+                logger.info("[Learning] Déjà analysé aujourd'hui, skip (force=False)")
+                return []
+
         since = (date.today() - timedelta(days=days)).isoformat()
 
         perf_rows = conn.execute(
@@ -754,8 +854,17 @@ def analyze_error_patterns(days: int = 90) -> list[dict]:
         all_patterns.extend(_analyze_factor_contributions(rows))
         all_patterns.extend(_analyze_prediction_volatility(conn, since))
 
-        # Stocker dans learning_journal
+        # A-5 : Désactiver les anciennes corrections du même type
+        # (elles restent en DB pour l'historique, mais active=0)
+        today_iso = date.today().isoformat()
         now = datetime.now().isoformat()
+        conn.execute(
+            """UPDATE learning_journal SET active = 0
+               WHERE active = 1 AND date_analysis < ?""",
+            (today_iso,)
+        )
+
+        # Stocker les nouvelles corrections versionnées par date
         stored = 0
         for p in all_patterns:
             conn.execute(
@@ -764,7 +873,7 @@ def analyze_error_patterns(days: int = 90) -> list[dict]:
                     accuracy, bias_direction, bias_magnitude,
                     sample_size, correction_score, confidence, active, created_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)""",
-                (date.today().isoformat(), p["type"], p["key"],
+                (today_iso, p["type"], p["key"],
                  p["observation"], p["accuracy"], p["bias_direction"],
                  p["bias_magnitude"], p["sample_size"],
                  p["correction"], p["confidence"], now),
@@ -1190,7 +1299,221 @@ def get_learning_summary() -> list[dict]:
 
 
 # ================================================================
-# 7. ÉVALUATION RATTRAPAGE (jours manqués)
+# 7. VALIDATION DES CORRECTIONS (A-1) + KILL-SWITCH (C-3)
+# ================================================================
+
+def validate_correction_impact() -> dict | None:
+    """A-1 : Compare la précision avec vs sans corrections.
+
+    Utilise les raw sub-scores pour estimer ce qu'auraient été les prédictions
+    sans corrections, et compare avec la précision réelle.
+    Si les corrections dégradent de plus de 3%, désactive toutes les corrections.
+
+    Returns: dict avec acc_with, acc_without, action ou None si pas assez de données.
+    """
+    conn = get_db()
+    try:
+        since = (date.today() - timedelta(days=30)).isoformat()
+
+        rows = conn.execute(
+            """SELECT p.date, p.couleur_predite, p.couleur_originale,
+                      p.score_risque,
+                      p.score_temperature_raw, p.score_budget_raw,
+                      p.score_weekday_raw, p.score_gradient_raw,
+                      p.score_clustering_raw, p.score_rte_raw,
+                      a.couleur_reelle
+               FROM predictions p
+               JOIN actuals a ON p.date = a.date
+               WHERE p.date >= ? AND a.synthetic = 0
+                 AND p.horizon IN ('J-1','J-2','J-3')
+                 AND p.score_temperature_raw > 0""",
+            (since,)
+        ).fetchall()
+
+        if len(rows) < 15:
+            return None  # Pas assez de données
+
+        weights = get_current_weights()
+        w = [weights.get(k, 0.15) for k in [
+            "temperature", "jours_restants", "jour_semaine",
+            "gradient_thermique", "clustering", "consommation_rte"
+        ]]
+
+        correct_with = 0
+        correct_without = 0
+        total = len(rows)
+
+        for r in rows:
+            actual = r["couleur_reelle"]
+
+            # Avec corrections (couleur effectivement prédite par l'algo)
+            pred_with = r["couleur_originale"] or r["couleur_predite"]
+            if pred_with == actual:
+                correct_with += 1
+
+            # Sans corrections : recompute depuis raw sub-scores
+            raw_scores = [
+                r["score_temperature_raw"], r["score_budget_raw"],
+                r["score_weekday_raw"], r["score_gradient_raw"],
+                r["score_clustering_raw"], r["score_rte_raw"],
+            ]
+            raw_composite = sum(s * wt for s, wt in zip(raw_scores, w))
+
+            if raw_composite >= Config.SEUIL_ROUGE:
+                pred_without = "ROUGE"
+            elif raw_composite >= Config.SEUIL_BLANC:
+                pred_without = "BLANC"
+            else:
+                pred_without = "BLEU"
+
+            if pred_without == actual:
+                correct_without += 1
+
+        acc_with = correct_with / total * 100
+        acc_without = correct_without / total * 100
+
+        logger.info(
+            f"[Learning] Correction validation: with={acc_with:.1f}%, "
+            f"without={acc_without:.1f}%, n={total}"
+        )
+
+        # Si corrections dégradent de plus de 3%, désactiver
+        if acc_with < acc_without - 3:
+            conn.execute(
+                "UPDATE learning_journal SET active = 0, disabled_at = ? WHERE active = 1",
+                (datetime.now().isoformat(),)
+            )
+            conn.commit()
+            logger.warning(
+                f"[Learning] CORRECTIONS DISABLED: with={acc_with:.1f}% vs "
+                f"without={acc_without:.1f}%, delta={acc_with - acc_without:.1f}%"
+            )
+            return {"action": "disabled", "acc_with": round(acc_with, 1),
+                    "acc_without": round(acc_without, 1), "n": total}
+
+        return {"action": "ok", "acc_with": round(acc_with, 1),
+                "acc_without": round(acc_without, 1), "n": total}
+
+    except Exception as e:
+        logger.error(f"[Learning] Correction validation error: {e}")
+        return None
+    finally:
+        conn.close()
+
+
+def killswitch_harmful_corrections() -> list[dict]:
+    """C-3 : Kill-switch — désactive les corrections individuelles nocives.
+
+    Vérifie la précision récente (14 jours). Si elle est inférieure à 50%,
+    désactive les 3 corrections les plus fortes (probables responsables).
+    """
+    conn = get_db()
+    disabled = []
+    try:
+        since = (date.today() - timedelta(days=14)).isoformat()
+        perf = conn.execute(
+            """SELECT COUNT(*) as total, SUM(correct) as correct
+               FROM performance WHERE date_cible >= ?""",
+            (since,)
+        ).fetchone()
+
+        if not perf or perf["total"] < 10:
+            return disabled
+
+        accuracy = perf["correct"] / perf["total"]
+
+        if accuracy < 0.50:
+            strongest = conn.execute(
+                """SELECT id, pattern_type, pattern_key, correction_score
+                   FROM learning_journal
+                   WHERE active = 1 AND ABS(correction_score) > 2.0
+                   ORDER BY ABS(correction_score) DESC LIMIT 3"""
+            ).fetchall()
+
+            for c in strongest:
+                conn.execute(
+                    "UPDATE learning_journal SET active = 0, disabled_at = ? WHERE id = ?",
+                    (datetime.now().isoformat(), c["id"])
+                )
+                entry = {
+                    "pattern": f"{c['pattern_type']}:{c['pattern_key']}",
+                    "correction": c["correction_score"],
+                    "reason": f"accuracy={accuracy*100:.0f}%"
+                }
+                disabled.append(entry)
+                logger.warning(
+                    f"[Learning] KILL-SWITCH: {entry['pattern']} "
+                    f"(score={c['correction_score']}) désactivée ({entry['reason']})"
+                )
+
+            conn.commit()
+
+        return disabled
+    except Exception as e:
+        logger.error(f"[Learning] Kill-switch error: {e}")
+        return disabled
+    finally:
+        conn.close()
+
+
+def get_learning_health() -> dict:
+    """Métriques de santé du système d'apprentissage pour monitoring."""
+    conn = get_db()
+    try:
+        # Nombre de corrections actives
+        active = conn.execute(
+            "SELECT COUNT(*) as c FROM learning_journal WHERE active = 1"
+        ).fetchone()["c"]
+
+        # Nombre de corrections désactivées (kill-switch / validation)
+        disabled = conn.execute(
+            "SELECT COUNT(*) as c FROM learning_journal WHERE active = 0 AND disabled_at IS NOT NULL"
+        ).fetchone()["c"]
+
+        # Nombre de rollbacks de poids
+        rollbacks = conn.execute(
+            "SELECT COUNT(*) as c FROM weights_history WHERE rollback_of IS NOT NULL"
+        ).fetchone()["c"]
+
+        # Dernière analyse
+        last_analysis = conn.execute(
+            "SELECT MAX(date_analysis) as last FROM learning_journal"
+        ).fetchone()["last"]
+
+        # Précision récente (14j)
+        since_14 = (date.today() - timedelta(days=14)).isoformat()
+        perf_14 = conn.execute(
+            "SELECT COUNT(*) as total, SUM(correct) as correct FROM performance WHERE date_cible >= ?",
+            (since_14,)
+        ).fetchone()
+        accuracy_14 = round(perf_14["correct"] / perf_14["total"] * 100, 1) if perf_14["total"] else 0
+
+        # Nombre de patterns dans l'historique
+        total_history = conn.execute(
+            "SELECT COUNT(*) as c FROM learning_journal"
+        ).fetchone()["c"]
+
+        # Correction validation
+        validation = validate_correction_impact()
+
+        return {
+            "active_corrections": active,
+            "disabled_corrections": disabled,
+            "weight_rollbacks": rollbacks,
+            "last_analysis_date": last_analysis,
+            "accuracy_14d": accuracy_14,
+            "total_history_entries": total_history,
+            "correction_validation": validation,
+        }
+    except Exception as e:
+        logger.error(f"[Learning] Health check error: {e}")
+        return {"error": str(e)}
+    finally:
+        conn.close()
+
+
+# ================================================================
+# 8. ÉVALUATION RATTRAPAGE (jours manqués)
 # ================================================================
 
 def evaluate_missed_days(lookback: int = 7) -> int:

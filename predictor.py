@@ -195,6 +195,16 @@ def predict_day(target_date: date, weather: dict | None = None,
     # === Bonus vague de froid (hors poids) ===
     cold_wave = _detect_cold_wave(forecasts or [], target_idx)
 
+    # === C-1: Raw sub-scores BEFORE corrections (uncontaminated for ML training) ===
+    raw_sub_scores = {
+        "score_temperature_raw": round(temp_score, 1),
+        "score_budget_raw": round(budget_score, 1),
+        "score_weekday_raw": round(dow_score, 1),
+        "score_gradient_raw": round(gradient_score, 1),
+        "score_clustering_raw": round(cluster_score, 1),
+        "score_rte_raw": round(rte_s, 1),
+    }
+
     # === Corrections par facteur du journal d'apprentissage ===
     # Appliquées AVANT la somme pondérée pour cibler les sub-scores fautifs
     learning_adjustment = 0.0
@@ -262,6 +272,8 @@ def predict_day(target_date: date, weather: dict | None = None,
         "score_clustering": round(cluster_score, 1),
         "score_rte": round(rte_s, 1),
     }
+    # C-1: Include raw sub-scores for uncontaminated ML training
+    sub_scores.update(raw_sub_scores)
 
     return _result(target_date, couleur, score_risque,
                    prob_bleu, prob_blanc, prob_rouge, weather, raison,
@@ -910,8 +922,13 @@ def store_prediction(pred: dict, horizon: str = "J-1",
                 raison, horizon, timestamp_prediction,
                 score_temperature, score_budget, score_weekday,
                 score_gradient, score_clustering, score_rte,
+                score_temperature_raw, score_budget_raw, score_weekday_raw,
+                score_gradient_raw, score_clustering_raw, score_rte_raw,
                 cycle_id, couleur_precedente, simulated, confirmed)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                       ?, ?, ?, ?, ?, ?,
+                       ?, ?, ?, ?, ?, ?,
+                       ?, ?, ?, ?)""",
             (pred["date"], pred["couleur_predite"],
              pred["probabilite_bleu"], pred["probabilite_blanc"],
              pred["probabilite_rouge"], pred["score_risque"],
@@ -923,6 +940,9 @@ def store_prediction(pred: dict, horizon: str = "J-1",
              pred.get("score_temperature", 0), pred.get("score_budget", 0),
              pred.get("score_weekday", 0), pred.get("score_gradient", 0),
              pred.get("score_clustering", 0), pred.get("score_rte", 0),
+             pred.get("score_temperature_raw", 0), pred.get("score_budget_raw", 0),
+             pred.get("score_weekday_raw", 0), pred.get("score_gradient_raw", 0),
+             pred.get("score_clustering_raw", 0), pred.get("score_rte_raw", 0),
              cycle_id, couleur_precedente,
              1 if pred.get("simulated") else 0,
              1 if pred.get("confirmed") else 0),

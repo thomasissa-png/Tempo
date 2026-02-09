@@ -3,8 +3,9 @@
 Tâches planifiées :
   - 11h30 quotidien : vérification couleur EDF + évaluation performance + rattrapage
   - 18h00 quotidien : génération prédictions J+1→J+15 + alertes SMS
-  - 1er du mois      : recalcul poids algorithme + analyse patterns d'erreurs
+  - 1er et 15 du mois : recalcul poids algorithme + analyse patterns d'erreurs (W-1)
   - Dimanche 20h     : analyse patterns + récapitulatif hebdomadaire SMS
+  - Quotidien 23h    : validation corrections + kill-switch (A-1/C-3)
 """
 
 import asyncio
@@ -38,12 +39,21 @@ def start_scheduler():
         replace_existing=True,
     )
 
-    # 1er du mois à 2h00 — recalcul des poids
+    # 1er et 15 du mois à 2h00 — recalcul des poids (W-1 : bimensuel)
     scheduler.add_job(
         task_monthly_weights,
-        CronTrigger(day=1, hour=2, minute=0, timezone="Europe/Paris"),
-        id="monthly_weights",
-        name="Recalcul mensuel des poids",
+        CronTrigger(day="1,15", hour=2, minute=0, timezone="Europe/Paris"),
+        id="bimonthly_weights",
+        name="Recalcul bimensuel des poids",
+        replace_existing=True,
+    )
+
+    # 23h00 quotidien — validation des corrections + kill-switch (A-1/C-3)
+    scheduler.add_job(
+        task_daily_validation,
+        CronTrigger(hour=23, minute=0, timezone="Europe/Paris"),
+        id="daily_validation",
+        name="Validation quotidienne des corrections",
         replace_existing=True,
     )
 
@@ -57,7 +67,7 @@ def start_scheduler():
     )
 
     scheduler.start()
-    logger.info("[Scheduler] Démarré avec 4 tâches planifiées")
+    logger.info("[Scheduler] Démarré avec 5 tâches planifiées")
 
 
 def stop_scheduler():
@@ -307,6 +317,42 @@ async def task_weekly_recap():
 
 
 # ================================================================
+# TÂCHE 5 : Validation quotidienne des corrections (23h)
+# ================================================================
+
+async def task_daily_validation():
+    """23h00 — Valide l'impact des corrections et désactive les nocives.
+
+    A-1 : Compare précision avec vs sans corrections.
+    C-3 : Kill-switch des corrections individuelles les plus nocives.
+    """
+    for attempt in range(2):
+        try:
+            from performance_tracker import validate_correction_impact
+            from performance_tracker import killswitch_harmful_corrections
+
+            logger.info("[Task 23h00] Début validation des corrections")
+
+            # A-1 : Validation globale des corrections
+            result = validate_correction_impact()
+            if result:
+                logger.info(f"[Task 23h00] Validation: {result}")
+
+            # C-3 : Kill-switch des corrections individuelles nocives
+            killed = killswitch_harmful_corrections()
+            if killed:
+                logger.warning(f"[Task 23h00] {len(killed)} correction(s) désactivée(s)")
+
+            logger.info("[Task 23h00] Validation terminée")
+            return
+        except Exception as e:
+            logger.error(f"[Scheduler] task_daily_validation attempt {attempt+1} failed: {e}")
+            if attempt == 0:
+                await asyncio.sleep(30)
+    logger.error("[Scheduler] task_daily_validation failed after 2 attempts")
+
+
+# ================================================================
 # EXÉCUTION MANUELLE (pour tests / API admin)
 # ================================================================
 
@@ -329,6 +375,7 @@ async def run_task_now(task_name: str) -> str:
         "predictions": task_daily_predictions,
         "weights": task_monthly_weights,
         "recap": task_weekly_recap,
+        "validation": task_daily_validation,
     }
     if task_name not in tasks:
         available = list(tasks.keys()) + ["backfill", "analyze"]
