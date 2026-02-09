@@ -1,4 +1,4 @@
-"""Gestion de la base de données SQLite — 8 tables.
+"""Gestion de la base de données SQLite — 9 tables.
 
 Tables :
   - predictions         : prédictions générées par l'algorithme (+ raw sub-scores v9)
@@ -10,6 +10,16 @@ Tables :
   - weights_history     : versions successives des poids (+ rollback v9)
   - weather_cache       : cache des prévisions météo (Fix #17)
   - learning_journal    : patterns d'erreurs et corrections (versioned v9)
+
+Migrations :
+  v3  — sub-scores, index UNIQUE
+  v4  — cycle_id, prediction_changes
+  v5  — UNIQUE performance, model_version
+  v6  — colonne synthetic sur actuals
+  v7  — table learning_journal
+  v8  — HMAC phone hash, couleur_originale
+  v9  — raw sub-scores, perf multi-horizon, learning history, rollback
+  v10 — purge des données météo simulées (predictions, weather_cache, performance)
 """
 
 import sqlite3
@@ -493,6 +503,37 @@ def init_db():
         conn.commit()
         logger.info("Migration v9 appliquee (raw sub-scores, perf multi-horizon, "
                     "learning history, rollback)")
+
+    if version < 10:
+        # Migration v10 — Purge des données météo simulées
+        # Les prédictions basées sur des moyennes saisonnières aléatoires (fallback
+        # quand Open-Meteo était down) polluent l'historique et l'apprentissage.
+        # Ce fallback a été supprimé du code, on nettoie la base existante.
+
+        # 1. Supprimer les prédictions basées sur de la météo simulée
+        cursor = conn.execute("DELETE FROM predictions WHERE simulated = 1")
+        deleted_preds = cursor.rowcount
+
+        # 2. Supprimer les données météo simulées du cache
+        cursor = conn.execute(
+            "DELETE FROM weather_cache WHERE description = 'donnees simulees'"
+        )
+        deleted_weather = cursor.rowcount
+
+        # 3. Supprimer les évaluations de performance issues de prédictions simulées
+        # (la raison contenait "Meteo simulee" quand la prédiction utilisait le fallback)
+        cursor = conn.execute(
+            "DELETE FROM performance WHERE contexte_meteo LIKE '%simulee%'"
+        )
+        deleted_perf = cursor.rowcount
+
+        conn.execute("PRAGMA user_version = 10")
+        conn.commit()
+        logger.info(
+            f"Migration v10 appliquee (purge donnees simulees: "
+            f"{deleted_preds} predictions, {deleted_weather} meteo cache, "
+            f"{deleted_perf} evaluations performance)"
+        )
 
     # Poids initiaux si vide
     existing = conn.execute("SELECT COUNT(*) as c FROM weights_history").fetchone()
