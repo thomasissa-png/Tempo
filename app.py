@@ -418,9 +418,11 @@ async def api_predictions():
                           raison, horizon, timestamp_prediction, cycle_id,
                           couleur_precedente, simulated, confirmed
                    FROM predictions
-                   WHERE date >= ?
+                   WHERE date >= ? AND id IN (
+                       SELECT MAX(id) FROM predictions WHERE date >= ? GROUP BY date
+                   )
                    ORDER BY date ASC""",
-                (today_str,)
+                (today_str, today_str)
             ).fetchall()
         except Exception as e:
             logger.error(f"[API predictions] Erreur DB: {e}")
