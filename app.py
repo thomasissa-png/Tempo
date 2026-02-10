@@ -26,7 +26,7 @@ from datetime import date, datetime, timedelta
 from logging.handlers import RotatingFileHandler
 
 from fastapi import FastAPI, Request, Form, HTTPException, Header
-from fastapi.responses import HTMLResponse, PlainTextResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -53,6 +53,9 @@ logger = logging.getLogger(__name__)
 # === Fix #2 : Cache en mémoire pour /api/predictions ===
 _predictions_cache = {"data": None, "expires": 0}
 _predictions_lock = asyncio.Lock()
+
+# === Fix #25 : Signal de disponibilité DB pour Cloud Run health checks ===
+_db_ready = asyncio.Event()
 
 
 def invalidate_predictions_cache():
@@ -128,12 +131,23 @@ def purge_old_data() -> None:
 # === Lifespan ===
 
 async def _deferred_startup():
-    """Tâches de démarrage non critiques — en arrière-plan.
+    """Tâches de démarrage en arrière-plan.
 
-    Cloud Run exige que / réponde 200 immédiatement. Seule init_db()
-    est bloquante (le schéma DB est nécessaire pour servir les requêtes).
-    Tout le reste tourne en fond après le yield.
+    Cloud Run exige que / réponde 200 immédiatement.
+    init_db() tourne en thread pool pour ne pas bloquer le serveur ;
+    les endpoints API attendent _db_ready avant d'accéder à la base.
     """
+    # init_db() est synchrone → exécuter dans un thread pool
+    try:
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, init_db)
+        _db_ready.set()
+        logger.info("[Startup] Base de données prête")
+    except Exception as e:
+        logger.error(f"[Startup] Erreur init_db: {e}")
+        # Signaler quand même pour éviter le blocage infini des requêtes
+        _db_ready.set()
+
     try:
         purge_old_data()
     except Exception as e:
@@ -166,13 +180,12 @@ async def lifespan(app: FastAPI):
             Config.ADMIN_PASSWORD,
         )
 
-    # Seule opération bloquante : init DB (schéma requis pour les requêtes)
-    init_db()
-
-    # Tâches non critiques en arrière-plan (purge, scheduler, backfill)
+    # Fix #25 : tout en arrière-plan pour que Cloud Run reçoive 200 immédiatement
+    # init_db() tourne en premier dans _deferred_startup (thread pool),
+    # suivi du scheduler, purge, backfill.
     startup_task = asyncio.create_task(_deferred_startup())
 
-    yield  # Serveur prêt — Cloud Run reçoit son 200 immédiatement
+    yield  # Serveur prêt immédiatement — "/" sert le HTML sans DB
 
     startup_task.cancel()
     stop_scheduler()
@@ -189,6 +202,26 @@ app = FastAPI(
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
+
+
+# === Fix #25 : middleware — attendre que la DB soit prête pour les endpoints API ===
+@app.middleware("http")
+async def wait_for_db(request: Request, call_next):
+    """Les endpoints /api/ attendent que init_db() soit terminé.
+
+    Les pages HTML (/, /admin, /health, /static) répondent immédiatement
+    car elles ne dépendent pas de la base de données.
+    """
+    if request.url.path.startswith("/api/") or request.url.path == "/admin/run-task":
+        if not _db_ready.is_set():
+            try:
+                await asyncio.wait_for(_db_ready.wait(), timeout=30)
+            except asyncio.TimeoutError:
+                return JSONResponse(
+                    status_code=503,
+                    content={"detail": "Service en cours de démarrage, réessayez."},
+                )
+    return await call_next(request)
 
 
 # === Vérification admin (Fix #6 : via header Authorization) ===
@@ -327,17 +360,21 @@ async def sitemap_xml():
 
 @app.get("/health")
 async def health():
-    """Health check endpoint — vérifie la connectivité DB et retourne le statut."""
-    from database import get_db
+    """Health check endpoint — répond 200 immédiatement (Cloud Run startup probe).
+
+    Retourne le statut DB pour le monitoring, mais ne bloque pas le démarrage.
+    """
     db_ok = False
-    try:
-        conn = get_db()
-        conn.execute("SELECT 1").fetchone()
-        db_ok = True
-        conn.close()
-    except Exception:
-        pass
-    status = "ok" if db_ok else "degraded"
+    if _db_ready.is_set():
+        try:
+            from database import get_db
+            conn = get_db()
+            conn.execute("SELECT 1").fetchone()
+            db_ok = True
+            conn.close()
+        except Exception:
+            pass
+    status = "ok" if db_ok else "starting"
     return {"status": status, "db": db_ok, "timestamp": datetime.now().isoformat()}
 
 
