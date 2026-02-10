@@ -10,9 +10,7 @@ a partir des previsions de 9 villes representatives de la France.
 import httpx
 import logging
 import asyncio
-from datetime import datetime, date, timedelta
 from config import Config
-from database import get_db
 
 logger = logging.getLogger(__name__)
 
@@ -269,31 +267,7 @@ def _merge_city_forecasts(city_forecasts: dict[str, list[dict]]) -> list[dict]:
 
 
 
-# ================================================================
-# CACHE
-# ================================================================
-
-def cache_weather(forecasts: list[dict]):
-    """Stocke les previsions dans weather_cache.
-
-    Fix #9 : INSERT OR REPLACE avec UNIQUE(date) evite les doublons.
-    """
-    if not forecasts:
-        return
-    conn = get_db()
-    now = datetime.now().isoformat()
-    try:
-        for f in forecasts:
-            conn.execute(
-                """INSERT OR REPLACE INTO weather_cache
-                   (date, temp_min, temp_max, temp_moy, pressure, humidity,
-                    wind_speed, description, fetched_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (f["date"], f["temp_min"], f["temp_max"], f["temp_moy"],
-                 f.get("pressure"), f.get("humidity", 50),
-                 f.get("wind_speed", 10), f.get("description", ""), now),
-            )
-        conn.commit()
-        logger.info(f"[Meteo] {len(forecasts)} jours mis en cache")
-    finally:
-        conn.close()
+# Note: weather_cache table existe en DB mais n'est plus alimentée.
+# Les températures sont stockées directement dans la table predictions
+# (temp_min_prevue, temp_max_prevue) par store_prediction().
+# La table weather_cache sera purgée naturellement par purge_old_data().

@@ -106,7 +106,7 @@ async def _refresh_predictions(trigger: str, send_sms: bool = False) -> int:
     Returns:
         Nombre de prédictions générées, ou 0 si météo indisponible.
     """
-    from weather_client import fetch_forecast_extended, cache_weather
+    from weather_client import fetch_forecast_extended
     from predictor import predict_range, store_prediction
     from rte_client import get_consumption_score
     from app import invalidate_predictions_cache
@@ -118,8 +118,6 @@ async def _refresh_predictions(trigger: str, send_sms: bool = False) -> int:
     if not forecasts:
         logger.warning(f"[{trigger}] Pas de données météo, recalcul reporté")
         return 0
-
-    cache_weather(forecasts)
 
     # 2. Score RTE
     rte_score = await get_consumption_score()
