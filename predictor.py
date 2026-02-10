@@ -763,11 +763,15 @@ def _build_raison_v2(temp_moy: float, temp_min: float,
             else:
                 raisons.append("Forte consommation prevue")
 
-    # Jours feries / weekend
+    # Jours feries / weekend — pas de mention "rouge improbable" :
+    # les contraintes dures l'empêchent déjà, et le client veut
+    # les mêmes infos utiles que pour les autres jours.
     if is_french_holiday(target_date):
-        raisons.append("Jour ferie (rouge improbable)")
-    elif target_date.weekday() >= 5:
-        raisons.append("Week-end (rouge improbable)")
+        raisons.append("Jour f\u00e9ri\u00e9")
+    elif target_date.weekday() == 6:
+        raisons.append("Dimanche")
+    elif target_date.weekday() == 5:
+        raisons.append("Samedi")
 
     # Budget
     if remaining["ROUGE"] <= 5 and remaining["ROUGE"] > 0 and target_date.month >= 2:
