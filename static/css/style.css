@@ -1248,7 +1248,7 @@ footer a {
     .today-card { padding: 18px 14px; }
     .today-card h3 { font-size: 0.8rem; margin-bottom: 8px; }
     header h1 { font-size: 1.2rem; }
-    .welcome-banner { padding: 18px; }
+    .welcome-banner { padding: 18px; max-height: 900px; }
     .welcome-banner.hidden { padding: 0 18px; }
 
     /* Counter cards compact on mobile */
