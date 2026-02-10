@@ -494,6 +494,8 @@ async def api_predictions():
         conn = get_db()
         try:
             today_str = date.today().isoformat()
+            # Fix #31 : préférer la ligne confirmée (EDF officiel) au simple MAX(id).
+            # COALESCE prend l'id confirmé si disponible, sinon le plus récent.
             rows = conn.execute(
                 """SELECT date, couleur_predite, probabilite_bleu, probabilite_blanc,
                           probabilite_rouge, score_risque, temp_min_prevue, temp_max_prevue,
@@ -502,7 +504,10 @@ async def api_predictions():
                           couleur_precedente, simulated, confirmed
                    FROM predictions
                    WHERE date >= ? AND id IN (
-                       SELECT MAX(id) FROM predictions WHERE date >= ? GROUP BY date
+                       SELECT COALESCE(
+                           MAX(CASE WHEN confirmed = 1 THEN id END),
+                           MAX(id)
+                       ) FROM predictions WHERE date >= ? GROUP BY date
                    )
                    ORDER BY date ASC""",
                 (today_str, today_str)
