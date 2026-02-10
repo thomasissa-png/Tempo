@@ -398,7 +398,7 @@ async def api_tomorrow():
     from tempo_client import fetch_tempo_tomorrow
     data = await fetch_tempo_tomorrow()
     if not data:
-        return {"status": "unavailable", "message": "Pas encore annoncé (disponible après 11h)"}
+        return {"status": "unavailable", "message": "Pas encore annoncé par EDF. Détection automatique dès publication."}
     return {"status": "ok", **data}
 
 
@@ -539,7 +539,7 @@ async def api_predictions():
                 "accuracy": get_accuracy_global(30),
                 "generated_at": datetime.now().isoformat(),
                 "message": "Données météo temporairement indisponibles. "
-                           "Les prédictions seront disponibles après le prochain cycle (18h).",
+                           "Les prédictions se mettront à jour automatiquement.",
             }
 
         rte_score = await get_consumption_score()

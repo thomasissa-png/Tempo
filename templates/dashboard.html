@@ -84,7 +84,7 @@
                 "name": "Est-ce que TempoForecast est un service officiel EDF ?",
                 "acceptedAnswer": {
                     "@type": "Answer",
-                    "text": "Non. TempoForecast est un service indépendant et gratuit. Il utilise les données publiques de l'API Tempo et les prévisions météo pour faire ses propres estimations. Seule la couleur annoncée par EDF (la veille à 11h) fait foi."
+                    "text": "Non. TempoForecast est un service indépendant et gratuit. Il utilise les données publiques de l'API Tempo et les prévisions météo pour faire ses propres estimations. Seule la couleur annoncée par EDF fait foi. Nos prévisions se mettent à jour automatiquement dès la publication officielle."
                 }
             }
         ]
@@ -146,7 +146,7 @@
                 Un jour <strong class="color-tag rouge">ROUGE</strong> co&ucirc;te
                 <strong>6 fois plus cher</strong> qu'un jour
                 <strong class="color-tag bleu">BLEU</strong> en heures pleines.
-                EDF ne pr&eacute;vient que la veille &agrave; 11h &mdash;
+                EDF ne pr&eacute;vient que la veille &mdash;
                 <strong>TempoForecast vous alerte jusqu'&agrave; 15 jours &agrave; l'avance.</strong>
             </p>
             <!-- P-08 : Infographie concrète d'économie -->
@@ -179,7 +179,7 @@
     <!-- Couleur du jour : utile immédiatement pour Jean-Pierre ET Paul -->
     <h2 class="section-title">Couleur Tempo EDF aujourd'hui et demain</h2>
     <!-- P-13 : label source clarifié -->
-    <p class="section-desc"><span class="source-label label-officiel">Source : EDF officiel</span> La couleur de demain est annonc&eacute;e chaque jour vers 11h. <strong>Rappel : le jour Tempo va de 6h du matin &agrave; 6h le lendemain.</strong></p>
+    <p class="section-desc"><span class="source-label label-officiel">Source : EDF officiel</span> La couleur officielle EDF est d&eacute;tect&eacute;e automatiquement d&egrave;s sa publication. <strong>Rappel : le jour Tempo va de 6h du matin &agrave; 6h le lendemain.</strong></p>
     <div class="today-section" role="region" aria-label="Couleur Tempo du jour et de demain">
         <div class="today-card" id="today-card" aria-label="Couleur Tempo aujourd'hui">
             <div class="loading-state"><div class="loader" aria-label="Chargement"></div></div>
@@ -249,7 +249,7 @@
         Plus le jour est proche, plus la pr&eacute;vision est fiable.
         Les cartes <strong style="color:var(--rouge)">rouges</strong> signalent les jours o&ugrave; votre &eacute;lectricit&eacute; sera la plus ch&egrave;re.
         <!-- P-11 : fréquence de mise à jour visible -->
-        <br><em class="update-freq">Actualis&eacute;es chaque jour &agrave; 18h. Couleur officielle EDF annonc&eacute;e vers 11h.</em>
+        <br><em class="update-freq">Actualis&eacute;es automatiquement d&egrave;s la publication EDF et chaque soir &agrave; 18h.</em>
     </p>
     <div id="forecast-container" role="region" aria-label="Prévisions Tempo 15 jours" aria-live="polite">
         <div class="loading-state"><div class="loader" aria-label="Chargement"></div><p>Chargement des prévisions...</p></div>
@@ -278,7 +278,7 @@
             <div class="step-card">
                 <div class="step-number">1</div>
                 <h3>Consultez la pr&eacute;vision</h3>
-                <p>Chaque jour &agrave; 18h, nous analysons la m&eacute;t&eacute;o de 9 villes, le budget EDF restant et la consommation nationale pour pr&eacute;dire les <strong>15 prochains jours</strong>.</p>
+                <p>Nous analysons en continu la m&eacute;t&eacute;o de 9 villes, le budget EDF restant et la consommation nationale pour pr&eacute;dire les <strong>15 prochains jours</strong>. Les pr&eacute;visions se recalculent d&egrave;s qu'EDF publie une couleur officielle.</p>
             </div>
             <div class="step-card">
                 <div class="step-number">2</div>
@@ -450,7 +450,7 @@
                 <summary>Ce service est-il officiel EDF ?</summary>
                 <div class="faq-content">
                 <p>Non, TempoForecast est ind&eacute;pendant et gratuit.
-                    Seule la couleur annonc&eacute;e par EDF (la veille vers 11h) fait foi.
+                    Seule la couleur annonc&eacute;e par EDF fait foi.
                     Nos pr&eacute;visions sont des estimations pour vous aider &agrave; <strong>anticiper</strong>,
                     pas des informations officielles.</p>
                 </div>

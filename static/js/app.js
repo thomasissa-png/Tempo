@@ -80,7 +80,7 @@ async function loadTomorrow() {
                 <h3>DEMAIN</h3>
                 <div class="couleur-circle couleur-UNKNOWN" role="img" aria-label="En attente">?</div>
                 <div style="font-size:1.1rem;font-weight:600;margin:4px 0;color:var(--text-secondary)">En attente</div>
-                <div class="date-text">EDF annonce la couleur de demain vers 11h.<br>Revenez d'ici quelques minutes !</div>
+                <div class="date-text">EDF n'a pas encore publi&eacute; la couleur de demain.<br>Elle sera d&eacute;tect&eacute;e automatiquement d&egrave;s sa publication.</div>
             `;
         }
     } catch {
@@ -166,7 +166,7 @@ async function loadPredictions() {
 
         if (preds.length === 0) {
             container.innerHTML = '<p class="loading-state">' +
-                escapeHtml(data.message || 'Aucune prévision disponible. Revenez après 18h.') + '</p>';
+                escapeHtml(data.message || 'Aucune prévision disponible. Les prévisions se mettent à jour automatiquement.') + '</p>';
             return;
         }
 
