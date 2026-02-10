@@ -90,6 +90,71 @@ def stop_scheduler():
 
 
 # ================================================================
+# HELPER : recalcul des prédictions (partagé polling / 11h30 / 18h)
+# ================================================================
+
+async def _refresh_predictions(trigger: str, send_sms: bool = False) -> int:
+    """Recalcule les prédictions J+1→J+15 avec météo et RTE frais.
+
+    Fix #28 : fonction partagée pour que le polling, la tâche 11h30
+    et la tâche 18h utilisent la même logique de recalcul.
+
+    Args:
+        trigger: identifiant du déclencheur (pour cycle_id et logs)
+        send_sms: si True, envoie les alertes SMS (uniquement cycle 18h)
+
+    Returns:
+        Nombre de prédictions générées, ou 0 si météo indisponible.
+    """
+    from weather_client import fetch_forecast_extended, cache_weather
+    from predictor import predict_range, store_prediction
+    from rte_client import get_consumption_score
+    from app import invalidate_predictions_cache
+
+    cycle_id = f"{date.today().isoformat()}_{trigger}_{uuid.uuid4().hex[:8]}"
+
+    # 1. Météo fraîche
+    forecasts = await fetch_forecast_extended()
+    if not forecasts:
+        logger.warning(f"[{trigger}] Pas de données météo, recalcul reporté")
+        return 0
+
+    cache_weather(forecasts)
+
+    # 2. Score RTE
+    rte_score = await get_consumption_score()
+
+    # 3. Prédictions
+    predictions = predict_range(forecasts, rte_score=rte_score)
+
+    # 4. Stocker, détecter les changements
+    changes = []
+    for pred in predictions:
+        horizon = pred.get("horizon", "J-?")
+        change = store_prediction(pred, horizon, cycle_id=cycle_id)
+        if change:
+            changes.append(change)
+
+        # Alertes SMS uniquement si demandé (cycle 18h)
+        if send_sms and not pred.get("confirmed"):
+            from alerts import send_alerts_for_prediction
+            target = date.fromisoformat(pred["date"])
+            delta = (target - date.today()).days
+            if 1 <= delta <= 3 and pred["couleur_predite"] in ("ROUGE", "BLANC"):
+                send_alerts_for_prediction(target, pred)
+
+    if changes:
+        logger.info(f"[{trigger}] {len(changes)} changements: "
+                    + ", ".join(f"{c['date']} {c['couleur_avant']}→{c['couleur_apres']}"
+                                for c in changes))
+
+    logger.info(f"[{trigger}] {len(predictions)} prédictions recalculées (cycle={cycle_id})")
+
+    invalidate_predictions_cache()
+    return len(predictions)
+
+
+# ================================================================
 # TÂCHE 0 : Polling réactif EDF (6h–11h15, toutes les 15 min)
 # ================================================================
 
@@ -120,7 +185,6 @@ async def task_edf_polling():
     try:
         from tempo_client import fetch_tempo_today, fetch_tempo_tomorrow, store_actual
         from predictor import confirm_prediction
-        from app import invalidate_predictions_cache
 
         predictions_updated = False
 
@@ -152,10 +216,10 @@ async def task_edf_polling():
                     f"(détecté à {datetime.now().strftime('%H:%M')})"
                 )
 
-        # Invalider le cache pour que les visiteurs voient immédiatement
+        # Fix #28 : recalculer les prédictions J+2→J+15 avec données fraîches
+        # (quotas mis à jour, météo du matin, RTE actualisé)
         if predictions_updated:
-            invalidate_predictions_cache()
-            logger.info("[Polling EDF] Cache invalidé — prédictions mises à jour")
+            await _refresh_predictions("polling_edf", send_sms=False)
 
     except Exception as e:
         # Le polling est best-effort, on ne veut pas spammer les logs
@@ -179,7 +243,6 @@ async def task_daily_verification():
             from performance_tracker import evaluate_predictions_for_date, evaluate_missed_days
             from predictor import confirm_prediction
             from alerts import send_official_alerts
-            from app import invalidate_predictions_cache
 
             logger.info("[Task 11h30] Début vérification quotidienne")
 
@@ -222,10 +285,10 @@ async def task_daily_verification():
             # M-02 QA : rattrapage APRÈS avoir récupéré les couleurs du jour
             evaluate_missed_days(lookback=7)
 
-            # Invalider le cache pour que les visiteurs voient les confirmations
+            # Fix #28 : recalculer les prédictions avec quotas et météo à jour
+            # (pas d'alertes SMS — c'est le rôle du cycle 18h)
             if predictions_updated:
-                invalidate_predictions_cache()
-                logger.info("[Task 11h30] Cache prédictions invalidé (couleurs confirmées)")
+                await _refresh_predictions("verif_11h30", send_sms=False)
 
             logger.info("[Task 11h30] Vérification terminée")
             return
@@ -243,65 +306,15 @@ async def task_daily_verification():
 async def task_daily_predictions():
     """18h00 — Génère les prédictions J+1→J+15, envoie les alertes SMS.
 
-    Fix v5 workflow :
-    - Génère un cycle_id unique pour traçabilité
-    - Détecte les changements vs cycle précédent
-    - Utilise la couleur officielle EDF pour J+1 si disponible (via actuals)
-    - Signale les prédictions basées sur météo simulée
-    - Stocke tout en DB = source unique de vérité pour l'API publique
+    Fix #28 : utilise _refresh_predictions() partagée avec send_sms=True.
+    C'est le seul cycle qui envoie les alertes SMS (prévenir la veille au soir).
     """
     for attempt in range(2):
         try:
-            from weather_client import fetch_forecast_extended, cache_weather
-            from predictor import predict_range, store_prediction
-            from rte_client import get_consumption_score
-            from alerts import send_alerts_for_prediction
-
             logger.info("[Task 18h00] Début génération des prédictions")
-
-            # M-03 QA : cycle_id unique garanti avec UUID (pas de collision si retry)
-            cycle_id = f"{date.today().isoformat()}_18h_{uuid.uuid4().hex[:8]}"
-
-            # 1. Récupérer la météo
-            forecasts = await fetch_forecast_extended()
-            if not forecasts:
-                logger.warning("[Task 18h00] Pas de données météo, prédictions reportées")
-                return
-
-            cache_weather(forecasts)
-
-            # 2. Générer les prédictions
-            rte_score = await get_consumption_score()
-            predictions = predict_range(forecasts, rte_score=rte_score)
-
-            # 3. Stocker avec cycle_id, détecter les changements, envoyer alertes
-            changes = []
-            for pred in predictions:
-                horizon = pred.get("horizon", "J-?")
-                change = store_prediction(pred, horizon, cycle_id=cycle_id)
-                if change:
-                    changes.append(change)
-
-                # Alertes SMS uniquement pour J-1 à J-3, pas pour les confirmées
-                if pred.get("confirmed"):
-                    continue
-                target = date.fromisoformat(pred["date"])
-                delta = (target - date.today()).days
-                if 1 <= delta <= 3 and pred["couleur_predite"] in ("ROUGE", "BLANC"):
-                    send_alerts_for_prediction(target, pred)
-
-            if changes:
-                logger.info(f"[Task 18h00] {len(changes)} changements détectés: "
-                            + ", ".join(f"{c['date']} {c['couleur_avant']}→{c['couleur_apres']}"
-                                        for c in changes))
-
-            logger.info(f"[Task 18h00] {len(predictions)} prédictions stockées "
-                        f"(cycle={cycle_id})")
-
-            # Invalider le cache pour que les visiteurs voient les nouvelles prédictions
-            from app import invalidate_predictions_cache
-            invalidate_predictions_cache()
-
+            count = await _refresh_predictions("18h", send_sms=True)
+            if count:
+                logger.info(f"[Task 18h00] Terminé — {count} prédictions")
             return
         except Exception as e:
             logger.error(f"[Scheduler] task_daily_predictions attempt {attempt+1} failed: {e}")
