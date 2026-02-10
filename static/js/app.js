@@ -8,6 +8,7 @@
 const JOURS = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
 const JOURS_FULL = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
 const MOIS = ['jan', 'fév', 'mar', 'avr', 'mai', 'jun', 'jul', 'aoû', 'sep', 'oct', 'nov', 'déc'];
+const MOIS_FULL = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 
 // Tarifs indicatifs Tempo 2026 (€/kWh TTC — vérifiez sur votre contrat EDF)
 const TARIFS = {
@@ -240,7 +241,7 @@ async function loadPredictions() {
             const first = rougePreds[0];
             const dateStr = formatDateFr(first.date);
             alertEl.querySelector('.alert-text').innerHTML =
-                `<strong>Jour rouge prévu ${dateStr} !</strong> Reportez vos machines et baissez le chauffage.`;
+                `<strong>Jour rouge prévu ce ${dateStr} !</strong> Reportez vos machines et baissez le chauffage.`;
             alertEl.classList.add('visible');
         }
     } catch (e) {
@@ -354,7 +355,7 @@ function renderNextRougeSummary(preds) {
             <div class="next-rouge-card next-rouge-confirmed">
                 <span class="next-rouge-icon" aria-hidden="true">&#9888;&#65039;</span>
                 <div>
-                    <strong>Jour rouge confirm&eacute; : ${escapeHtml(dateStr)}</strong>
+                    <strong>Jour rouge confirm&eacute; ce ${escapeHtml(dateStr)}</strong>
                     <span class="next-rouge-detail">Reportez vos machines et baissez le chauffage. <a href="#subscribe">Recevoir les alertes</a></span>
                 </div>
             </div>`;
@@ -367,7 +368,7 @@ function renderNextRougeSummary(preds) {
             <div class="next-rouge-card">
                 <span class="next-rouge-icon" aria-hidden="true">&#128308;</span>
                 <div>
-                    <strong>Prochain jour rouge pr&eacute;vu : ${escapeHtml(dateStr)}</strong> (${confidence}% de probabilit&eacute;)
+                    <strong>Prochain jour rouge pr&eacute;vu ce ${escapeHtml(dateStr)}</strong> (${confidence}% de probabilit&eacute;)
                     <span class="next-rouge-detail">Anticipez vos consommations. <a href="#subscribe">Recevoir les alertes</a></span>
                 </div>
             </div>`;
@@ -499,7 +500,7 @@ function createForecastCard(pred) {
     // Confiance en langage humain
     const confidenceLabel = confidenceToLabel(confidence);
     const confidenceText = pred.confirmed
-        ? 'Couleur officielle EDF'
+        ? ''
         : `${escapeHtml(confidenceLabel)} (${confidence}%)`;
 
     card.innerHTML = `
@@ -682,8 +683,8 @@ function setupAlertDismiss() {
 
 function formatDateFr(dateStr) {
     const d = new Date(dateStr);
-    const dow = JOURS_FULL[d.getDay()];
-    return `${dow} ${d.getDate()} ${MOIS[d.getMonth()]}`;
+    const dow = JOURS_FULL[d.getDay()].toLowerCase();
+    return `${dow} ${d.getDate()} ${MOIS_FULL[d.getMonth()]}`;
 }
 
 function setText(id, text) {

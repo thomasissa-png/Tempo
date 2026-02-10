@@ -127,13 +127,27 @@ def purge_old_data() -> None:
 
 # === Lifespan ===
 
-async def _startup_backfill():
-    """Backfill des actuals en arrière-plan (ne bloque pas le health check)."""
+async def _deferred_startup():
+    """Tâches de démarrage non critiques — en arrière-plan.
+
+    Cloud Run exige que / réponde 200 immédiatement. Seule init_db()
+    est bloquante (le schéma DB est nécessaire pour servir les requêtes).
+    Tout le reste tourne en fond après le yield.
+    """
+    try:
+        purge_old_data()
+    except Exception as e:
+        logger.error(f"[Startup] Erreur purge: {e}")
+
+    start_scheduler()
+
     try:
         from tempo_client import backfill_season_actuals
         await backfill_season_actuals()
     except Exception as e:
         logger.error(f"[Startup] Erreur backfill actuals: {e}")
+
+    logger.info("[Startup] Tâches de fond terminées")
 
 
 @asynccontextmanager
@@ -152,17 +166,15 @@ async def lifespan(app: FastAPI):
             Config.ADMIN_PASSWORD,
         )
 
+    # Seule opération bloquante : init DB (schéma requis pour les requêtes)
     init_db()
-    purge_old_data()  # Fix #10 : clean stale DB rows on startup
-    start_scheduler()
 
-    # Backfill en tâche de fond : ne bloque pas le démarrage du serveur
-    # (Cloud Run exige que / réponde vite avec 200 pour le health check)
-    backfill_task = asyncio.create_task(_startup_backfill())
+    # Tâches non critiques en arrière-plan (purge, scheduler, backfill)
+    startup_task = asyncio.create_task(_deferred_startup())
 
-    yield
+    yield  # Serveur prêt — Cloud Run reçoit son 200 immédiatement
 
-    backfill_task.cancel()
+    startup_task.cancel()
     stop_scheduler()
     logger.info("=== TempoForecast arrêt ===")
 
