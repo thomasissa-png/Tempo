@@ -183,6 +183,7 @@ async def task_edf_polling():
     try:
         from tempo_client import fetch_tempo_today, fetch_tempo_tomorrow, store_actual
         from predictor import confirm_prediction
+        from app import invalidate_predictions_cache
 
         predictions_updated = False
 
@@ -194,6 +195,9 @@ async def task_edf_polling():
                 updated = confirm_prediction(today_data["date"], today_data["couleur"])
                 if updated:
                     predictions_updated = True
+                    # Fix #31 : invalider le cache immédiatement pour que
+                    # /api/predictions reflète la confirmation sans attendre
+                    invalidate_predictions_cache()
                 _edf_confirmed_today = f"{today_str}:{today_data['couleur']}"
                 logger.info(
                     f"[Polling EDF] Aujourd'hui confirmé : {today_data['couleur']} "
@@ -208,6 +212,7 @@ async def task_edf_polling():
                 updated = confirm_prediction(tomorrow_data["date"], tomorrow_data["couleur"])
                 if updated:
                     predictions_updated = True
+                    invalidate_predictions_cache()
                 _edf_confirmed_tomorrow = f"{today_str}:{tomorrow_data['couleur']}"
                 logger.info(
                     f"[Polling EDF] Demain confirmé : {tomorrow_data['couleur']} "
@@ -241,6 +246,7 @@ async def task_daily_verification():
             from performance_tracker import evaluate_predictions_for_date, evaluate_missed_days
             from predictor import confirm_prediction
             from alerts import send_official_alerts
+            from app import invalidate_predictions_cache
 
             logger.info("[Task 11h30] Début vérification quotidienne")
 
@@ -264,6 +270,8 @@ async def task_daily_verification():
                 updated = confirm_prediction(today_data["date"], today_data["couleur"])
                 if updated:
                     predictions_updated = True
+                    # Fix #31 : invalider le cache immédiatement
+                    invalidate_predictions_cache()
 
             # 2. Couleur de demain (annoncée à 11h par EDF)
             tomorrow_data = await fetch_tempo_tomorrow()
@@ -275,6 +283,7 @@ async def task_daily_verification():
                 updated = confirm_prediction(tomorrow_data["date"], tomorrow_data["couleur"])
                 if updated:
                     predictions_updated = True
+                    invalidate_predictions_cache()
 
                 # Envoyer alerte officielle si rouge ou blanc
                 tomorrow_date = date.fromisoformat(tomorrow_data["date"])

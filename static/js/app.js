@@ -42,6 +42,15 @@ document.addEventListener('DOMContentLoaded', () => {
     setupPhoneValidation();
     setupUnsubscribeForm();
     checkHorsSaison();
+
+    // Fix #31 : auto-refresh toutes les 5 min pour refléter
+    // les confirmations EDF sans recharger la page manuellement
+    setInterval(() => {
+        loadToday();
+        loadTomorrow();
+        loadRemaining();
+        loadPredictions();
+    }, 5 * 60 * 1000);
 });
 
 // ================================================================
