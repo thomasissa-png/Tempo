@@ -244,7 +244,44 @@ def predict_day(target_date: date, weather: dict | None = None,
     else:
         couleur = "BLEU"
 
-    # === Probabilites (Fix #6 : sigmoide calibree) ===
+    # === Fix #29 : contraintes dures EDF (non outrepassables par le scoring) ===
+    # Regles officielles EDF appliquees APRES le scoring pour garantir la conformite.
+    dow = target_date.weekday()  # 0=lundi, 5=samedi, 6=dimanche
+    is_holiday = is_french_holiday(target_date)
+
+    # R1 : Rouge uniquement du 1er novembre au 31 mars
+    if couleur == "ROUGE" and not (target_date.month >= 11 or target_date.month <= 3):
+        couleur = "BLANC" if remaining["BLANC"] > 0 else "BLEU"
+
+    # R2 : Weekends et jours feries jamais rouges
+    #   - Samedi rouge → blanc (samedi peut etre blanc)
+    #   - Dimanche rouge → bleu (dimanche ne peut pas etre blanc non plus)
+    #   - Ferie en semaine rouge → blanc (ferie peut etre blanc sauf dimanche)
+    if couleur == "ROUGE" and (dow >= 5 or is_holiday):
+        if remaining["BLANC"] > 0 and dow != 6:
+            couleur = "BLANC"
+        else:
+            couleur = "BLEU"
+
+    # R3 : Dimanche jamais blanc
+    if couleur == "BLANC" and dow == 6:
+        couleur = "BLEU"
+
+    # R4 : Max 5 jours rouges consecutifs
+    if couleur == "ROUGE" and _actuals_cache:
+        consecutive = 0
+        check = target_date - timedelta(days=1)
+        while consecutive < 5:
+            key = check.isoformat()
+            if _actuals_cache.get(key) == "ROUGE":
+                consecutive += 1
+                check -= timedelta(days=1)
+            else:
+                break
+        if consecutive >= 5:
+            couleur = "BLANC" if remaining["BLANC"] > 0 else "BLEU"
+
+    # === Probabilites (Fix #26 : softmax calibree) ===
     prob_rouge, prob_blanc, prob_bleu = _compute_probabilities(
         score_risque, remaining)
 
