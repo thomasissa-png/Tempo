@@ -51,7 +51,8 @@ class Config:
 
     # --- Admin ---
     # Fix audit v6 : ne plus utiliser de mot de passe par défaut en dur
-    ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
+    # Fallback sur SESSION_SECRET (fourni par Replit) pour avoir un password stable
+    ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "") or os.getenv("SESSION_SECRET", "")
 
     # --- Chiffrement telephone (RGPD) ---
     PHONE_ENCRYPTION_KEY = os.getenv("PHONE_ENCRYPTION_KEY", "")
