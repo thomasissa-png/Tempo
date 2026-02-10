@@ -67,8 +67,19 @@ def start_scheduler():
         replace_existing=True,
     )
 
+    # Fix #27 : polling réactif EDF — toutes les 15 min entre 6h et 11h15
+    # Détecte la couleur EDF dès publication (parfois avant 11h) et met à jour
+    # immédiatement les prédictions. La tâche 11h30 reste en filet de sécurité.
+    scheduler.add_job(
+        task_edf_polling,
+        CronTrigger(hour="6-11", minute="*/15", timezone="Europe/Paris"),
+        id="edf_polling",
+        name="Polling réactif couleur EDF (6h-11h15)",
+        replace_existing=True,
+    )
+
     scheduler.start()
-    logger.info("[Scheduler] Démarré avec 5 tâches planifiées")
+    logger.info("[Scheduler] Démarré avec 6 tâches planifiées")
 
 
 def stop_scheduler():
@@ -76,6 +87,79 @@ def stop_scheduler():
     if scheduler.running:
         scheduler.shutdown(wait=False)
         logger.info("[Scheduler] Arrêté")
+
+
+# ================================================================
+# TÂCHE 0 : Polling réactif EDF (6h–11h15, toutes les 15 min)
+# ================================================================
+
+# Flag en mémoire pour éviter de re-confirmer en boucle le même jour
+_edf_confirmed_today: str = ""
+_edf_confirmed_tomorrow: str = ""
+
+
+async def task_edf_polling():
+    """Polling réactif — détecte la couleur EDF dès publication.
+
+    Fix #27 : EDF publie parfois la couleur du jour bien avant 11h.
+    Ce job tourne toutes les 15 min entre 6h et 11h15 pour mettre
+    à jour les prédictions dès que l'info est disponible.
+
+    Utilise des flags mémoire pour ne confirmer qu'une fois par jour
+    et éviter les appels DB / cache inutiles.
+    """
+    global _edf_confirmed_today, _edf_confirmed_tomorrow
+
+    today_str = date.today().isoformat()
+
+    # Reset des flags au changement de jour
+    if _edf_confirmed_today and not _edf_confirmed_today.startswith(today_str):
+        _edf_confirmed_today = ""
+        _edf_confirmed_tomorrow = ""
+
+    try:
+        from tempo_client import fetch_tempo_today, fetch_tempo_tomorrow, store_actual
+        from predictor import confirm_prediction
+        from app import invalidate_predictions_cache
+
+        predictions_updated = False
+
+        # 1. Couleur du jour — pas encore confirmée aujourd'hui ?
+        if not _edf_confirmed_today:
+            today_data = await fetch_tempo_today()
+            if today_data and today_data.get("couleur"):
+                store_actual(today_data["date"], today_data["couleur"])
+                updated = confirm_prediction(today_data["date"], today_data["couleur"])
+                if updated:
+                    predictions_updated = True
+                _edf_confirmed_today = f"{today_str}:{today_data['couleur']}"
+                logger.info(
+                    f"[Polling EDF] Aujourd'hui confirmé : {today_data['couleur']} "
+                    f"(détecté à {datetime.now().strftime('%H:%M')})"
+                )
+
+        # 2. Couleur de demain — pas encore confirmée ?
+        if not _edf_confirmed_tomorrow:
+            tomorrow_data = await fetch_tempo_tomorrow()
+            if tomorrow_data and tomorrow_data.get("couleur"):
+                store_actual(tomorrow_data["date"], tomorrow_data["couleur"])
+                updated = confirm_prediction(tomorrow_data["date"], tomorrow_data["couleur"])
+                if updated:
+                    predictions_updated = True
+                _edf_confirmed_tomorrow = f"{today_str}:{tomorrow_data['couleur']}"
+                logger.info(
+                    f"[Polling EDF] Demain confirmé : {tomorrow_data['couleur']} "
+                    f"(détecté à {datetime.now().strftime('%H:%M')})"
+                )
+
+        # Invalider le cache pour que les visiteurs voient immédiatement
+        if predictions_updated:
+            invalidate_predictions_cache()
+            logger.info("[Polling EDF] Cache invalidé — prédictions mises à jour")
+
+    except Exception as e:
+        # Le polling est best-effort, on ne veut pas spammer les logs
+        logger.debug(f"[Polling EDF] Erreur (retry dans 15min): {e}")
 
 
 # ================================================================
