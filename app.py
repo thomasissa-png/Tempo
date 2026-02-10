@@ -161,6 +161,17 @@ async def _deferred_startup():
     except Exception as e:
         logger.error(f"[Startup] Erreur backfill actuals: {e}")
 
+    # Fix #29 : recalculer les prédictions au démarrage pour appliquer
+    # les nouvelles contraintes EDF (dimanche jamais blanc, rouge nov-mars, etc.)
+    # et avoir des prédictions fraîches dès le lancement.
+    try:
+        from scheduler import _refresh_predictions
+        count = await _refresh_predictions("startup", send_sms=False)
+        if count:
+            logger.info(f"[Startup] {count} prédictions recalculées")
+    except Exception as e:
+        logger.error(f"[Startup] Erreur recalcul prédictions: {e}")
+
     logger.info("[Startup] Tâches de fond terminées")
 
 

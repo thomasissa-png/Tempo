@@ -103,13 +103,13 @@ class TestBudgetBlanc:
         score = _score_budget_v2(remaining, 120, target)
         assert score > 0, "La pression BLANC seule devrait donner un score > 0"
 
-    def test_blanc_pressure_capped_55(self):
-        """La pression BLANC ne depasse pas 55 (zone BLANC, pas ROUGE)."""
+    def test_blanc_pressure_capped_64(self):
+        """Fix #26 : pression BLANC plafonnee a 64 (zone BLANC 35-65, pas ROUGE)."""
         from predictor import _score_budget_v2
         remaining = {"ROUGE": 0, "BLANC": 43, "BLEU": 50}
         target = date(2026, 1, 15)
         score = _score_budget_v2(remaining, 20, target)
-        assert score <= 55
+        assert score <= 64
 
     def test_rouge_dominates_blanc(self):
         """Quand ROUGE pressure > BLANC pressure, ROUGE domine."""

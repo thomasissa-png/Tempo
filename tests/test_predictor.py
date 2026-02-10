@@ -89,11 +89,11 @@ class TestScoreBudget:
         assert score >= 20  # Urgence fin de saison
 
     def test_blanc_pressure_capped(self):
-        """ML-1 : pression BLANC plafonnee a 55 (zone BLANC, pas ROUGE)."""
+        """Fix #26 : pression BLANC plafonnee a 64 (zone BLANC 35-65, pas ROUGE)."""
         remaining = {"ROUGE": 0, "BLANC": 43, "BLEU": 50}
         target = date(2026, 1, 15)
         score = _score_budget_v2(remaining, 30, target)
-        assert score <= 55  # BLANC ne pousse pas dans zone ROUGE
+        assert score <= 64  # BLANC couvre toute sa zone sans deborder en ROUGE
 
     def test_continuous_scoring(self):
         """ML-2 : le score varie continument (pas de sauts)."""
