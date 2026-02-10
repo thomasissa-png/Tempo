@@ -1274,8 +1274,8 @@ footer a {
     .counter-card .label { font-size: 0.75rem; }
     .counter-help { font-size: 0.7rem; }
 
-    /* Back-to-top adjust when alert is visible */
-    .back-to-top { bottom: 16px; right: 16px; }
+    /* Fix #32 : remonter back-to-top au-dessus de l'alerte rouge */
+    .back-to-top { bottom: 80px; right: 16px; }
 }
 
 /* === Bloc désinscription (BUG-02 QA) === */

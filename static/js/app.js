@@ -126,16 +126,21 @@ async function loadRemaining() {
         setProgress('progress-bleu',  (totalBleu  - r.BLEU)  / totalBleu);
 
         // P-06 : contexte humain pour Paul
+        // Les jours rouges ne peuvent être placés que du 1er nov au 31 mars (R1).
         const ctxEl = document.getElementById('counter-context');
-        if (ctxEl && data.days_left_in_season) {
-            const daysLeft = data.days_left_in_season;
-            if (r.ROUGE > 0 && daysLeft < 90) {
-                const density = (r.ROUGE / daysLeft * 100).toFixed(0);
-                ctxEl.innerHTML = `<strong style="color:var(--rouge)">Attention :</strong> il reste ${r.ROUGE} jours rouges à placer en ${daysLeft} jours — risque de ${density}% par jour.`;
-            } else if (r.ROUGE === 0) {
-                ctxEl.textContent = 'Tous les jours rouges de la saison ont été utilisés. Bonne nouvelle !';
+        if (ctxEl && data.season_end) {
+            const seasonEndYear = new Date(data.season_end).getFullYear();
+            const rougeDeadline = new Date(seasonEndYear, 2, 31); // 31 mars
+            const daysLeftRouge = Math.max(0, Math.ceil((rougeDeadline - new Date()) / 86400000));
+            if (r.ROUGE === 0) {
+                ctxEl.textContent = 'Tous les jours rouges de la saison ont \u00e9t\u00e9 utilis\u00e9s. Bonne nouvelle !';
+            } else if (daysLeftRouge === 0) {
+                ctxEl.textContent = 'La p\u00e9riode des jours rouges est termin\u00e9e (fin mars). Plus de risque !';
+            } else if (daysLeftRouge < 60) {
+                const density = (r.ROUGE / daysLeftRouge * 100).toFixed(0);
+                ctxEl.innerHTML = `<strong style="color:var(--rouge)">Attention :</strong> il reste ${r.ROUGE} jours rouges \u00e0 placer en ${daysLeftRouge} jours \u2014 risque de ${density}% par jour.`;
             } else {
-                ctxEl.textContent = `Encore ${r.ROUGE} jours rouges à placer d'ici fin mai. Restez vigilant !`;
+                ctxEl.textContent = `Encore ${r.ROUGE} jours rouges \u00e0 placer d'ici fin mars. Restez vigilant !`;
             }
         }
     } catch (e) {
@@ -313,13 +318,13 @@ function renderWeekSummary(preds) {
         if (rougeCount > 0) {
             const rougeDays = weekPreds
                 .filter(p => p.couleur_predite === 'ROUGE')
-                .map(p => { const d = new Date(p.date); return JOURS_FULL[d.getDay()]; });
+                .map(p => { const d = parseLocalDate(p.date); return JOURS_FULL[d.getDay()]; });
             parts.push(`<strong style="color:var(--rouge)">${rougeCount} jour${rougeCount > 1 ? 's' : ''} rouge${rougeCount > 1 ? 's' : ''}</strong> (${rougeDays.join(', ')})`);
         }
         if (blancCount > 0) {
             const blancDays = weekPreds
                 .filter(p => p.couleur_predite === 'BLANC')
-                .map(p => { const d = new Date(p.date); return JOURS_FULL[d.getDay()]; });
+                .map(p => { const d = parseLocalDate(p.date); return JOURS_FULL[d.getDay()]; });
             parts.push(`<strong>${blancCount} jour${blancCount > 1 ? 's' : ''} blanc${blancCount > 1 ? 's' : ''}</strong> (${blancDays.join(', ')})`);
         }
         summaryText = parts.join(' et ') + ' en vue. <strong>Planifiez vos machines les jours bleus.</strong>';
@@ -328,7 +333,7 @@ function renderWeekSummary(preds) {
     // Dots visuels
     let dotsHtml = '<div class="week-summary-dots">';
     weekPreds.forEach(p => {
-        const d = new Date(p.date);
+        const d = parseLocalDate(p.date);
         const dayLabel = JOURS[d.getDay()];
         const couleur = p.couleur_predite;
         const bg = couleur === 'ROUGE' ? 'var(--rouge)' : couleur === 'BLANC' ? 'var(--blanc)' : 'var(--bleu)';
@@ -476,7 +481,7 @@ function createForecastCard(pred) {
         card.classList.add('confirmed');
     }
 
-    const d = new Date(pred.date);
+    const d = parseLocalDate(pred.date);
     const dow = JOURS[d.getDay()];
     const dayNum = d.getDate();
     const month = MOIS[d.getMonth()];
@@ -597,8 +602,11 @@ function setupSubscribeForm() {
     const form = document.getElementById('subscribe-form');
     if (!form) return;
 
+    let submitting = false;
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
+        if (submitting) return;  // Fix #32 : anti-double-clic
+        submitting = true;
         const resultEl = document.getElementById('form-result');
         const btn = document.getElementById('subscribe-btn');
         resultEl.className = 'form-result';
@@ -642,6 +650,7 @@ function setupSubscribeForm() {
         } finally {
             btn.disabled = false;
             btn.innerHTML = originalText;
+            submitting = false;
         }
     });
 }
@@ -695,8 +704,18 @@ function setupAlertDismiss() {
 // UTILITAIRES
 // ================================================================
 
+/**
+ * Parse une date ISO "YYYY-MM-DD" en date LOCALE (pas UTC).
+ * Fix #32 : new Date("2026-02-10") crée une date UTC midnight,
+ * ce qui décale getDay()/getDate() pour les utilisateurs en CET.
+ */
+function parseLocalDate(dateStr) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d);
+}
+
 function formatDateFr(dateStr) {
-    const d = new Date(dateStr);
+    const d = parseLocalDate(dateStr);
     const dow = JOURS_FULL[d.getDay()].toLowerCase();
     return `${dow} ${d.getDate()} ${MOIS_FULL[d.getMonth()]}`;
 }

@@ -115,12 +115,25 @@ def purge_old_data() -> None:
         deleted_perf = conn.execute(
             "DELETE FROM performance WHERE date_cible < ?", (cutoff_perf,)
         ).rowcount
+
+        # Fix #32 : supprimer les prédictions orphelines non-confirmées
+        # pour les dates qui ont déjà une prédiction confirmée.
+        # Ces orphelines apparaissent quand _refresh_predictions() insérait
+        # de nouvelles lignes avec un horizon différent après confirmation.
+        deleted_orphans = conn.execute(
+            """DELETE FROM predictions
+               WHERE confirmed = 0
+                 AND date IN (
+                     SELECT DISTINCT date FROM predictions WHERE confirmed = 1
+                 )"""
+        ).rowcount
+
         conn.commit()
 
         logger.info(
             "purge_old_data: deleted %d weather_cache (>30d), %d predictions (>90d), "
-            "%d performance (>180d)",
-            deleted_cache, deleted_preds, deleted_perf,
+            "%d performance (>180d), %d orphan predictions",
+            deleted_cache, deleted_preds, deleted_perf, deleted_orphans,
         )
     except Exception:
         logger.exception("purge_old_data: error during purge")
