@@ -244,14 +244,19 @@ async function loadPredictions() {
             container.appendChild(grid3);
         }
 
-        // Alerte rouge si nécessaire
+        // Alerte rouge si nécessaire — Fix #31 : distingue confirmé/prévu
+        // et masque l'alerte quand il n'y a plus de rouge
         if (alertEl && hasRouge && !sessionStorage.getItem('alert-rouge-dismissed')) {
             const rougePreds = preds.filter(p => p.couleur_predite === 'ROUGE');
             const first = rougePreds[0];
             const dateStr = formatDateFr(first.date);
-            alertEl.querySelector('.alert-text').innerHTML =
-                `<strong>Jour rouge prévu ce ${dateStr} !</strong> Reportez vos machines et baissez le chauffage.`;
+            const isConfirmed = first.confirmed;
+            alertEl.querySelector('.alert-text').innerHTML = isConfirmed
+                ? `<strong>Jour rouge confirm\u00e9 ce ${escapeHtml(dateStr)} !</strong> Reportez vos machines et baissez le chauffage.`
+                : `<strong>Jour rouge pr\u00e9vu ce ${escapeHtml(dateStr)} !</strong> Reportez vos machines et baissez le chauffage.`;
             alertEl.classList.add('visible');
+        } else if (alertEl && !hasRouge) {
+            alertEl.classList.remove('visible');
         }
     } catch (e) {
         container.innerHTML = '<p class="loading-state">Erreur de connexion au serveur<br><button class="retry-btn" onclick="loadPredictions()">Réessayer</button></p>';
