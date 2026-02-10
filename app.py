@@ -126,6 +126,16 @@ def purge_old_data() -> None:
 
 
 # === Lifespan ===
+
+async def _startup_backfill():
+    """Backfill des actuals en arrière-plan (ne bloque pas le health check)."""
+    try:
+        from tempo_client import backfill_season_actuals
+        await backfill_season_actuals()
+    except Exception as e:
+        logger.error(f"[Startup] Erreur backfill actuals: {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Initialisation au démarrage, nettoyage à l'arrêt."""
@@ -144,16 +154,15 @@ async def lifespan(app: FastAPI):
 
     init_db()
     purge_old_data()  # Fix #10 : clean stale DB rows on startup
-
-    # Backfill : remplir les actuals manquants pour la saison en cours
-    from tempo_client import backfill_season_actuals
-    try:
-        await backfill_season_actuals()
-    except Exception as e:
-        logger.error(f"[Startup] Erreur backfill actuals: {e}")
-
     start_scheduler()
+
+    # Backfill en tâche de fond : ne bloque pas le démarrage du serveur
+    # (Cloud Run exige que / réponde vite avec 200 pour le health check)
+    backfill_task = asyncio.create_task(_startup_backfill())
+
     yield
+
+    backfill_task.cancel()
     stop_scheduler()
     logger.info("=== TempoForecast arrêt ===")
 
