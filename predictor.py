@@ -444,8 +444,9 @@ def _score_budget_v2(remaining: dict, d_left: int, target_date: date) -> float:
     blanc_pressure = _compute_budget_pressure(
         remaining["BLANC"], d_left, month,
         Config.MONTHLY_WHITE_PROFILE, Config.JOURS_BLANCS_TOTAL)
-    # BLANC plafonne a 55 : pousse dans zone BLANC (35-65) mais pas ROUGE (>65)
-    blanc_pressure = min(55, blanc_pressure)
+    # Fix #26 : plafond releve a 64 pour que la pression BLANC couvre toute
+    # sa zone (35-65) sans deborder en zone ROUGE (>=65)
+    blanc_pressure = min(64, blanc_pressure)
 
     # Le score global est le max des deux pressions
     return min(100, max(rouge_pressure, blanc_pressure))
@@ -645,18 +646,24 @@ def _sigmoid(x: float, center: float, steepness: float) -> float:
 def _compute_probabilities(score: float, remaining: dict) -> tuple[float, float, float]:
     """Convertit le score de risque en probabilites par couleur.
 
-    Fix #6 : utilise une sigmoide centree sur les seuils pour des
-    probabilites plus coherentes (ex: seuil ROUGE 65 -> ~50% a 65).
+    Fix #26 : softmax a 3 classes — chaque couleur a sa propre distribution
+    independante, sans suppression artificielle de BLANC par ROUGE.
+
+    Centres : BLEU=15 (zone 0-35), BLANC=50 (zone 35-65), ROUGE=85 (zone 65-100).
+    Temperature k=0.08 pour des transitions progressives aux frontieres.
     """
     if remaining["ROUGE"] == 0 and remaining["BLANC"] == 0:
         return (0.0, 0.0, 1.0)  # Seul BLEU possible
 
-    # ML-6 : steepness augmentee pour transitions plus nettes autour des seuils
-    # 0.15 pour ROUGE (decision critique, transition sur ~15 points)
-    p_rouge = _sigmoid(score, Config.SEUIL_ROUGE, 0.15)
+    # Distances signees aux centres de chaque zone
+    k = 0.08
+    d_bleu = -(score - 15)        # decroit quand score monte
+    d_blanc = -abs(score - 50)    # pic au centre, decroit symetriquement
+    d_rouge = score - 85          # croit quand score monte
 
-    # 0.10 pour BLANC (transition progressive sur ~20 points)
-    p_blanc = _sigmoid(score, Config.SEUIL_BLANC, 0.10) * (1.0 - p_rouge)
+    p_bleu = math.exp(k * d_bleu)
+    p_blanc = math.exp(k * d_blanc)
+    p_rouge = math.exp(k * d_rouge)
 
     # Appliquer les contraintes de quota
     if remaining["ROUGE"] == 0:
@@ -664,10 +671,8 @@ def _compute_probabilities(score: float, remaining: dict) -> tuple[float, float,
     if remaining["BLANC"] == 0:
         p_blanc = 0.0
 
-    p_bleu = max(0.0, 1.0 - p_rouge - p_blanc)
-
     # Normaliser pour que la somme = 1.0
-    total = p_rouge + p_blanc + p_bleu
+    total = p_bleu + p_blanc + p_rouge
     if total <= 0:
         return (0.0, 0.0, 1.0)
     p_rouge = round(p_rouge / total, 3)
