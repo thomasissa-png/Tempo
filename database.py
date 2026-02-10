@@ -20,6 +20,7 @@ Migrations :
   v8  — HMAC phone hash, couleur_originale
   v9  — raw sub-scores, perf multi-horizon, learning history, rollback
   v10 — purge des données météo simulées (predictions, weather_cache, performance)
+  v11 — nettoyage apprentissage contaminé (corrections biaisées, reset poids)
 """
 
 import sqlite3
@@ -533,6 +534,41 @@ def init_db():
             f"Migration v10 appliquee (purge donnees simulees: "
             f"{deleted_preds} predictions, {deleted_weather} meteo cache, "
             f"{deleted_perf} evaluations performance)"
+        )
+
+    if version < 11:
+        # Migration v11 — Nettoyage apprentissage contaminé
+        # Fix ML-circular : analyze_error_patterns() utilisait les températures
+        # prévues (predictions.temp_min_prevue) au lieu des réelles (weather_cache).
+        # Fix ML-contamination : recalculate_weights() fallback COALESCE ramenait
+        # des scores corrigés quand les raw scores étaient absents (pré-v9).
+        # → On purge tout le learning_journal (corrections basées sur données biaisées)
+        #   et on réinitialise les poids pour que le modèle réapprenne proprement.
+
+        # 1. Désactiver toutes les corrections d'apprentissage existantes
+        cursor = conn.execute(
+            "UPDATE learning_journal SET active = 0, "
+            "disabled_at = ? WHERE active = 1",
+            (datetime.now().isoformat(),)
+        )
+        disabled_corrections = cursor.rowcount
+
+        # 2. Réinitialiser les poids aux valeurs par défaut
+        conn.execute(
+            """INSERT INTO weights_history
+               (date_update, weights_json, precision_avant, precision_apres,
+                nb_predictions, commentaire, timestamp_update)
+               VALUES (?, ?, 0, 0, 0, 'Reset v11: nettoyage apprentissage contaminé', ?)""",
+            (datetime.now().strftime("%Y-%m-%d"),
+             json.dumps(Config.DEFAULT_WEIGHTS),
+             datetime.now().isoformat()),
+        )
+
+        conn.execute("PRAGMA user_version = 11")
+        conn.commit()
+        logger.info(
+            f"Migration v11 appliquee (nettoyage apprentissage: "
+            f"{disabled_corrections} corrections désactivées, poids réinitialisés)"
         )
 
     # Poids initiaux si vide

@@ -161,6 +161,20 @@ async def _deferred_startup():
     except Exception as e:
         logger.error(f"[Startup] Erreur backfill actuals: {e}")
 
+    # Fix #30 : recalcul des poids ML au démarrage si la migration v11 a
+    # réinitialisé les poids (nettoyage apprentissage contaminé).
+    # Cela permet au modèle de réapprendre immédiatement avec des données propres.
+    try:
+        from performance_tracker import recalculate_weights
+        loop = asyncio.get_running_loop()
+        new_weights = await loop.run_in_executor(None, recalculate_weights)
+        if new_weights:
+            logger.info("[Startup] Poids ML recalculés avec données propres")
+        else:
+            logger.info("[Startup] Recalcul poids: pas assez de données (normal au début)")
+    except Exception as e:
+        logger.error(f"[Startup] Erreur recalcul poids: {e}")
+
     # Fix #29 : recalculer les prédictions au démarrage pour appliquer
     # les nouvelles contraintes EDF (dimanche jamais blanc, rouge nov-mars, etc.)
     # et avoir des prédictions fraîches dès le lancement.

@@ -318,31 +318,27 @@ def recalculate_weights():
             logger.info(f"[Poids] Pas assez de donnees evaluees ({count}/60)")
             return None
 
-        # C-1 : entraîner sur raw sub-scores (avant corrections) si disponibles
+        # C-1 : entraîner UNIQUEMENT sur raw sub-scores (avant corrections)
+        # Fix ML-contamination : ne plus fallback sur scores corrigés via COALESCE
+        # Les données pré-v9 (sans raw scores) sont exclues pour éviter la contamination
         # W-6 : plus de LIMIT 300 — utiliser toutes les données disponibles
         # Fix data-integrity : exclure les actuals synthétiques (seed_from_remaining)
         rows = conn.execute(
             """SELECT
-                      COALESCE(NULLIF(p.score_temperature_raw, 0), p.score_temperature)
-                          as score_temperature,
-                      COALESCE(NULLIF(p.score_budget_raw, 0), p.score_budget)
-                          as score_budget,
-                      COALESCE(NULLIF(p.score_weekday_raw, 0), p.score_weekday)
-                          as score_weekday,
-                      COALESCE(NULLIF(p.score_gradient_raw, 0), p.score_gradient)
-                          as score_gradient,
-                      COALESCE(NULLIF(p.score_clustering_raw, 0), p.score_clustering)
-                          as score_clustering,
-                      COALESCE(NULLIF(p.score_rte_raw, 0), p.score_rte)
-                          as score_rte,
+                      p.score_temperature_raw as score_temperature,
+                      p.score_budget_raw      as score_budget,
+                      p.score_weekday_raw     as score_weekday,
+                      p.score_gradient_raw    as score_gradient,
+                      p.score_clustering_raw  as score_clustering,
+                      p.score_rte_raw         as score_rte,
                       a.couleur_reelle
                FROM predictions p
                JOIN actuals a ON p.date = a.date
                WHERE p.horizon IN ('J-1','J-2','J-3','J-4','J-5','J0')
                  AND a.synthetic = 0
                  AND p.simulated = 0
-                 AND (p.score_temperature + p.score_budget + p.score_weekday
-                      + p.score_gradient + p.score_clustering + p.score_rte) > 0
+                 AND (p.score_temperature_raw + p.score_budget_raw + p.score_weekday_raw
+                      + p.score_gradient_raw + p.score_clustering_raw + p.score_rte_raw) > 0
                ORDER BY p.date DESC"""
         ).fetchall()
 
@@ -809,12 +805,14 @@ def analyze_error_patterns(days: int = 90, force: bool = False) -> list[dict]:
             logger.info(f"[Learning] Pas assez de données ({len(perf_rows)}/20)")
             return []
 
-        # Températures prévues par date (pour l'analyse temp_range)
+        # Températures réelles par date (weather_cache = données Open-Meteo)
+        # Fix ML-circular: on utilise les vraies températures, pas les prévues
         temp_rows = conn.execute(
-            """SELECT date, AVG(temp_min_prevue) as temp_min
-               FROM predictions
-               WHERE date >= ? AND temp_min_prevue IS NOT NULL
-               GROUP BY date""",
+            """SELECT date, temp_min
+               FROM weather_cache
+               WHERE date >= ? AND temp_min IS NOT NULL
+               GROUP BY date
+               ORDER BY fetched_at DESC""",
             (since,)
         ).fetchall()
         temp_map = {r["date"]: r["temp_min"] for r in temp_rows}
