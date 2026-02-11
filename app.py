@@ -32,7 +32,6 @@ from fastapi.templating import Jinja2Templates
 
 from config import Config
 from database import init_db
-from scheduler import start_scheduler, stop_scheduler
 
 # === Logging (Fix #13 : RotatingFileHandler) ===
 os.makedirs("logs", exist_ok=True)
@@ -174,6 +173,7 @@ async def _deferred_startup():
     except Exception as e:
         logger.error(f"[Startup] Erreur purge: {e}")
 
+    from scheduler import start_scheduler
     start_scheduler()
 
     try:
@@ -256,6 +256,7 @@ async def lifespan(app: FastAPI):
     yield  # Serveur prêt immédiatement — "/" sert le HTML sans DB
 
     startup_task.cancel()
+    from scheduler import stop_scheduler
     stop_scheduler()
     logger.info("=== TempoForecast arrêt ===")
 

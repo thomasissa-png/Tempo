@@ -144,7 +144,7 @@ pip install -r requirements.txt
 python main.py
 ```
 
-L'app sera accessible sur le port 8000. Le scheduler démarre automatiquement.
+L'app sera accessible sur le port 5000 (configurable via `PORT`). Le scheduler démarre automatiquement.
 
 ---
 
