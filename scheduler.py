@@ -14,6 +14,7 @@ import uuid
 from datetime import date, datetime
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
+from database import get_db
 
 logger = logging.getLogger(__name__)
 
@@ -346,9 +347,28 @@ async def task_monthly_weights():
 
             # Rattrapage + analyse avant recalcul
             evaluate_missed_days(lookback=30)
-            patterns = analyze_error_patterns(days=90)
+
+            # Fix audit ML #37 : analyser sur TOUT l'historique disponible
+            # (pas juste 90 jours) pour exploiter les données backtest
+            conn = get_db()
+            try:
+                row = conn.execute(
+                    "SELECT MIN(date_cible) as earliest FROM performance"
+                ).fetchone()
+                if row and row["earliest"]:
+                    earliest = date.fromisoformat(row["earliest"])
+                    history_days = max(90, (date.today() - earliest).days + 1)
+                else:
+                    history_days = 90
+            finally:
+                conn.close()
+
+            patterns = analyze_error_patterns(days=history_days)
             if patterns:
-                logger.info(f"[Task mensuel] {len(patterns)} patterns d'erreurs détectés")
+                logger.info(
+                    f"[Task mensuel] {len(patterns)} patterns d'erreurs "
+                    f"détectés sur {history_days}j d'historique"
+                )
 
             new_weights = recalculate_weights()
             if new_weights:

@@ -177,16 +177,52 @@ async def _deferred_startup():
     # Fix #30 : recalcul des poids ML au démarrage si la migration v11 a
     # réinitialisé les poids (nettoyage apprentissage contaminé).
     # Cela permet au modèle de réapprendre immédiatement avec des données propres.
+    #
+    # Fix audit ML #37 : recalculer AUSSI les corrections d'apprentissage au
+    # startup avec TOUT l'historique (pas juste 90 jours) pour que les prédictions
+    # bénéficient immédiatement des 2 saisons de données backtest.
     try:
-        from performance_tracker import recalculate_weights
+        from performance_tracker import (
+            recalculate_weights, analyze_error_patterns, evaluate_missed_days
+        )
         loop = asyncio.get_running_loop()
+
+        # 1. Rattrapage des évaluations manquées
+        await loop.run_in_executor(None, lambda: evaluate_missed_days(lookback=30))
+
+        # 2. Détecter la profondeur historique disponible
+        from database import get_db
+        def _get_history_depth():
+            conn = get_db()
+            try:
+                row = conn.execute(
+                    "SELECT MIN(date_cible) as earliest FROM performance"
+                ).fetchone()
+                if row and row["earliest"]:
+                    from datetime import date as dt_date
+                    earliest = dt_date.fromisoformat(row["earliest"])
+                    return max(90, (dt_date.today() - earliest).days + 1)
+                return 90
+            finally:
+                conn.close()
+
+        history_days = await loop.run_in_executor(None, _get_history_depth)
+
+        # 3. Analyser les patterns sur TOUT l'historique (force=True au startup)
+        patterns = await loop.run_in_executor(
+            None, lambda: analyze_error_patterns(days=history_days, force=True)
+        )
+        if patterns:
+            logger.info(f"[Startup] {len(patterns)} patterns détectés sur {history_days}j d'historique")
+
+        # 4. Recalculer les poids (utilise déjà toutes les données)
         new_weights = await loop.run_in_executor(None, recalculate_weights)
         if new_weights:
             logger.info("[Startup] Poids ML recalculés avec données propres")
         else:
             logger.info("[Startup] Recalcul poids: pas assez de données (normal au début)")
     except Exception as e:
-        logger.error(f"[Startup] Erreur recalcul poids: {e}")
+        logger.error(f"[Startup] Erreur recalcul ML: {e}")
 
     # Fix #29 : recalculer les prédictions au démarrage pour appliquer
     # les nouvelles contraintes EDF (dimanche jamais blanc, rouge nov-mars, etc.)
