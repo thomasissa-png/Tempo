@@ -89,6 +89,49 @@ def stop_scheduler():
         logger.info("[Scheduler] Arrêté")
 
 
+def schedule_post_startup():
+    """Planifie les tâches réseau 90s après démarrage.
+
+    Fix #42 : le startup ne fait plus d'appels API (provoquaient des 429
+    et bloquaient le health check Replit). Les opérations réseau
+    (backfill EDF, prédictions météo) sont différées ici.
+    """
+    from datetime import timedelta
+    from apscheduler.triggers.date import DateTrigger
+
+    run_at = datetime.now() + timedelta(seconds=90)
+    scheduler.add_job(
+        _task_post_startup,
+        DateTrigger(run_date=run_at),
+        id="post_startup",
+        name="Post-startup : backfill + prédictions (différé 90s)",
+        replace_existing=True,
+    )
+    logger.info(f"[Scheduler] Backfill + prédictions planifiés à {run_at.strftime('%H:%M:%S')}")
+
+
+async def _task_post_startup():
+    """Tâche one-shot exécutée ~90s après démarrage.
+
+    Effectue les opérations réseau qui ne doivent PAS tourner au startup :
+    1. Backfill des actuals EDF (potentiellement 100+ appels API)
+    2. Recalcul des prédictions (9 appels météo + RTE)
+    """
+    try:
+        from tempo_client import backfill_season_actuals
+        await backfill_season_actuals()
+        logger.info("[Post-startup] Backfill actuals terminé")
+    except Exception as e:
+        logger.error(f"[Post-startup] Erreur backfill: {e}")
+
+    try:
+        count = await _refresh_predictions("startup", send_sms=False)
+        if count:
+            logger.info(f"[Post-startup] {count} prédictions recalculées")
+    except Exception as e:
+        logger.error(f"[Post-startup] Erreur prédictions: {e}")
+
+
 # ================================================================
 # HELPER : recalcul des prédictions (partagé polling / 11h30 / 18h)
 # ================================================================
