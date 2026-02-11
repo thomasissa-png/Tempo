@@ -113,10 +113,18 @@ def schedule_post_startup():
 async def _task_post_startup():
     """Tâche one-shot exécutée ~90s après démarrage.
 
-    Effectue les opérations réseau qui ne doivent PAS tourner au startup :
+    Fix #42 : TOUTES les opérations lourdes sont ici, pas au startup.
+    Le startup ne fait que init_db + purge + scheduler pour que le
+    health check Replit passe immédiatement.
+
+    Opérations (dans l'ordre) :
     1. Backfill des actuals EDF (potentiellement 100+ appels API)
-    2. Recalcul des prédictions (9 appels météo + RTE)
+    2. ML : évaluation rattrapage + analyse patterns + recalcul poids
+    3. Recalcul des prédictions (9 appels météo + RTE)
     """
+    loop = asyncio.get_running_loop()
+
+    # 1. Backfill actuals EDF
     try:
         from tempo_client import backfill_season_actuals
         await backfill_season_actuals()
@@ -124,12 +132,40 @@ async def _task_post_startup():
     except Exception as e:
         logger.error(f"[Post-startup] Erreur backfill: {e}")
 
+    # 2. Recalcul ML complet (CPU/DB local)
+    try:
+        from performance_tracker import (
+            recalculate_weights, analyze_error_patterns,
+            evaluate_missed_days, get_history_depth_days
+        )
+
+        await loop.run_in_executor(None, lambda: evaluate_missed_days(lookback=30))
+
+        history_days = await loop.run_in_executor(None, get_history_depth_days)
+
+        patterns = await loop.run_in_executor(
+            None, lambda: analyze_error_patterns(days=history_days, force=True)
+        )
+        if patterns:
+            logger.info(f"[Post-startup] {len(patterns)} patterns détectés sur {history_days}j")
+
+        new_weights = await loop.run_in_executor(None, recalculate_weights)
+        if new_weights:
+            logger.info("[Post-startup] Poids ML recalculés")
+        else:
+            logger.info("[Post-startup] Recalcul poids: pas assez de données")
+    except Exception as e:
+        logger.error(f"[Post-startup] Erreur recalcul ML: {e}")
+
+    # 3. Prédictions fraîches (météo + RTE)
     try:
         count = await _refresh_predictions("startup", send_sms=False)
         if count:
             logger.info(f"[Post-startup] {count} prédictions recalculées")
     except Exception as e:
         logger.error(f"[Post-startup] Erreur prédictions: {e}")
+
+    logger.info("[Post-startup] Toutes les tâches différées terminées")
 
 
 # ================================================================

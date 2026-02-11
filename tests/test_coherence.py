@@ -183,11 +183,14 @@ class TestHistoryDepthCentralized:
             "scheduler.py n'utilise pas get_history_depth_days() !"
         )
 
-    def test_app_uses_centralized_function(self):
-        with open(os.path.join(ROOT, "app.py")) as f:
+    def test_post_startup_uses_centralized_function(self):
+        """Le job post-startup (scheduler) doit utiliser get_history_depth_days."""
+        with open(os.path.join(ROOT, "scheduler.py")) as f:
             source = f.read()
-        assert "get_history_depth_days" in source, (
-            "app.py n'utilise pas get_history_depth_days() !"
+        # Vérifie que _task_post_startup utilise la fonction centralisée
+        assert source.count("get_history_depth_days") >= 2, (
+            "scheduler.py doit utiliser get_history_depth_days() "
+            "dans les tâches ET dans _task_post_startup !"
         )
 
     def test_no_inline_min_date_query_in_scheduler(self):
@@ -268,28 +271,42 @@ class TestProbabilityConstants:
 # ================================================================
 
 class TestStartupSequence:
-    """Le startup doit exécuter la chaîne ML complète dans le bon ordre."""
+    """La chaîne ML complète doit être exécutée dans le bon ordre.
 
-    def test_startup_calls_analyze_before_refresh(self):
-        """analyze_error_patterns doit être appelé AVANT _refresh_predictions."""
+    Fix #42 : les opérations lourdes (ML, API) sont maintenant dans
+    _task_post_startup (scheduler.py), pas dans app.py directement.
+    Le startup app.py appelle schedule_post_startup() qui les planifie.
+    """
+
+    def test_app_delegates_to_scheduler(self):
+        """app.py doit déléguer les tâches lourdes au scheduler."""
         with open(os.path.join(ROOT, "app.py")) as f:
             source = f.read()
+        assert "schedule_post_startup" in source, (
+            "app.py doit appeler schedule_post_startup() pour les tâches lourdes"
+        )
+
+    def test_post_startup_calls_analyze_before_refresh(self):
+        """analyze_error_patterns doit être appelé AVANT _refresh_predictions."""
+        with open(os.path.join(ROOT, "scheduler.py")) as f:
+            source = f.read()
+        # Chercher dans _task_post_startup
         pos_analyze = source.find("analyze_error_patterns")
         pos_refresh = source.find("_refresh_predictions")
-        assert pos_analyze > 0, "analyze_error_patterns absent du startup"
-        assert pos_refresh > 0, "_refresh_predictions absent du startup"
+        assert pos_analyze > 0, "analyze_error_patterns absent de _task_post_startup"
+        assert pos_refresh > 0, "_refresh_predictions absent de _task_post_startup"
         assert pos_analyze < pos_refresh, (
             "analyze_error_patterns doit être appelé AVANT _refresh_predictions !\n"
             "Sinon les prédictions n'utilisent pas les corrections à jour."
         )
 
-    def test_startup_calls_recalculate_weights(self):
-        with open(os.path.join(ROOT, "app.py")) as f:
+    def test_post_startup_calls_recalculate_weights(self):
+        with open(os.path.join(ROOT, "scheduler.py")) as f:
             source = f.read()
         assert "recalculate_weights" in source
 
-    def test_startup_calls_evaluate_missed_days(self):
-        with open(os.path.join(ROOT, "app.py")) as f:
+    def test_post_startup_calls_evaluate_missed_days(self):
+        with open(os.path.join(ROOT, "scheduler.py")) as f:
             source = f.read()
         assert "evaluate_missed_days" in source
 

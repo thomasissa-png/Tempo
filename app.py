@@ -152,24 +152,24 @@ def purge_old_data() -> None:
 # === Lifespan ===
 
 async def _deferred_startup():
-    """Tâches de démarrage en arrière-plan — SANS appels API.
+    """Tâches de démarrage en arrière-plan — ultra-légères.
 
-    Fix #42 : le startup ne fait AUCUN appel réseau (API météo, EDF, RTE).
-    Ces appels provoquaient des 429 (rate limit) et bloquaient l'event loop,
-    faisant échouer le health check Replit.
+    Fix #42 : le startup ne fait AUCUNE opération lourde.
+    Pas d'appels réseau, pas de ML, pas d'import scikit-learn/numpy.
+    Ces opérations provoquaient une contention GIL de 2+ minutes sur Replit,
+    bloquant l'event loop et faisant échouer le health check.
 
     Le startup fait uniquement :
-      1. init_db (local)
-      2. purge (local)
-      3. start_scheduler (local)
-      4. ML recalculation (CPU/DB local, pas de réseau)
+      1. init_db (SQLite local, rapide)
+      2. purge (quelques DELETE SQL, rapide)
+      3. start_scheduler + job one-shot différé 90s
 
-    Les opérations réseau (backfill, prédictions) sont déléguées au scheduler
-    qui les exécute 90s après le démarrage via un job one-shot.
+    TOUTES les opérations lourdes (ML, backfill, prédictions) sont
+    déléguées au scheduler via schedule_post_startup (exécution à +90s).
     """
     loop = asyncio.get_running_loop()
 
-    # 1. Init DB
+    # 1. Init DB (SQLite local)
     try:
         await loop.run_in_executor(None, init_db)
         _db_ready.set()
@@ -178,46 +178,18 @@ async def _deferred_startup():
         logger.error(f"[Startup] Erreur init_db: {e}")
         _db_ready.set()
 
-    # 2. Purge (DB locale, rapide)
+    # 2. Purge (quelques SQL DELETE, rapide)
     try:
         await loop.run_in_executor(None, purge_old_data)
     except Exception as e:
         logger.error(f"[Startup] Erreur purge: {e}")
 
-    # 3. Scheduler (pas d'appels réseau, juste enregistrement des jobs)
+    # 3. Scheduler + job différé pour les tâches lourdes
     from scheduler import start_scheduler, schedule_post_startup
     start_scheduler()
-
-    # 4. Job one-shot différé : backfill + prédictions 90s après démarrage
-    # (laisse le health check passer et l'app se stabiliser avant les appels API)
     schedule_post_startup()
 
-    # 5. Recalcul ML (CPU/DB local uniquement, pas de réseau)
-    try:
-        from performance_tracker import (
-            recalculate_weights, analyze_error_patterns,
-            evaluate_missed_days, get_history_depth_days
-        )
-
-        await loop.run_in_executor(None, lambda: evaluate_missed_days(lookback=30))
-
-        history_days = await loop.run_in_executor(None, get_history_depth_days)
-
-        patterns = await loop.run_in_executor(
-            None, lambda: analyze_error_patterns(days=history_days, force=True)
-        )
-        if patterns:
-            logger.info(f"[Startup] {len(patterns)} patterns détectés sur {history_days}j d'historique")
-
-        new_weights = await loop.run_in_executor(None, recalculate_weights)
-        if new_weights:
-            logger.info("[Startup] Poids ML recalculés avec données propres")
-        else:
-            logger.info("[Startup] Recalcul poids: pas assez de données (normal au début)")
-    except Exception as e:
-        logger.error(f"[Startup] Erreur recalcul ML: {e}")
-
-    logger.info("[Startup] Init terminée (prédictions dans ~90s via scheduler)")
+    logger.info("[Startup] Init terminée — tâches lourdes dans ~90s via scheduler")
 
 
 @asynccontextmanager
