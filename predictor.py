@@ -936,9 +936,21 @@ def store_prediction(pred: dict, horizon: str = "J-1",
         # Récupérer la prédiction précédente pour le même (date, horizon)
         # pour la détection de changements
         prev = conn.execute(
-            "SELECT couleur_predite, score_risque, confirmed FROM predictions WHERE date = ? AND horizon = ?",
+            "SELECT couleur_predite, score_risque, confirmed, couleur_originale "
+            "FROM predictions WHERE date = ? AND horizon = ?",
             (pred["date"], horizon)
         ).fetchone()
+
+        # Fix #34 : préserver couleur_originale lors des INSERT OR REPLACE.
+        # Sans ça, _refresh_predictions() écrase couleur_originale → l'évaluation
+        # de performance skip la prédiction → fiabilité artificiellement à 100%.
+        preserved_originale = ""
+        if prev:
+            if prev["couleur_originale"]:
+                preserved_originale = prev["couleur_originale"]
+            elif not prev["confirmed"] and pred.get("confirmed"):
+                # La prédiction va être confirmée : sauver la couleur prédite actuelle
+                preserved_originale = prev["couleur_predite"]
 
         couleur_precedente = ""
         if prev and prev["couleur_predite"] != pred["couleur_predite"]:
@@ -973,11 +985,12 @@ def store_prediction(pred: dict, horizon: str = "J-1",
                 score_gradient, score_clustering, score_rte,
                 score_temperature_raw, score_budget_raw, score_weekday_raw,
                 score_gradient_raw, score_clustering_raw, score_rte_raw,
-                cycle_id, couleur_precedente, simulated, confirmed)
+                cycle_id, couleur_precedente, simulated, confirmed,
+                couleur_originale)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
                        ?, ?, ?, ?, ?, ?,
                        ?, ?, ?, ?, ?, ?,
-                       ?, ?, ?, ?)""",
+                       ?, ?, ?, ?, ?)""",
             (pred["date"], pred["couleur_predite"],
              pred["probabilite_bleu"], pred["probabilite_blanc"],
              pred["probabilite_rouge"], pred["score_risque"],
@@ -994,7 +1007,8 @@ def store_prediction(pred: dict, horizon: str = "J-1",
              pred.get("score_clustering_raw", 0), pred.get("score_rte_raw", 0),
              cycle_id, couleur_precedente,
              1 if pred.get("simulated") else 0,
-             1 if pred.get("confirmed") else 0),
+             1 if pred.get("confirmed") else 0,
+             preserved_originale),
         )
         conn.commit()
         log_suffix = ""

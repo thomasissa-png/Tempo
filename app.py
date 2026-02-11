@@ -682,16 +682,19 @@ async def api_performance(request: Request, authorization: str | None = Header(N
 @app.get("/api/performance/badge")
 async def api_performance_badge():
     """Badge de fiabilite simplifie pour la homepage.
-    Fix #6 audit v4 : filtre J-1 seulement pour que le label soit exact."""
+    Fix #6 audit v4 : filtre J-1 seulement pour que le label soit exact.
+    Fix #34 : seuil minimum de 10 évaluations pour afficher la précision.
+    En dessous, on risque un 100% trompeur basé sur 2-3 prédictions."""
     from performance_tracker import get_accuracy_global
     acc = get_accuracy_global(30, max_horizon=1)
+    min_evaluations = 10
     return {
         "status": "ok",
-        "precision_30j": acc["precision"],
+        "precision_30j": acc["precision"] if acc["total"] >= min_evaluations else None,
         "total_predictions": acc["total"],
-        "label": f"Nos prévisions J-1 : {acc['precision']}% de précision sur les 30 derniers jours"
-                 if acc["total"] > 0
-                 else "Pas encore assez de données pour calculer la précision",
+        "label": f"Nos pr\u00e9visions J-1 : {acc['precision']}% de pr\u00e9cision sur {acc['total']} jours \u00e9valu\u00e9s"
+                 if acc["total"] >= min_evaluations
+                 else "Pr\u00e9cision en cours de calcul \u2014 pas encore assez de donn\u00e9es",
     }
 
 

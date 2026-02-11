@@ -21,6 +21,7 @@ Migrations :
   v9  — raw sub-scores, perf multi-horizon, learning history, rollback
   v10 — purge des données météo simulées (predictions, weather_cache, performance)
   v11 — nettoyage apprentissage contaminé (corrections biaisées, reset poids)
+  v12 — purge évaluations faussées (couleur_originale perdue par store_prediction)
 """
 
 import sqlite3
@@ -569,6 +570,20 @@ def init_db():
         logger.info(
             f"Migration v11 appliquee (nettoyage apprentissage: "
             f"{disabled_corrections} corrections désactivées, poids réinitialisés)"
+        )
+
+    if version < 12:
+        # Migration v12 — Purge des évaluations faussées
+        # Fix #34 : store_prediction() ne préservait pas couleur_originale
+        # lors des INSERT OR REPLACE → évaluations skippées → 100% artificiel.
+        # On purge la table performance pour repartir sur des évaluations propres.
+        cursor = conn.execute("DELETE FROM performance")
+        deleted_perf = cursor.rowcount
+
+        conn.execute("PRAGMA user_version = 12")
+        conn.commit()
+        logger.info(
+            f"Migration v12 appliquee (purge {deleted_perf} evaluations faussees)"
         )
 
     # Poids initiaux si vide
