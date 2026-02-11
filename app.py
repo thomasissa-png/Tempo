@@ -152,24 +152,18 @@ def purge_old_data() -> None:
 # === Lifespan ===
 
 async def _deferred_startup():
-    """Tâches de démarrage en arrière-plan — ultra-légères.
+    """Tâches de démarrage en arrière-plan — 100% non-bloquant.
 
-    Fix #42 : le startup ne fait AUCUNE opération lourde.
-    Pas d'appels réseau, pas de ML, pas d'import scikit-learn/numpy.
-    Ces opérations provoquaient une contention GIL de 2+ minutes sur Replit,
-    bloquant l'event loop et faisant échouer le health check.
-
-    Le startup fait uniquement :
-      1. init_db (SQLite local, rapide)
-      2. purge (quelques DELETE SQL, rapide)
-      3. start_scheduler + job one-shot différé 90s
+    Fix #42 : AUCUN appel synchrone ne doit bloquer l'event loop.
+    Chaque opération est soit dans run_in_executor, soit précédée
+    d'un yield (asyncio.sleep) pour que le health check passe.
 
     TOUTES les opérations lourdes (ML, backfill, prédictions) sont
     déléguées au scheduler via schedule_post_startup (exécution à +90s).
     """
     loop = asyncio.get_running_loop()
 
-    # 1. Init DB (SQLite local)
+    # 1. Init DB dans thread pool (non-bloquant)
     try:
         await loop.run_in_executor(None, init_db)
         _db_ready.set()
@@ -178,13 +172,24 @@ async def _deferred_startup():
         logger.error(f"[Startup] Erreur init_db: {e}")
         _db_ready.set()
 
-    # 2. Purge (quelques SQL DELETE, rapide)
+    # 2. Purge dans thread pool (non-bloquant)
     try:
         await loop.run_in_executor(None, purge_old_data)
     except Exception as e:
         logger.error(f"[Startup] Erreur purge: {e}")
 
-    # 3. Scheduler + job différé pour les tâches lourdes
+    # 3. Import du module scheduler dans thread pool pour ne PAS bloquer
+    #    l'event loop pendant le chargement d'APScheduler + pytz (~2-5s Replit)
+    try:
+        await loop.run_in_executor(None, lambda: __import__("scheduler"))
+    except Exception as e:
+        logger.error(f"[Startup] Erreur import scheduler: {e}")
+
+    # Yield explicite : laisser l'event loop traiter les health checks en attente
+    await asyncio.sleep(0)
+
+    # 4. Démarrer le scheduler (rapide car module déjà importé en cache)
+    #    start_scheduler() doit tourner dans le thread principal (AsyncIOScheduler)
     from scheduler import start_scheduler, schedule_post_startup
     start_scheduler()
     schedule_post_startup()
