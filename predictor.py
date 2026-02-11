@@ -812,11 +812,17 @@ def _build_raison_v2(temp_moy: float, temp_min: float,
     elif target_date.weekday() == 5:
         raisons.append("Samedi")
 
-    # Budget
-    if remaining["ROUGE"] <= 5 and remaining["ROUGE"] > 0 and target_date.month >= 2:
-        raisons.append(f"Fin saison, {remaining['ROUGE']}j rouges restants")
-    if d_left < 30 and remaining["ROUGE"] > 3:
-        raisons.append("Forte pression quota rouge")
+    # Budget rouge — deadline 31 mars (R1), pas fin de saison
+    if remaining["ROUGE"] > 0 and (target_date.month >= 11 or target_date.month <= 3):
+        if target_date.month <= 3:
+            red_deadline = date(target_date.year, 3, 31)
+        else:
+            red_deadline = date(target_date.year + 1, 3, 31)
+        red_d_left = max(0, (red_deadline - target_date).days)
+        if remaining["ROUGE"] <= 5 and target_date.month >= 2:
+            raisons.append(f"{remaining['ROUGE']}j rouges restants ({red_d_left}j avant fin mars)")
+        if red_d_left < 20 and remaining["ROUGE"] > 2:
+            raisons.append("Forte pression quota rouge")
 
     return " · ".join(raisons) if raisons else "Conditions normales"
 
