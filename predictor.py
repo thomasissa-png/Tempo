@@ -492,8 +492,12 @@ def _score_budget_v2(remaining: dict, d_left: int, target_date: date) -> float:
     else:
         red_deadline = target_date  # hors saison rouge, 0 jours
     red_d_left = max(0, (red_deadline - target_date).days)
+    # Fix audit ML #40 : la densité d'urgence ROUGE doit compter uniquement
+    # les jours ÉLIGIBLES (weekdays lun-ven). Les weekends et fériés ne peuvent
+    # jamais être rouges (R2). Approximation 5/7 simple et suffisante.
+    red_eligible_days = max(1, red_d_left * 5 // 7) if red_d_left > 0 else 0
     rouge_pressure = _compute_budget_pressure(
-        remaining["ROUGE"], red_d_left, month,
+        remaining["ROUGE"], red_eligible_days, month,
         Config.MONTHLY_RED_PROFILE, Config.JOURS_ROUGES_TOTAL)
 
     # --- Pression BLANC (ML-1 : signal manquant) ---
@@ -513,7 +517,9 @@ def _score_budget_v2(remaining: dict, d_left: int, target_date: date) -> float:
 def _compute_budget_pressure(actual_remaining: int, d_left: int, month: int,
                               monthly_profile: dict, total_days: int) -> float:
     """Calcule le score de pression budgetaire pour un type de jour.
-    ML-2 : scoring continu (piecewise-linear)."""
+    ML-2 : scoring continu (piecewise-linear).
+    Fix audit ML #39 : la densité d'urgence utilise les jours éligibles
+    (weekdays uniquement pour ROUGE, R2 interdit weekends et fériés)."""
     expected_pct = monthly_profile.get(month, 0.0)
 
     # Jours restants attendus (mois futurs seulement)
