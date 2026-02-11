@@ -56,6 +56,11 @@ _predictions_lock = asyncio.Lock()
 # === Fix #25 : Signal de disponibilité DB pour Cloud Run health checks ===
 _db_ready = asyncio.Event()
 
+# === Fix #42 : gate health check pour startup en 2 phases ===
+# Phase 1 (rapide) : DB + scheduler → le serveur peut répondre au health check
+# Phase 2 (lourde) : ML + API météo + prédictions → seulement après le health check
+_health_check_ok = asyncio.Event()
+
 
 def invalidate_predictions_cache():
     """Invalide le cache mémoire des prédictions.
@@ -151,50 +156,67 @@ def purge_old_data() -> None:
 # === Lifespan ===
 
 async def _deferred_startup():
-    """Tâches de démarrage en arrière-plan.
+    """Tâches de démarrage en arrière-plan — 2 phases.
 
-    Cloud Run exige que / réponde 200 immédiatement.
-    init_db() tourne en thread pool pour ne pas bloquer le serveur ;
-    les endpoints API attendent _db_ready avant d'accéder à la base.
+    Fix #42 : startup en 2 phases pour que le health check Replit/Cloud Run
+    passe AVANT les opérations lourdes (ML, API météo 9 villes, prédictions).
+
+    Phase 1 (rapide) : init_db + purge + scheduler → ~2-5s
+      → Le serveur peut répondre au health check sur /
+    Phase 2 (lourde) : backfill + ML + prédictions → 30-120s
+      → Ne démarre qu'après le premier health check (ou timeout 60s)
     """
-    # init_db() est synchrone → exécuter dans un thread pool
+    loop = asyncio.get_running_loop()
+
+    # ================================================================
+    # PHASE 1 : Init rapide (DB + scheduler)
+    # ================================================================
     try:
-        loop = asyncio.get_running_loop()
         await loop.run_in_executor(None, init_db)
         _db_ready.set()
-        logger.info("[Startup] Base de données prête")
+        logger.info("[Startup] Phase 1 — Base de données prête")
     except Exception as e:
         logger.error(f"[Startup] Erreur init_db: {e}")
-        # Signaler quand même pour éviter le blocage infini des requêtes
         _db_ready.set()
 
     try:
-        purge_old_data()
+        await loop.run_in_executor(None, purge_old_data)
     except Exception as e:
         logger.error(f"[Startup] Erreur purge: {e}")
 
     from scheduler import start_scheduler
     start_scheduler()
 
+    logger.info("[Startup] Phase 1 terminée — en attente du health check...")
+
+    # ================================================================
+    # GATE : attendre que le health check passe avant les tâches lourdes
+    # ================================================================
+    try:
+        await asyncio.wait_for(_health_check_ok.wait(), timeout=60)
+        logger.info("[Startup] Health check OK — démarrage phase 2")
+    except asyncio.TimeoutError:
+        logger.info("[Startup] Timeout 60s health check — démarrage phase 2 quand même")
+
+    # ================================================================
+    # PHASE 2 : Tâches lourdes (backfill, ML, prédictions)
+    # ================================================================
     try:
         from tempo_client import backfill_season_actuals
         await backfill_season_actuals()
     except Exception as e:
         logger.error(f"[Startup] Erreur backfill actuals: {e}")
 
-    # Fix #30 : recalcul des poids ML au démarrage si la migration v11 a
-    # réinitialisé les poids (nettoyage apprentissage contaminé).
-    # Cela permet au modèle de réapprendre immédiatement avec des données propres.
-    #
-    # Fix audit ML #37 : recalculer AUSSI les corrections d'apprentissage au
-    # startup avec TOUT l'historique (pas juste 90 jours) pour que les prédictions
-    # bénéficient immédiatement des 2 saisons de données backtest.
+    # Yield pour laisser l'event loop traiter les requêtes HTTP en cours
+    await asyncio.sleep(0)
+
+    # Fix #30 + Fix audit ML #37 : recalcul ML complet au startup
+    # avec TOUT l'historique (pas juste 90 jours).
     try:
         from performance_tracker import (
             recalculate_weights, analyze_error_patterns,
             evaluate_missed_days, get_history_depth_days
         )
-        loop = asyncio.get_running_loop()
 
         # 1. Rattrapage des évaluations manquées
         await loop.run_in_executor(None, lambda: evaluate_missed_days(lookback=30))
@@ -218,9 +240,10 @@ async def _deferred_startup():
     except Exception as e:
         logger.error(f"[Startup] Erreur recalcul ML: {e}")
 
-    # Fix #29 : recalculer les prédictions au démarrage pour appliquer
-    # les nouvelles contraintes EDF (dimanche jamais blanc, rouge nov-mars, etc.)
-    # et avoir des prédictions fraîches dès le lancement.
+    # Yield pour laisser l'event loop respirer
+    await asyncio.sleep(0)
+
+    # Fix #29 : recalculer les prédictions au démarrage
     try:
         from scheduler import _refresh_predictions
         count = await _refresh_predictions("startup", send_sms=False)
@@ -229,7 +252,7 @@ async def _deferred_startup():
     except Exception as e:
         logger.error(f"[Startup] Erreur recalcul prédictions: {e}")
 
-    logger.info("[Startup] Tâches de fond terminées")
+    logger.info("[Startup] Toutes les tâches de fond terminées")
 
 
 @asynccontextmanager
@@ -363,7 +386,12 @@ def _check_origin(request: Request) -> bool:
 
 @app.get("/", response_class=HTMLResponse)
 async def page_dashboard(request: Request):
-    """Page principale — dashboard des prévisions."""
+    """Page principale — dashboard des prévisions.
+
+    Fix #42 : signale au startup que le health check a réussi,
+    ce qui déclenche la phase 2 (tâches lourdes ML + prédictions).
+    """
+    _health_check_ok.set()
     return templates.TemplateResponse("dashboard.html", {"request": request})
 
 
@@ -431,8 +459,10 @@ async def sitemap_xml():
 async def health():
     """Health check endpoint — répond 200 immédiatement (Cloud Run startup probe).
 
+    Fix #42 : signale aussi le passage du health check pour déclencher la phase 2.
     Retourne le statut DB pour le monitoring, mais ne bloque pas le démarrage.
     """
+    _health_check_ok.set()
     db_ok = False
     if _db_ready.is_set():
         try:
