@@ -14,7 +14,6 @@ import uuid
 from datetime import date, datetime
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from database import get_db
 
 logger = logging.getLogger(__name__)
 
@@ -341,6 +340,7 @@ async def task_monthly_weights():
         try:
             from performance_tracker import recalculate_weights, get_accuracy_global
             from performance_tracker import analyze_error_patterns, evaluate_missed_days
+            from performance_tracker import get_history_depth_days
             from alerts import cleanup_inactive_users
 
             logger.info("[Task mensuel] Début recalcul des poids")
@@ -349,20 +349,7 @@ async def task_monthly_weights():
             evaluate_missed_days(lookback=30)
 
             # Fix audit ML #37 : analyser sur TOUT l'historique disponible
-            # (pas juste 90 jours) pour exploiter les données backtest
-            conn = get_db()
-            try:
-                row = conn.execute(
-                    "SELECT MIN(date_cible) as earliest FROM performance"
-                ).fetchone()
-                if row and row["earliest"]:
-                    earliest = date.fromisoformat(row["earliest"])
-                    history_days = max(90, (date.today() - earliest).days + 1)
-                else:
-                    history_days = 90
-            finally:
-                conn.close()
-
+            history_days = get_history_depth_days()
             patterns = analyze_error_patterns(days=history_days)
             if patterns:
                 logger.info(
@@ -400,14 +387,15 @@ async def task_weekly_recap():
             from predictor import predict_range
             from rte_client import get_consumption_score
             from alerts import send_weekly_recap
-            from performance_tracker import analyze_error_patterns
+            from performance_tracker import analyze_error_patterns, get_history_depth_days
 
             logger.info("[Task hebdo] Début récap hebdomadaire")
 
-            # Analyse hebdo des patterns d'erreurs avant de générer le récap
-            patterns = analyze_error_patterns(days=90)
+            # Fix audit ML #38 : analyse sur tout l'historique (pas juste 90 jours)
+            history_days = get_history_depth_days()
+            patterns = analyze_error_patterns(days=history_days)
             if patterns:
-                logger.info(f"[Task hebdo] {len(patterns)} patterns d'erreurs mis à jour")
+                logger.info(f"[Task hebdo] {len(patterns)} patterns mis à jour ({history_days}j)")
 
             forecasts = await fetch_forecast_extended()
             if not forecasts:
@@ -475,11 +463,15 @@ async def run_task_now(task_name: str) -> str:
         return "Backfill des actuals de la saison terminé"
 
     if task_name == "analyze":
-        from performance_tracker import analyze_error_patterns, evaluate_missed_days
+        from performance_tracker import (
+            analyze_error_patterns, evaluate_missed_days, get_history_depth_days
+        )
         missed = evaluate_missed_days(lookback=30)
-        patterns = analyze_error_patterns(days=90)
+        # Fix audit ML #38 : analyse sur tout l'historique disponible
+        history_days = get_history_depth_days()
+        patterns = analyze_error_patterns(days=history_days)
         return (f"Analyse terminée : {missed} jours rattrapés, "
-                f"{len(patterns)} patterns détectés")
+                f"{len(patterns)} patterns détectés sur {history_days}j")
 
     tasks = {
         "verification": task_daily_verification,

@@ -96,7 +96,12 @@ def _cleanup_rate_limit_store(now: float) -> None:
 
 # === Fix #10 : Purge old data from the database ===
 def purge_old_data() -> None:
-    """Delete weather_cache entries older than 30 days and predictions older than 90 days."""
+    """Purge les données obsolètes en préservant les données backtest historiques.
+
+    Fix audit ML #38 : ne PAS supprimer les données backtest (cycle_id='backtest')
+    ni les performances associées. Ces données alimentent recalculate_weights() et
+    analyze_error_patterns() pour l'apprentissage sur 2+ saisons.
+    """
     from database import get_db
 
     conn = get_db()
@@ -107,14 +112,17 @@ def purge_old_data() -> None:
         deleted_cache = conn.execute(
             "DELETE FROM weather_cache WHERE date < ?", (cutoff_cache,)
         ).rowcount
+        # Fix audit ML #38 : préserver les predictions backtest (essentielles pour ML)
+        # Seules les prédictions live > 90 jours sont purgées.
         deleted_preds = conn.execute(
-            "DELETE FROM predictions WHERE date < ?", (cutoff_preds,)
+            "DELETE FROM predictions WHERE date < ? AND cycle_id NOT LIKE 'backtest%'",
+            (cutoff_preds,)
         ).rowcount
-        # Fix #15 audit v4 : purger aussi la table performance (>180 jours)
-        cutoff_perf = (date.today() - timedelta(days=180)).isoformat()
-        deleted_perf = conn.execute(
-            "DELETE FROM performance WHERE date_cible < ?", (cutoff_perf,)
-        ).rowcount
+        # Fix audit ML #38 : ne plus purger la table performance.
+        # Elle contient les évaluations backtest (2+ saisons) nécessaires à
+        # analyze_error_patterns() et recalculate_weights().
+        # Le volume est faible (~1 ligne/jour) donc pas de risque de croissance.
+        deleted_perf = 0
 
         # Fix #32 : supprimer les prédictions orphelines non-confirmées
         # pour les dates qui ont déjà une prédiction confirmée.
@@ -131,9 +139,9 @@ def purge_old_data() -> None:
         conn.commit()
 
         logger.info(
-            "purge_old_data: deleted %d weather_cache (>30d), %d predictions (>90d), "
-            "%d performance (>180d), %d orphan predictions",
-            deleted_cache, deleted_preds, deleted_perf, deleted_orphans,
+            "purge_old_data: deleted %d weather_cache (>30d), %d predictions live (>90d), "
+            "%d orphan predictions (backtest preserved)",
+            deleted_cache, deleted_preds, deleted_orphans,
         )
     except Exception:
         logger.exception("purge_old_data: error during purge")
@@ -183,30 +191,16 @@ async def _deferred_startup():
     # bénéficient immédiatement des 2 saisons de données backtest.
     try:
         from performance_tracker import (
-            recalculate_weights, analyze_error_patterns, evaluate_missed_days
+            recalculate_weights, analyze_error_patterns,
+            evaluate_missed_days, get_history_depth_days
         )
         loop = asyncio.get_running_loop()
 
         # 1. Rattrapage des évaluations manquées
         await loop.run_in_executor(None, lambda: evaluate_missed_days(lookback=30))
 
-        # 2. Détecter la profondeur historique disponible
-        from database import get_db
-        def _get_history_depth():
-            conn = get_db()
-            try:
-                row = conn.execute(
-                    "SELECT MIN(date_cible) as earliest FROM performance"
-                ).fetchone()
-                if row and row["earliest"]:
-                    from datetime import date as dt_date
-                    earliest = dt_date.fromisoformat(row["earliest"])
-                    return max(90, (dt_date.today() - earliest).days + 1)
-                return 90
-            finally:
-                conn.close()
-
-        history_days = await loop.run_in_executor(None, _get_history_depth)
+        # 2. Profondeur historique (fonction centralisée — Fix audit ML #38)
+        history_days = await loop.run_in_executor(None, get_history_depth_days)
 
         # 3. Analyser les patterns sur TOUT l'historique (force=True au startup)
         patterns = await loop.run_in_executor(

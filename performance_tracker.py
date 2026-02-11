@@ -43,6 +43,30 @@ logger = logging.getLogger(__name__)
 
 
 # ================================================================
+# UTILITAIRE : profondeur historique disponible
+# ================================================================
+
+def get_history_depth_days() -> int:
+    """Retourne le nombre de jours d'historique disponible dans performance.
+
+    Fix audit ML #38 : centralise le calcul utilisé par startup, scheduler
+    et tâches manuelles pour éviter la duplication et les incohérences.
+    Minimum 90 jours (fallback si pas de données).
+    """
+    conn = get_db()
+    try:
+        row = conn.execute(
+            "SELECT MIN(date_cible) as earliest FROM performance"
+        ).fetchone()
+        if row and row["earliest"]:
+            earliest = date.fromisoformat(row["earliest"])
+            return max(90, (date.today() - earliest).days + 1)
+        return 90
+    finally:
+        conn.close()
+
+
+# ================================================================
 # 1. VÉRIFICATION QUOTIDIENNE
 # ================================================================
 
