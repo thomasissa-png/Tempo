@@ -5,7 +5,3 @@ entrypoint = "main.py"
 run = ["python3", "main.py"]
 build = ["pip", "install", "-r", "requirements.txt"]
 deploymentTarget = "cloudrun"
-
-[[ports]]
-localPort = 5000
-externalPort = 80
