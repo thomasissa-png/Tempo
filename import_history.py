@@ -312,8 +312,9 @@ def run_backtest(colors: dict[str, str], weather_data: dict[str, dict]):
     Utilise les températures réelles (Open-Meteo archive) au lieu des prévisions,
     et compare avec la couleur EDF réelle.
 
-    Stocke les résultats dans la table `performance` pour que le système
-    d'apprentissage puisse s'en servir immédiatement.
+    Stocke les résultats dans :
+      - `performance` : évaluations pour analyze_error_patterns / get_accuracy
+      - `predictions`  : avec raw sub-scores pour recalculate_weights (régression)
     """
     from predictor import predict_day, is_french_holiday
     from tempo_client import get_season_dates, is_in_season
@@ -323,11 +324,10 @@ def run_backtest(colors: dict[str, str], weather_data: dict[str, dict]):
     # Trier les dates chronologiquement
     sorted_dates = sorted(colors.keys())
 
-    # Construire les forecasts par blocs de saison pour le gradient/clustering
-    # On simule une fenêtre de 7 jours autour de chaque date
     total = len(sorted_dates)
     correct_count = 0
     evaluated = 0
+    predictions_stored = 0
     confusion = {"BLEU": {"BLEU": 0, "BLANC": 0, "ROUGE": 0},
                  "BLANC": {"BLEU": 0, "BLANC": 0, "ROUGE": 0},
                  "ROUGE": {"BLEU": 0, "BLANC": 0, "ROUGE": 0}}
@@ -389,7 +389,44 @@ def run_backtest(colors: dict[str, str], weather_data: dict[str, dict]):
             evaluated += 1
             confusion[couleur_reelle][couleur_predite] += 1
 
-            # Stocker dans performance (simuler J-1 : prédiction faite la veille)
+            # --- Stocker la prédiction dans `predictions` avec raw sub-scores ---
+            # Nécessaire pour que recalculate_weights() puisse entraîner la
+            # régression logistique (JOIN predictions.raw_sub_scores + actuals)
+            ts_prediction = (target - timedelta(days=1)).isoformat() + "T18:00:00"
+            cursor = conn.execute(
+                """INSERT OR IGNORE INTO predictions
+                   (date, couleur_predite, probabilite_bleu, probabilite_blanc,
+                    probabilite_rouge, score_risque, temp_min_prevue, temp_max_prevue,
+                    pression_prevue, jours_rouges_restants, jours_blancs_restants,
+                    raison, horizon, timestamp_prediction,
+                    score_temperature, score_budget, score_weekday,
+                    score_gradient, score_clustering, score_rte,
+                    score_temperature_raw, score_budget_raw, score_weekday_raw,
+                    score_gradient_raw, score_clustering_raw, score_rte_raw,
+                    cycle_id, couleur_precedente, simulated, confirmed,
+                    couleur_originale)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                           ?, ?, ?, ?, ?, ?,
+                           ?, ?, ?, ?, ?, ?,
+                           ?, ?, ?, ?, ?)""",
+                (date_str, pred["couleur_predite"],
+                 pred["probabilite_bleu"], pred["probabilite_blanc"],
+                 pred["probabilite_rouge"], pred["score_risque"],
+                 w["temp_min"], w["temp_max"], None,
+                 remaining.get("ROUGE", 0), remaining.get("BLANC", 0),
+                 pred.get("raison", "backtest"), "J-1", ts_prediction,
+                 pred.get("score_temperature", 0), pred.get("score_budget", 0),
+                 pred.get("score_weekday", 0), pred.get("score_gradient", 0),
+                 pred.get("score_clustering", 0), pred.get("score_rte", 0),
+                 pred.get("score_temperature_raw", 0), pred.get("score_budget_raw", 0),
+                 pred.get("score_weekday_raw", 0), pred.get("score_gradient_raw", 0),
+                 pred.get("score_clustering_raw", 0), pred.get("score_rte_raw", 0),
+                 "backtest", "", 0, 0, ""),
+            )
+            if cursor.rowcount > 0:
+                predictions_stored += 1
+
+            # --- Stocker dans performance ---
             date_prediction = (target - timedelta(days=1)).isoformat()
             score_predit = pred["score_risque"]
             seuil_reel = {"BLEU": 0, "BLANC": 50, "ROUGE": 100}.get(couleur_reelle, 50)
@@ -422,6 +459,7 @@ def run_backtest(colors: dict[str, str], weather_data: dict[str, dict]):
         logger.info(f"\n{'='*60}")
         logger.info(f"BACKTESTING TERMINÉ : {evaluated} jours évalués")
         logger.info(f"Précision globale : {precision}% ({correct_count}/{evaluated})")
+        logger.info(f"Predictions stockées : {predictions_stored} (pour recalculate_weights)")
         logger.info(f"\nMatrice de confusion (réel → prédit) :")
         logger.info(f"            BLEU   BLANC  ROUGE")
         for real in ["BLEU", "BLANC", "ROUGE"]:
@@ -459,6 +497,45 @@ def _estimate_remaining(target: date, colors: dict[str, str]) -> dict:
         "BLANC": max(0, Config.JOURS_BLANCS_TOTAL - used_blanc),
         "BLEU": 999,  # Pas de limite pratique sur les bleus
     }
+
+
+# ================================================================
+# ÉTAPE 5 : Calibration initiale
+# ================================================================
+
+def run_initial_calibration(total_days: int):
+    """Lance analyze_error_patterns + recalculate_weights sur tout l'historique.
+
+    En fonctionnement normal, analyze_error_patterns(days=90) ne regarde que
+    les 90 derniers jours. Pour la calibration initiale après import historique,
+    on utilise toute la profondeur disponible (~900 jours).
+
+    De même, recalculate_weights() utilise toutes les prédictions disponibles
+    (sans filtre temporel), donc il bénéficie automatiquement des predictions
+    backtest stockées par run_backtest().
+    """
+    from performance_tracker import analyze_error_patterns, recalculate_weights
+
+    # 1. Analyse des patterns d'erreurs sur tout l'historique
+    #    total_days couvre les ~900 jours importés
+    logger.info(f"  Analyse des patterns d'erreurs sur {total_days} jours...")
+    patterns = analyze_error_patterns(days=total_days, force=True)
+    if patterns:
+        logger.info(f"  → {len(patterns)} patterns détectés :")
+        for p in patterns:
+            if abs(p["correction"]) >= 1.0:
+                logger.info(f"    {p['type']}:{p['key']} → correction {p['correction']:+.1f} "
+                            f"(n={p['sample_size']}, conf={p['confidence']:.2f})")
+    else:
+        logger.info("  → Aucun pattern significatif détecté")
+
+    # 2. Recalcul des poids via régression logistique
+    logger.info("  Recalcul des poids via régression logistique...")
+    new_weights = recalculate_weights()
+    if new_weights:
+        logger.info(f"  → Nouveaux poids déployés : {new_weights}")
+    else:
+        logger.info("  → Poids inchangés (pas assez de données ou validation échouée)")
 
 
 # ================================================================
@@ -526,8 +603,12 @@ async def main():
     logger.info(f"  {weather_inserted} entrées météo stockées dans weather_cache")
 
     # --- Étape 4 : Backtesting ---
-    logger.info("\n[4/4] Backtesting — predict_day() sur données historiques...")
+    logger.info("\n[4/5] Backtesting — predict_day() sur données historiques...")
     run_backtest(colors, all_weather)
+
+    # --- Étape 5 : Calibration initiale (analyse patterns + recalcul poids) ---
+    logger.info("\n[5/5] Calibration initiale sur l'historique complet...")
+    run_initial_calibration(len(colors))
 
     elapsed = round(time.time() - start_time, 1)
     logger.info(f"\nImport terminé en {elapsed}s")
