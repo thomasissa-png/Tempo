@@ -296,7 +296,7 @@ def recalculate_weights():
     """Recalcule les poids de l'algorithme via regression logistique.
 
     Fix ML-2 : filtre sur jours_avance <= 5 pour entraîner sur horizons fiables.
-    Fix ML-5 : seuil validation 55% (random = 33%).
+    Fix ML-5 : seuil validation F1-macro >= 45% (random = 33%).
     Fix ML-6 : normalisation StandardScaler des features.
     Fix ML-7 : minimum 60 données.
     Fix ML-8 : cross-validation 5-fold.
@@ -401,20 +401,35 @@ def recalculate_weights():
         )
 
         try:
-            cv_scores = cross_val_score(model, X_scaled, y, cv=5, scoring="accuracy")
-            cv_accuracy = round(cv_scores.mean() * 100, 1)
-            cv_std = round(cv_scores.std() * 100, 1)
+            # Fix audit ML #2 : utiliser F1-macro au lieu de accuracy
+            # L'accuracy est trompeuse pour des classes déséquilibrées (BLEU ≈ 76%).
+            # Un modèle "always-BLEU" a 76% accuracy mais F1-macro ≈ 33%.
+            # F1-macro évalue la capacité à prédire CHAQUE classe équitablement.
+            cv_f1_scores = cross_val_score(model, X_scaled, y, cv=5, scoring="f1_macro")
+            cv_f1 = round(cv_f1_scores.mean() * 100, 1)
+            cv_f1_std = round(cv_f1_scores.std() * 100, 1)
+
+            cv_acc_scores = cross_val_score(model, X_scaled, y, cv=5, scoring="accuracy")
+            cv_accuracy = round(cv_acc_scores.mean() * 100, 1)
+            cv_std = round(cv_acc_scores.std() * 100, 1)
         except ValueError:
             # Pas assez de données pour 5-fold sur une classe
+            cv_f1 = 0
+            cv_f1_std = 0
             cv_accuracy = 0
             cv_std = 0
             logger.warning("[Poids] Cross-validation impossible (classe trop rare)")
 
-        # ML-3 : seuil validation 70% (baseline Always-BLEU ≈ 76%)
-        if cv_accuracy < 70:
+        # Fix audit ML #2 : seuil sur F1-macro ≥ 45% (random ≈ 33%)
+        # et accuracy doit dépasser la baseline classe majoritaire
+        from collections import Counter
+        majority_pct = round(max(Counter(y).values()) / len(y) * 100, 1)
+
+        if cv_f1 < 45:
             logger.warning(
-                f"[Poids] CV accuracy trop faible ({cv_accuracy}% ± {cv_std}%), "
-                "poids NON deployes (seuil=70%)"
+                f"[Poids] CV F1-macro trop faible ({cv_f1}% ± {cv_f1_std}%), "
+                f"poids NON deployes (seuil=45%, accuracy={cv_accuracy}%, "
+                f"baseline={majority_pct}%)"
             )
             conn.execute(
                 """INSERT INTO weights_history
@@ -424,8 +439,9 @@ def recalculate_weights():
                 (datetime.now().strftime("%Y-%m-%d"),
                  json.dumps(get_current_weights()),
                  get_accuracy_global(30)["precision"], cv_accuracy, count,
-                 f"REJETE (cv_acc={cv_accuracy}% ± {cv_std}%)",
-                 "logreg_v4_ml_improvements",
+                 f"REJETE (f1_macro={cv_f1}% ± {cv_f1_std}%, "
+                 f"acc={cv_accuracy}%, baseline={majority_pct}%)",
+                 "logreg_v5_audit_ml",
                  datetime.now().isoformat()),
             )
             conn.commit()
@@ -466,8 +482,9 @@ def recalculate_weights():
                             (datetime.now().strftime("%Y-%m-%d"),
                              json.dumps(get_current_weights()),
                              get_accuracy_global(30)["precision"], holdout_accuracy, count,
-                             f"REJETE holdout (holdout={holdout_accuracy}%, cv={cv_accuracy}%)",
-                             "logreg_v4_ml_improvements",
+                             f"REJETE holdout (holdout={holdout_accuracy}%, "
+                             f"cv_f1={cv_f1}%, cv_acc={cv_accuracy}%)",
+                             "logreg_v5_audit_ml",
                              datetime.now().isoformat()),
                         )
                         conn.commit()
@@ -541,18 +558,18 @@ def recalculate_weights():
             (datetime.now().strftime("%Y-%m-%d"),
              json.dumps(new_weights),
              precision_avant, 0, count,
-             f"Recalcul auto (cv_acc={cv_accuracy}% ± {cv_std}%, "
-             f"alpha={ALPHA:.2f}, n={len(rows)}) — "
+             f"Recalcul auto (f1_macro={cv_f1}% ± {cv_f1_std}%, "
+             f"cv_acc={cv_accuracy}%, alpha={ALPHA:.2f}, n={len(rows)}) — "
              f"ancien: {json.dumps(old_weights)}",
-             "logreg_v4_ml_improvements",
+             "logreg_v5_audit_ml",
              datetime.now().isoformat()),
         )
         conn.commit()
 
         logger.info(f"[Poids] Nouveaux poids deployes : {new_weights}")
         logger.info(
-            f"[Poids] CV accuracy : {cv_accuracy}% ± {cv_std}% | "
-            f"Alpha={ALPHA:.2f} | n={len(rows)}"
+            f"[Poids] F1-macro: {cv_f1}% ± {cv_f1_std}% | "
+            f"Accuracy: {cv_accuracy}% | Alpha={ALPHA:.2f} | n={len(rows)}"
         )
         return new_weights
 

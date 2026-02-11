@@ -175,7 +175,7 @@ class TestProbCalibration:
 
 class TestWeeklyRedSaturation:
     def test_saturation_3_reds(self):
-        """Apres 3 rouges dans la semaine, score clustering tres attenue."""
+        """Apres 3 rouges dans la semaine, score clustering attenue."""
         from predictor import _score_clustering
         target = date(2026, 1, 15)  # Jeudi
         week_start = target - timedelta(days=target.weekday())
@@ -191,8 +191,9 @@ class TestWeeklyRedSaturation:
 
         forecasts = [{"temp_moy": 0}]
         score = _score_clustering(target, forecasts, 0, actuals)
-        # Avec 3 rouges cette semaine, forte attenuation
-        assert score < 30, f"Score devrait etre attenue avec 3 rouges/semaine, got {score}"
+        # Fix audit ML #5 : 3 rouges = attenuation moderee (0.5x), pas forte (0.3x)
+        # 3 rouges/semaine est possible pendant les vagues de froid (max EDF = 5 consecutifs)
+        assert score < 50, f"Score devrait etre attenue avec 3 rouges/semaine, got {score}"
 
     def test_no_saturation_1_red(self):
         """Avec seulement 1 rouge dans la semaine, pas d'attenuation."""

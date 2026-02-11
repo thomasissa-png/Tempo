@@ -114,6 +114,15 @@ class Config:
     SEUIL_ROUGE = 65   # abaisse de 70 a 65 pour meilleur recall
     SEUIL_BLANC = 35   # abaisse de 40 a 35
 
+    # --- Probabilites softmax (centres et steepness) ---
+    # Fix audit ML #4 : parametres extraits pour calibration future
+    # Centres des distributions : BLEU bas, BLANC milieu, ROUGE haut
+    # A calibrer sur les distributions reelles apres backtest
+    PROBA_CENTER_BLEU = 15    # zone 0-35
+    PROBA_CENTER_BLANC = 50   # zone 35-65
+    PROBA_CENTER_ROUGE = 85   # zone 65-100
+    PROBA_STEEPNESS = 0.08    # pente des transitions (plus petit = plus progressif)
+
     # --- Cache ---
     PREDICTIONS_CACHE_TTL = 900  # 15 minutes
 

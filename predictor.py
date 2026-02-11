@@ -8,8 +8,9 @@ Facteurs de scoring (sur 100, poids ajustables) :
   5. Clustering : continuite des jours rouges consecutifs
   6. Consommation RTE eco2mix (prevision pointe + nucleaire)
 
-Bonus hors-poids :
-  - Vague de froid (3+ jours consecutifs < 2C national) : +15-25 pts
+Bonus intégré au facteur température :
+  - Vague de froid (3+ jours consecutifs < 2C national) : boost temp_score
+    (Fix audit ML #1 : passe par le système de poids au lieu de court-circuiter)
 
 Corrections automatiques (journal d'apprentissage) :
   - Biais par horizon, temperature, mois, jour de semaine
@@ -191,10 +192,16 @@ def predict_day(target_date: date, weather: dict | None = None,
     if rte_score and rte_score.get("available"):
         rte_s = rte_score["score"]
 
-    # === Bonus vague de froid (hors poids) ===
+    # === Bonus vague de froid ===
+    # Fix audit ML #1 : le bonus cold wave passe désormais par le système de poids.
+    # Il amplifie le score température AVANT la somme pondérée, au lieu d'être
+    # ajouté directement au score final (ce qui court-circuitait les poids appris).
     cold_wave = _detect_cold_wave(forecasts or [], target_idx)
+    if cold_wave > 0:
+        temp_score = min(100, temp_score + cold_wave)
 
     # === C-1: Raw sub-scores BEFORE corrections (uncontaminated for ML training) ===
+    # Note: temp_score inclut le cold wave bonus (intégré au facteur température)
     raw_sub_scores = {
         "score_temperature_raw": round(temp_score, 1),
         "score_budget_raw": round(budget_score, 1),
@@ -217,6 +224,7 @@ def predict_day(target_date: date, weather: dict | None = None,
         rte_s = _apply_factor_correction(rte_s, factor_corrections, "rte")
 
     # === Score composite pondere ===
+    # Fix audit ML #1 : cold wave intégré dans temp_score (plus de bonus hors-poids)
     base_score = (
         temp_score * w_temp
         + budget_score * w_budget
@@ -225,7 +233,7 @@ def predict_day(target_date: date, weather: dict | None = None,
         + cluster_score * w_cluster
         + rte_s * w_rte
     )
-    score_risque = min(100, base_score + cold_wave)
+    score_risque = min(100, base_score)
 
     # === Corrections contextuelles du journal d'apprentissage ===
     # (horizon, température, mois, jour de semaine — ajustements au score composite)
@@ -481,9 +489,11 @@ def _score_budget_v2(remaining: dict, d_left: int, target_date: date) -> float:
     blanc_pressure = _compute_budget_pressure(
         remaining["BLANC"], d_left, month,
         Config.MONTHLY_WHITE_PROFILE, Config.JOURS_BLANCS_TOTAL)
-    # Fix #26 : plafond releve a 64 pour que la pression BLANC couvre toute
-    # sa zone (35-65) sans deborder en zone ROUGE (>=65)
-    blanc_pressure = min(64, blanc_pressure)
+    # Fix audit ML #3 : plafond dynamique lie a SEUIL_ROUGE - 1.
+    # La pression BLANC ne doit jamais depasser le seuil ROUGE, sinon une forte
+    # urgence BLANC declencherait une prediction ROUGE (semantiquement faux).
+    # La pression ROUGE n'a pas de cap car haute pression ROUGE → ROUGE est correct.
+    blanc_pressure = min(Config.SEUIL_ROUGE - 1, blanc_pressure)
 
     # Le score global est le max des deux pressions
     return min(100, max(rouge_pressure, blanc_pressure))
@@ -611,16 +621,21 @@ def _score_clustering(target_date: date, forecasts: list[dict],
             score = 40
 
     # ML-7 : Saturation hebdomadaire — EDF place rarement 4+ rouges/semaine
+    # Fix audit ML #5 : seuils moins agressifs pour ne pas bloquer les vagues de froid
+    # EDF peut placer jusqu'a 5 jours rouges consecutifs (regle R4), donc 3 rouges
+    # dans une semaine est normal en hiver. Seul 4+ est vraiment inhabituel.
     if actuals_cache and score > 20:
         week_start = target_date - timedelta(days=target_date.weekday())
         reds_this_week = sum(
             1 for i in range(7)
             if actuals_cache.get((week_start + timedelta(days=i)).isoformat()) == "ROUGE"
         )
-        if reds_this_week >= 3:
-            score = max(10, int(score * 0.3))  # Forte attenuation
+        if reds_this_week >= 4:
+            score = max(10, int(score * 0.3))  # Très forte attenuation (4+ = rare)
+        elif reds_this_week >= 3:
+            score = int(score * 0.5)  # Attenuation moderee (3 = possible mais inhabituel)
         elif reds_this_week >= 2:
-            score = int(score * 0.7)  # Attenuation moderee
+            score = int(score * 0.8)  # Légère attenuation
 
     return score
 
@@ -686,17 +701,20 @@ def _compute_probabilities(score: float, remaining: dict) -> tuple[float, float,
     Fix #26 : softmax a 3 classes — chaque couleur a sa propre distribution
     independante, sans suppression artificielle de BLANC par ROUGE.
 
-    Centres : BLEU=15 (zone 0-35), BLANC=50 (zone 35-65), ROUGE=85 (zone 65-100).
-    Temperature k=0.08 pour des transitions progressives aux frontieres.
+    Fix audit ML #4 : centres et steepness configurables dans Config.
     """
     if remaining["ROUGE"] == 0 and remaining["BLANC"] == 0:
         return (0.0, 0.0, 1.0)  # Seul BLEU possible
 
-    # Distances signees aux centres de chaque zone
-    k = 0.08
-    d_bleu = -(score - 15)        # decroit quand score monte
-    d_blanc = -abs(score - 50)    # pic au centre, decroit symetriquement
-    d_rouge = score - 85          # croit quand score monte
+    # Distances signees aux centres de chaque zone (configurables)
+    k = Config.PROBA_STEEPNESS
+    c_bleu = Config.PROBA_CENTER_BLEU
+    c_blanc = Config.PROBA_CENTER_BLANC
+    c_rouge = Config.PROBA_CENTER_ROUGE
+
+    d_bleu = -(score - c_bleu)        # decroit quand score monte
+    d_blanc = -abs(score - c_blanc)   # pic au centre, decroit symetriquement
+    d_rouge = score - c_rouge          # croit quand score monte
 
     p_bleu = math.exp(k * d_bleu)
     p_blanc = math.exp(k * d_blanc)
@@ -859,18 +877,22 @@ def _apply_learning_corrections(score: float, target_date: date,
     # 5. Correction ciblee color_confusion — s'applique en fonction du score actuel
     # Ex: si on est dans la zone ROUGE (score >= SEUIL_ROUGE) et qu'on a un biais
     # ROUGE->BLEU, appliquer la correction qui baisse le score
+    # Fix audit ML #6 : facteur d'attenuation documente et parametrable
+    # A 0.5 pour eviter les oscillations (une correction pleine pourrait inverser
+    # la prediction, ce qui creerait le biais inverse au cycle suivant).
+    CONFUSION_ATTENUATION = 0.5
     confusion_corrections = learnings.get("color_confusion", {})
     if confusion_corrections:
         if score >= Config.SEUIL_ROUGE:
             # On va prédire ROUGE — appliquer les corrections des confusions ROUGE->X
             for key, corr in confusion_corrections.items():
                 if key.startswith("ROUGE->"):
-                    total_adj += corr * 0.5  # Atténué à 50% pour éviter surréaction
+                    total_adj += corr * CONFUSION_ATTENUATION
         elif score >= Config.SEUIL_BLANC:
             # On va prédire BLANC
             for key, corr in confusion_corrections.items():
                 if key.startswith("BLANC->"):
-                    total_adj += corr * 0.5
+                    total_adj += corr * CONFUSION_ATTENUATION
 
     # Plafonnement
     MAX_TOTAL = 15.0
