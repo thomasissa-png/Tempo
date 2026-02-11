@@ -525,29 +525,69 @@ async def api_predictions():
                    ORDER BY date ASC""",
                 (today_str, today_str)
             ).fetchall()
+
+            # Fix #33 : croiser avec les actuals (source de vérité EDF).
+            # Si une date a une couleur officielle dans actuals, elle écrase
+            # la prédiction — quels que soient les bugs de timing/cache/confirm.
+            actuals_map = {}
+            try:
+                actual_rows = conn.execute(
+                    """SELECT date, couleur_reelle FROM actuals
+                       WHERE date >= ? AND synthetic = 0""",
+                    (today_str,)
+                ).fetchall()
+                actuals_map = {r["date"]: r["couleur_reelle"] for r in actual_rows}
+            except Exception as e:
+                logger.warning(f"[API predictions] Erreur lecture actuals: {e}")
+
         except Exception as e:
             logger.error(f"[API predictions] Erreur DB: {e}")
             rows = []
+            actuals_map = {}
         finally:
             conn.close()
 
         if rows:
             predictions = []
             for r in rows:
-                pred = {
-                    "date": r["date"],
-                    "couleur_predite": r["couleur_predite"],
-                    "probabilite_bleu": r["probabilite_bleu"],
-                    "probabilite_blanc": r["probabilite_blanc"],
-                    "probabilite_rouge": r["probabilite_rouge"],
-                    "score_risque": r["score_risque"],
-                    "temp_min_prevue": r["temp_min_prevue"],
-                    "temp_max_prevue": r["temp_max_prevue"],
-                    "raison": r["raison"],
-                    "horizon": r["horizon"],
-                    "confirmed": bool(r["confirmed"]),
-                    "simulated": bool(r["simulated"]),
-                }
+                pred_date = r["date"]
+                actual_couleur = actuals_map.get(pred_date)
+
+                # Si actuals contient cette date, écraser avec la couleur officielle
+                if actual_couleur:
+                    couleur = actual_couleur
+                    p_r = 1.0 if couleur == "ROUGE" else 0.0
+                    p_b = 1.0 if couleur == "BLANC" else 0.0
+                    p_bl = 1.0 if couleur == "BLEU" else 0.0
+                    pred = {
+                        "date": pred_date,
+                        "couleur_predite": couleur,
+                        "probabilite_bleu": p_bl,
+                        "probabilite_blanc": p_b,
+                        "probabilite_rouge": p_r,
+                        "score_risque": r["score_risque"],
+                        "temp_min_prevue": r["temp_min_prevue"],
+                        "temp_max_prevue": r["temp_max_prevue"],
+                        "raison": "Couleur officielle EDF",
+                        "horizon": r["horizon"],
+                        "confirmed": True,
+                        "simulated": False,
+                    }
+                else:
+                    pred = {
+                        "date": pred_date,
+                        "couleur_predite": r["couleur_predite"],
+                        "probabilite_bleu": r["probabilite_bleu"],
+                        "probabilite_blanc": r["probabilite_blanc"],
+                        "probabilite_rouge": r["probabilite_rouge"],
+                        "score_risque": r["score_risque"],
+                        "temp_min_prevue": r["temp_min_prevue"],
+                        "temp_max_prevue": r["temp_max_prevue"],
+                        "raison": r["raison"],
+                        "horizon": r["horizon"],
+                        "confirmed": bool(r["confirmed"]),
+                        "simulated": bool(r["simulated"]),
+                    }
                 if r["couleur_precedente"]:
                     pred["couleur_precedente"] = r["couleur_precedente"]
                 predictions.append(pred)
