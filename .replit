@@ -2,5 +2,6 @@ run = "python main.py"
 entrypoint = "main.py"
 
 [deployment]
-run = ["sh", "-c", "python main.py"]
+build = ["pip", "install", "-r", "requirements.txt"]
+run = ["python", "main.py"]
 deploymentTarget = "cloudrun"
