@@ -474,6 +474,9 @@ def _score_budget_v2(remaining: dict, d_left: int, target_date: date) -> float:
 
     ML-1 : ajout signal BLANC (43 jours/saison ignores auparavant).
     ML-2 : fonctions continues (piecewise-linear) au lieu de step functions.
+    Fix audit ML #39 : la pression ROUGE utilise les jours eligibles (jusqu'au
+    31 mars) et non les jours restants jusqu'au 31 mai. Regle EDF R1 : les jours
+    rouges ne peuvent etre places qu'entre novembre et mars.
     """
     if d_left <= 0:
         return 0
@@ -481,8 +484,16 @@ def _score_budget_v2(remaining: dict, d_left: int, target_date: date) -> float:
     month = target_date.month
 
     # --- Pression ROUGE ---
+    # Fix audit ML #39 : deadline ROUGE = 31 mars (regle R1), pas 31 mai
+    if target_date.month <= 3:
+        red_deadline = date(target_date.year, 3, 31)
+    elif target_date.month >= 11:
+        red_deadline = date(target_date.year + 1, 3, 31)
+    else:
+        red_deadline = target_date  # hors saison rouge, 0 jours
+    red_d_left = max(0, (red_deadline - target_date).days)
     rouge_pressure = _compute_budget_pressure(
-        remaining["ROUGE"], d_left, month,
+        remaining["ROUGE"], red_d_left, month,
         Config.MONTHLY_RED_PROFILE, Config.JOURS_ROUGES_TOTAL)
 
     # --- Pression BLANC (ML-1 : signal manquant) ---
@@ -525,6 +536,10 @@ def _compute_budget_pressure(actual_remaining: int, d_left: int, month: int,
         score += _piecewise_linear(ratio, [
             (0.5, 0), (1.0, 10), (1.2, 20), (1.5, 35), (2.0, 50), (3.0, 60),
         ])
+    elif actual_remaining > 0:
+        # Fix audit ML #39 : aucun mois futur n'attend de jours, mais il en
+        # reste à placer → urgence maximale (tout doit être placé CE mois)
+        score += 60
 
     # Boost mensuel continu (ML-2)
     score += _piecewise_linear(expected_pct, [

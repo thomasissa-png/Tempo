@@ -77,16 +77,19 @@ class Config:
 
     # --- Profil mensuel de distribution des jours rouges ---
     # Base sur 20 saisons d'historique (% des 22 jours rouges par mois)
+    # Fix audit ML #39 : avril et mai mis a 0% car la regle EDF R1 interdit
+    # les jours rouges hors novembre-mars. Les 5% d'avril/mai sont redistribues
+    # proportionnellement sur les mois eligibles.
     MONTHLY_RED_PROFILE = {
         9: 0.00,   # Septembre : 0%
         10: 0.00,  # Octobre : 0%
         11: 0.07,  # Novembre : ~7% (1-2 jours)
-        12: 0.18,  # Decembre : ~18% (3-5 jours)
-        1: 0.35,   # Janvier : ~35% (6-9 jours)
-        2: 0.23,   # Fevrier : ~23% (4-6 jours)
-        3: 0.12,   # Mars : ~12% (1-3 jours)
-        4: 0.04,   # Avril : ~4% (0-1 jour)
-        5: 0.01,   # Mai : ~1% (0-1 jour)
+        12: 0.19,  # Decembre : ~19% (4-5 jours)
+        1: 0.37,   # Janvier : ~37% (7-9 jours)
+        2: 0.24,   # Fevrier : ~24% (4-6 jours)
+        3: 0.13,   # Mars : ~13% (2-3 jours)
+        4: 0.00,   # Avril : INTERDIT (regle R1)
+        5: 0.00,   # Mai : INTERDIT (regle R1)
     }
 
     # Fix ML-20 : validation somme du profil mensuel

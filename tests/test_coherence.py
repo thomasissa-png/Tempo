@@ -292,3 +292,38 @@ class TestStartupSequence:
         with open(os.path.join(ROOT, "app.py")) as f:
             source = f.read()
         assert "evaluate_missed_days" in source
+
+
+# ================================================================
+# 9. PROFILS MENSUELS COHÉRENTS AVEC LES CONTRAINTES EDF
+# ================================================================
+
+class TestProfileConstraintCoherence:
+    """Les profils mensuels doivent être cohérents avec les règles EDF."""
+
+    def test_red_profile_zero_outside_nov_march(self):
+        """ROUGE interdit hors nov-mars (regle R1) → profil doit être 0%."""
+        from config import Config
+        for month in [4, 5, 6, 7, 8, 9, 10]:
+            pct = Config.MONTHLY_RED_PROFILE.get(month, 0.0)
+            assert pct == 0.0, (
+                f"MONTHLY_RED_PROFILE[{month}] = {pct} mais la regle R1 "
+                f"interdit les jours rouges hors novembre-mars !"
+            )
+
+    def test_red_profile_sums_to_one(self):
+        from config import Config
+        total = sum(Config.MONTHLY_RED_PROFILE.values())
+        assert abs(total - 1.0) < 0.02, (
+            f"MONTHLY_RED_PROFILE somme = {total}, devrait etre ~1.0"
+        )
+
+    def test_red_urgency_uses_march_deadline(self):
+        """La pression ROUGE doit utiliser la deadline mars, pas mai."""
+        with open(os.path.join(ROOT, "predictor.py")) as f:
+            source = f.read()
+        # Vérifier que _score_budget_v2 calcule une deadline spécifique pour RED
+        assert "red_d_left" in source or "red_deadline" in source, (
+            "_score_budget_v2 n'a pas de deadline spécifique ROUGE !\n"
+            "L'urgence doit utiliser les jours jusqu'au 31 mars (R1), pas le 31 mai."
+        )
