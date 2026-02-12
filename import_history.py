@@ -1,26 +1,28 @@
 #!/usr/bin/env python3
-"""Import historique Tempo — couleurs EDF + températures historiques.
+"""Import historique Tempo — couleurs EDF + météo + consommation RTE.
 
 Usage (depuis le serveur ou en local, PAS depuis le sandbox Claude) :
     python import_history.py
 
 Ce script :
   1. Parse les fichiers iCal (jourstempo.fr) pour extraire les couleurs Tempo
-  2. Appelle l'API historique Open-Meteo Archive pour les 9 villes pondérées
+  2. Appelle l'API historique Open-Meteo Archive (données HORAIRES) pour les
+     9 villes pondérées : température, humidité, pression, vent
      (NB: les prévisions live utilisent Météo France AROME/ARPEGE, mais
       l'historique utilise Open-Meteo Archive car c'est la seule API
       gratuite offrant un accès simple aux observations passées)
-  3. Calcule la température nationale pondérée (identique au scoring live)
-  4. Stocke tout en base (actuals historiques + weather_history)
-  5. Lance un backtesting : predict_day() sur chaque date historique
-     comparé à la couleur réelle → table performance remplie
+  3. Agrège les données horaires en moyennes journalières pondérées
+  4. Récupère la consommation nationale RTE historique (API ODRE, gratuite)
+  5. Stocke tout en base (actuals + weather_cache)
+  6. Lance un backtesting : predict_day() sur chaque date historique
+     avec les vraies données météo + RTE → table performance remplie
 
 Prérequis :
   - Les fichiers .ics doivent être à la racine du projet
   - httpx installé (pip install httpx)
   - La base tempo.db doit exister (lancer l'app une fois au préalable)
 
-Durée estimée : ~2-3 minutes (appels Open-Meteo Archive en batch par saison).
+Durée estimée : ~3-5 minutes (appels Open-Meteo horaire + ODRE RTE).
 """
 
 import os
@@ -61,7 +63,14 @@ CITIES = Config.WEATHER_CITIES
 # Open-Meteo Historical Archive API (pour données passées uniquement)
 # Les prévisions live utilisent Météo France AROME/ARPEGE (voir weather_client.py)
 ARCHIVE_API_URL = "https://archive-api.open-meteo.com/v1/archive"
-DAILY_VARS = "temperature_2m_max,temperature_2m_min,wind_speed_10m_max"
+# Fix ML-backtest : données HORAIRES au lieu de daily pour obtenir
+# humidité, pression et vent (non disponibles en aggregats daily)
+HOURLY_VARS = "temperature_2m,relative_humidity_2m,pressure_msl,wind_speed_10m"
+
+# ODRE (Open Data Réseaux Énergies) — consommation nationale RTE
+# API gratuite sans authentification, données eco2mix consolidées
+ODRE_API_URL = "https://odre.opendatasoft.com/api/explore/v2.1/catalog/datasets"
+ODRE_DATASET = "eco2mix-national-cons-def"
 
 
 # ================================================================
@@ -166,13 +175,19 @@ def store_historical_actuals(colors: dict[str, str]) -> int:
 
 
 # ================================================================
-# ÉTAPE 3 : Fetch températures historiques Open-Meteo
+# ÉTAPE 3 : Fetch météo historique Open-Meteo (données horaires)
 # ================================================================
 
 async def fetch_historical_weather(start_date: date, end_date: date) -> dict[str, dict]:
-    """Fetch les températures historiques pour les 9 villes via Open-Meteo.
+    """Fetch les données météo horaires pour les 9 villes via Open-Meteo Archive.
 
-    Retourne {date_iso: {temp_min, temp_max, temp_moy, wind_speed}}
+    Utilise les données HORAIRES (pas daily) pour avoir accès à :
+    - temperature_2m → agrégé en min/max/moy journalier
+    - relative_humidity_2m → agrégé en moyenne journalière
+    - pressure_msl → agrégé en moyenne journalière
+    - wind_speed_10m → agrégé en max journalier
+
+    Retourne {date_iso: {temp_min, temp_max, temp_moy, wind_speed, humidity, pressure}}
     avec les moyennes pondérées nationales.
     """
     import httpx
@@ -185,22 +200,24 @@ async def fetch_historical_weather(start_date: date, end_date: date) -> dict[str
             "longitude": city["lon"],
             "start_date": start_date.isoformat(),
             "end_date": end_date.isoformat(),
-            "daily": DAILY_VARS,
+            "hourly": HOURLY_VARS,
             "timezone": "Europe/Paris",
         }
 
         for attempt in range(3):
             try:
-                async with httpx.AsyncClient(timeout=30) as client:
+                async with httpx.AsyncClient(timeout=60) as client:
                     resp = await client.get(ARCHIVE_API_URL, params=params)
                     resp.raise_for_status()
                     data = resp.json()
+                    # Agréger les données horaires en daily pour cette ville
+                    daily = _aggregate_hourly_to_daily(data.get("hourly", {}))
                     city_data[city["name"]] = {
                         "weight": city["weight"],
-                        "daily": data.get("daily", {}),
+                        "daily": daily,
                     }
                     logger.info(f"    {city['name']} OK "
-                                f"({len(data.get('daily', {}).get('time', []))} jours)")
+                                f"({len(daily)} jours agrégés depuis données horaires)")
                     break
             except Exception as e:
                 if attempt < 2:
@@ -221,49 +238,93 @@ async def fetch_historical_weather(start_date: date, end_date: date) -> dict[str
     return _merge_historical(city_data)
 
 
+def _aggregate_hourly_to_daily(hourly: dict) -> dict[str, dict]:
+    """Agrège les données horaires Open-Meteo en statistiques journalières.
+
+    Retourne {date_iso: {temp_min, temp_max, temp_moy, wind_max, humidity_moy, pressure_moy}}
+    """
+    times = hourly.get("time", [])
+    temps = hourly.get("temperature_2m", [])
+    humidities = hourly.get("relative_humidity_2m", [])
+    pressures = hourly.get("pressure_msl", [])
+    winds = hourly.get("wind_speed_10m", [])
+
+    # Grouper par jour
+    from collections import defaultdict
+    days = defaultdict(lambda: {"temps": [], "humids": [], "pressures": [], "winds": []})
+
+    for i, ts in enumerate(times):
+        # Format: "2024-01-15T00:00" → extraire la date
+        day_str = ts[:10]
+        if i < len(temps) and temps[i] is not None:
+            days[day_str]["temps"].append(temps[i])
+        if i < len(humidities) and humidities[i] is not None:
+            days[day_str]["humids"].append(humidities[i])
+        if i < len(pressures) and pressures[i] is not None:
+            days[day_str]["pressures"].append(pressures[i])
+        if i < len(winds) and winds[i] is not None:
+            days[day_str]["winds"].append(winds[i])
+
+    result = {}
+    for day_str, data in days.items():
+        if not data["temps"]:
+            continue
+        result[day_str] = {
+            "temp_min": min(data["temps"]),
+            "temp_max": max(data["temps"]),
+            "temp_moy": sum(data["temps"]) / len(data["temps"]),
+            "wind_max": max(data["winds"]) if data["winds"] else 10.0,
+            "humidity_moy": sum(data["humids"]) / len(data["humids"]) if data["humids"] else 70.0,
+            "pressure_moy": sum(data["pressures"]) / len(data["pressures"]) if data["pressures"] else None,
+        }
+
+    return result
+
+
 def _merge_historical(city_data: dict) -> dict[str, dict]:
     """Fusionne les données historiques de toutes les villes en moyennes pondérées."""
     # Collecter toutes les dates
     all_dates = set()
     for info in city_data.values():
-        times = info["daily"].get("time", [])
-        all_dates.update(times)
+        all_dates.update(info["daily"].keys())
 
     result = {}
     for day_str in sorted(all_dates):
         temp_min_w = 0.0
         temp_max_w = 0.0
+        temp_moy_w = 0.0
         wind_w = 0.0
+        humidity_w = 0.0
+        pressure_w = 0.0
         total_w = 0.0
+        pressure_total_w = 0.0
 
         for city_name, info in city_data.items():
             daily = info["daily"]
-            times = daily.get("time", [])
-            if day_str not in times:
+            if day_str not in daily:
                 continue
-            idx = times.index(day_str)
 
-            t_min_arr = daily.get("temperature_2m_min", [])
-            t_max_arr = daily.get("temperature_2m_max", [])
-            wind_arr = daily.get("wind_speed_10m_max", [])
-
-            t_min = t_min_arr[idx] if idx < len(t_min_arr) and t_min_arr[idx] is not None else 5.0
-            t_max = t_max_arr[idx] if idx < len(t_max_arr) and t_max_arr[idx] is not None else 10.0
-            wind = wind_arr[idx] if idx < len(wind_arr) and wind_arr[idx] is not None else 10.0
-
+            d = daily[day_str]
             w = info["weight"]
             total_w += w
-            temp_min_w += t_min * w
-            temp_max_w += t_max * w
-            wind_w += wind * w
+            temp_min_w += d["temp_min"] * w
+            temp_max_w += d["temp_max"] * w
+            temp_moy_w += d["temp_moy"] * w
+            wind_w += d["wind_max"] * w
+            humidity_w += d["humidity_moy"] * w
+            if d["pressure_moy"] is not None:
+                pressure_w += d["pressure_moy"] * w
+                pressure_total_w += w
 
         if total_w == 0:
             continue
 
         t_min = round(temp_min_w / total_w, 1)
         t_max = round(temp_max_w / total_w, 1)
-        t_moy = round((t_min + t_max) / 2, 1)
+        t_moy = round(temp_moy_w / total_w, 1)
         wind = round(wind_w / total_w, 1)
+        humidity = round(humidity_w / total_w, 1)
+        pressure = round(pressure_w / pressure_total_w, 1) if pressure_total_w > 0 else None
 
         result[day_str] = {
             "date": day_str,
@@ -271,10 +332,85 @@ def _merge_historical(city_data: dict) -> dict[str, dict]:
             "temp_max": t_max,
             "temp_moy": t_moy,
             "wind_speed": wind,
-            "humidity": 70.0,  # Estimée (Open-Meteo archive ne fournit pas l'humidité daily)
-            "pressure": None,
-            "description": "historique Open-Meteo",
+            "humidity": humidity,
+            "pressure": pressure,
+            "description": "historique Open-Meteo (horaire agrégé)",
         }
+
+    return result
+
+
+# ================================================================
+# ÉTAPE 3b : Fetch consommation RTE historique (ODRE)
+# ================================================================
+
+async def fetch_historical_rte(start_date: date, end_date: date) -> dict[str, float]:
+    """Fetch la consommation nationale journalière depuis l'API ODRE.
+
+    ODRE (Open Data Réseaux Énergies) fournit gratuitement les données
+    eco2mix consolidées sans authentification.
+
+    Retourne {date_iso: consommation_max_MW}
+    """
+    import httpx
+
+    result = {}
+    # L'API ODRE pagine par 100 records max, on doit itérer
+    # On récupère les données jour par jour (1 record = 30 min)
+    # → pour chaque jour on prend le max de consommation
+
+    # Découper en chunks de 3 mois pour limiter la taille des réponses
+    chunk_start = start_date
+    while chunk_start <= end_date:
+        chunk_end = min(chunk_start + timedelta(days=90), end_date)
+
+        offset = 0
+        chunk_data = {}
+        while True:
+            params = {
+                "where": (
+                    f"date_heure >= '{chunk_start.isoformat()}' "
+                    f"AND date_heure <= '{chunk_end.isoformat()}T23:59:59'"
+                ),
+                "select": "date_heure, consommation",
+                "order_by": "date_heure",
+                "limit": 100,
+                "offset": offset,
+            }
+
+            try:
+                async with httpx.AsyncClient(timeout=30) as client:
+                    url = f"{ODRE_API_URL}/{ODRE_DATASET}/records"
+                    resp = await client.get(url, params=params)
+                    resp.raise_for_status()
+                    data = resp.json()
+
+                    records = data.get("results", [])
+                    if not records:
+                        break
+
+                    for rec in records:
+                        dt_str = rec.get("date_heure", "")
+                        conso = rec.get("consommation")
+                        if not dt_str or conso is None:
+                            continue
+                        day = dt_str[:10]
+                        if day not in chunk_data or conso > chunk_data[day]:
+                            chunk_data[day] = conso
+
+                    # Si on a reçu moins que la limite, c'est la dernière page
+                    if len(records) < 100:
+                        break
+                    offset += 100
+
+            except Exception as e:
+                logger.warning(f"  ODRE RTE erreur (offset={offset}): {e}")
+                break
+
+        result.update(chunk_data)
+        logger.info(f"  RTE {chunk_start} → {chunk_end}: {len(chunk_data)} jours")
+        chunk_start = chunk_end + timedelta(days=1)
+        await asyncio.sleep(0.5)
 
     return result
 
@@ -310,11 +446,12 @@ def store_historical_weather(weather_data: dict[str, dict]) -> int:
 # ÉTAPE 4 : Backtesting — predict_day() sur données historiques
 # ================================================================
 
-def run_backtest(colors: dict[str, str], weather_data: dict[str, dict]):
+def run_backtest(colors: dict[str, str], weather_data: dict[str, dict],
+                 rte_data: dict[str, float] | None = None):
     """Pour chaque date historique, simule predict_day() et évalue la performance.
 
-    Utilise les températures réelles (Open-Meteo archive) au lieu des prévisions,
-    et compare avec la couleur EDF réelle.
+    Utilise les données réelles (Open-Meteo archive + RTE ODRE) au lieu des
+    prévisions, et compare avec la couleur EDF réelle.
 
     Stocke les résultats dans :
       - `performance` : évaluations pour analyze_error_patterns / get_accuracy
@@ -376,6 +513,12 @@ def run_backtest(colors: dict[str, str], weather_data: dict[str, dict]):
                 if d_str in colors:
                     actuals_cache[d_str] = colors[d_str]
 
+            # Calculer le score RTE si données disponibles
+            rte_score_dict = None
+            if rte_data and date_str in rte_data:
+                conso_mw = rte_data[date_str]
+                rte_score_dict = _compute_rte_score(conso_mw)
+
             # Prédire
             pred = predict_day(
                 target,
@@ -384,6 +527,7 @@ def run_backtest(colors: dict[str, str], weather_data: dict[str, dict]):
                 target_idx=target_idx,
                 remaining=remaining,
                 weights=weights,
+                rte_score=rte_score_dict,
                 _actuals_cache=actuals_cache,
             )
 
@@ -472,6 +616,35 @@ def run_backtest(colors: dict[str, str], weather_data: dict[str, dict]):
         logger.info(f"{'='*60}\n")
 
 
+def _compute_rte_score(conso_mw: float) -> dict:
+    """Convertit la consommation nationale (MW) en score RTE pour predict_day().
+
+    Utilise les mêmes seuils que le scoring live (config.py) :
+    - > 80 GW : risque très élevé (score 90-100)
+    - > 70 GW : risque élevé (score 70-90)
+    - > 60 GW : risque modéré (score 50-70)
+    - < 60 GW : faible risque (score 10-50)
+    """
+    from config import Config
+
+    if conso_mw >= Config.RTE_CONSO_SEUIL_CRITIQUE:
+        score = 90 + min(10, (conso_mw - Config.RTE_CONSO_SEUIL_CRITIQUE) / 2000 * 10)
+    elif conso_mw >= Config.RTE_CONSO_SEUIL_HAUT:
+        ratio = (conso_mw - Config.RTE_CONSO_SEUIL_HAUT) / (Config.RTE_CONSO_SEUIL_CRITIQUE - Config.RTE_CONSO_SEUIL_HAUT)
+        score = 70 + ratio * 20
+    elif conso_mw >= Config.RTE_CONSO_SEUIL_MOYEN:
+        ratio = (conso_mw - Config.RTE_CONSO_SEUIL_MOYEN) / (Config.RTE_CONSO_SEUIL_HAUT - Config.RTE_CONSO_SEUIL_MOYEN)
+        score = 50 + ratio * 20
+    else:
+        score = max(10, conso_mw / Config.RTE_CONSO_SEUIL_MOYEN * 50)
+
+    return {
+        "available": True,
+        "score": round(min(100, score)),
+        "peak_mw": int(conso_mw),
+    }
+
+
 def _estimate_remaining(target: date, colors: dict[str, str]) -> dict:
     """Estime les quotas restants à une date donnée dans l'historique.
 
@@ -558,7 +731,7 @@ async def main():
     init_db()
 
     # --- Étape 1 : Parser les fichiers iCal ---
-    logger.info("\n[1/4] Parsing des fichiers iCal...")
+    logger.info("\n[1/6] Parsing des fichiers iCal...")
     colors = load_all_ics()
     if not colors:
         logger.error("Aucune couleur trouvée dans les fichiers iCal !")
@@ -566,12 +739,13 @@ async def main():
     logger.info(f"  Total : {len(colors)} jours Tempo parsés")
 
     # --- Étape 2 : Stocker les couleurs en DB ---
-    logger.info("\n[2/4] Stockage des couleurs historiques en DB...")
+    logger.info("\n[2/6] Stockage des couleurs historiques en DB...")
     inserted = store_historical_actuals(colors)
     logger.info(f"  {inserted} nouvelles entrées ajoutées à la table actuals")
 
-    # --- Étape 3 : Fetch températures historiques ---
-    logger.info("\n[3/4] Fetch des températures historiques (Open-Meteo Archive)...")
+    # --- Étape 3 : Fetch météo historique (données horaires) ---
+    logger.info("\n[3/6] Fetch météo historique (Open-Meteo Archive, données horaires)...")
+    logger.info("  Variables : température, humidité, pression MSL, vent")
 
     # Déterminer la plage de dates
     all_dates = sorted(colors.keys())
@@ -597,7 +771,8 @@ async def main():
         logger.info(f"  Saison {label} ({s_start} → {s_end})...")
         weather = await fetch_historical_weather(s_start, s_end)
         all_weather.update(weather)
-        logger.info(f"  → {len(weather)} jours de météo récupérés")
+        logger.info(f"  → {len(weather)} jours de météo récupérés "
+                    f"(avec humidité + pression réelles)")
 
         # Pause entre les saisons
         await asyncio.sleep(1)
@@ -606,12 +781,28 @@ async def main():
     weather_inserted = store_historical_weather(all_weather)
     logger.info(f"  {weather_inserted} entrées météo stockées dans weather_cache")
 
-    # --- Étape 4 : Backtesting ---
-    logger.info("\n[4/5] Backtesting — predict_day() sur données historiques...")
-    run_backtest(colors, all_weather)
+    # --- Étape 4 : Fetch consommation RTE historique ---
+    logger.info("\n[4/6] Fetch consommation nationale RTE (ODRE eco2mix)...")
+    rte_data = {}
+    try:
+        rte_data = await fetch_historical_rte(start, end)
+        logger.info(f"  → {len(rte_data)} jours de consommation RTE récupérés")
+        if rte_data:
+            conso_values = list(rte_data.values())
+            logger.info(f"  Consommation : min={min(conso_values):.0f} MW, "
+                        f"max={max(conso_values):.0f} MW, "
+                        f"moy={sum(conso_values)/len(conso_values):.0f} MW")
+    except Exception as e:
+        logger.warning(f"  Impossible de récupérer les données RTE: {e}")
+        logger.warning("  Le backtest utilisera RTE=50 (neutre) par défaut")
 
-    # --- Étape 5 : Calibration initiale (analyse patterns + recalcul poids) ---
-    logger.info("\n[5/5] Calibration initiale sur l'historique complet...")
+    # --- Étape 5 : Backtesting ---
+    logger.info("\n[5/6] Backtesting — predict_day() sur données historiques...")
+    logger.info(f"  Données enrichies : météo={len(all_weather)} jours, RTE={len(rte_data)} jours")
+    run_backtest(colors, all_weather, rte_data=rte_data if rte_data else None)
+
+    # --- Étape 6 : Calibration initiale (analyse patterns + recalcul poids) ---
+    logger.info("\n[6/6] Calibration initiale sur l'historique complet...")
     run_initial_calibration(len(colors))
 
     elapsed = round(time.time() - start_time, 1)
