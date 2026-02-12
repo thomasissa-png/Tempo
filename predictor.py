@@ -302,9 +302,9 @@ def predict_day(target_date: date, weather: dict | None = None,
             score_risque, target_date, horizon_days, temp_moy, _learnings)
         learning_adjustment = score_risque - score_before
 
-    # === Score ML (GradientBoosting entraine sur 4 saisons) ===
-    # Le ML capture les patterns meteo de facon plus fine que le scoring
-    # manuel (82.4% accuracy vs 64.5%). Il est utilise comme :
+    # === Score ML (GradientBoosting entraine sur 7 saisons + RTE) ===
+    # Le ML utilise 33 features (meteo + temporel + RTE lag) pour capturer
+    # les patterns de facon plus fine que le scoring manuel. Utilise comme :
     #   1. Filet de securite ROUGE : si ML predit ROUGE et scoring hesite, → ROUGE
     #   2. Filtre faux positifs : si ML predit BLEU et scoring dit BLANC, → BLEU
     ml_result = None
@@ -336,8 +336,8 @@ def predict_day(target_date: date, weather: dict | None = None,
         couleur = "BLEU"
 
     # === Ensemble ML : ajustement de la decision ===
-    # Le ML a 82.4% accuracy sur 2 saisons de test — plus fiable que le
-    # scoring pour separer BLEU vs BLANC. On l'utilise pour :
+    # Le ML utilise des seuils de probabilite optimises pour maximiser le
+    # ROUGE recall. On l'utilise pour :
     if ml_result and ml_result.get("available"):
         ml_rouge = ml_result["score_rouge"]  # P(ROUGE) * 100
         ml_pred = ml_result["prediction"]

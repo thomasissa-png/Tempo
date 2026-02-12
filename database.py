@@ -1,4 +1,4 @@
-"""Gestion de la base de données SQLite — 9 tables.
+"""Gestion de la base de données SQLite — 10 tables.
 
 Tables :
   - predictions         : prédictions générées par l'algorithme (+ raw sub-scores v9)
@@ -10,6 +10,7 @@ Tables :
   - weights_history     : versions successives des poids (+ rollback v9)
   - weather_cache       : cache des prévisions météo (Fix #17)
   - learning_journal    : patterns d'erreurs et corrections (versioned v9)
+  - rte_daily           : données RTE eco2mix agrégées par jour (v15)
 
 Migrations :
   v3  — sub-scores, index UNIQUE
@@ -22,6 +23,7 @@ Migrations :
   v10 — purge des données météo simulées (predictions, weather_cache, performance)
   v11 — nettoyage apprentissage contaminé (corrections biaisées, reset poids)
   v12 — purge évaluations faussées (couleur_originale perdue par store_prediction)
+  v15 — table rte_daily (données RTE eco2mix agrégées par jour)
 """
 
 import sqlite3
@@ -678,6 +680,28 @@ def init_db():
             f"Migration v14 appliquee (poids v3.0, "
             f"{disabled} corrections desactivees)"
         )
+
+    if version < 15:
+        # Migration v15 — Table rte_daily pour features ML RTE
+        # Stocke les donnees de consommation/production RTE agreges par jour
+        # (conso peak/mean, nucleaire, eolien, solaire, gaz, hydraulique).
+        # Alimente les features LAG du modele ML (D-1, 3j, 7j).
+        conn.execute('''CREATE TABLE IF NOT EXISTS rte_daily (
+            date TEXT PRIMARY KEY,
+            conso_peak_mw REAL,
+            conso_mean_mw REAL,
+            prevision_j1_peak_mw REAL,
+            nucleaire_mean_mw REAL,
+            eolien_mean_mw REAL,
+            solaire_mean_mw REAL,
+            gaz_mean_mw REAL,
+            hydraulique_mean_mw REAL,
+            taux_co2_mean REAL,
+            conso_minus_prev REAL
+        )''')
+        conn.execute("PRAGMA user_version = 15")
+        conn.commit()
+        logger.info("Migration v15 appliquee (table rte_daily)")
 
     # Poids initiaux si vide
     existing = conn.execute("SELECT COUNT(*) as c FROM weights_history").fetchone()

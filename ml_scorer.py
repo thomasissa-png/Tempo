@@ -3,23 +3,24 @@
 Module autonome qui charge le modele entraine (ml_model.pkl) et fournit
 un score 0-100 base sur les probabilites du classifieur.
 
-Le modele a ete entraine sur 547 jours (saisons 2021-2024) et teste
-sur 438 jours (saisons 2024-2026) :
-  - Accuracy : 82.4%
-  - ROUGE F1 : 56.3%
-  - ROUGE recall : 66.7%
-  - ROUGE precision : 48.8%
+Le modele a ete entraine sur 1827 jours (saisons 2019-2026) et teste
+sur 530 jours (saison 2024-2026) :
+  - Accuracy : 83.4%
+  - ROUGE recall : 23.3%
+  - ROUGE precision : 43.8%
 
-Features utilisees (23) :
+Features utilisees (33) :
   - Temperatures : moy, min, max, moyennes 3j/7j, gradient, cold streak
   - Meteo : pression, humidite, vent
   - Temporel : mois (cyclique), jour semaine (cyclique), weekend, saison rouge
   - Historique : couleur veille, rouges/blancs 7 derniers jours
   - Budget : jours restants avant fin fenetre rouge
+  - RTE lag (J-1) : conso peak/mean, nucleaire, gaz, renouvelables, ratios
+  - RTE rolling : conso peak/mean 3j et 7j
 
-Integration : le score ML remplace les sub-scores temperature, gradient,
-clustering et pression dans le predictor, ces signaux etant deja captures
-de facon plus fine par le GBM.
+Integration : le score ML est utilise en ensemble avec le scoring
+classique dans le predictor. Il sert de filet de securite ROUGE et
+de filtre pour les faux positifs BLANC.
 """
 
 import logging
@@ -100,8 +101,16 @@ def compute_ml_score(
         p_blanc = float(proba[classes.index("BLANC")])
         p_bleu = float(proba[classes.index("BLEU")])
 
-        # Argmax prediction
-        pred = classes[int(np.argmax(proba))]
+        # Threshold-based prediction (from model metadata)
+        rouge_thresh = (_METADATA or {}).get("rouge_threshold", 0.10)
+        blanc_thresh = (_METADATA or {}).get("blanc_threshold", 0.20)
+
+        if p_rouge >= rouge_thresh:
+            pred = "ROUGE"
+        elif p_blanc >= blanc_thresh and p_blanc > p_bleu:
+            pred = "BLANC"
+        else:
+            pred = "BLEU"
 
         return {
             "available": True,
@@ -116,6 +125,38 @@ def compute_ml_score(
                 "score_bleu": 50, "prediction": "BLEU"}
 
 
+def _get_rte_lag(target_date: date, lag_days: int = 1, window: int = 1) -> list[dict]:
+    """Recupere les donnees RTE des jours precedents depuis rte_daily."""
+    try:
+        from database import get_db
+        conn = get_db()
+        try:
+            results = []
+            for k in range(lag_days, lag_days + window):
+                d = (target_date - timedelta(days=k)).isoformat()
+                row = conn.execute(
+                    """SELECT conso_peak_mw, conso_mean_mw, nucleaire_mean_mw,
+                              eolien_mean_mw, solaire_mean_mw, gaz_mean_mw,
+                              hydraulique_mean_mw
+                       FROM rte_daily WHERE date = ?""", (d,)
+                ).fetchone()
+                if row and row["conso_peak_mw"] is not None:
+                    results.append({
+                        "conso_peak": row["conso_peak_mw"],
+                        "conso_mean": row["conso_mean_mw"] or 50000,
+                        "nucleaire": row["nucleaire_mean_mw"] or 0,
+                        "eolien": row["eolien_mean_mw"] or 0,
+                        "solaire": row["solaire_mean_mw"] or 0,
+                        "gaz": row["gaz_mean_mw"] or 0,
+                        "hydraulique": row["hydraulique_mean_mw"] or 0,
+                    })
+            return results
+        finally:
+            conn.close()
+    except Exception:
+        return []
+
+
 def _build_features(
     weather: dict,
     target_date: date,
@@ -123,7 +164,7 @@ def _build_features(
     target_idx: int,
     actuals_cache: dict[str, str] | None,
 ) -> list[float]:
-    """Construit le vecteur de features pour le modele."""
+    """Construit le vecteur de 33 features pour le modele."""
     month = target_date.month
     dow = target_date.weekday()
 
@@ -212,6 +253,28 @@ def _build_features(
     # Temperature * pressure interaction
     temp_x_pressure = temp_moy * (pressure - 1013) / 10
 
+    # RTE lag features (D-1 and rolling averages)
+    rte_d1 = _get_rte_lag(target_date, 1, 1)
+    rte_3d = _get_rte_lag(target_date, 1, 3)
+    rte_7d = _get_rte_lag(target_date, 1, 7)
+
+    has_rte = 1.0 if rte_d1 else 0.0
+
+    if rte_d1:
+        r = rte_d1[0]
+        cp_d1 = r["conso_peak"] / 10000
+        cm_d1 = r["conso_mean"] / 10000
+        nuc_d1 = r["nucleaire"] / 10000
+        gaz_d1 = r["gaz"] / 10000
+        renew_d1 = (r["eolien"] + r["solaire"] + r["hydraulique"]) / 10000
+        nuc_ratio = r["nucleaire"] / max(r["conso_mean"], 1)
+    else:
+        cp_d1 = cm_d1 = nuc_d1 = gaz_d1 = renew_d1 = nuc_ratio = 0.0
+
+    cp_3d = (sum(r["conso_peak"] for r in rte_3d) / len(rte_3d) / 10000) if rte_3d else 0
+    cm_3d = (sum(r["conso_mean"] for r in rte_3d) / len(rte_3d) / 10000) if rte_3d else 0
+    cp_7d = (sum(r["conso_peak"] for r in rte_7d) / len(rte_7d) / 10000) if rte_7d else 0
+
     return [
         temp_moy, temp_min, temp_max,
         pressure, humidity, wind,
@@ -225,4 +288,9 @@ def _build_features(
         reds_7, whites_7,
         days_to_red_end,
         temp_x_pressure,
+        # RTE lag features (10 features)
+        cp_d1, cm_d1,
+        cp_3d, cm_3d, cp_7d,
+        nuc_d1, gaz_d1, renew_d1,
+        nuc_ratio, has_rte,
     ]
