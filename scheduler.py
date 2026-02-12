@@ -207,7 +207,12 @@ async def _refresh_predictions(trigger: str, send_sms: bool = False) -> int:
     # 3. Prédictions (avec vigilance grand froid/neige-verglas)
     predictions = predict_range(forecasts, rte_score=rte_score, vigilance=vigilance)
 
-    # 4. Stocker, détecter les changements
+    # 4. Stocker les previsions meteo dans weather_cache (audit ML fev 2026)
+    # Le cache alimente l'analyse de performance (temperature reelle vs couleur)
+    # et le learning journal. Sans ca, pressure=0 et temp_min=NULL dans les stats.
+    _store_weather_cache(forecasts)
+
+    # 5. Stocker predictions, détecter les changements
     changes = []
     for pred in predictions:
         horizon = pred.get("horizon", "J-?")
@@ -233,6 +238,37 @@ async def _refresh_predictions(trigger: str, send_sms: bool = False) -> int:
 
     invalidate_predictions_cache()
     return len(predictions)
+
+
+def _store_weather_cache(forecasts: list[dict]) -> None:
+    """Stocke les previsions meteo dans weather_cache pour l'analyse ML.
+
+    Audit ML fev 2026 : le weather_cache n'etait plus alimente apres la
+    migration vers Meteo France, privant le learning journal de temperature
+    reelle et de pression atmospherique (tout etait 0 ou NULL).
+    """
+    from database import get_db
+    conn = get_db()
+    try:
+        now_iso = datetime.now().isoformat()
+        for f in forecasts:
+            d = f.get("date")
+            if not d:
+                continue
+            conn.execute(
+                "INSERT OR REPLACE INTO weather_cache "
+                "(date, temp_min, temp_max, temp_moy, pressure, humidity, "
+                " wind_speed, description, fetched_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (d, f.get("temp_min"), f.get("temp_max"), f.get("temp_moy"),
+                 f.get("pressure"), f.get("humidity"), f.get("wind_speed"),
+                 f.get("source", "api"), now_iso),
+            )
+        conn.commit()
+    except Exception as e:
+        logger.debug(f"[Weather Cache] Erreur stockage: {e}")
+    finally:
+        conn.close()
 
 
 # ================================================================

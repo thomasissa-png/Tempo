@@ -646,6 +646,39 @@ def init_db():
         conn.commit()
         logger.info("Migration v13 appliquee (ON DELETE CASCADE sur sms_logs)")
 
+    if version < 14:
+        # Migration v14 — Audit ML fev 2026 : recalibrage poids v3.0
+        # Les poids v2.2 sur-predisaient massivement BLANC (210 faux BLANC).
+        # Temperature passe de 27% a 40%, budget de 20% a 12%.
+        # Le seuil ROUGE est desormais dynamique (abaisse par temps froid).
+        # On reinitialise les poids et desactive les corrections d'apprentissage
+        # basees sur l'ancien systeme de scoring.
+        conn.execute(
+            """INSERT INTO weights_history
+               (date_update, weights_json, precision_avant, precision_apres,
+                nb_predictions, commentaire, timestamp_update)
+               VALUES (?, ?, 0, 0, 0, ?, ?)""",
+            (datetime.now().strftime("%Y-%m-%d"),
+             json.dumps(Config.DEFAULT_WEIGHTS),
+             "Reset v14: audit ML — poids v3.0 (temp 40%, budget 12%, seuil dynamique)",
+             datetime.now().isoformat()),
+        )
+
+        # Desactiver les anciennes corrections (calibrees sur poids v2.2)
+        cursor = conn.execute(
+            "UPDATE learning_journal SET active = 0, "
+            "disabled_at = ? WHERE active = 1",
+            (datetime.now().isoformat(),)
+        )
+        disabled = cursor.rowcount
+
+        conn.execute("PRAGMA user_version = 14")
+        conn.commit()
+        logger.info(
+            f"Migration v14 appliquee (poids v3.0, "
+            f"{disabled} corrections desactivees)"
+        )
+
     # Poids initiaux si vide
     existing = conn.execute("SELECT COUNT(*) as c FROM weights_history").fetchone()
     if existing["c"] == 0:

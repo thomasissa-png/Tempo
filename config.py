@@ -68,19 +68,19 @@ class Config:
     # Les jours bleus = total saison - rouges - blancs (varie si annee bissextile)
     # Calculé dynamiquement dans tempo_client.get_blue_days_total()
 
-    # --- Poids initiaux algorithme v2.2 (Meteo France) ---
-    # temperature (nationale ponderee) + budget + jour semaine/feries
-    # + gradient thermique + clustering + consommation RTE + pression atmo
-    # Phase 2 : ajout pression atmospherique (anticyclone hivernal)
-    # Redistribution : temperature 30→27, gradient 15→13, pour faire place a pression (7)
+    # --- Poids initiaux algorithme v3.0 (recalibres audit ML fev 2026) ---
+    # Audit : temperature etait le SEUL signal discriminant (ecart 53pts BLEU→ROUGE)
+    # mais ne pesait que 27%. Budget (20%) sur-predisait massivement BLANC
+    # (210 faux BLANC = 30% des evaluations). Gradient quasi inutile (3pts d'ecart).
+    # RTE inactif (toujours 50) tant que credentials non configurees.
     DEFAULT_WEIGHTS = {
-        "temperature": 0.27,
-        "jours_restants": 0.20,
-        "jour_semaine": 0.10,
-        "gradient_thermique": 0.13,
-        "clustering": 0.10,
-        "consommation_rte": 0.13,
-        "pression": 0.07,
+        "temperature": 0.40,        # +13 : signal dominant (seul ecart > 50pts)
+        "jours_restants": 0.12,     # -8  : reduire sur-prediction BLANC
+        "jour_semaine": 0.10,       # =   : discrimine weekends/feries
+        "gradient_thermique": 0.08, # -5  : ecart 3pts entre couleurs = bruit
+        "clustering": 0.12,         # +2  : signal modere (40.6 vs 20.5)
+        "consommation_rte": 0.10,   # -3  : reactiver quand RTE configure
+        "pression": 0.08,           # +1  : signal conditionnel (anticyclone+froid)
     }
 
     # --- Profil mensuel de distribution des jours rouges ---
@@ -122,8 +122,19 @@ class Config:
         f"MONTHLY_WHITE_PROFILE doit sommer a ~1.0, got {sum(MONTHLY_WHITE_PROFILE.values())}"
 
     # --- Seuils de scoring ---
-    SEUIL_ROUGE = 65   # abaisse de 70 a 65 pour meilleur recall
+    SEUIL_ROUGE = 65   # seuil standard (abaisse dynamiquement si froid — voir predictor)
     SEUIL_BLANC = 35   # abaisse de 40 a 35
+
+    # --- Seuil ROUGE dynamique (audit ML fev 2026) ---
+    # 22 rouges reels avaient un score entre 45-65 (sous SEUIL_ROUGE).
+    # Le seuil est abaisse conditionnellement quand la temperature est basse
+    # ET que le budget montre une pression. Cela ameliore le recall ROUGE
+    # sans augmenter les faux positifs en periodes douces.
+    SEUIL_ROUGE_FROID = 55       # seuil quand temp < SEUIL_ROUGE_TEMP_TRIGGER
+    SEUIL_ROUGE_TRES_FROID = 50  # seuil quand temp < SEUIL_ROUGE_TEMP_TRES_FROID
+    SEUIL_ROUGE_TEMP_TRIGGER = 7     # degres C : active le seuil abaisse
+    SEUIL_ROUGE_TEMP_TRES_FROID = 4  # degres C : active le seuil tres bas
+    SEUIL_ROUGE_BUDGET_MIN = 50      # budget_score minimum pour activer le seuil abaisse
 
     # --- Probabilites softmax (centres et steepness) ---
     # Fix audit ML #4 : parametres extraits pour calibration future
