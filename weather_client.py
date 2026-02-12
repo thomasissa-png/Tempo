@@ -1,19 +1,18 @@
-"""Client Meteo France — meteo nationale ponderee sur 9 villes.
+"""Client Meteo France + fallback Open-Meteo — meteo nationale ponderee sur 9 villes.
 
-Utilise les API publiques Meteo France via la librairie meteole :
+Source principale : Meteo France via la librairie meteole :
   - AROME : haute resolution (1.3 km), previsions jusqu'a 51h (J a J+2)
   - ARPEGE : modele global (10 km Europe), previsions jusqu'a 114h (J+2 a J+5)
   - Vigilance : alertes departementales (grand froid, neige-verglas, etc.)
 
+Fallback automatique : Open-Meteo Forecast API (gratuit, sans cle) :
+  - Active quand Meteo France est indisponible (circuit breaker, cle absente, erreur)
+  - Memes variables horaires (temperature, humidite, pression, vent)
+  - Memes 9 villes ponderees, meme format de sortie
+  - Source marquee "open-meteo" pour attenuation de confiance dans le scoring
+
 Calcule une moyenne ponderee par population/parc chauffage electrique
 a partir des previsions de 9 villes representatives de la France.
-
-Ameliorations par rapport a Open-Meteo :
-  - Humidite relative REELLE (plus d'estimation depuis codes WMO)
-  - Pression atmospherique de surface disponible
-  - Resolution 20x superieure pour J-1/J-2 (AROME 1.3 km vs ~25 km)
-  - Donnees directes du producteur (pas de proxy intermediaire)
-  - Signal vigilance grand froid pour bonus scoring
 """
 
 import httpx
@@ -86,35 +85,56 @@ _INDICATORS = {
 _MF_API_BASE = "https://public-api.meteofrance.fr/public"
 _VIGILANCE_URL = f"{_MF_API_BASE}/DPVigilance/v1/cartevigilance/encours"
 
+# Open-Meteo Forecast API — fallback gratuit sans cle
+_OPENMETEO_FORECAST_URL = "https://api.open-meteo.com/v1/forecast"
+_OPENMETEO_HOURLY = "temperature_2m,relative_humidity_2m,pressure_msl,wind_speed_10m"
+_openmeteo_breaker = _CircuitBreaker(threshold=5, reset_timeout=300)
+
 
 # ================================================================
 # FETCH MULTI-VILLES (Meteo France AROME + ARPEGE via meteole)
 # ================================================================
 
 async def fetch_forecast() -> list[dict]:
-    """Previsions jusqu'a 5 jours, moyenne ponderee sur 9 villes via Meteo France.
+    """Previsions jusqu'a 5 jours, moyenne ponderee sur 9 villes.
 
     Strategie en cascade :
-      - AROME (1.3 km) pour J a J+2 (~51h) — meilleure precision
-      - ARPEGE (10 km) pour J+2 a J+5 (~114h) — portee etendue
+      1. Meteo France (AROME 1.3 km + ARPEGE 10 km) — source principale
+      2. Open-Meteo Forecast API — fallback gratuit si Meteo France echoue
 
-    Retourne une liste vide si Meteo France est injoignable.
-    On ne genere PAS de donnees simulees : mieux vaut ne pas predire
+    Ne genere PAS de donnees simulees : mieux vaut ne pas predire
     que de predire sur du bruit.
     """
+    # --- Tentative 1 : Meteo France ---
+    result = await _fetch_meteofrance()
+
+    if result:
+        return result
+
+    # --- Tentative 2 : Fallback Open-Meteo ---
+    logger.warning("[Meteo] Meteo France indisponible — tentative fallback Open-Meteo")
+    result = await _fetch_openmeteo_fallback()
+
+    if result:
+        logger.info(f"[Meteo] Fallback Open-Meteo OK — {len(result)} jours recuperes")
+        return result
+
+    logger.error("[Meteo] Aucune source meteo disponible — pas de predictions ce cycle")
+    return []
+
+
+async def _fetch_meteofrance() -> list[dict]:
+    """Fetch via Meteo France AROME + ARPEGE. Retourne [] si echec."""
     api_key = Config.METEOFRANCE_API_KEY
     if not api_key:
-        logger.error("[Meteo] METEOFRANCE_API_KEY non configuree — pas de previsions")
+        logger.warning("[Meteo] METEOFRANCE_API_KEY non configuree")
         return []
 
-    # Fix audit DB : circuit breaker pour eviter les cascades d'echecs
     if _meteo_breaker.is_open:
-        logger.warning("[Meteo] Circuit breaker OPEN — skip fetch Meteo France")
+        logger.warning("[Meteo] Circuit breaker Meteo France OPEN — skip")
         return []
 
     try:
-        # meteole est synchrone (requests) — on le lance dans un thread pool
-        # Fix audit DB : timeout 120s pour eviter un blocage indefini
         city_forecasts = await asyncio.wait_for(
             asyncio.to_thread(_fetch_all_cities_sync, api_key),
             timeout=120,
@@ -126,7 +146,6 @@ async def fetch_forecast() -> list[dict]:
 
     if not city_forecasts:
         _meteo_breaker.record_failure()
-        logger.warning("[Meteo] Meteo France indisponible — pas de predictions ce cycle")
         return []
 
     _meteo_breaker.record_success()
@@ -134,6 +153,8 @@ async def fetch_forecast() -> list[dict]:
 
     for day in result:
         day["forecast_quality"] = "api"
+        if "source" not in day:
+            day["source"] = "arome"
 
     return result
 
@@ -463,6 +484,121 @@ def _infer_description(humidity: float, wind_speed: float, temp_moy: float) -> s
     if humidity <= 50:
         return "Ciel degagé"
     return "Partiellement nuageux"
+
+
+# ================================================================
+# FALLBACK OPEN-METEO (gratuit, sans cle API)
+# ================================================================
+
+async def _fetch_openmeteo_fallback() -> list[dict]:
+    """Fallback : previsions via Open-Meteo Forecast API (gratuit, sans cle).
+
+    Memes 9 villes ponderees, memes variables horaires, meme format de sortie.
+    Source marquee "open-meteo" pour attenuation de confiance dans le scoring.
+    """
+    if _openmeteo_breaker.is_open:
+        logger.debug("[Meteo] Circuit breaker Open-Meteo OPEN — skip")
+        return []
+
+    city_forecasts = {}
+
+    for city in Config.WEATHER_CITIES:
+        try:
+            daily = await _fetch_openmeteo_city(city)
+            if daily:
+                city_forecasts[city["name"]] = daily
+        except Exception as e:
+            logger.debug(f"[Meteo] Open-Meteo {city['name']}: {e}")
+
+        await asyncio.sleep(0.2)  # Rate limit politesse
+
+    if not city_forecasts:
+        _openmeteo_breaker.record_failure()
+        logger.warning("[Meteo] Fallback Open-Meteo : aucune ville n'a repondu")
+        return []
+
+    _openmeteo_breaker.record_success()
+    logger.info(
+        f"[Meteo] Open-Meteo fallback: {len(city_forecasts)}/"
+        f"{len(Config.WEATHER_CITIES)} villes OK"
+    )
+
+    # Fusionner avec le meme merge que Meteo France
+    result = _merge_city_forecasts(city_forecasts)
+
+    for day in result:
+        day["source"] = "open-meteo"
+        day["forecast_quality"] = "api"
+
+    return result
+
+
+async def _fetch_openmeteo_city(city: dict) -> list[dict] | None:
+    """Fetch previsions horaires Open-Meteo pour une ville, agrege en daily."""
+    params = {
+        "latitude": city["lat"],
+        "longitude": city["lon"],
+        "hourly": _OPENMETEO_HOURLY,
+        "timezone": "Europe/Paris",
+        "forecast_days": 6,
+    }
+
+    async with httpx.AsyncClient(timeout=20) as client:
+        resp = await client.get(_OPENMETEO_FORECAST_URL, params=params)
+        resp.raise_for_status()
+        data = resp.json()
+
+    hourly = data.get("hourly", {})
+    times = hourly.get("time", [])
+    temps = hourly.get("temperature_2m", [])
+    humidities = hourly.get("relative_humidity_2m", [])
+    pressures = hourly.get("pressure_msl", [])
+    winds = hourly.get("wind_speed_10m", [])
+
+    if not times or not temps:
+        return None
+
+    # Grouper par jour
+    from collections import defaultdict
+    days = defaultdict(lambda: {"temps": [], "humids": [], "pressures": [], "winds": []})
+
+    for i, ts in enumerate(times):
+        day_str = ts[:10]
+        if i < len(temps) and temps[i] is not None:
+            days[day_str]["temps"].append(temps[i])
+        if i < len(humidities) and humidities[i] is not None:
+            days[day_str]["humids"].append(humidities[i])
+        if i < len(pressures) and pressures[i] is not None:
+            days[day_str]["pressures"].append(pressures[i])
+        if i < len(winds) and winds[i] is not None:
+            days[day_str]["winds"].append(winds[i])
+
+    result = []
+    for day_str in sorted(days.keys()):
+        d = days[day_str]
+        if not d["temps"]:
+            continue
+
+        temp_min = round(min(d["temps"]), 1)
+        temp_max = round(max(d["temps"]), 1)
+        temp_moy = round(sum(d["temps"]) / len(d["temps"]), 1)
+        humidity = round(sum(d["humids"]) / len(d["humids"]), 1) if d["humids"] else 50.0
+        wind_speed = round(max(d["winds"]), 1) if d["winds"] else 10.0  # deja en km/h
+        pressure = round(sum(d["pressures"]) / len(d["pressures"]), 1) if d["pressures"] else None
+
+        result.append({
+            "date": day_str,
+            "temp_min": temp_min,
+            "temp_max": temp_max,
+            "temp_moy": temp_moy,
+            "humidity": humidity,
+            "wind_speed": wind_speed,
+            "pressure": pressure,
+            "description": _infer_description(humidity, wind_speed, temp_moy),
+            "source": "open-meteo",
+        })
+
+    return result
 
 
 # ================================================================

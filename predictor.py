@@ -147,6 +147,7 @@ _PRESSURE_SCORE_POINTS = [
 _SOURCE_CONFIDENCE = {
     "arome": 1.0,    # Haute resolution 1.3 km — confiance maximale
     "arpege": 0.85,  # Resolution 10 km — legere attenuation
+    "open-meteo": 0.80,  # Fallback ~25 km — attenuation supplementaire
 }
 
 
