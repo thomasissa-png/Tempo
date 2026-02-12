@@ -123,12 +123,14 @@ class TestTemperatureScoring:
 class TestDebutSaison:
     """Novembre : peu de rouges historiquement (~7%). Seul grand froid = rouge."""
 
-    def test_nov_froid_modere_pas_rouge(self):
-        """Novembre, 22 rouges restants, 3°C → pas ROUGE (pas d'urgence)."""
-        r = predict(date(2025, 11, 18), temp_moy=3.0,  # mardi
+    def test_nov_froid_modere_score_raisonnable(self):
+        """Novembre, 22 rouges restants, 8°C → pas ROUGE (douceur relative).
+        Audit ML v3.0 : 3°C en nov est un candidat ROUGE valide (seuil dynamique).
+        A 8°C le seuil dynamique ne s'active pas (>= 7°C)."""
+        r = predict(date(2025, 11, 18), temp_moy=8.0,  # mardi
                     remaining={"ROUGE": 22, "BLANC": 43, "BLEU": 240})
         assert r["couleur_predite"] != "ROUGE", (
-            f"Novembre début saison + 3°C ne devrait pas être ROUGE "
+            f"Novembre début saison + 8°C ne devrait pas être ROUGE "
             f"(score={r['score_risque']})"
         )
 

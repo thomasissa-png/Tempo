@@ -302,10 +302,23 @@ def predict_day(target_date: date, weather: dict | None = None,
             score_risque, target_date, horizon_days, temp_moy, _learnings)
         learning_adjustment = score_risque - score_before
 
-    # === Determiner la couleur predite (seuil ROUGE dynamique audit ML) ===
-    # Audit fev 2026 : 22 rouges reels avaient un score 45-65, tous rates car
-    # sous SEUIL_ROUGE=65. On abaisse le seuil quand la temperature est basse
-    # ET que le budget montre une pression (evite les faux positifs en douceur).
+    # === Score ML (GradientBoosting entraine sur 4 saisons) ===
+    # Le ML capture les patterns meteo de facon plus fine que le scoring
+    # manuel (82.4% accuracy vs 64.5%). Il est utilise comme :
+    #   1. Filet de securite ROUGE : si ML predit ROUGE et scoring hesite, → ROUGE
+    #   2. Filtre faux positifs : si ML predit BLEU et scoring dit BLANC, → BLEU
+    ml_result = None
+    try:
+        from ml_scorer import compute_ml_score, ml_score_available
+        if ml_score_available() and weather:
+            ml_result = compute_ml_score(
+                weather, target_date, forecasts or [],
+                target_idx, _actuals_cache)
+    except Exception:
+        pass  # ML indisponible = on utilise le scoring seul
+
+    # === Determiner la couleur predite (ensemble scoring + ML) ===
+    # Seuil ROUGE dynamique (audit ML fev 2026)
     seuil_rouge_effectif = Config.SEUIL_ROUGE
     if (temp_moy < Config.SEUIL_ROUGE_TEMP_TRES_FROID
             and budget_score >= Config.SEUIL_ROUGE_BUDGET_MIN):
@@ -314,12 +327,47 @@ def predict_day(target_date: date, weather: dict | None = None,
             and budget_score >= Config.SEUIL_ROUGE_BUDGET_MIN):
         seuil_rouge_effectif = Config.SEUIL_ROUGE_FROID
 
+    # Decision scoring classique
     if score_risque >= seuil_rouge_effectif and remaining["ROUGE"] > 0:
         couleur = "ROUGE"
     elif score_risque >= Config.SEUIL_BLANC and remaining["BLANC"] > 0:
         couleur = "BLANC"
     else:
         couleur = "BLEU"
+
+    # === Ensemble ML : ajustement de la decision ===
+    # Le ML a 82.4% accuracy sur 2 saisons de test — plus fiable que le
+    # scoring pour separer BLEU vs BLANC. On l'utilise pour :
+    if ml_result and ml_result.get("available"):
+        ml_rouge = ml_result["score_rouge"]  # P(ROUGE) * 100
+        ml_pred = ml_result["prediction"]
+
+        # 1. Filet de securite ROUGE : ML dit ROUGE + scoring >= BLANC → ROUGE
+        #    Garde thermique : temp < 8C (les rouges reels sont quasi tous < 8C)
+        #    et en saison rouge (nov-mars). Evite les faux positifs en douceur.
+        if (ml_pred == "ROUGE" and couleur != "ROUGE"
+                and remaining["ROUGE"] > 0
+                and score_risque >= Config.SEUIL_BLANC
+                and temp_moy < 8
+                and (target_date.month >= 11 or target_date.month <= 3)):
+            couleur = "ROUGE"
+            raison_ml = " · ML:ROUGE"
+
+        # 2. Confirmation ROUGE : si scoring dit ROUGE et ML aussi, confiance haute
+        elif couleur == "ROUGE" and ml_pred == "ROUGE":
+            raison_ml = " · ML:confirme"
+
+        # 3. Filtre faux BLANC : ML dit BLEU + scoring dit BLANC + ML P(rouge)<5%
+        #    Reduit les faux BLANC du scoring quand le ML est tres confiant BLEU
+        elif (couleur == "BLANC" and ml_pred == "BLEU" and ml_rouge < 5
+              and score_risque < Config.SEUIL_ROUGE):
+            couleur = "BLEU"
+            raison_ml = " · ML:BLEU"
+
+        else:
+            raison_ml = ""
+    else:
+        raison_ml = ""
 
     # === Fix #29 : contraintes dures EDF (non outrepassables par le scoring) ===
     # Regles officielles EDF appliquees APRES le scoring pour garantir la conformite.
@@ -374,6 +422,10 @@ def predict_day(target_date: date, weather: dict | None = None,
         sign = "+" if learning_adjustment > 0 else ""
         raison += f" · Corr. apprentissage ({sign}{learning_adjustment:.0f}pts)"
 
+    # Note ML si le ML a influence la decision
+    if raison_ml:
+        raison += raison_ml
+
     # Sub-scores pour stockage ML — valeurs après correction par facteur
     sub_scores = {
         "score_temperature": round(temp_score, 1),
@@ -384,6 +436,12 @@ def predict_day(target_date: date, weather: dict | None = None,
         "score_rte": round(rte_s, 1),
         "score_pressure": round(pressure_score, 1),
     }
+    # ML model scores
+    if ml_result and ml_result.get("available"):
+        sub_scores["score_ml_rouge"] = ml_result["score_rouge"]
+        sub_scores["score_ml_blanc"] = ml_result["score_blanc"]
+        sub_scores["score_ml_bleu"] = ml_result["score_bleu"]
+        sub_scores["ml_prediction"] = ml_result["prediction"]
     # C-1: Include raw sub-scores for uncontaminated ML training
     sub_scores.update(raw_sub_scores)
 
