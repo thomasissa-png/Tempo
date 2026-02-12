@@ -249,6 +249,59 @@ async def get_consumption_score() -> dict:
     return {
         "score": max(0, min(100, score)),
         "peak_mw": conso["peak_mw"] if conso else None,
+        "mean_mw": conso["mean_mw"] if conso else None,
         "nuke_pct": nuke_pct,
+        "nuke_mw": nuke["available_mw"] if nuke else None,
         "available": conso is not None or nuke is not None,
     }
+
+
+async def fetch_realised_consumption(target: date | None = None) -> dict | None:
+    """Recupere la consommation realisee de la veille depuis l'API RTE.
+
+    Stocke le resultat dans rte_daily pour alimenter les features ML lag.
+    Appelee quotidiennement par le scheduler.
+    """
+    token = await _get_token()
+    if not token:
+        return None
+
+    if target is None:
+        target = date.today() - timedelta(days=1)
+    next_day = target + timedelta(days=1)
+    tz_offset = _paris_offset_str(target)
+
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                f"{Config.RTE_API_BASE}/open_api/consumption/v1/short_term",
+                headers={"Authorization": f"Bearer {token}"},
+                params={
+                    "type": "REALISED",
+                    "start_date": f"{target.isoformat()}T00:00:00{tz_offset}",
+                    "end_date": f"{next_day.isoformat()}T00:00:00{tz_offset}",
+                },
+            )
+            if resp.status_code in (401, 403):
+                _token_cache["token"] = None
+                return None
+            resp.raise_for_status()
+            data = resp.json()
+
+            values = []
+            for forecast in data.get("short_term", []):
+                for val in forecast.get("values", []):
+                    if val.get("value") is not None:
+                        values.append(val["value"])
+
+            if not values:
+                return None
+
+            return {
+                "date": target.isoformat(),
+                "conso_peak_mw": round(max(values)),
+                "conso_mean_mw": round(sum(values) / len(values)),
+            }
+    except Exception as e:
+        logger.warning(f"[RTE] Erreur consommation realisee: {e}")
+        return None

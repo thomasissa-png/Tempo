@@ -1160,16 +1160,17 @@ def store_prediction(pred: dict, horizon: str = "J-1",
     conn = get_db()
     change = None
     try:
-        # Fix #31 : vérifier si la DATE est déjà confirmée (tout horizon confondu).
-        # L'ancien check (date + horizon) laissait passer des insertions quand
-        # l'horizon changeait (ex: J-3 confirmé, J-2 pas encore vu → inséré ROUGE).
-        any_confirmed = conn.execute(
-            "SELECT 1 FROM predictions WHERE date = ? AND confirmed = 1 LIMIT 1",
-            (pred["date"],)
+        # Fix #31 : vérifier si ce (date, horizon) est déjà confirmé.
+        # On ne bloque que le MEME horizon : une prediction J-1 confirmée ne doit
+        # pas empecher de stocker les predictions J-2, J-3 etc. qui sont utiles
+        # pour l'evaluation multi-horizon.
+        same_confirmed = conn.execute(
+            "SELECT 1 FROM predictions WHERE date = ? AND horizon = ? AND confirmed = 1 LIMIT 1",
+            (pred["date"], horizon)
         ).fetchone()
 
-        if any_confirmed and not pred.get("confirmed"):
-            logger.debug(f"[Prediction] {pred['date']} déjà confirmée par EDF, skip {horizon}")
+        if same_confirmed and not pred.get("confirmed"):
+            logger.debug(f"[Prediction] {pred['date']} {horizon} déjà confirmée, skip")
             return None
 
         # Récupérer la prédiction précédente pour le même (date, horizon)

@@ -124,15 +124,14 @@ def purge_old_data() -> None:
         # Le volume est faible (~1 ligne/jour) donc pas de risque de croissance.
         deleted_perf = 0
 
-        # Fix #32 : supprimer les prédictions orphelines non-confirmées
-        # pour les dates qui ont déjà une prédiction confirmée.
-        # Ces orphelines apparaissent quand _refresh_predictions() insérait
-        # de nouvelles lignes avec un horizon différent après confirmation.
+        # Fix #32 : supprimer uniquement la prediction non-confirmee au MEME
+        # horizon qu'une prediction confirmee (pas les autres horizons).
+        # Les predictions J+2 a J+5 sont precieuses pour l'evaluation multi-horizon.
         deleted_orphans = conn.execute(
             """DELETE FROM predictions
                WHERE confirmed = 0
-                 AND date IN (
-                     SELECT DISTINCT date FROM predictions WHERE confirmed = 1
+                 AND (date, horizon) IN (
+                     SELECT date, horizon FROM predictions WHERE confirmed = 1
                  )"""
         ).rowcount
 

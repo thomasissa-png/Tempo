@@ -199,10 +199,12 @@ async def _refresh_predictions(trigger: str, send_sms: bool = False) -> int:
         return 0
 
     # 2. Score RTE + Vigilance Météo France (en parallèle)
+    #    + stockage des données RTE réalisées dans rte_daily pour le ML
     rte_score, vigilance = await asyncio.gather(
         get_consumption_score(),
         fetch_vigilance(),
     )
+    await _store_rte_daily(rte_score)
 
     # 3. Prédictions (avec vigilance grand froid/neige-verglas)
     predictions = predict_range(forecasts, rte_score=rte_score, vigilance=vigilance)
@@ -269,6 +271,76 @@ def _store_weather_cache(forecasts: list[dict]) -> None:
         logger.debug(f"[Weather Cache] Erreur stockage: {e}")
     finally:
         conn.close()
+
+
+async def _store_rte_daily(rte_score: dict | None) -> None:
+    """Stocke les donnees RTE dans rte_daily pour alimenter les features ML lag.
+
+    Deux sources :
+    1. rte_score (prevision J+1) : stocke peak/mean pour demain
+    2. fetch_realised_consumption (realise J-1) : stocke les donnees d'hier
+    """
+    from database import get_db
+
+    # Source 1 : prevision J+1 (peak + mean de la prevision de consommation)
+    if rte_score and rte_score.get("available"):
+        tomorrow = (date.today() + timedelta(days=1)).isoformat()
+        conn = get_db()
+        try:
+            conn.execute(
+                """INSERT OR REPLACE INTO rte_daily
+                   (date, prevision_j1_peak_mw, conso_peak_mw, conso_mean_mw,
+                    nucleaire_mean_mw)
+                   VALUES (?,
+                           COALESCE(?, (SELECT prevision_j1_peak_mw FROM rte_daily WHERE date=?)),
+                           COALESCE((SELECT conso_peak_mw FROM rte_daily WHERE date=?), ?),
+                           COALESCE((SELECT conso_mean_mw FROM rte_daily WHERE date=?), ?),
+                           COALESCE((SELECT nucleaire_mean_mw FROM rte_daily WHERE date=?), ?))""",
+                (tomorrow,
+                 rte_score.get("peak_mw"), tomorrow,
+                 tomorrow, rte_score.get("peak_mw"),
+                 tomorrow, rte_score.get("mean_mw"),
+                 tomorrow, rte_score.get("nuke_mw")),
+            )
+            conn.commit()
+        except Exception as e:
+            logger.debug(f"[RTE Daily] Erreur stockage prevision: {e}")
+        finally:
+            conn.close()
+
+    # Source 2 : consommation realisee de la veille
+    try:
+        from rte_client import fetch_realised_consumption
+        realised = await fetch_realised_consumption()
+        if realised:
+            yesterday = realised["date"]
+            conn = get_db()
+            try:
+                conn.execute(
+                    """INSERT OR REPLACE INTO rte_daily
+                       (date, conso_peak_mw, conso_mean_mw,
+                        prevision_j1_peak_mw, nucleaire_mean_mw,
+                        eolien_mean_mw, solaire_mean_mw,
+                        gaz_mean_mw, hydraulique_mean_mw)
+                       VALUES (?, ?, ?,
+                               COALESCE((SELECT prevision_j1_peak_mw FROM rte_daily WHERE date=?), NULL),
+                               COALESCE((SELECT nucleaire_mean_mw FROM rte_daily WHERE date=?), NULL),
+                               COALESCE((SELECT eolien_mean_mw FROM rte_daily WHERE date=?), NULL),
+                               COALESCE((SELECT solaire_mean_mw FROM rte_daily WHERE date=?), NULL),
+                               COALESCE((SELECT gaz_mean_mw FROM rte_daily WHERE date=?), NULL),
+                               COALESCE((SELECT hydraulique_mean_mw FROM rte_daily WHERE date=?), NULL))""",
+                    (yesterday, realised["conso_peak_mw"], realised["conso_mean_mw"],
+                     yesterday, yesterday, yesterday, yesterday, yesterday, yesterday),
+                )
+                conn.commit()
+                logger.info(f"[RTE Daily] Stocke {yesterday}: "
+                            f"peak={realised['conso_peak_mw']}MW, mean={realised['conso_mean_mw']}MW")
+            except Exception as e:
+                logger.debug(f"[RTE Daily] Erreur stockage realise: {e}")
+            finally:
+                conn.close()
+    except Exception as e:
+        logger.debug(f"[RTE Daily] fetch_realised indisponible: {e}")
 
 
 # ================================================================
