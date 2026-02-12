@@ -85,7 +85,7 @@ def start_scheduler():
 def stop_scheduler():
     """Arrête proprement le scheduler."""
     if scheduler.running:
-        scheduler.shutdown(wait=False)
+        scheduler.shutdown(wait=True)
         logger.info("[Scheduler] Arrêté")
 
 
@@ -221,7 +221,8 @@ async def _refresh_predictions(trigger: str, send_sms: bool = False) -> int:
             target = date.fromisoformat(pred["date"])
             delta = (target - date.today()).days
             if 1 <= delta <= 3 and pred["couleur_predite"] in ("ROUGE", "BLANC"):
-                send_alerts_for_prediction(target, pred)
+                # Fix audit DB : run blocking SMS/sleep in thread pool
+                await asyncio.to_thread(send_alerts_for_prediction, target, pred)
 
     if changes:
         logger.info(f"[{trigger}] {len(changes)} changements: "
@@ -369,7 +370,10 @@ async def task_daily_verification():
 
                 # Envoyer alerte officielle si rouge ou blanc
                 tomorrow_date = date.fromisoformat(tomorrow_data["date"])
-                send_official_alerts(tomorrow_date, tomorrow_data["couleur"])
+                # Fix audit DB : run blocking SMS in thread pool
+                await asyncio.to_thread(
+                    send_official_alerts, tomorrow_date, tomorrow_data["couleur"]
+                )
 
             # M-02 QA : rattrapage APRÈS avoir récupéré les couleurs du jour
             evaluate_missed_days(lookback=7)
@@ -486,7 +490,8 @@ async def task_weekly_recap():
 
             rte_score = await get_consumption_score()
             predictions = predict_range(forecasts, rte_score=rte_score)
-            send_weekly_recap(predictions)
+            # Fix audit DB : run blocking SMS in thread pool
+            await asyncio.to_thread(send_weekly_recap, predictions)
 
             logger.info("[Task hebdo] Récap envoyé")
             return

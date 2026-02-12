@@ -326,11 +326,16 @@ def recalculate_weights():
     Fix ML-8 : cross-validation 5-fold.
     Fix ML-11 : permutation importance.
     Fix ML-12 : ALPHA adaptatif.
+
+    Fix audit DB : transaction split en 3 phases pour ne pas bloquer
+    les writers pendant le traitement ML (2-5s de scikit-learn).
     """
+    # === Phase 1 : lectures DB (transaction courte) ===
     conn = get_db()
     try:
         # Fix ML-15 : toujours mettre à jour precision_apres, même sans recalcul
         _update_previous_precision_apres(conn)
+        conn.commit()
 
         # Verifier qu'on a assez de donnees evaluees
         count = conn.execute(
@@ -343,10 +348,7 @@ def recalculate_weights():
             return None
 
         # C-1 : entraîner UNIQUEMENT sur raw sub-scores (avant corrections)
-        # Fix ML-contamination : ne plus fallback sur scores corrigés via COALESCE
-        # Les données pré-v9 (sans raw scores) sont exclues pour éviter la contamination
         # W-6 : plus de LIMIT 300 — utiliser toutes les données disponibles
-        # Fix data-integrity : exclure les actuals synthétiques (seed_from_remaining)
         rows = conn.execute(
             """SELECT
                       p.score_temperature_raw as score_temperature,
@@ -365,25 +367,26 @@ def recalculate_weights():
                       + p.score_gradient_raw + p.score_clustering_raw + p.score_rte_raw) > 0
                ORDER BY p.date DESC"""
         ).fetchall()
+    finally:
+        conn.close()
 
-        if len(rows) < 60:
-            logger.info(
-                f"[Poids] Pas assez de donnees avec sub-scores ({len(rows)}/60)"
-            )
-            return None
+    if len(rows) < 60:
+        logger.info(
+            f"[Poids] Pas assez de donnees avec sub-scores ({len(rows)}/60)"
+        )
+        return None
 
+    # === Phase 2 : traitement ML (pas de connexion DB) ===
+    try:
         import numpy as np
         from sklearn.linear_model import LogisticRegression
         from sklearn.model_selection import cross_val_score
         from sklearn.preprocessing import StandardScaler
+    except ImportError:
+        logger.error("[Poids] scikit-learn non disponible, recalcul impossible")
+        return None
 
-        # 6 features de base + 4 interactions clés
-        feature_names = [
-            "temperature", "jours_restants", "jour_semaine",
-            "gradient_thermique", "clustering", "consommation_rte",
-            "temp_x_budget", "gradient_x_temp", "cluster_x_gradient", "temp_x_rte",
-        ]
-
+    try:
         X = []
         y = []
         label_map = {"BLEU": 0, "BLANC": 1, "ROUGE": 2}
@@ -397,11 +400,10 @@ def recalculate_weights():
             r = row["score_rte"]
             X.append([
                 t, b, w, g, c, r,
-                # Interactions : produits normalisés sur [0, 100]
-                (t * b) / 100,       # froid + pression budgétaire
-                (g * t) / 100,       # chute de temp + temp basse
-                (c * g) / 100,       # clustering + gradient
-                (t * r) / 100,       # temp basse + forte conso
+                (t * b) / 100,
+                (g * t) / 100,
+                (c * g) / 100,
+                (t * r) / 100,
             ])
             y.append(label_map.get(row["couleur_reelle"], 0))
 
@@ -414,21 +416,15 @@ def recalculate_weights():
             logger.info("[Poids] Pas assez de diversite dans les labels")
             return None
 
-        # Fix ML-6 : normalisation des features
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X)
 
-        # Fix ML-8 : cross-validation 5-fold
         model = LogisticRegression(
             multi_class="multinomial", max_iter=1000, C=1.0,
             class_weight="balanced",
         )
 
         try:
-            # Fix audit ML #2 : utiliser F1-macro au lieu de accuracy
-            # L'accuracy est trompeuse pour des classes déséquilibrées (BLEU ≈ 76%).
-            # Un modèle "always-BLEU" a 76% accuracy mais F1-macro ≈ 33%.
-            # F1-macro évalue la capacité à prédire CHAQUE classe équitablement.
             cv_f1_scores = cross_val_score(model, X_scaled, y, cv=5, scoring="f1_macro")
             cv_f1 = round(cv_f1_scores.mean() * 100, 1)
             cv_f1_std = round(cv_f1_scores.std() * 100, 1)
@@ -437,15 +433,12 @@ def recalculate_weights():
             cv_accuracy = round(cv_acc_scores.mean() * 100, 1)
             cv_std = round(cv_acc_scores.std() * 100, 1)
         except ValueError:
-            # Pas assez de données pour 5-fold sur une classe
             cv_f1 = 0
             cv_f1_std = 0
             cv_accuracy = 0
             cv_std = 0
             logger.warning("[Poids] Cross-validation impossible (classe trop rare)")
 
-        # Fix audit ML #2 : seuil sur F1-macro ≥ 45% (random ≈ 33%)
-        # et accuracy doit dépasser la baseline classe majoritaire
         from collections import Counter
         majority_pct = round(max(Counter(y).values()) / len(y) * 100, 1)
 
@@ -455,28 +448,19 @@ def recalculate_weights():
                 f"poids NON deployes (seuil=45%, accuracy={cv_accuracy}%, "
                 f"baseline={majority_pct}%)"
             )
-            conn.execute(
-                """INSERT INTO weights_history
-                   (date_update, weights_json, precision_avant, precision_apres,
-                    nb_predictions, commentaire, model_version, timestamp_update)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                (datetime.now().strftime("%Y-%m-%d"),
-                 json.dumps(get_current_weights()),
-                 get_accuracy_global(30)["precision"], cv_accuracy, count,
-                 f"REJETE (f1_macro={cv_f1}% ± {cv_f1_std}%, "
-                 f"acc={cv_accuracy}%, baseline={majority_pct}%)",
-                 "logreg_v5_audit_ml",
-                 datetime.now().isoformat()),
+            _store_weights_entry(
+                get_current_weights(),
+                get_accuracy_global(30)["precision"], cv_accuracy, count,
+                f"REJETE (f1_macro={cv_f1}% ± {cv_f1_std}%, "
+                f"acc={cv_accuracy}%, baseline={majority_pct}%)",
             )
-            conn.commit()
             return None
 
-        # ML-3 : Holdout temporel — train sur 80% anciens, validation sur 20% recents
+        # ML-3 : Holdout temporel
         holdout_accuracy = None
         n_rows = len(X)
         if n_rows >= 80:
             split_idx = int(n_rows * 0.8)
-            # rows sont ORDER BY date DESC → indices bas = recent, hauts = ancien
             X_train_t = X_scaled[split_idx:]
             y_train_t = y[split_idx:]
             X_val_t = X_scaled[:split_idx]
@@ -487,7 +471,6 @@ def recalculate_weights():
                     multi_class="multinomial", max_iter=1000, C=1.0,
                     class_weight="balanced",
                 )
-                # W-2 : vérifier balance des classes dans train ET validation
                 train_classes = set(y_train_t)
                 val_classes = set(y_val_t)
                 if len(train_classes) >= 2 and len(val_classes) >= 2:
@@ -498,20 +481,12 @@ def recalculate_weights():
                             f"[Poids] Holdout temporel accuracy trop faible "
                             f"({holdout_accuracy}%), poids NON deployes"
                         )
-                        conn.execute(
-                            """INSERT INTO weights_history
-                               (date_update, weights_json, precision_avant, precision_apres,
-                                nb_predictions, commentaire, model_version, timestamp_update)
-                               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                            (datetime.now().strftime("%Y-%m-%d"),
-                             json.dumps(get_current_weights()),
-                             get_accuracy_global(30)["precision"], holdout_accuracy, count,
-                             f"REJETE holdout (holdout={holdout_accuracy}%, "
-                             f"cv_f1={cv_f1}%, cv_acc={cv_accuracy}%)",
-                             "logreg_v5_audit_ml",
-                             datetime.now().isoformat()),
+                        _store_weights_entry(
+                            get_current_weights(),
+                            get_accuracy_global(30)["precision"], holdout_accuracy, count,
+                            f"REJETE holdout (holdout={holdout_accuracy}%, "
+                            f"cv_f1={cv_f1}%, cv_acc={cv_accuracy}%)",
                         )
-                        conn.commit()
                         return None
             except Exception as e:
                 logger.warning(f"[Poids] Holdout temporel echoue: {e}")
@@ -520,22 +495,18 @@ def recalculate_weights():
         model.fit(X_scaled, y)
 
         # Fix ML-11 : permutation importance
-        # Seules les 6 features de base contribuent aux poids de l'algorithme
         base_feature_names = [
             "temperature", "jours_restants", "jour_semaine",
             "gradient_thermique", "clustering", "consommation_rte",
         ]
         try:
             from sklearn.inspection import permutation_importance
-            # W-3 : n_repeats=30 pour résultats plus stables
             perm_result = permutation_importance(
                 model, X_scaled, y, n_repeats=30, random_state=42
             )
-            importance = perm_result.importances_mean[:6]  # 6 features de base
-            # Rendre positif (certaines importances peuvent être négatives)
+            importance = perm_result.importances_mean[:6]
             importance = np.maximum(importance, 0.01)
         except Exception:
-            # Fallback norme L2 si permutation échoue
             importance = np.sqrt((model.coef_ ** 2).sum(axis=0))[:6]
 
         total_imp = importance.sum()
@@ -548,7 +519,6 @@ def recalculate_weights():
             for i, k in enumerate(base_feature_names)
         }
 
-        # Bornes [0.05, 0.50] — aucun facteur desactive ni dominant
         WEIGHT_MIN = 0.05
         WEIGHT_MAX = 0.50
         bounded = {
@@ -558,7 +528,6 @@ def recalculate_weights():
         total_bounded = sum(bounded.values())
         bounded = {k: v / total_bounded for k, v in bounded.items()}
 
-        # Fix ML-12 : ALPHA adaptatif (plus de données = plus de confiance)
         old_weights = get_current_weights()
         ALPHA = min(0.6, max(0.2, len(rows) / 500))
         smoothed = {}
@@ -566,43 +535,51 @@ def recalculate_weights():
             old_val = old_weights.get(key, bounded[key])
             smoothed[key] = ALPHA * bounded[key] + (1 - ALPHA) * old_val
 
-        # Renormaliser apres lissage
         total_smooth = sum(smoothed.values())
         new_weights = {
             k: round(v / total_smooth, 4) for k, v in smoothed.items()
         }
 
-        precision_avant = get_accuracy_global(30)["precision"]
+    except Exception as e:
+        logger.error(f"[Poids] Erreur recalcul : {e}")
+        return None
 
+    # === Phase 3 : ecriture DB (transaction courte) ===
+    precision_avant = get_accuracy_global(30)["precision"]
+    _store_weights_entry(
+        new_weights, precision_avant, 0, count,
+        f"Recalcul auto (f1_macro={cv_f1}% ± {cv_f1_std}%, "
+        f"cv_acc={cv_accuracy}%, alpha={ALPHA:.2f}, n={len(rows)}) — "
+        f"ancien: {json.dumps(old_weights)}",
+    )
+
+    logger.info(f"[Poids] Nouveaux poids deployes : {new_weights}")
+    logger.info(
+        f"[Poids] F1-macro: {cv_f1}% ± {cv_f1_std}% | "
+        f"Accuracy: {cv_accuracy}% | Alpha={ALPHA:.2f} | n={len(rows)}"
+    )
+    return new_weights
+
+
+def _store_weights_entry(weights: dict, precision_avant: float,
+                         precision_apres: float, nb_predictions: int,
+                         commentaire: str) -> None:
+    """Stocke une entree dans weights_history (transaction courte)."""
+    conn = get_db()
+    try:
         conn.execute(
             """INSERT INTO weights_history
                (date_update, weights_json, precision_avant, precision_apres,
                 nb_predictions, commentaire, model_version, timestamp_update)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             (datetime.now().strftime("%Y-%m-%d"),
-             json.dumps(new_weights),
-             precision_avant, 0, count,
-             f"Recalcul auto (f1_macro={cv_f1}% ± {cv_f1_std}%, "
-             f"cv_acc={cv_accuracy}%, alpha={ALPHA:.2f}, n={len(rows)}) — "
-             f"ancien: {json.dumps(old_weights)}",
+             json.dumps(weights),
+             precision_avant, precision_apres, nb_predictions,
+             commentaire,
              "logreg_v5_audit_ml",
              datetime.now().isoformat()),
         )
         conn.commit()
-
-        logger.info(f"[Poids] Nouveaux poids deployes : {new_weights}")
-        logger.info(
-            f"[Poids] F1-macro: {cv_f1}% ± {cv_f1_std}% | "
-            f"Accuracy: {cv_accuracy}% | Alpha={ALPHA:.2f} | n={len(rows)}"
-        )
-        return new_weights
-
-    except ImportError:
-        logger.error("[Poids] scikit-learn non disponible, recalcul impossible")
-        return None
-    except Exception as e:
-        logger.error(f"[Poids] Erreur recalcul : {e}")
-        return None
     finally:
         conn.close()
 
@@ -1505,25 +1482,24 @@ def get_learning_health() -> dict:
     """Métriques de santé du système d'apprentissage pour monitoring."""
     conn = get_db()
     try:
-        # Nombre de corrections actives
-        active = conn.execute(
-            "SELECT COUNT(*) as c FROM learning_journal WHERE active = 1"
-        ).fetchone()["c"]
-
-        # Nombre de corrections désactivées (kill-switch / validation)
-        disabled = conn.execute(
-            "SELECT COUNT(*) as c FROM learning_journal WHERE active = 0 AND disabled_at IS NOT NULL"
-        ).fetchone()["c"]
+        # Fix audit DB : requete consolidee pour learning_journal
+        lj_stats = conn.execute(
+            """SELECT
+                   SUM(CASE WHEN active = 1 THEN 1 ELSE 0 END) as active,
+                   SUM(CASE WHEN active = 0 AND disabled_at IS NOT NULL THEN 1 ELSE 0 END) as disabled,
+                   COUNT(*) as total_history,
+                   MAX(date_analysis) as last_analysis
+               FROM learning_journal"""
+        ).fetchone()
+        active = lj_stats["active"] or 0
+        disabled = lj_stats["disabled"] or 0
+        total_history = lj_stats["total_history"]
+        last_analysis = lj_stats["last_analysis"]
 
         # Nombre de rollbacks de poids
         rollbacks = conn.execute(
             "SELECT COUNT(*) as c FROM weights_history WHERE rollback_of IS NOT NULL"
         ).fetchone()["c"]
-
-        # Dernière analyse
-        last_analysis = conn.execute(
-            "SELECT MAX(date_analysis) as last FROM learning_journal"
-        ).fetchone()["last"]
 
         # Précision récente (14j)
         since_14 = (date.today() - timedelta(days=14)).isoformat()
@@ -1532,11 +1508,6 @@ def get_learning_health() -> dict:
             (since_14,)
         ).fetchone()
         accuracy_14 = round(perf_14["correct"] / perf_14["total"] * 100, 1) if perf_14["total"] else 0
-
-        # Nombre de patterns dans l'historique
-        total_history = conn.execute(
-            "SELECT COUNT(*) as c FROM learning_journal"
-        ).fetchone()["c"]
 
         # Correction validation
         validation = validate_correction_impact()

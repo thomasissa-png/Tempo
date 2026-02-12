@@ -164,7 +164,8 @@ def send_alerts_for_prediction(target_date: date, prediction: dict):
         if couleur == "ROUGE":
             prob_pct = round(prediction.get("probabilite_rouge", 0) * 100)
             users = conn.execute(
-                """SELECT * FROM users
+                """SELECT id, phone_encrypted, seuil_alerte_rouge, delai_alerte
+                   FROM users
                    WHERE actif = 1 AND seuil_alerte_rouge <= ?""",
                 (prob_pct,)
             ).fetchall()
@@ -172,12 +173,16 @@ def send_alerts_for_prediction(target_date: date, prediction: dict):
             type_alerte = "prediction_rouge"
         else:  # BLANC
             users = conn.execute(
-                "SELECT * FROM users WHERE actif = 1 AND alerte_blanc = 1"
+                """SELECT id, phone_encrypted, seuil_alerte_rouge, delai_alerte
+                   FROM users WHERE actif = 1 AND alerte_blanc = 1"""
             ).fetchall()
             format_fn = format_alert_blanc
             type_alerte = "prediction_blanc"
 
         today_str = date.today().isoformat()
+        # Fix audit DB : range comparison au lieu de LIKE (index-friendly)
+        today_start = today_str + "T00:00:00"
+        today_end = today_str + "T23:59:59"
         target_str = target_date.isoformat()
 
         for user in users:
@@ -185,9 +190,9 @@ def send_alerts_for_prediction(target_date: date, prediction: dict):
             # Vérifie aussi la date d'envoi pour limiter à 1/jour
             existing = conn.execute(
                 """SELECT id FROM sms_logs
-                   WHERE user_id = ? AND date_envoi LIKE ?
-                   AND type_alerte LIKE 'prediction%'""",
-                (user["id"], f"{today_str}%"),
+                   WHERE user_id = ? AND date_envoi >= ? AND date_envoi <= ?
+                   AND type_alerte IN ('prediction_rouge', 'prediction_blanc')""",
+                (user["id"], today_start, today_end),
             ).fetchone()
 
             if existing:
@@ -224,25 +229,30 @@ def send_official_alerts(target_date: date, couleur: str):
     try:
         if couleur == "ROUGE":
             users = conn.execute(
-                "SELECT * FROM users WHERE actif = 1 AND seuil_alerte_rouge > 0"
+                """SELECT id, phone_encrypted
+                   FROM users WHERE actif = 1 AND seuil_alerte_rouge > 0"""
             ).fetchall()
         else:
             users = conn.execute(
-                "SELECT * FROM users WHERE actif = 1 AND alerte_blanc = 1"
+                """SELECT id, phone_encrypted
+                   FROM users WHERE actif = 1 AND alerte_blanc = 1"""
             ).fetchall()
 
         message = format_alert_officiel(target_date, couleur)
 
         today_str = date.today().isoformat()
+        # Fix audit DB : range comparison au lieu de LIKE (index-friendly)
+        today_start = today_str + "T00:00:00"
+        today_end = today_str + "T23:59:59"
 
         for user in users:
             # Dédup cross-type : pas d'alerte officielle si déjà reçu
             # une prédiction OU un officiel aujourd'hui (BUG-04 QA)
             existing = conn.execute(
                 """SELECT id FROM sms_logs
-                   WHERE user_id = ? AND date_envoi LIKE ?
+                   WHERE user_id = ? AND date_envoi >= ? AND date_envoi <= ?
                    AND type_alerte IN ('officiel', 'prediction_rouge', 'prediction_blanc')""",
-                (user["id"], f"{today_str}%"),
+                (user["id"], today_start, today_end),
             ).fetchone()
 
             if existing:
@@ -265,7 +275,8 @@ def send_weekly_recap(predictions: list[dict]):
     conn = get_db()
     try:
         users = conn.execute(
-            "SELECT * FROM users WHERE actif = 1 AND recap_hebdo = 1"
+            """SELECT id, phone_encrypted
+               FROM users WHERE actif = 1 AND recap_hebdo = 1"""
         ).fetchall()
 
         if not users:
@@ -327,7 +338,7 @@ def register_user(phone_number: str, seuil_rouge: int = 70,
     now = datetime.now().isoformat()
     try:
         existing = conn.execute(
-            "SELECT * FROM users WHERE phone_hash = ?", (phone_h,)
+            "SELECT id, actif FROM users WHERE phone_hash = ?", (phone_h,)
         ).fetchone()
 
         if existing:
@@ -370,7 +381,7 @@ def unsubscribe_user(phone_number: str) -> dict:
     now = datetime.now().isoformat()
     try:
         user = conn.execute(
-            "SELECT * FROM users WHERE phone_hash = ?", (phone_h,)
+            "SELECT id FROM users WHERE phone_hash = ?", (phone_h,)
         ).fetchone()
 
         if not user:
@@ -388,12 +399,14 @@ def unsubscribe_user(phone_number: str) -> dict:
 
 
 def get_user_count() -> dict:
-    """Stats utilisateurs pour le dashboard."""
+    """Stats utilisateurs pour le dashboard.
+    Fix audit DB : requete unique au lieu de 2 COUNT separees."""
     conn = get_db()
     try:
-        total = conn.execute("SELECT COUNT(*) as c FROM users").fetchone()["c"]
-        actifs = conn.execute("SELECT COUNT(*) as c FROM users WHERE actif = 1").fetchone()["c"]
-        return {"total": total, "actifs": actifs}
+        row = conn.execute(
+            "SELECT COUNT(*) as total, SUM(actif) as actifs FROM users"
+        ).fetchone()
+        return {"total": row["total"], "actifs": row["actifs"] or 0}
     finally:
         conn.close()
 
@@ -427,24 +440,18 @@ def handle_incoming_sms(from_number: str, body: str) -> str:
 def cleanup_inactive_users(months: int = 6):
     """Supprime les users inactifs depuis plus de N mois (RGPD).
 
-    Fix #1 audit v4 : supprime d'abord les sms_logs des users concernes
-    pour eviter une violation de cle etrangere (pas de ON DELETE CASCADE).
+    Fix audit DB v13 : ON DELETE CASCADE supprime automatiquement
+    les sms_logs associes via la FK.
     """
     cutoff = (datetime.now() - timedelta(days=months * 30)).isoformat()
     conn = get_db()
     try:
-        # Supprimer les sms_logs des users qui vont etre supprimes
-        conn.execute(
-            """DELETE FROM sms_logs WHERE user_id IN
-               (SELECT id FROM users WHERE actif = 0 AND updated_at < ?)""",
-            (cutoff,),
-        )
         deleted = conn.execute(
             "DELETE FROM users WHERE actif = 0 AND updated_at < ?",
             (cutoff,),
         ).rowcount
         conn.commit()
         if deleted:
-            logger.info(f"[RGPD] {deleted} users inactifs supprimés (+ sms_logs associés)")
+            logger.info(f"[RGPD] {deleted} users inactifs supprimés (sms_logs cascade)")
     finally:
         conn.close()

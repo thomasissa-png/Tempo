@@ -25,6 +25,55 @@ from config import Config
 
 logger = logging.getLogger(__name__)
 
+
+# ================================================================
+# CIRCUIT BREAKER — protection contre les cascades d'echecs API
+# ================================================================
+
+class _CircuitBreaker:
+    """Circuit breaker simple pour les appels API externes.
+
+    Etats : CLOSED (normal) → OPEN (echecs repetes) → HALF_OPEN (test).
+    Apres `threshold` echecs consecutifs, le circuit s'ouvre pendant
+    `reset_timeout` secondes. Un seul appel passe en HALF_OPEN pour
+    tester si le service est de retour.
+    """
+
+    def __init__(self, threshold: int = 5, reset_timeout: int = 120):
+        self._threshold = threshold
+        self._reset_timeout = reset_timeout
+        self._failures = 0
+        self._opened_at: float | None = None
+
+    @property
+    def is_open(self) -> bool:
+        if self._opened_at is None:
+            return False
+        import time
+        if time.monotonic() - self._opened_at >= self._reset_timeout:
+            # Passage en HALF_OPEN : on laisse passer un appel test
+            return False
+        return True
+
+    def record_success(self):
+        self._failures = 0
+        self._opened_at = None
+
+    def record_failure(self):
+        self._failures += 1
+        if self._failures >= self._threshold:
+            import time
+            self._opened_at = time.monotonic()
+            logger.warning(
+                f"[CircuitBreaker] OPEN apres {self._failures} echecs "
+                f"(cooldown {self._reset_timeout}s)"
+            )
+
+
+_meteo_breaker = _CircuitBreaker(threshold=5, reset_timeout=120)
+_vigilance_breaker = _CircuitBreaker(threshold=3, reset_timeout=60)
+
+
 # Indicateurs Meteo France (noms WCS officiels)
 _INDICATORS = {
     "temperature": "TEMPERATURE__SPECIFIC_HEIGHT_LEVEL_ABOVE_GROUND",
@@ -58,17 +107,29 @@ async def fetch_forecast() -> list[dict]:
         logger.error("[Meteo] METEOFRANCE_API_KEY non configuree — pas de previsions")
         return []
 
+    # Fix audit DB : circuit breaker pour eviter les cascades d'echecs
+    if _meteo_breaker.is_open:
+        logger.warning("[Meteo] Circuit breaker OPEN — skip fetch Meteo France")
+        return []
+
     try:
         # meteole est synchrone (requests) — on le lance dans un thread pool
-        city_forecasts = await asyncio.to_thread(_fetch_all_cities_sync, api_key)
+        # Fix audit DB : timeout 120s pour eviter un blocage indefini
+        city_forecasts = await asyncio.wait_for(
+            asyncio.to_thread(_fetch_all_cities_sync, api_key),
+            timeout=120,
+        )
     except Exception as e:
+        _meteo_breaker.record_failure()
         logger.error(f"[Meteo] Erreur globale fetch Meteo France: {e}")
         return []
 
     if not city_forecasts:
+        _meteo_breaker.record_failure()
         logger.warning("[Meteo] Meteo France indisponible — pas de predictions ce cycle")
         return []
 
+    _meteo_breaker.record_success()
     result = _merge_city_forecasts(city_forecasts)
 
     for day in result:
@@ -421,6 +482,11 @@ async def fetch_vigilance(api_key: str | None = None) -> dict:
     if not key:
         return _empty_vigilance()
 
+    # Fix audit DB : circuit breaker vigilance
+    if _vigilance_breaker.is_open:
+        logger.debug("[Meteo] Circuit breaker vigilance OPEN — skip")
+        return _empty_vigilance()
+
     headers = {"apikey": key}
 
     try:
@@ -428,8 +494,10 @@ async def fetch_vigilance(api_key: str | None = None) -> dict:
             resp = await client.get(_VIGILANCE_URL, headers=headers)
             resp.raise_for_status()
             data = resp.json()
+            _vigilance_breaker.record_success()
             return _parse_vigilance(data)
     except Exception as e:
+        _vigilance_breaker.record_failure()
         logger.warning(f"[Meteo] Vigilance indisponible: {e}")
         return _empty_vigilance()
 

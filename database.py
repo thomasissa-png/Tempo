@@ -230,9 +230,21 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_sms_logs_user       ON sms_logs(user_id);
         CREATE INDEX IF NOT EXISTS idx_sms_logs_date       ON sms_logs(date_envoi);
         CREATE INDEX IF NOT EXISTS idx_weather_cache_date  ON weather_cache(date);
+
+        -- Fix audit DB : index composites pour les requetes frequentes
+        CREATE INDEX IF NOT EXISTS idx_users_actif_seuil
+            ON users(actif, seuil_alerte_rouge);
+        CREATE INDEX IF NOT EXISTS idx_users_actif_blanc
+            ON users(actif, alerte_blanc);
+        CREATE INDEX IF NOT EXISTS idx_sms_logs_user_date
+            ON sms_logs(user_id, date_envoi);
+        CREATE INDEX IF NOT EXISTS idx_actuals_date_synthetic
+            ON actuals(date, synthetic);
     """)
 
     # === Fix #14 audit v4 : migrations conditionnelles via PRAGMA user_version ===
+    # Fix audit DB : verrou exclusif pour eviter les race conditions
+    conn.execute("BEGIN EXCLUSIVE")
     version = conn.execute("PRAGMA user_version").fetchone()[0]
 
     if version < 3:
@@ -242,7 +254,7 @@ def init_db():
             try:
                 conn.execute(f"ALTER TABLE predictions ADD COLUMN {col} REAL DEFAULT 0")
             except sqlite3.OperationalError:
-                pass  # Colonne existe déjà
+                logger.debug(f"Migration v3: colonne {col} existe deja")
 
         conn.execute("""DELETE FROM predictions WHERE id NOT IN
             (SELECT MAX(id) FROM predictions GROUP BY date, horizon)""")
@@ -273,7 +285,7 @@ def init_db():
             try:
                 conn.execute(f"ALTER TABLE predictions ADD COLUMN {col} {coltype}")
             except sqlite3.OperationalError:
-                pass  # Colonne existe déjà
+                logger.debug(f"Migration v4: colonne {col} existe deja")
 
         conn.executescript("""
             CREATE TABLE IF NOT EXISTS prediction_changes (
@@ -329,7 +341,7 @@ def init_db():
                 "ALTER TABLE weights_history ADD COLUMN model_version TEXT DEFAULT ''"
             )
         except sqlite3.OperationalError:
-            pass  # Colonne existe déjà
+            logger.debug("Migration v5: colonne model_version existe deja")
 
         conn.execute("PRAGMA user_version = 5")
         conn.commit()
@@ -344,7 +356,7 @@ def init_db():
                 "ALTER TABLE actuals ADD COLUMN synthetic INTEGER DEFAULT 0"
             )
         except sqlite3.OperationalError:
-            pass  # Colonne existe déjà
+            logger.debug("Migration v6: colonne synthetic existe deja")
 
         conn.execute("PRAGMA user_version = 6")
         conn.commit()
@@ -395,8 +407,8 @@ def init_db():
                         (new_hash, u["id"]),
                     )
                     rehashed += 1
-                except Exception:
-                    pass  # Skip les users dont le chiffrement a changé
+                except Exception as exc:
+                    logger.debug(f"Migration v8: skip rehash user {u['id']}: {exc}")
             if rehashed:
                 logger.info(f"Migration v8: {rehashed} phone hashes migrés vers HMAC")
         except Exception as e:
@@ -408,7 +420,7 @@ def init_db():
                 "ALTER TABLE predictions ADD COLUMN couleur_originale TEXT DEFAULT ''"
             )
         except sqlite3.OperationalError:
-            pass  # Colonne existe déjà
+            logger.debug("Migration v8: colonne couleur_originale existe deja")
 
         conn.execute("PRAGMA user_version = 8")
         conn.commit()
@@ -423,7 +435,7 @@ def init_db():
             try:
                 conn.execute(f"ALTER TABLE predictions ADD COLUMN {col} REAL DEFAULT 0")
             except sqlite3.OperationalError:
-                pass  # Colonne existe déjà
+                logger.debug(f"Migration v9: colonne {col} existe deja")
 
         # D-1: Fix performance UNIQUE to include jours_avance for multi-horizon evals
         try:
@@ -499,7 +511,7 @@ def init_db():
                 "ALTER TABLE weights_history ADD COLUMN rollback_of INTEGER DEFAULT NULL"
             )
         except sqlite3.OperationalError:
-            pass
+            logger.debug("Migration v9: colonne rollback_of existe deja")
 
         conn.execute("PRAGMA user_version = 9")
         conn.commit()
@@ -585,6 +597,54 @@ def init_db():
         logger.info(
             f"Migration v12 appliquee (purge {deleted_perf} evaluations faussees)"
         )
+
+    if version < 13:
+        # Migration v13 — ON DELETE CASCADE sur sms_logs.user_id
+        # Fix audit DB : la suppression RGPD des users inactifs ne necessite
+        # plus de supprimer manuellement les sms_logs associes.
+        try:
+            conn.executescript("""
+                CREATE TABLE IF NOT EXISTS sms_logs_v13 (
+                    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id         INTEGER NOT NULL,
+                    type_alerte     TEXT    NOT NULL,
+                    couleur         TEXT    DEFAULT '',
+                    message_body    TEXT    NOT NULL,
+                    date_envoi      TEXT    NOT NULL,
+                    statut          TEXT    DEFAULT 'pending',
+                    twilio_sid      TEXT    DEFAULT '',
+                    erreur          TEXT    DEFAULT '',
+                    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+                );
+                INSERT INTO sms_logs_v13 SELECT * FROM sms_logs;
+                DROP TABLE sms_logs;
+                ALTER TABLE sms_logs_v13 RENAME TO sms_logs;
+                CREATE INDEX IF NOT EXISTS idx_sms_logs_user
+                    ON sms_logs(user_id);
+                CREATE INDEX IF NOT EXISTS idx_sms_logs_date
+                    ON sms_logs(date_envoi);
+                CREATE INDEX IF NOT EXISTS idx_sms_logs_user_date
+                    ON sms_logs(user_id, date_envoi);
+            """)
+        except sqlite3.OperationalError as e:
+            logger.warning(f"Migration v13 sms_logs CASCADE: {e}")
+
+        # Index composites sur colonnes ajoutees en v4
+        try:
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_predictions_confirmed "
+                "ON predictions(confirmed, date)"
+            )
+            conn.execute(
+                "CREATE INDEX IF NOT EXISTS idx_predictions_horizon_sim "
+                "ON predictions(horizon, simulated)"
+            )
+        except sqlite3.OperationalError:
+            logger.debug("Migration v13: index predictions skip (colonnes v4 absentes)")
+
+        conn.execute("PRAGMA user_version = 13")
+        conn.commit()
+        logger.info("Migration v13 appliquee (ON DELETE CASCADE sur sms_logs)")
 
     # Poids initiaux si vide
     existing = conn.execute("SELECT COUNT(*) as c FROM weights_history").fetchone()
