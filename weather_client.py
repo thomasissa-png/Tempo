@@ -608,6 +608,10 @@ async def _fetch_openmeteo_city(city: dict) -> list[dict] | None:
 async def fetch_vigilance(api_key: str | None = None) -> dict:
     """Recupere les alertes de vigilance Meteo France.
 
+    Utilise meteole.Vigilance pour beneficier de la meme authentification
+    OAuth2 (application_id) que AROME/ARPEGE. Evite le probleme de
+    header apikey incompatible avec les tokens OAuth2.
+
     Retourne un dict avec :
       - grand_froid: bool (vigilance grand froid orange ou rouge active)
       - neige_verglas: bool (vigilance neige-verglas orange ou rouge active)
@@ -623,19 +627,33 @@ async def fetch_vigilance(api_key: str | None = None) -> dict:
         logger.debug("[Meteo] Circuit breaker vigilance OPEN — skip")
         return _empty_vigilance()
 
-    headers = {"apikey": key}
-
     try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            resp = await client.get(_VIGILANCE_URL, headers=headers)
-            resp.raise_for_status()
-            data = resp.json()
-            _vigilance_breaker.record_success()
-            return _parse_vigilance(data)
+        # meteole.Vigilance gere l'auth OAuth2 comme AROME/ARPEGE
+        data = await asyncio.wait_for(
+            asyncio.to_thread(_fetch_vigilance_sync, key),
+            timeout=30,
+        )
+        _vigilance_breaker.record_success()
+        return _parse_vigilance(data)
     except Exception as e:
         _vigilance_breaker.record_failure()
         logger.warning(f"[Meteo] Vigilance indisponible: {e}")
         return _empty_vigilance()
+
+
+def _fetch_vigilance_sync(api_key: str) -> dict:
+    """Fetch vigilance via meteole (synchrone, lance dans thread pool)."""
+    try:
+        from meteole import Vigilance
+        vig = Vigilance(application_id=api_key)
+        return vig.get_map()
+    except ImportError:
+        # Fallback : appel direct si meteole trop ancien (pas de classe Vigilance)
+        import requests
+        headers = {"apikey": api_key}
+        resp = requests.get(_VIGILANCE_URL, headers=headers, timeout=15)
+        resp.raise_for_status()
+        return resp.json()
 
 
 def _empty_vigilance() -> dict:
