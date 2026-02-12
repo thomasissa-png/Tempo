@@ -1,27 +1,28 @@
-"""Algorithme de prediction Tempo v2.1 — audit complet corrige.
+"""Algorithme de prediction Tempo v2.2 — Meteo France.
 
 Facteurs de scoring (sur 100, poids ajustables) :
-  1. Temperature nationale ponderee (8 villes) — recalibree zone 0-5C
+  1. Temperature nationale ponderee (9 villes) — recalibree zone 0-5C
   2. Pression budgetaire avec profil mensuel historique
   3. Jour de la semaine + jours feries
   4. Gradient thermique (chute de temperature J/J-1)
   5. Clustering : continuite des jours rouges consecutifs
   6. Consommation RTE eco2mix (prevision pointe + nucleaire)
+  7. Pression atmospherique (anticyclone hivernal = risque accru)
 
-Bonus intégré au facteur température :
+Bonus integres :
   - Vague de froid (3+ jours consecutifs < 2C national) : boost temp_score
-    (Fix audit ML #1 : passe par le système de poids au lieu de court-circuiter)
+    (Fix audit ML #1 : passe par le systeme de poids au lieu de court-circuiter)
+  - Vague de froid humide : humidite elevee + froid amplifie la detection
+  - Vigilance Meteo France grand froid : bonus direct au score composite
+
+Confiance source :
+  - AROME (J a J+2) : donnees haute resolution, confiance maximale
+  - ARPEGE (J+2 a J+5) : attenuation progressive de confiance
 
 Corrections automatiques (journal d'apprentissage) :
   - Biais par horizon, temperature, mois, jour de semaine
   - Appliquees au score avant determination de la couleur
   - Plafonnees a [-15, +15] points
-
-Corrections audit v2.1 :
-  - Fix #2 : predict_range decremente les quotas simules
-  - Fix #6 : probabilites recalibrees (sigmoide reelle)
-  - Fix #8 : fenetre vague de froid symetrique (5 jours centres)
-  - Fix #11 : clustering evite requetes DB inutiles pour jours futurs
 """
 
 import logging
@@ -125,6 +126,29 @@ _GRADIENT_SCORE_POINTS = [
     (5, 70), (8, 90), (12, 98),
 ]
 
+# Scoring pression atmospherique (Phase 2 Meteo France)
+# Anticyclone hivernal (haute pression + froid) = forte consommation chauffage
+# Les jours rouges Tempo correlent avec les situations anticycloniques froides :
+#   - Haute pression (> 1025 hPa) + froid = ciel degage, rayonnement nocturne,
+#     temperatures qui plongent, consommation electrique maximale
+#   - Basse pression (< 1005 hPa) = temps perturbe, souvent plus doux
+# Le score est maximal pour les hautes pressions en hiver
+_PRESSURE_SCORE_POINTS = [
+    (995, 10),    # Depression : temps doux, faible risque
+    (1005, 20),   # Pression normale basse
+    (1013, 35),   # Pression standard
+    (1020, 50),   # Anticyclone modere
+    (1025, 70),   # Anticyclone marque — risque significatif
+    (1030, 85),   # Anticyclone puissant — risque eleve
+    (1035, 95),   # Anticyclone exceptionnel — quasi certain rouge si froid
+]
+
+# Facteur de confiance par source meteo (attenuation pour modeles basse resolution)
+_SOURCE_CONFIDENCE = {
+    "arome": 1.0,    # Haute resolution 1.3 km — confiance maximale
+    "arpege": 0.85,  # Resolution 10 km — legere attenuation
+}
+
 
 # ================================================================
 # PREDICTION PRINCIPALE
@@ -136,8 +160,9 @@ def predict_day(target_date: date, weather: dict | None = None,
                 weights: dict | None = None,
                 rte_score: dict | None = None,
                 _actuals_cache: dict | None = None,
-                _learnings: dict | None = None) -> dict:
-    """Predit la couleur Tempo pour une date donnee (algorithme v2.1)."""
+                _learnings: dict | None = None,
+                vigilance: dict | None = None) -> dict:
+    """Predit la couleur Tempo pour une date donnee (algorithme v2.2)."""
     # Hors saison = toujours BLEU
     if not is_in_season(target_date):
         return _result(target_date, "BLEU", 0, 1.0, 0.0, 0.0,
@@ -155,22 +180,26 @@ def predict_day(target_date: date, weather: dict | None = None,
     # Poids courants
     if weights is None:
         weights = get_current_weights()
-    w_temp = weights.get("temperature", 0.30)
+    w_temp = weights.get("temperature", 0.27)
     w_budget = weights.get("jours_restants", 0.20)
     w_dow = weights.get("jour_semaine", 0.10)
-    w_gradient = weights.get("gradient_thermique", 0.15)
+    w_gradient = weights.get("gradient_thermique", 0.13)
     w_cluster = weights.get("clustering", 0.10)
-    w_rte = weights.get("consommation_rte", 0.15)
+    w_rte = weights.get("consommation_rte", 0.13)
+    w_pressure = weights.get("pression", 0.07)
 
     # --- Donnees meteo ---
     temp_min = weather.get("temp_min", 5) if weather else 5
     temp_max = weather.get("temp_max", 10) if weather else 10
     temp_moy = weather.get("temp_moy", 7.5) if weather else 7.5
-    wind_speed = weather.get("wind_speed", 10) if weather else 10  # ML-4
+    wind_speed = weather.get("wind_speed", 10) if weather else 10
+    humidity = weather.get("humidity", 50) if weather else 50
+    pressure = weather.get("pressure") if weather else None
+    source = weather.get("source", "arpege") if weather else "arpege"
 
     forecast_quality = weather.get("forecast_quality", "api") if weather else "api"
 
-    # === 1. Score temperature (recalibre + wind chill ML-4) ===
+    # === 1. Score temperature (recalibre + wind chill) ===
     temp_score = _score_temperature_v2(temp_moy, wind_speed)
 
     # === 2. Score budget (profil mensuel) ===
@@ -183,7 +212,6 @@ def predict_day(target_date: date, weather: dict | None = None,
     gradient_score = _score_gradient(forecasts or [], target_idx)
 
     # === 5. Score clustering (jours rouges consecutifs) ===
-    # Fix #11 : passer le cache actuals pour eviter requetes DB inutiles
     cluster_score = _score_clustering(
         target_date, forecasts or [], target_idx, _actuals_cache)
 
@@ -192,16 +220,29 @@ def predict_day(target_date: date, weather: dict | None = None,
     if rte_score and rte_score.get("available"):
         rte_s = rte_score["score"]
 
-    # === Bonus vague de froid ===
-    # Fix audit ML #1 : le bonus cold wave passe désormais par le système de poids.
-    # Il amplifie le score température AVANT la somme pondérée, au lieu d'être
-    # ajouté directement au score final (ce qui court-circuitait les poids appris).
-    cold_wave = _detect_cold_wave(forecasts or [], target_idx)
+    # === 7. Score pression atmospherique (Phase 2 Meteo France) ===
+    # Anticyclone hivernal (haute pression + froid) = risque accru
+    # Le score est combine avec la temperature : haute pression seule
+    # n'est pas un signal (ex: anticyclone d'ete = beau temps chaud)
+    pressure_score = _score_pressure(pressure, temp_moy)
+
+    # === Bonus vague de froid (ameliore avec humidite) ===
+    # Phase 2 : l'humidite amplifie le bonus — froid humide = plus de chauffage
+    cold_wave = _detect_cold_wave(forecasts or [], target_idx, humidity)
     if cold_wave > 0:
         temp_score = min(100, temp_score + cold_wave)
 
+    # === Bonus vigilance Meteo France grand froid ===
+    # Signal expert humain — ajoute au score temperature si alerte active
+    vigilance_bonus = 0.0
+    if vigilance and vigilance.get("grand_froid"):
+        vigilance_bonus = 20.0
+        temp_score = min(100, temp_score + vigilance_bonus)
+    elif vigilance and vigilance.get("neige_verglas"):
+        vigilance_bonus = 10.0
+        temp_score = min(100, temp_score + vigilance_bonus)
+
     # === C-1: Raw sub-scores BEFORE corrections (uncontaminated for ML training) ===
-    # Note: temp_score inclut le cold wave bonus (intégré au facteur température)
     raw_sub_scores = {
         "score_temperature_raw": round(temp_score, 1),
         "score_budget_raw": round(budget_score, 1),
@@ -212,7 +253,6 @@ def predict_day(target_date: date, weather: dict | None = None,
     }
 
     # === Corrections par facteur du journal d'apprentissage ===
-    # Appliquées AVANT la somme pondérée pour cibler les sub-scores fautifs
     learning_adjustment = 0.0
     if _learnings and _learnings.get("factor"):
         factor_corrections = _learnings["factor"]
@@ -224,7 +264,6 @@ def predict_day(target_date: date, weather: dict | None = None,
         rte_s = _apply_factor_correction(rte_s, factor_corrections, "rte")
 
     # === Score composite pondere ===
-    # Fix audit ML #1 : cold wave intégré dans temp_score (plus de bonus hors-poids)
     base_score = (
         temp_score * w_temp
         + budget_score * w_budget
@@ -232,7 +271,16 @@ def predict_day(target_date: date, weather: dict | None = None,
         + gradient_score * w_gradient
         + cluster_score * w_cluster
         + rte_s * w_rte
+        + pressure_score * w_pressure
     )
+
+    # === Confiance source meteo (AROME vs ARPEGE) ===
+    # AROME (J a J+2) : resolution 1.3 km, confiance maximale
+    # ARPEGE (J+2 a J+5) : resolution 10 km, legere attenuation
+    # Attenuation = score ramene vers le neutre (50) proportionnellement
+    source_confidence = _SOURCE_CONFIDENCE.get(source, 0.85)
+    if source_confidence < 1.0:
+        base_score = base_score * source_confidence + 50 * (1 - source_confidence)
 
     # === Fix #43 : boost d'urgence budgétaire ===
     # Problème : budget_score * w_budget = max 100 * 0.20 = 20 points.
@@ -315,7 +363,9 @@ def predict_day(target_date: date, weather: dict | None = None,
     # === Raison humaine ===
     raison = _build_raison_v2(
         temp_moy, temp_min, gradient_score, cold_wave, remaining,
-        target_date, d_left, rte_score, cluster_score, forecast_quality)
+        target_date, d_left, rte_score, cluster_score, forecast_quality,
+        pressure=pressure, vigilance=vigilance,
+        vigilance_bonus=vigilance_bonus)
 
     # Note apprentissage si correction significative
     if abs(learning_adjustment) >= 2:
@@ -330,6 +380,7 @@ def predict_day(target_date: date, weather: dict | None = None,
         "score_gradient": round(gradient_score, 1),
         "score_clustering": round(cluster_score, 1),
         "score_rte": round(rte_s, 1),
+        "score_pressure": round(pressure_score, 1),
     }
     # C-1: Include raw sub-scores for uncontaminated ML training
     sub_scores.update(raw_sub_scores)
@@ -340,13 +391,15 @@ def predict_day(target_date: date, weather: dict | None = None,
 
 
 def predict_range(forecasts: list[dict],
-                  rte_score: dict | None = None) -> list[dict]:
+                  rte_score: dict | None = None,
+                  vigilance: dict | None = None) -> list[dict]:
     """Predit la couleur pour chaque jour du forecast.
 
     Fix #2 : decremente les quotas au fur et a mesure pour que les predictions
     ulterieures ne predisent pas plus de rouges/blancs que le quota restant.
     Fix #11 : charge les actuals une seule fois (batch).
     Fix v5 #5 : si J+1 a une couleur officielle dans actuals, l'utiliser.
+    Phase 2 : passe les donnees de vigilance Meteo France au scoring.
     """
     remaining = get_remaining_days()
     weights = get_current_weights()
@@ -408,7 +461,8 @@ def predict_range(forecasts: list[dict],
                            remaining=sim_remaining, weights=weights,
                            rte_score=day_rte,
                            _actuals_cache=actuals_cache,
-                           _learnings=learnings)
+                           _learnings=learnings,
+                           vigilance=vigilance)
         pred["horizon"] = f"J-{delta}" if delta > 0 else ("J0" if delta == 0 else f"J+{-delta}")
         pred["confirmed"] = False
         pred["simulated"] = False
@@ -597,6 +651,35 @@ def _score_weekday_v2(target_date: date) -> float:
     return {0: 50, 1: 65, 2: 70, 3: 65, 4: 45}[dow]
 
 
+def _score_pressure(pressure: float | None, temp_moy: float) -> float:
+    """Score 0-100 base sur la pression atmospherique (Phase 2 Meteo France).
+
+    Anticyclone hivernal (haute pression + froid) correle fortement avec
+    les jours rouges Tempo. La haute pression favorise :
+      - Ciel degage → fort rayonnement nocturne → temperatures basses
+      - Temps stable → froid persistant sur plusieurs jours
+      - Consommation electrique de chauffage maximale
+
+    Le score est attenue si la temperature est douce (> 10C) car une haute
+    pression en douceur n'est pas un signal de risque Tempo.
+    """
+    if pressure is None:
+        return 35  # Neutre si donnee indisponible
+
+    raw_score = _piecewise_linear(pressure, _PRESSURE_SCORE_POINTS)
+
+    # Attenuation par temperature : haute pression sans froid = peu de risque
+    # Ex: anticyclone d'automne avec 15C → divise le signal par ~2
+    if temp_moy > 10:
+        attenuation = max(0.3, 1.0 - (temp_moy - 10) * 0.07)
+        raw_score *= attenuation
+    elif temp_moy < 0:
+        # Froid + haute pression = amplification du signal
+        raw_score = min(100, raw_score * 1.15)
+
+    return round(raw_score, 1)
+
+
 def _score_gradient(forecasts: list[dict], target_idx: int) -> float:
     """Score 0-100 base sur le gradient thermique (chute de temperature).
 
@@ -693,11 +776,15 @@ def _check_yesterday_color(yesterday: date) -> bool:
         conn.close()
 
 
-def _detect_cold_wave(forecasts: list[dict], target_idx: int) -> float:
+def _detect_cold_wave(forecasts: list[dict], target_idx: int,
+                      humidity: float = 50.0) -> float:
     """Detecte une vague de froid (3+ jours consecutifs < 2C national).
-    Retourne un bonus de 0 a 25 points (hors poids ajustables).
+    Retourne un bonus de 0 a 30 points (integre au facteur temperature).
 
     Fix #8 : fenetre symetrique de 5 jours centree sur target_idx.
+    Phase 2 : l'humidite elevee (>= 80%) amplifie le bonus (+5 pts max).
+    Le froid humide augmente la consommation de chauffage (sensation de froid
+    plus intense, condensation, deperdition thermique accrue).
     """
     if not forecasts or target_idx >= len(forecasts):
         return 0
@@ -714,16 +801,24 @@ def _detect_cold_wave(forecasts: list[dict], target_idx: int) -> float:
     )
 
     # Fix #16 audit v4 : bonus maximum si toute la fenetre est froide
-    # (meme si fenetre < 5 en bord de forecast)
     if cold_days >= window_size and cold_days >= 3:
-        return 25  # 100% de la fenetre froide (3+ jours)
-    if cold_days >= 4:
-        return 20
-    if cold_days >= 3:
-        return 15
-    if cold_days >= 2:
-        return 8
-    return 0
+        bonus = 25  # 100% de la fenetre froide (3+ jours)
+    elif cold_days >= 4:
+        bonus = 20
+    elif cold_days >= 3:
+        bonus = 15
+    elif cold_days >= 2:
+        bonus = 8
+    else:
+        return 0
+
+    # Phase 2 : amplification humidite (froid humide = plus de chauffage)
+    if humidity >= 85:
+        bonus += 5
+    elif humidity >= 80:
+        bonus += 3
+
+    return min(30, bonus)
 
 
 # ================================================================
@@ -784,9 +879,18 @@ def _build_raison_v2(temp_moy: float, temp_min: float,
                      gradient_score: float, cold_wave: float,
                      remaining: dict, target_date: date, d_left: int,
                      rte_score: dict | None, cluster_score: float,
-                     forecast_quality: str = "api") -> str:
-    """Construit une explication humaine de la prediction v2."""
+                     forecast_quality: str = "api",
+                     pressure: float | None = None,
+                     vigilance: dict | None = None,
+                     vigilance_bonus: float = 0.0) -> str:
+    """Construit une explication humaine de la prediction v2.2."""
     raisons = []
+
+    # Vigilance Meteo France (prioritaire si active)
+    if vigilance_bonus >= 20:
+        raisons.append("Vigilance grand froid Meteo France")
+    elif vigilance_bonus >= 10:
+        raisons.append("Vigilance neige-verglas Meteo France")
 
     # Temperature nationale
     if temp_moy < -2:
@@ -795,6 +899,10 @@ def _build_raison_v2(temp_moy: float, temp_min: float,
         raisons.append(f"Froid national ({temp_moy:.0f}C moy.)")
     elif temp_moy < 5:
         raisons.append(f"Frais ({temp_moy:.0f}C moy.)")
+
+    # Pression atmospherique (Phase 2)
+    if pressure is not None and pressure >= 1025 and temp_moy < 5:
+        raisons.append(f"Anticyclone hivernal ({pressure:.0f} hPa)")
 
     # Gradient
     if gradient_score >= 70:
@@ -821,9 +929,7 @@ def _build_raison_v2(temp_moy: float, temp_min: float,
             else:
                 raisons.append("Forte consommation prevue")
 
-    # Jours feries / weekend — pas de mention "rouge improbable" :
-    # les contraintes dures l'empêchent déjà, et le client veut
-    # les mêmes infos utiles que pour les autres jours.
+    # Jours feries / weekend
     if is_french_holiday(target_date):
         raisons.append("Jour f\u00e9ri\u00e9")
     elif target_date.weekday() == 6:

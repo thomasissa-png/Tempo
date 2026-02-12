@@ -185,7 +185,7 @@ async def _refresh_predictions(trigger: str, send_sms: bool = False) -> int:
     Returns:
         Nombre de prédictions générées, ou 0 si météo indisponible.
     """
-    from weather_client import fetch_forecast_extended
+    from weather_client import fetch_forecast_extended, fetch_vigilance
     from predictor import predict_range, store_prediction
     from rte_client import get_consumption_score
     from app import invalidate_predictions_cache
@@ -198,11 +198,14 @@ async def _refresh_predictions(trigger: str, send_sms: bool = False) -> int:
         logger.warning(f"[{trigger}] Pas de données météo, recalcul reporté")
         return 0
 
-    # 2. Score RTE
-    rte_score = await get_consumption_score()
+    # 2. Score RTE + Vigilance Météo France (en parallèle)
+    rte_score, vigilance = await asyncio.gather(
+        get_consumption_score(),
+        fetch_vigilance(),
+    )
 
-    # 3. Prédictions
-    predictions = predict_range(forecasts, rte_score=rte_score)
+    # 3. Prédictions (avec vigilance grand froid/neige-verglas)
+    predictions = predict_range(forecasts, rte_score=rte_score, vigilance=vigilance)
 
     # 4. Stocker, détecter les changements
     changes = []

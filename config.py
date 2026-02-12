@@ -68,16 +68,19 @@ class Config:
     # Les jours bleus = total saison - rouges - blancs (varie si annee bissextile)
     # Calculé dynamiquement dans tempo_client.get_blue_days_total()
 
-    # --- Poids initiaux algorithme v2 ---
+    # --- Poids initiaux algorithme v2.2 (Meteo France) ---
     # temperature (nationale ponderee) + budget + jour semaine/feries
-    # + gradient thermique + clustering + consommation RTE
+    # + gradient thermique + clustering + consommation RTE + pression atmo
+    # Phase 2 : ajout pression atmospherique (anticyclone hivernal)
+    # Redistribution : temperature 30→27, gradient 15→13, pour faire place a pression (7)
     DEFAULT_WEIGHTS = {
-        "temperature": 0.30,
+        "temperature": 0.27,
         "jours_restants": 0.20,
         "jour_semaine": 0.10,
-        "gradient_thermique": 0.15,
+        "gradient_thermique": 0.13,
         "clustering": 0.10,
-        "consommation_rte": 0.15,
+        "consommation_rte": 0.13,
+        "pression": 0.07,
     }
 
     # --- Profil mensuel de distribution des jours rouges ---

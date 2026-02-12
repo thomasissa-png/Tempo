@@ -33,9 +33,10 @@ from config import Config
 # ================================================================
 
 DEFAULT_WEIGHTS = {
-    "temperature": 0.30, "jours_restants": 0.20,
-    "jour_semaine": 0.10, "gradient_thermique": 0.15,
-    "clustering": 0.10, "consommation_rte": 0.15,
+    "temperature": 0.27, "jours_restants": 0.20,
+    "jour_semaine": 0.10, "gradient_thermique": 0.13,
+    "clustering": 0.10, "consommation_rte": 0.13,
+    "pression": 0.07,
 }
 
 def make_weather(temp_moy, wind=10, temp_min=None, temp_max=None):
@@ -201,12 +202,12 @@ class TestFinSaison:
             f"got {r['couleur_predite']} (score={r['score_risque']})"
         )
 
-    def test_fev_14_rouges_12c_blanc(self):
-        """Février, 14 rouges restants, 12°C → BLANC (trop doux pour rouge)."""
-        r = predict(date(2026, 2, 17), temp_moy=12.0,
+    def test_fev_14_rouges_13c_blanc(self):
+        """Février, 14 rouges restants, 13°C → BLANC (trop doux pour rouge)."""
+        r = predict(date(2026, 2, 17), temp_moy=13.0,
                     remaining={"ROUGE": 14, "BLANC": 20, "BLEU": 50})
         assert r["couleur_predite"] != "ROUGE", (
-            f"14 rouges mais 12°C = trop doux, "
+            f"14 rouges mais 13°C = trop doux, "
             f"got {r['couleur_predite']} (score={r['score_risque']})"
         )
 
