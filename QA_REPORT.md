@@ -94,7 +94,7 @@
 | 5.1 | Hors saison (juin-août) → tout BLEU | ✅ | — | `predict_day()` line 98 |
 | 5.2 | Quotas rouges épuisés → pas de rouge prédit | ✅ | — | `remaining["ROUGE"] == 0` → skip ROUGE |
 | 5.3 | Quotas rouge ET blanc épuisés → tout BLEU | ✅ | — | Early return line 106 |
-| 5.4 | API météo down → fallback données simulées | ✅ | — | `weather_client.py` fallback + warning affiché |
+| 5.4 | API météo down → pas de prédiction (plus de fallback simulé) | ✅ | — | `weather_client.py` retourne [] si Météo France indisponible |
 | 5.5 | API Tempo down → "Données non disponibles" | ✅ | — | `/api/today` retourne `status: "unavailable"` |
 | 5.6 | API RTE down → prédiction sans score RTE | ✅ | — | `rte_score = None`, facteur ignoré |
 | 5.7 | Cache prédictions (5 min) | ✅ | — | Lock asyncio + double-check |

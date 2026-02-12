@@ -508,8 +508,8 @@ def init_db():
 
     if version < 10:
         # Migration v10 — Purge des données météo simulées
-        # Les prédictions basées sur des moyennes saisonnières aléatoires (fallback
-        # quand Open-Meteo était down) polluent l'historique et l'apprentissage.
+        # Les prédictions basées sur des moyennes saisonnières aléatoires (ancien fallback)
+        # polluent l'historique et l'apprentissage.
         # Ce fallback a été supprimé du code, on nettoie la base existante.
 
         # 1. Supprimer les prédictions basées sur de la météo simulée

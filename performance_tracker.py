@@ -846,7 +846,7 @@ def analyze_error_patterns(days: int = 90, force: bool = False) -> list[dict]:
             logger.info(f"[Learning] Pas assez de données ({len(perf_rows)}/20)")
             return []
 
-        # Températures réelles par date (weather_cache = données Open-Meteo)
+        # Températures réelles par date (weather_cache = données météo archivées)
         # Fix ML-circular: on utilise les vraies températures, pas les prévues
         temp_rows = conn.execute(
             """SELECT date, temp_min

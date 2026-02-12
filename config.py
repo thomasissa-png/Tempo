@@ -13,8 +13,13 @@ class Config:
     # --- API Tempo officielle ---
     TEMPO_API_BASE = "https://www.api-couleur-tempo.fr/api"
 
+    # --- Meteo France API ---
+    # Cle API obtenue sur https://portail-api.meteofrance.fr/
+    # Necessite un abonnement (gratuit) aux API AROME, ARPEGE et Vigilance
+    METEOFRANCE_API_KEY = os.getenv("METEOFRANCE_API_KEY", "")
+
     # --- Villes meteo ponderees par population / parc chauffage electrique ---
-    # API : Open-Meteo (gratuit, 16 jours, sans cle)
+    # API : Meteo France (AROME haute resolution + ARPEGE global)
     # (lat, lon, poids) — poids normalises a 1.0
     # Fix meteo #2 : reequilibrage des poids
     #   - Marseille reduit (climat mediterraneen doux, biaise la moyenne vers le haut)

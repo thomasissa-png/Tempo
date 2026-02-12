@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-"""Import historique Tempo — couleurs EDF + températures Open-Meteo.
+"""Import historique Tempo — couleurs EDF + températures historiques.
 
 Usage (depuis le serveur ou en local, PAS depuis le sandbox Claude) :
     python import_history.py
 
 Ce script :
   1. Parse les fichiers iCal (jourstempo.fr) pour extraire les couleurs Tempo
-  2. Appelle l'API historique Open-Meteo pour les 9 villes pondérées
+  2. Appelle l'API historique Open-Meteo Archive pour les 9 villes pondérées
+     (NB: les prévisions live utilisent Météo France AROME/ARPEGE, mais
+      l'historique utilise Open-Meteo Archive car c'est la seule API
+      gratuite offrant un accès simple aux observations passées)
   3. Calcule la température nationale pondérée (identique au scoring live)
   4. Stocke tout en base (actuals historiques + weather_history)
   5. Lance un backtesting : predict_day() sur chaque date historique
@@ -17,7 +20,7 @@ Prérequis :
   - httpx installé (pip install httpx)
   - La base tempo.db doit exister (lancer l'app une fois au préalable)
 
-Durée estimée : ~2-3 minutes (appels Open-Meteo en batch par saison).
+Durée estimée : ~2-3 minutes (appels Open-Meteo Archive en batch par saison).
 """
 
 import os
@@ -55,7 +58,8 @@ ICS_FILES = [
 # Villes et poids — identiques à config.py pour cohérence
 CITIES = Config.WEATHER_CITIES
 
-# Open-Meteo Historical API
+# Open-Meteo Historical Archive API (pour données passées uniquement)
+# Les prévisions live utilisent Météo France AROME/ARPEGE (voir weather_client.py)
 ARCHIVE_API_URL = "https://archive-api.open-meteo.com/v1/archive"
 DAILY_VARS = "temperature_2m_max,temperature_2m_min,wind_speed_10m_max"
 
@@ -543,7 +547,7 @@ def run_initial_calibration(total_days: int):
 # ================================================================
 
 async def main():
-    """Exécute l'import complet : iCal → DB, Open-Meteo → DB, backtest."""
+    """Exécute l'import complet : iCal → DB, météo archive → DB, backtest."""
     start_time = time.time()
 
     logger.info("=" * 60)
@@ -567,7 +571,7 @@ async def main():
     logger.info(f"  {inserted} nouvelles entrées ajoutées à la table actuals")
 
     # --- Étape 3 : Fetch températures historiques ---
-    logger.info("\n[3/4] Fetch des températures historiques Open-Meteo...")
+    logger.info("\n[3/4] Fetch des températures historiques (Open-Meteo Archive)...")
 
     # Déterminer la plage de dates
     all_dates = sorted(colors.keys())

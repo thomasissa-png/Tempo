@@ -354,7 +354,7 @@ class TestPredictDay:
             assert 0 <= result[key] <= 100
 
     def test_no_simulated_fallback(self, sample_weather, sample_remaining):
-        """Pas d'atténuation simulée — Open-Meteo down = pas de prédiction."""
+        """Pas d'atténuation simulée — API météo down = pas de prédiction."""
         target = date.fromisoformat(sample_weather[0]["date"])
         # forecast_quality "api" est le seul cas réel
         sample_weather[0]["forecast_quality"] = "api"
