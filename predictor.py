@@ -233,6 +233,25 @@ def predict_day(target_date: date, weather: dict | None = None,
         + cluster_score * w_cluster
         + rte_s * w_rte
     )
+
+    # === Fix #43 : boost d'urgence budgétaire ===
+    # Problème : budget_score * w_budget = max 100 * 0.20 = 20 points.
+    # Pour atteindre SEUIL_ROUGE (65), il faut -2°C national même avec
+    # budget à 100%. C'est absurde : avec 14 rouges sur 33 jours éligibles,
+    # EDF est FORCÉ de placer des rouges quasi quotidiennement.
+    #
+    # Fix : quand budget_score >= 70, appliquer un boost multiplicatif
+    # au score composite. Cela permet à la pression budgétaire de dominer
+    # en fin de saison sans changer le système de poids en temps normal.
+    #
+    # Exemples avec 14 rouges restants, 33 jours éligibles (budget=100) :
+    #   5°C → base 54 × 1.45 = 78 → ROUGE (avant : BLANC)
+    #  10°C → base 44 × 1.45 = 64 → BLANC (correct, pas assez froid)
+    #  -2°C → base 67 × 1.45 = 97 → ROUGE (avant aussi, mais plus marqué)
+    if budget_score >= 70:
+        urgency_boost = 1.0 + (budget_score - 70) * 0.015
+        base_score *= urgency_boost
+
     score_risque = min(100, base_score)
 
     # === Corrections contextuelles du journal d'apprentissage ===

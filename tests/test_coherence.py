@@ -344,3 +344,65 @@ class TestProfileConstraintCoherence:
             "_score_budget_v2 n'a pas de deadline spécifique ROUGE !\n"
             "L'urgence doit utiliser les jours jusqu'au 31 mars (R1), pas le 31 mai."
         )
+
+
+# ================================================================
+# 10. BOOST URGENCE BUDGÉTAIRE (FIX #43)
+# ================================================================
+
+class TestBudgetUrgencyBoost:
+    """Le scoring doit amplifier le score quand la pression budgétaire est extrême.
+
+    Sans boost : budget_score * w_budget = 100 * 0.20 = 20 points max.
+    Pour atteindre SEUIL_ROUGE (65), il faudrait -2°C national même avec
+    budget à 100%. Absurde : 14 rouges sur 33 jours = 42% de densité.
+
+    Le boost multiplicatif permet à la pression budgétaire de dominer en
+    fin de saison sans changer le système de poids en temps normal.
+    """
+
+    def test_budget_urgency_boost_exists(self):
+        """predictor.py doit contenir un mécanisme de boost budgétaire."""
+        with open(os.path.join(ROOT, "predictor.py")) as f:
+            source = f.read()
+        assert "urgency_boost" in source, (
+            "predictor.py ne contient pas de boost d'urgence budgétaire !\n"
+            "Sans boost, budget_score * 0.20 = max 20pts, insuffisant pour ROUGE."
+        )
+
+    def test_boost_threshold_not_too_low(self):
+        """Le boost ne doit pas se déclencher trop tôt (< 70)."""
+        with open(os.path.join(ROOT, "predictor.py")) as f:
+            source = f.read()
+        # Vérifier que le seuil est >= 70
+        match = re.search(r'budget_score\s*>=\s*(\d+)', source)
+        assert match, "Seuil de déclenchement du boost non trouvé"
+        threshold = int(match.group(1))
+        assert threshold >= 70, (
+            f"Seuil de boost = {threshold}, trop bas ! "
+            f"Le boost ne devrait se déclencher qu'en urgence réelle (>= 70)."
+        )
+
+    def test_high_budget_cold_day_predicts_rouge(self):
+        """Avec budget extrême (14 restants) + froid (3°C), doit prédire ROUGE."""
+        from predictor import predict_day
+        from datetime import date
+
+        # Simuler un mardi de février avec 14 rouges restants et 3°C
+        target = date(2026, 2, 17)  # mardi
+        weather = {"temp_min": -1, "temp_max": 7, "temp_moy": 3.0,
+                   "wind_speed": 15, "forecast_quality": "test"}
+        remaining = {"ROUGE": 14, "BLANC": 20, "BLEU": 50}
+        weights = {
+            "temperature": 0.30, "jours_restants": 0.20,
+            "jour_semaine": 0.10, "gradient_thermique": 0.15,
+            "clustering": 0.10, "consommation_rte": 0.15,
+        }
+
+        result = predict_day(target, weather=weather,
+                             remaining=remaining, weights=weights)
+        assert result["couleur_predite"] == "ROUGE", (
+            f"14 rouges restants + 3°C devrait prédire ROUGE, "
+            f"mais a prédit {result['couleur_predite']} "
+            f"(score={result['score_risque']})"
+        )
