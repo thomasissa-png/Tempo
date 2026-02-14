@@ -123,11 +123,48 @@ async def fetch_forecast() -> list[dict]:
     return []
 
 
+def _get_meteofrance_auth() -> dict[str, str]:
+    """Determine le mode d'authentification Meteo France.
+
+    Deux modes supportes par meteole (MeteoFranceClient) :
+      1. api_key : cle permanente (duree=0 sur le portail), pas de renouvellement
+      2. application_id : credentials OAuth2 Base64, renouvellement auto toutes les heures
+
+    Priorite : api_key > application_id (la cle permanente est plus fiable
+    depuis les environnements cloud comme Replit ou le endpoint /token peut etre bloque).
+
+    Retourne un dict de kwargs a passer directement a AromeForecast/ArpegeForecast.
+    """
+    # Mode 1 : cle API permanente (recommande)
+    api_key = Config.METEOFRANCE_API_KEY
+    if api_key:
+        # Heuristique : une application_id OAuth2 est typiquement un Base64
+        # de "client_id:client_secret" (contient souvent '=' de padding).
+        # Une api_key permanente est un JWT long (commence par 'eyJ').
+        # Si l'utilisateur a mis un application_id dans API_KEY par erreur,
+        # on le detecte et on le redirige.
+        if len(api_key) < 100 and not api_key.startswith("eyJ"):
+            # Ressemble a un application_id, pas une api_key
+            logger.info("[Meteo] METEOFRANCE_API_KEY detecte comme application_id OAuth2")
+            return {"application_id": api_key}
+        logger.info("[Meteo] Auth Meteo France : mode api_key (permanent)")
+        return {"api_key": api_key}
+
+    # Mode 2 : application_id OAuth2 (renouvellement auto)
+    app_id = Config.METEOFRANCE_APPLICATION_ID
+    if app_id:
+        logger.info("[Meteo] Auth Meteo France : mode application_id (OAuth2)")
+        return {"application_id": app_id}
+
+    return {}
+
+
 async def _fetch_meteofrance() -> list[dict]:
     """Fetch via Meteo France AROME + ARPEGE. Retourne [] si echec."""
-    api_key = Config.METEOFRANCE_API_KEY
-    if not api_key:
-        logger.warning("[Meteo] METEOFRANCE_API_KEY non configuree")
+    auth_kwargs = _get_meteofrance_auth()
+    if not auth_kwargs:
+        logger.warning("[Meteo] Meteo France non configure "
+                       "(ni METEOFRANCE_API_KEY ni METEOFRANCE_APPLICATION_ID)")
         return []
 
     if _meteo_breaker.is_open:
@@ -136,7 +173,7 @@ async def _fetch_meteofrance() -> list[dict]:
 
     try:
         city_forecasts = await asyncio.wait_for(
-            asyncio.to_thread(_fetch_all_cities_sync, api_key),
+            asyncio.to_thread(_fetch_all_cities_sync, auth_kwargs),
             timeout=120,
         )
     except Exception as e:
@@ -168,10 +205,11 @@ async def fetch_forecast_extended() -> list[dict]:
 # FETCH SYNCHRONE (thread pool) — meteole
 # ================================================================
 
-def _fetch_all_cities_sync(api_key: str) -> dict[str, list[dict]]:
+def _fetch_all_cities_sync(auth_kwargs: dict[str, str]) -> dict[str, list[dict]]:
     """Fetch previsions pour chaque ville via meteole (synchrone).
 
     Cree les clients AROME et ARPEGE une seule fois, puis itere sur les villes.
+    auth_kwargs : dict d'auth (api_key= ou application_id=) passe a meteole.
     """
     try:
         from meteole import AromeForecast, ArpegeForecast
@@ -182,11 +220,12 @@ def _fetch_all_cities_sync(api_key: str) -> dict[str, list[dict]]:
         )
         return {}
 
+    auth_mode = "api_key" if "api_key" in auth_kwargs else "application_id"
     try:
-        arome = AromeForecast(application_id=api_key)
-        arpege = ArpegeForecast(application_id=api_key)
+        arome = AromeForecast(**auth_kwargs)
+        arpege = ArpegeForecast(**auth_kwargs)
     except Exception as e:
-        logger.error(f"[Meteo] Erreur initialisation clients meteole: {e}")
+        logger.error(f"[Meteo] Erreur init meteole (mode={auth_mode}): {e}")
         return {}
 
     city_forecasts = {}
@@ -608,9 +647,8 @@ async def _fetch_openmeteo_city(city: dict) -> list[dict] | None:
 async def fetch_vigilance(api_key: str | None = None) -> dict:
     """Recupere les alertes de vigilance Meteo France.
 
-    Utilise meteole.Vigilance pour beneficier de la meme authentification
-    OAuth2 (application_id) que AROME/ARPEGE. Evite le probleme de
-    header apikey incompatible avec les tokens OAuth2.
+    Utilise meteole.Vigilance avec la meme authentification que AROME/ARPEGE.
+    Supporte api_key (permanent) et application_id (OAuth2).
 
     Retourne un dict avec :
       - grand_froid: bool (vigilance grand froid orange ou rouge active)
@@ -618,8 +656,12 @@ async def fetch_vigilance(api_key: str | None = None) -> dict:
       - max_level: int (0=vert, 1=jaune, 2=orange, 3=rouge)
       - details: list[dict] (detail par departement)
     """
-    key = api_key or Config.METEOFRANCE_API_KEY
-    if not key:
+    # Utilise le meme mecanisme d'auth que AROME/ARPEGE
+    if api_key:
+        auth_kwargs = {"application_id": api_key}
+    else:
+        auth_kwargs = _get_meteofrance_auth()
+    if not auth_kwargs:
         return _empty_vigilance()
 
     # Fix audit DB : circuit breaker vigilance
@@ -628,9 +670,8 @@ async def fetch_vigilance(api_key: str | None = None) -> dict:
         return _empty_vigilance()
 
     try:
-        # meteole.Vigilance gere l'auth OAuth2 comme AROME/ARPEGE
         data = await asyncio.wait_for(
-            asyncio.to_thread(_fetch_vigilance_sync, key),
+            asyncio.to_thread(_fetch_vigilance_sync, auth_kwargs),
             timeout=30,
         )
         _vigilance_breaker.record_success()
@@ -641,16 +682,18 @@ async def fetch_vigilance(api_key: str | None = None) -> dict:
         return _empty_vigilance()
 
 
-def _fetch_vigilance_sync(api_key: str) -> dict:
+def _fetch_vigilance_sync(auth_kwargs: dict[str, str]) -> dict:
     """Fetch vigilance via meteole (synchrone, lance dans thread pool)."""
     try:
         from meteole import Vigilance
-        vig = Vigilance(application_id=api_key)
+        vig = Vigilance(**auth_kwargs)
         return vig.get_map()
     except ImportError:
         # Fallback : appel direct si meteole trop ancien (pas de classe Vigilance)
         import requests
-        headers = {"apikey": api_key}
+        # En mode api_key, on peut utiliser le header directement
+        key = auth_kwargs.get("api_key") or auth_kwargs.get("application_id", "")
+        headers = {"apikey": key}
         resp = requests.get(_VIGILANCE_URL, headers=headers, timeout=15)
         resp.raise_for_status()
         return resp.json()

@@ -14,9 +14,19 @@ class Config:
     TEMPO_API_BASE = "https://www.api-couleur-tempo.fr/api"
 
     # --- Meteo France API ---
-    # Cle API obtenue sur https://portail-api.meteofrance.fr/
+    # Portail : https://portail-api.meteofrance.fr/
     # Necessite un abonnement (gratuit) aux API AROME, ARPEGE et Vigilance
+    #
+    # Deux modes d'authentification (au choix) :
+    #   1. API_KEY : cle permanente (duree=0 sur le portail), header "apikey:"
+    #      → Pas de renouvellement, fonctionne depuis Replit sans probleme
+    #   2. APPLICATION_ID : credentials OAuth2 Base64 (depuis "Generer Token")
+    #      → Renouvellement auto toutes les heures via POST /token
+    #      → Peut echouer si le endpoint /token est bloque (ex: firewall Replit)
+    #
+    # Priorite : API_KEY > APPLICATION_ID (la cle permanente est plus fiable)
     METEOFRANCE_API_KEY = os.getenv("METEOFRANCE_API_KEY", "")
+    METEOFRANCE_APPLICATION_ID = os.getenv("METEOFRANCE_APPLICATION_ID", "")
 
     # --- Villes meteo ponderees par population / parc chauffage electrique ---
     # API : Meteo France (AROME haute resolution + ARPEGE global)
