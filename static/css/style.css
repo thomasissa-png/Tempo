@@ -578,6 +578,68 @@ nav a:hover, nav a.active {
     color: var(--text);
 }
 
+/* === Barre de probabilité tricolore === */
+.fc-proba-bar {
+    display: flex;
+    height: 6px;
+    border-radius: 3px;
+    overflow: hidden;
+    margin-top: 8px;
+    background: var(--border);
+}
+
+.fc-proba-bar .proba-seg {
+    height: 100%;
+    min-width: 0;
+    transition: width 0.4s ease;
+}
+
+.fc-proba-bar .proba-seg.seg-bleu  { background: var(--bleu); }
+.fc-proba-bar .proba-seg.seg-blanc { background: var(--blanc); }
+.fc-proba-bar .proba-seg.seg-rouge { background: var(--rouge); }
+
+.fc-proba-labels {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 4px;
+    flex-wrap: wrap;
+}
+
+.fc-proba-labels .proba-label {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.fc-proba-labels .proba-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* === Badge incertitude === */
+.fc-uncertain-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 10px;
+    margin-top: 6px;
+    background: #FFF3E0;
+    color: #E65100;
+    border: 1px solid #FFB74D;
+}
+
+.fc-uncertain-badge .uncertain-icon {
+    font-size: 0.8rem;
+}
+
 .forecast-card .fc-raison {
     font-size: 0.8rem;
     color: var(--text-secondary);

@@ -492,6 +492,11 @@ function createForecastCard(pred) {
     const probKey = `probabilite_${couleur.toLowerCase()}`;
     const confidence = Math.round((pred[probKey] || 0) * 100);
 
+    // Probabilités des 3 couleurs
+    const pRouge = pred.probabilite_rouge || 0;
+    const pBlanc = pred.probabilite_blanc || 0;
+    const pBleu  = pred.probabilite_bleu  || 0;
+
     let tempHtml = '';
     if (pred.temp_min_prevue != null && pred.temp_max_prevue != null) {
         tempHtml = `<div class="fc-temp">${escapeHtml(String(pred.temp_min_prevue))}° / ${escapeHtml(String(pred.temp_max_prevue))}°</div>`;
@@ -525,6 +530,51 @@ function createForecastCard(pred) {
         ? ''
         : `${escapeHtml(confidenceLabel)} (${confidence}%)`;
 
+    // Barre tricolore de probabilités (masquée si confirmé)
+    let probaBarHtml = '';
+    if (!pred.confirmed) {
+        const pctRouge = Math.round(pRouge * 100);
+        const pctBlanc = Math.round(pBlanc * 100);
+        const pctBleu  = Math.round(pBleu * 100);
+
+        // Construire les segments (n'afficher que ceux > 5%)
+        const segments = [];
+        if (pctBleu > 5)  segments.push(`<div class="proba-seg seg-bleu" style="width:${pctBleu}%"></div>`);
+        if (pctBlanc > 5) segments.push(`<div class="proba-seg seg-blanc" style="width:${pctBlanc}%"></div>`);
+        if (pctRouge > 5) segments.push(`<div class="proba-seg seg-rouge" style="width:${pctRouge}%"></div>`);
+
+        // Labels sous la barre (n'afficher que ceux > 10%)
+        const labels = [];
+        if (pctBleu > 10)  labels.push(`<span class="proba-label"><span class="proba-dot" style="background:var(--bleu)"></span>${pctBleu}%</span>`);
+        if (pctBlanc > 10) labels.push(`<span class="proba-label"><span class="proba-dot" style="background:var(--blanc)"></span>${pctBlanc}%</span>`);
+        if (pctRouge > 10) labels.push(`<span class="proba-label"><span class="proba-dot" style="background:var(--rouge)"></span>${pctRouge}%</span>`);
+
+        probaBarHtml = `
+            <div class="fc-proba-bar" aria-label="Probabilités : bleu ${pctBleu}%, blanc ${pctBlanc}%, rouge ${pctRouge}%">
+                ${segments.join('')}
+            </div>
+            <div class="fc-proba-labels">${labels.join('')}</div>`;
+    }
+
+    // Badge incertitude si les 2 premières probas sont proches (écart < 30%)
+    let uncertainHtml = '';
+    if (!pred.confirmed) {
+        const probs = [
+            { color: 'rouge', val: pRouge },
+            { color: 'blanc', val: pBlanc },
+            { color: 'bleu',  val: pBleu },
+        ].sort((a, b) => b.val - a.val);
+
+        const gap = probs[0].val - probs[1].val;
+        if (gap < 0.30 && probs[1].val > 0.15) {
+            const colorNames = { rouge: 'Rouge', blanc: 'Blanc', bleu: 'Bleu' };
+            uncertainHtml = `<div class="fc-uncertain-badge">
+                <span class="uncertain-icon" aria-hidden="true">&#9888;</span>
+                H\u00e9sitation ${colorNames[probs[0].color]}/${colorNames[probs[1].color]}
+            </div>`;
+        }
+    }
+
     card.innerHTML = `
         <div class="fc-day">${escapeHtml(dow)}</div>
         <div class="fc-date">${dayNum} ${escapeHtml(month)}</div>
@@ -532,6 +582,8 @@ function createForecastCard(pred) {
         ${confirmedHtml}
         ${tempHtml}
         <div class="fc-confidence">${confidenceText}</div>
+        ${uncertainHtml}
+        ${probaBarHtml}
         ${changedHtml}
         ${raisonHtml}
         ${tipHtml}
