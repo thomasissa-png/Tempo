@@ -19,6 +19,11 @@ logger = logging.getLogger(__name__)
 
 scheduler = AsyncIOScheduler(timezone="Europe/Paris")
 
+# Signal que le backfill post-startup est terminé.
+# Les endpoints qui génèrent des prédictions à la volée (fallback)
+# doivent attendre ce signal pour que get_remaining_days() soit fiable.
+_backfill_done = asyncio.Event()
+
 
 def start_scheduler():
     """Démarre le scheduler avec toutes les tâches planifiées."""
@@ -131,6 +136,10 @@ async def _task_post_startup():
         logger.info("[Post-startup] Backfill actuals terminé")
     except Exception as e:
         logger.error(f"[Post-startup] Erreur backfill: {e}")
+    finally:
+        # Signaler que le backfill est terminé (même en erreur)
+        # pour débloquer le fallback de /api/predictions
+        _backfill_done.set()
 
     # 2. Recalcul ML complet (CPU/DB local)
     try:

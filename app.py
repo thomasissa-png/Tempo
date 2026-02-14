@@ -605,6 +605,20 @@ async def api_predictions():
             return result
 
         # Fallback premier lancement : aucune prédiction en DB
+        # Fix race condition : attendre que le backfill ait peuplé la table
+        # actuals pour que get_remaining_days() retourne des valeurs fiables.
+        # Sans ça, remaining = {ROUGE:22, BLANC:43} (quota plein) et les
+        # prédictions ignorent la pression budgétaire réelle.
+        try:
+            from scheduler import _backfill_done
+            if not _backfill_done.is_set():
+                logger.info("[API predictions] Fallback: attente backfill...")
+                await asyncio.wait_for(_backfill_done.wait(), timeout=120)
+                logger.info("[API predictions] Backfill terminé, génération prédictions")
+        except (asyncio.TimeoutError, ImportError):
+            logger.warning("[API predictions] Backfill timeout/indisponible, "
+                           "prédictions avec données partielles")
+
         from weather_client import fetch_forecast_extended
         from predictor import predict_range, store_prediction
         from rte_client import get_consumption_score

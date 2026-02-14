@@ -402,6 +402,10 @@ def _extract_values_from_df(df, param_key: str, model_name: str) -> dict[int, fl
 
     Le format du DataFrame peut varier — on essaie plusieurs strategies
     et on loggue la structure pour diagnostic.
+
+    Fix meteole v0.2.5 : le DataFrame peut contenir des colonnes Timestamp
+    (datetime) en plus des colonnes numeriques. On filtre avec
+    select_dtypes(include='number') pour eviter float(Timestamp) qui echoue.
     """
     import pandas as pd
 
@@ -414,19 +418,28 @@ def _extract_values_from_df(df, param_key: str, model_name: str) -> dict[int, fl
         # Strategie 1 : DataFrame avec index temporel et colonnes spatiales
         # Typique de meteole : lignes = timesteps, colonnes = grid points
         if hasattr(df, 'shape') and len(df.shape) == 2:
-            nrows, ncols = df.shape
+            # Fix meteole v0.2.5 : filtrer les colonnes non-numeriques
+            # (Timestamp, datetime, str) pour eviter float() sur un Timestamp
+            numeric_df = df.select_dtypes(include="number")
+            if numeric_df.empty:
+                logger.debug(
+                    f"[Meteo] Aucune colonne numerique pour {model_name}/{param_key}. "
+                    f"Colonnes: {list(df.columns)[:5]}, dtypes: {list(df.dtypes)[:5]}"
+                )
+                return {}
+
+            nrows, ncols = numeric_df.shape
 
             if ncols == 1:
                 # Une seule colonne (point unique) — ideal pour notre cas
                 for i in range(nrows):
-                    val = df.iloc[i, 0]
+                    val = numeric_df.iloc[i, 0]
                     if pd.notna(val):
                         values[i] = float(val)
             elif ncols > 1:
-                # Plusieurs colonnes — prendre la premiere (point le plus proche)
-                # ou la moyenne si c'est un petit voisinage
+                # Plusieurs colonnes — prendre la moyenne (petit voisinage)
                 for i in range(nrows):
-                    row_values = [float(v) for v in df.iloc[i] if pd.notna(v)]
+                    row_values = [float(v) for v in numeric_df.iloc[i] if pd.notna(v)]
                     if row_values:
                         values[i] = sum(row_values) / len(row_values)
 
@@ -434,7 +447,10 @@ def _extract_values_from_df(df, param_key: str, model_name: str) -> dict[int, fl
         elif hasattr(df, 'values') and not hasattr(df, 'shape'):
             for i, val in enumerate(df.values):
                 if pd.notna(val):
-                    values[i] = float(val)
+                    try:
+                        values[i] = float(val)
+                    except (ValueError, TypeError):
+                        continue
 
     except Exception as e:
         logger.warning(
@@ -766,18 +782,35 @@ def _parse_vigilance(data: dict) -> dict:
     result = _empty_vigilance()
 
     try:
+        # Fix vigilance : meteole peut retourner des formats variables
+        # selon la version. On protege chaque niveau de nesting avec
+        # isinstance(x, dict) pour eviter AttributeError sur .get()
+        if not isinstance(data, dict):
+            logger.debug(f"[Meteo] Vigilance: data n'est pas un dict ({type(data)})")
+            return result
+
         product = data.get("product", data)
+        if not isinstance(product, dict):
+            logger.debug(f"[Meteo] Vigilance: product n'est pas un dict ({type(product)})")
+            return result
+
         periods = product.get("periods", [])
-        if not periods and "text_bloc_item" in product:
+        if not periods and isinstance(product, dict) and "text_bloc_item" in product:
             periods = [product]
 
         for period in periods:
+            if not isinstance(period, dict):
+                continue
             timelaps = period.get("timelaps", [])
             for entry in timelaps:
+                if not isinstance(entry, dict):
+                    continue
                 phenomenon_id = entry.get("phenomenon_id", 0)
                 timelaps_items = entry.get("timelaps_items", [])
 
                 for item in timelaps_items:
+                    if not isinstance(item, dict):
+                        continue
                     level = item.get("color_id", 0)
                     result["max_level"] = max(result["max_level"], level)
 
@@ -795,7 +828,7 @@ def _parse_vigilance(data: dict) -> dict:
                         "begin": item.get("begin_time", ""),
                         "end": item.get("end_time", ""),
                     })
-    except (KeyError, TypeError) as e:
+    except (KeyError, TypeError, AttributeError) as e:
         logger.debug(f"[Meteo] Erreur parsing vigilance: {e}")
 
     return result
