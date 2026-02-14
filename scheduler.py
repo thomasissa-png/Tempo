@@ -11,7 +11,7 @@ Tâches planifiées :
 import asyncio
 import logging
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
@@ -509,6 +509,10 @@ async def task_daily_predictions():
 
     Fix #28 : utilise _refresh_predictions() partagée avec send_sms=True.
     C'est le seul cycle qui envoie les alertes SMS (prévenir la veille au soir).
+
+    Si la météo est indisponible (MF + Open-Meteo down), planifie des
+    retries différés à 10 min, 30 min et 60 min pour laisser les circuit
+    breakers se réinitialiser et les APIs revenir.
     """
     for attempt in range(2):
         try:
@@ -516,12 +520,71 @@ async def task_daily_predictions():
             count = await _refresh_predictions("18h", send_sms=True)
             if count:
                 logger.info(f"[Task 18h00] Terminé — {count} prédictions")
+                return
+            # count == 0 : météo indisponible, planifier des retries différés
+            logger.warning("[Task 18h00] Météo indisponible — retries différés planifiés")
+            _schedule_deferred_retries()
             return
         except Exception as e:
             logger.error(f"[Scheduler] task_daily_predictions attempt {attempt+1} failed: {e}")
             if attempt == 0:
                 await asyncio.sleep(30)
     logger.error("[Scheduler] task_daily_predictions failed after 2 attempts")
+    _schedule_deferred_retries()
+
+
+def _schedule_deferred_retries():
+    """Planifie des retries one-shot pour récupérer les prédictions manquantes.
+
+    Délais : 10 min, 30 min, 60 min après maintenant.
+    Les circuit breakers MF (2 min) et Open-Meteo (5 min) auront eu le temps
+    de se réinitialiser. Chaque retry vérifie si des prédictions existent déjà
+    pour aujourd'hui avant de relancer.
+    """
+    from apscheduler.triggers.date import DateTrigger
+
+    for i, delay_min in enumerate([10, 30, 60]):
+        run_at = datetime.now() + timedelta(minutes=delay_min)
+        job_id = f"deferred_retry_{date.today().isoformat()}_{delay_min}m"
+        scheduler.add_job(
+            _task_deferred_retry,
+            DateTrigger(run_date=run_at),
+            id=job_id,
+            name=f"Retry prédictions (+{delay_min}min)",
+            replace_existing=True,
+        )
+    logger.info("[Scheduler] 3 retries différés planifiés (+10/+30/+60 min)")
+
+
+async def _task_deferred_retry():
+    """Retry one-shot : re-tente les prédictions si aucune n'a été générée.
+
+    Vérifie d'abord si le cycle 18h (ou un retry précédent) a déjà réussi
+    pour éviter les appels API inutiles.
+    """
+    from database import get_db
+
+    # Vérifier si des prédictions fraîches existent déjà pour aujourd'hui
+    conn = get_db()
+    try:
+        today_str = date.today().isoformat()
+        row = conn.execute(
+            "SELECT COUNT(*) as c FROM predictions "
+            "WHERE timestamp_prediction >= ? AND simulated = 0",
+            (today_str,)
+        ).fetchone()
+        if row and row["c"] > 0:
+            logger.info(f"[Retry] {row['c']} prédictions existent déjà, skip")
+            return
+    finally:
+        conn.close()
+
+    logger.info("[Retry] Aucune prédiction aujourd'hui — re-tentative météo")
+    count = await _refresh_predictions("retry_deferred", send_sms=True)
+    if count:
+        logger.info(f"[Retry] Récupération réussie — {count} prédictions générées")
+    else:
+        logger.warning("[Retry] Météo toujours indisponible")
 
 
 # ================================================================
