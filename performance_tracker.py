@@ -151,13 +151,23 @@ def _couleur_to_score(couleur: str) -> float:
 # 2. MÉTRIQUES DE PERFORMANCE
 # ================================================================
 
-def get_accuracy_global(days: int = 30, max_horizon: int | None = None) -> dict:
+def get_accuracy_global(days: int = 30, max_horizon: int | None = None,
+                        min_horizon: int | None = None) -> dict:
     """Precision globale sur les N derniers jours.
-    max_horizon=1 → J-1 seulement, None → tous les horizons."""
+    max_horizon=1 → J-1 seulement, min_horizon=2 + max_horizon=5 → J+2 à J+5,
+    None → tous les horizons."""
     conn = get_db()
     try:
         since = (date.today() - timedelta(days=days)).isoformat()
-        if max_horizon is not None:
+        if min_horizon is not None and max_horizon is not None:
+            rows = conn.execute(
+                """SELECT correct, COUNT(*) as cnt
+                   FROM performance
+                   WHERE date_cible >= ? AND jours_avance >= ? AND jours_avance <= ?
+                   GROUP BY correct""",
+                (since, min_horizon, max_horizon),
+            ).fetchall()
+        elif max_horizon is not None:
             rows = conn.execute(
                 """SELECT correct, COUNT(*) as cnt
                    FROM performance

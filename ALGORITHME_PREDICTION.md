@@ -68,7 +68,7 @@ La temperature moyenne est calculee a partir de **9 villes francaises** ponderee
 
 **Fonction** : `_score_budget_v2(remaining, d_left, target_date)`
 
-EDF doit placer exactement **22 jours rouges** et **43 jours blancs** par saison (1er sept. - 31 mai). Ce facteur mesure l'urgence de placement.
+EDF doit placer exactement **22 jours rouges** et **43 jours blancs** par saison (1er sept. - 31 août). Ce facteur mesure l'urgence de placement.
 
 **Profil mensuel historique** (base sur 20 saisons) :
 

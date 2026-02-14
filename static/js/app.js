@@ -171,9 +171,12 @@ async function loadPredictions() {
 
         container.innerHTML = '';
         const alertEl = document.getElementById('alert-rouge');
-        let hasRouge = false;
 
         const preds = data.predictions || [];
+
+        // Alerte rouge uniquement si un jour rouge dans les 5 prochains jours
+        // (au-delà, l'alerte serait prématurée et stressante pour l'utilisateur)
+        const hasRouge = preds.slice(0, 5).some(p => p.couleur_predite === 'ROUGE');
 
         // P-05 : Résumé "Prochain jour rouge" pour Paul
         renderNextRougeSummary(preds);
@@ -214,7 +217,7 @@ async function loadPredictions() {
             grid1.className = 'forecast-grid forecast-grid-primary';
             groupPrimary.forEach(pred => {
                 grid1.appendChild(createForecastCard(pred));
-                if (pred.couleur_predite === 'ROUGE') hasRouge = true;
+
             });
             container.appendChild(grid1);
         }
@@ -229,7 +232,7 @@ async function loadPredictions() {
             grid2.className = 'forecast-grid';
             groupMedium.forEach(pred => {
                 grid2.appendChild(createForecastCard(pred));
-                if (pred.couleur_predite === 'ROUGE') hasRouge = true;
+
             });
             container.appendChild(grid2);
         }
@@ -244,7 +247,7 @@ async function loadPredictions() {
             grid3.className = 'forecast-grid';
             groupFar.forEach(pred => {
                 grid3.appendChild(createForecastCard(pred));
-                if (pred.couleur_predite === 'ROUGE') hasRouge = true;
+
             });
             container.appendChild(grid3);
         }
@@ -283,7 +286,7 @@ async function loadBadge() {
                 document.getElementById('badge-value').textContent = `${pct}%`;
                 // P-12 : qualificatif pour donner du contexte à Paul
                 const qualif = pct >= 90 ? 'Excellente' : pct >= 80 ? 'Très bonne' : pct >= 70 ? 'Bonne' : 'En amélioration';
-                el.textContent = `${qualif} précision sur les 30 derniers jours`;
+                el.textContent = `${qualif} précision J+2 à J+5 sur 30 jours`;
             } else {
                 document.getElementById('badge-value').textContent = '—';
                 el.textContent = 'Précision en cours de calcul (pas encore assez de données)';
@@ -851,7 +854,7 @@ function setupPhoneValidation() {
 function checkHorsSaison() {
     const now = new Date();
     const month = now.getMonth() + 1; // 1-12
-    // Saison Tempo : 1er sept → 31 mai. Hors-saison : juin, juillet, août
+    // Saison Tempo : 1er sept → 31 août. Juin-août = tout BLEU, rien à signaler
     if (month >= 6 && month <= 8) {
         const banner = document.getElementById('hors-saison-banner');
         if (banner) banner.style.display = 'flex';

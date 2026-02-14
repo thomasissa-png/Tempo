@@ -135,11 +135,12 @@ class TestDebutSaison:
         )
 
     def test_nov_grand_froid_peut_etre_rouge(self):
-        """Novembre, 22 rouges restants, -5°C → ROUGE possible (vague de froid)."""
+        """Novembre, 22 rouges restants, -5°C → ROUGE possible (vague de froid).
+        Seuil RED dynamique à -5°C = 50 (config), donc score > 50 suffit."""
         r = predict(date(2025, 11, 18), temp_moy=-5.0,
                     remaining={"ROUGE": 22, "BLANC": 43, "BLEU": 240})
-        # À -5°C, même en novembre, le score devrait être élevé
-        assert r["score_risque"] >= 55, (
+        # À -5°C, seuil dynamique = 50. Le score doit le dépasser.
+        assert r["score_risque"] >= 50, (
             f"Grand froid -5°C en novembre devrait scorer haut: {r['score_risque']}"
         )
 
