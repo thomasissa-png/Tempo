@@ -676,3 +676,65 @@ class TestCasLimites:
         )
         assert "raison" in r
         assert isinstance(r["score_risque"], float)
+
+
+# ================================================================
+# 16. ML FILTRE BLANC→BLEU : GARDE BUDGETAIRE
+# ================================================================
+
+class TestMlBudgetGuard:
+    """Le filtre ML BLANC→BLEU ne doit pas ignorer la pression budgetaire.
+
+    Bug corrige : le ML convertissait TOUS les BLANC en BLEU quand sa
+    prediction etait BLEU (ce qui est normal pour des jours a 8°C),
+    ignorant completement la pression budgetaire. En fevrier avec 14 ROUGE
+    et 13 BLANC restants, cela donnait 15 BLEU + 1 ROUGE au lieu de
+    predire des BLANC conformement a la pression budgetaire.
+    """
+
+    def test_blanc_preserve_si_budget_tendu(self):
+        """Avec budget_score >= 50, le ML ne peut pas convertir BLANC en BLEU."""
+        # Février avec 14 ROUGE restants = budget_score ~100
+        target = date(2026, 2, 17)  # mardi
+        remaining = {"ROUGE": 14, "BLANC": 13, "BLEU": 50}
+        # 8°C = score classique ~47 (au-dessus de SEUIL_BLANC=35)
+        # Sans la garde budget, le ML convertirait BLANC en BLEU
+        r = predict(target, temp_moy=8.0, remaining=remaining)
+        assert r["couleur_predite"] != "BLEU", (
+            f"Avec 14 ROUGE + 13 BLANC restants a 8°C, ne devrait PAS etre BLEU. "
+            f"Score={r['score_risque']}, couleur={r['couleur_predite']}"
+        )
+
+    def test_quinzaine_fevrier_pas_tout_bleu(self):
+        """15 jours en fevrier avec pression = au moins quelques BLANC/ROUGE."""
+        base = date(2026, 2, 14)
+        remaining = {"ROUGE": 14, "BLANC": 13, "BLEU": 50}
+        # Temperatures typiques mi-fevrier (5-10°C)
+        temps = [7, 8, 6, 5, 9, 10, 8, 7, 6, 5, 8, 9, 7, 6, 5]
+        forecasts = make_forecasts(base, temps)
+
+        predictions = predict_range(forecasts)
+        couleurs = [p["couleur_predite"] for p in predictions]
+
+        non_bleu = sum(1 for c in couleurs if c != "BLEU")
+        assert non_bleu >= 3, (
+            f"Avec 14 ROUGE + 13 BLANC restants, il faut au moins 3 non-BLEU "
+            f"sur 15 jours, got {non_bleu}. Couleurs: {couleurs}"
+        )
+
+    def test_ml_filtre_actif_sans_pression(self):
+        """Sans pression budget, le filtre ML BLANC→BLEU reste actif.
+
+        Note: ce test verifie le scoring classique seul (sans ML model).
+        Avec budget faible et temperature douce, le score devrait etre
+        sous SEUIL_BLANC (35), donc BLEU directement.
+        """
+        # Debut de saison, tout le budget est disponible, temp douce
+        target = date(2025, 11, 15)  # samedi
+        remaining = {"ROUGE": 22, "BLANC": 43, "BLEU": 240}
+        r = predict(target, temp_moy=12.0, remaining=remaining)
+        # Samedi + 12°C + debut saison = faible pression = BLEU attendu
+        assert r["couleur_predite"] == "BLEU", (
+            f"Samedi 12°C debut saison devrait etre BLEU, "
+            f"got {r['couleur_predite']} (score={r['score_risque']})"
+        )

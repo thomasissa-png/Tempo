@@ -369,8 +369,13 @@ def predict_day(target_date: date, weather: dict | None = None,
 
         # 3. Filtre faux BLANC : ML dit BLEU + scoring dit BLANC + ML P(rouge)<5%
         #    Reduit les faux BLANC du scoring quand le ML est tres confiant BLEU
+        #    Fix budget : ne PAS filtrer si la pression budgetaire est forte
+        #    (budget_score >= 50 = quotas tendus, les BLANC sont necessaires).
+        #    Sans cette garde, le ML convertit TOUS les BLANC en BLEU en fin
+        #    de saison, ignorant la pression budgetaire reelle.
         elif (couleur == "BLANC" and ml_pred == "BLEU" and ml_rouge < 5
-              and score_risque < Config.SEUIL_ROUGE):
+              and score_risque < Config.SEUIL_ROUGE
+              and budget_score < 50):
             couleur = "BLEU"
             raison_ml = " · ML:BLEU"
 

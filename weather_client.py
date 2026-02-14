@@ -218,7 +218,7 @@ async def _fetch_meteofrance() -> list[dict]:
         )
     except Exception as e:
         _meteo_breaker.record_failure()
-        logger.error(f"[Meteo] Erreur globale fetch Meteo France: {e}")
+        logger.warning(f"[Meteo] Erreur Meteo France (fallback Open-Meteo): {e}")
         return []
 
     if not city_forecasts:
@@ -290,7 +290,7 @@ def _fetch_all_cities_sync(arome_auth: dict[str, str],
             logger.warning(f"[Meteo] Erreur {city['name']}: {e}")
 
     if not city_forecasts:
-        logger.error("[Meteo] Aucune ville n'a repondu")
+        logger.warning("[Meteo] Aucune ville n'a repondu via meteole — fallback Open-Meteo")
         return {}
 
     if len(city_forecasts) < 3:
