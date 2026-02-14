@@ -17,16 +17,19 @@ class Config:
     # Portail : https://portail-api.meteofrance.fr/
     # Necessite un abonnement (gratuit) aux API AROME, ARPEGE et Vigilance
     #
-    # Deux modes d'authentification (au choix) :
-    #   1. API_KEY : cle permanente (duree=0 sur le portail), header "apikey:"
-    #      → Pas de renouvellement, fonctionne depuis Replit sans probleme
-    #   2. APPLICATION_ID : credentials OAuth2 Base64 (depuis "Generer Token")
-    #      → Renouvellement auto toutes les heures via POST /token
-    #      → Peut echouer si le endpoint /token est bloque (ex: firewall Replit)
+    # Sur le portail, chaque API necessite sa propre application et sa propre cle.
+    # Configurer une cle par modele :
+    #   - METEOFRANCE_AROME_KEY    : cle pour l'API AROME (haute resolution, J+0 a J+2)
+    #   - METEOFRANCE_ARPEGE_KEY   : cle pour l'API ARPEGE (global, J+2 a J+5)
+    #   - METEOFRANCE_VIGILANCE_KEY: cle pour l'API Vigilance (alertes meteo)
     #
-    # Priorite : API_KEY > APPLICATION_ID (la cle permanente est plus fiable)
+    # Fallback : METEOFRANCE_API_KEY est utilise si une cle specifique est absente.
+    # Modes d'auth : cle permanente (duree=0) recommandee, ou application_id OAuth2.
     METEOFRANCE_API_KEY = os.getenv("METEOFRANCE_API_KEY", "")
     METEOFRANCE_APPLICATION_ID = os.getenv("METEOFRANCE_APPLICATION_ID", "")
+    METEOFRANCE_AROME_KEY = os.getenv("METEOFRANCE_AROME_KEY", "")
+    METEOFRANCE_ARPEGE_KEY = os.getenv("METEOFRANCE_ARPEGE_KEY", "")
+    METEOFRANCE_VIGILANCE_KEY = os.getenv("METEOFRANCE_VIGILANCE_KEY", "")
 
     # --- Villes meteo ponderees par population / parc chauffage electrique ---
     # API : Meteo France (AROME haute resolution + ARPEGE global)

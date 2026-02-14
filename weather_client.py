@@ -96,23 +96,26 @@ _openmeteo_breaker = _CircuitBreaker(threshold=5, reset_timeout=300)
 # ================================================================
 
 async def fetch_forecast() -> list[dict]:
-    """Previsions jusqu'a 5 jours, moyenne ponderee sur 9 villes.
+    """Previsions jusqu'a 15 jours, moyenne ponderee sur 9 villes.
 
-    Strategie en cascade :
-      1. Meteo France (AROME 1.3 km + ARPEGE 10 km) — source principale
-      2. Open-Meteo Forecast API — fallback gratuit si Meteo France echoue
+    Strategie :
+      1. Meteo France (AROME + ARPEGE) pour J+0 a J+5 — source principale
+      2. Open-Meteo en extension pour J+6 a J+15 (au-dela de la portee MF)
+      3. Open-Meteo en fallback complet si Meteo France echoue
 
     Ne genere PAS de donnees simulees : mieux vaut ne pas predire
     que de predire sur du bruit.
     """
-    # --- Tentative 1 : Meteo France ---
-    result = await _fetch_meteofrance()
+    # --- Tentative 1 : Meteo France (J+0 a J+5) ---
+    mf_result = await _fetch_meteofrance()
 
-    if result:
-        return result
+    if mf_result:
+        # Etendre avec Open-Meteo pour les jours au-dela de MF (J+6 a J+15)
+        extended = await _extend_with_openmeteo(mf_result)
+        return extended
 
-    # --- Tentative 2 : Fallback Open-Meteo ---
-    logger.warning("[Meteo] Meteo France indisponible — tentative fallback Open-Meteo")
+    # --- Fallback : Open-Meteo complet (J+0 a J+15) ---
+    logger.warning("[Meteo] Meteo France indisponible — fallback complet Open-Meteo")
     result = await _fetch_openmeteo_fallback()
 
     if result:
@@ -123,48 +126,97 @@ async def fetch_forecast() -> list[dict]:
     return []
 
 
-def _get_meteofrance_auth() -> dict[str, str]:
-    """Determine le mode d'authentification Meteo France.
+async def _extend_with_openmeteo(mf_days: list[dict]) -> list[dict]:
+    """Etend les previsions Meteo France avec Open-Meteo pour J+6 a J+15.
 
-    Deux modes supportes par meteole (MeteoFranceClient) :
-      1. api_key : cle permanente (duree=0 sur le portail), pas de renouvellement
-      2. application_id : credentials OAuth2 Base64, renouvellement auto toutes les heures
-
-    Priorite : api_key > application_id (la cle permanente est plus fiable
-    depuis les environnements cloud comme Replit ou le endpoint /token peut etre bloque).
-
-    Retourne un dict de kwargs a passer directement a AromeForecast/ArpegeForecast.
+    Meteo France couvre J+0 a J+5. Open-Meteo couvre jusqu'a J+16.
+    On garde MF en priorite et on ajoute les jours Open-Meteo manquants.
+    Les jours Open-Meteo sont marques source='open-meteo' pour attenuation.
     """
-    # Mode 1 : cle API permanente (recommande)
-    api_key = Config.METEOFRANCE_API_KEY
-    if api_key:
-        # Heuristique : une application_id OAuth2 est typiquement un Base64
-        # de "client_id:client_secret" (contient souvent '=' de padding).
-        # Une api_key permanente est un JWT long (commence par 'eyJ').
-        # Si l'utilisateur a mis un application_id dans API_KEY par erreur,
-        # on le detecte et on le redirige.
-        if len(api_key) < 100 and not api_key.startswith("eyJ"):
-            # Ressemble a un application_id, pas une api_key
-            logger.info("[Meteo] METEOFRANCE_API_KEY detecte comme application_id OAuth2")
-            return {"application_id": api_key}
-        logger.info("[Meteo] Auth Meteo France : mode api_key (permanent)")
-        return {"api_key": api_key}
+    mf_dates = {d["date"] for d in mf_days}
 
-    # Mode 2 : application_id OAuth2 (renouvellement auto)
-    app_id = Config.METEOFRANCE_APPLICATION_ID
-    if app_id:
-        logger.info("[Meteo] Auth Meteo France : mode application_id (OAuth2)")
-        return {"application_id": app_id}
+    try:
+        om_days = await _fetch_openmeteo_fallback()
+    except Exception as e:
+        logger.debug(f"[Meteo] Extension Open-Meteo echouee: {e}")
+        return mf_days
+
+    if not om_days:
+        return mf_days
+
+    # Ajouter uniquement les jours Open-Meteo absents de MF
+    extended = list(mf_days)
+    for day in om_days:
+        if day["date"] not in mf_dates:
+            extended.append(day)
+
+    extended.sort(key=lambda d: d["date"])
+
+    if len(extended) > len(mf_days):
+        logger.info(
+            f"[Meteo] Extension Open-Meteo : {len(mf_days)} jours MF "
+            f"+ {len(extended) - len(mf_days)} jours Open-Meteo "
+            f"= {len(extended)} jours total"
+        )
+
+    return extended
+
+
+def _key_to_auth_kwargs(key: str) -> dict[str, str]:
+    """Convertit une cle brute en kwargs meteole (api_key= ou application_id=).
+
+    Heuristique : un JWT permanent commence par 'eyJ' et fait >100 chars.
+    Un application_id OAuth2 est un Base64 court de 'client_id:client_secret'.
+    """
+    if not key:
+        return {}
+    if len(key) < 100 and not key.startswith("eyJ"):
+        return {"application_id": key}
+    return {"api_key": key}
+
+
+def _get_meteofrance_auth(model: str = "default") -> dict[str, str]:
+    """Determine le mode d'authentification Meteo France pour un modele donne.
+
+    Sur le portail Meteo France, chaque API (AROME, ARPEGE, Vigilance) necessite
+    sa propre application et sa propre cle. On supporte :
+      - Cle par modele : METEOFRANCE_AROME_KEY, METEOFRANCE_ARPEGE_KEY, METEOFRANCE_VIGILANCE_KEY
+      - Cle globale : METEOFRANCE_API_KEY (fallback si cle specifique absente)
+      - Application ID OAuth2 : METEOFRANCE_APPLICATION_ID (dernier recours)
+
+    Retourne un dict de kwargs a passer a AromeForecast/ArpegeForecast/Vigilance.
+    """
+    # 1. Cle specifique au modele
+    model_keys = {
+        "arome": Config.METEOFRANCE_AROME_KEY,
+        "arpege": Config.METEOFRANCE_ARPEGE_KEY,
+        "vigilance": Config.METEOFRANCE_VIGILANCE_KEY,
+    }
+    specific_key = model_keys.get(model, "")
+    if specific_key:
+        logger.debug(f"[Meteo] Auth {model} : cle specifique")
+        return _key_to_auth_kwargs(specific_key)
+
+    # 2. Cle globale (fallback)
+    if Config.METEOFRANCE_API_KEY:
+        logger.debug(f"[Meteo] Auth {model} : cle globale METEOFRANCE_API_KEY")
+        return _key_to_auth_kwargs(Config.METEOFRANCE_API_KEY)
+
+    # 3. Application ID OAuth2 (dernier recours)
+    if Config.METEOFRANCE_APPLICATION_ID:
+        logger.debug(f"[Meteo] Auth {model} : application_id OAuth2")
+        return {"application_id": Config.METEOFRANCE_APPLICATION_ID}
 
     return {}
 
 
 async def _fetch_meteofrance() -> list[dict]:
     """Fetch via Meteo France AROME + ARPEGE. Retourne [] si echec."""
-    auth_kwargs = _get_meteofrance_auth()
-    if not auth_kwargs:
+    arome_auth = _get_meteofrance_auth("arome")
+    arpege_auth = _get_meteofrance_auth("arpege")
+    if not arome_auth and not arpege_auth:
         logger.warning("[Meteo] Meteo France non configure "
-                       "(ni METEOFRANCE_API_KEY ni METEOFRANCE_APPLICATION_ID)")
+                       "(aucune cle AROME/ARPEGE/globale)")
         return []
 
     if _meteo_breaker.is_open:
@@ -173,7 +225,7 @@ async def _fetch_meteofrance() -> list[dict]:
 
     try:
         city_forecasts = await asyncio.wait_for(
-            asyncio.to_thread(_fetch_all_cities_sync, auth_kwargs),
+            asyncio.to_thread(_fetch_all_cities_sync, arome_auth, arpege_auth),
             timeout=120,
         )
     except Exception as e:
@@ -197,7 +249,7 @@ async def _fetch_meteofrance() -> list[dict]:
 
 
 async def fetch_forecast_extended() -> list[dict]:
-    """Alias de fetch_forecast — AROME+ARPEGE fournissent ~5 jours nativement."""
+    """Alias de fetch_forecast — MF (J+0-5) + Open-Meteo (J+6-15) = ~15 jours."""
     return await fetch_forecast()
 
 
@@ -205,11 +257,12 @@ async def fetch_forecast_extended() -> list[dict]:
 # FETCH SYNCHRONE (thread pool) — meteole
 # ================================================================
 
-def _fetch_all_cities_sync(auth_kwargs: dict[str, str]) -> dict[str, list[dict]]:
+def _fetch_all_cities_sync(arome_auth: dict[str, str],
+                           arpege_auth: dict[str, str]) -> dict[str, list[dict]]:
     """Fetch previsions pour chaque ville via meteole (synchrone).
 
-    Cree les clients AROME et ARPEGE une seule fois, puis itere sur les villes.
-    auth_kwargs : dict d'auth (api_key= ou application_id=) passe a meteole.
+    Cree les clients AROME et ARPEGE avec leurs cles respectives.
+    Sur le portail Meteo France, chaque API a sa propre application/cle.
     """
     try:
         from meteole import AromeForecast, ArpegeForecast
@@ -220,12 +273,21 @@ def _fetch_all_cities_sync(auth_kwargs: dict[str, str]) -> dict[str, list[dict]]
         )
         return {}
 
-    auth_mode = "api_key" if "api_key" in auth_kwargs else "application_id"
-    try:
-        arome = AromeForecast(**auth_kwargs)
-        arpege = ArpegeForecast(**auth_kwargs)
-    except Exception as e:
-        logger.error(f"[Meteo] Erreur init meteole (mode={auth_mode}): {e}")
+    arome = None
+    arpege = None
+    if arome_auth:
+        try:
+            arome = AromeForecast(**arome_auth)
+        except Exception as e:
+            logger.error(f"[Meteo] Erreur init AROME: {e}")
+    if arpege_auth:
+        try:
+            arpege = ArpegeForecast(**arpege_auth)
+        except Exception as e:
+            logger.error(f"[Meteo] Erreur init ARPEGE: {e}")
+
+    if not arome and not arpege:
+        logger.error("[Meteo] Ni AROME ni ARPEGE n'ont pu etre initialises")
         return {}
 
     city_forecasts = {}
@@ -579,7 +641,7 @@ async def _fetch_openmeteo_city(city: dict) -> list[dict] | None:
         "longitude": city["lon"],
         "hourly": _OPENMETEO_HOURLY,
         "timezone": "Europe/Paris",
-        "forecast_days": 6,
+        "forecast_days": 16,
     }
 
     async with httpx.AsyncClient(timeout=20) as client:
@@ -658,9 +720,9 @@ async def fetch_vigilance(api_key: str | None = None) -> dict:
     """
     # Utilise le meme mecanisme d'auth que AROME/ARPEGE
     if api_key:
-        auth_kwargs = {"application_id": api_key}
+        auth_kwargs = _key_to_auth_kwargs(api_key)
     else:
-        auth_kwargs = _get_meteofrance_auth()
+        auth_kwargs = _get_meteofrance_auth("vigilance")
     if not auth_kwargs:
         return _empty_vigilance()
 
