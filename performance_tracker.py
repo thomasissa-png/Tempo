@@ -129,10 +129,29 @@ def evaluate_predictions_for_date(target_date: date, couleur_reelle: str):
             nb_stored += 1
 
         conn.commit()
-        nb_correct = nb_stored  # Recalculer depuis les inserts réels
-        # (le compteur ci-dessus ne peut être recalculé simplement ici,
-        # on log nb_stored plutôt)
-        logger.info(f"[Perf] {target_date}: {nb_correct}/{nb_stored} prédictions correctes")
+        logger.info(f"[Perf] {target_date}: {nb_stored} prédictions évaluées")
+
+        # Audit DS P2-G : alerter quand on rate un jour ROUGE
+        # Un ROUGE raté est très coûteux (0.7562€/kWh). On log un WARNING
+        # spécifique pour faciliter le monitoring et le post-mortem.
+        if couleur_reelle == "ROUGE":
+            missed_rouge = conn.execute(
+                """SELECT COUNT(*) as cnt FROM performance
+                   WHERE date_cible = ? AND couleur_reelle = 'ROUGE'
+                   AND couleur_predite != 'ROUGE'""",
+                (target_date.isoformat(),)
+            ).fetchone()["cnt"]
+            total_preds = conn.execute(
+                """SELECT COUNT(*) as cnt FROM performance
+                   WHERE date_cible = ? AND couleur_reelle = 'ROUGE'""",
+                (target_date.isoformat(),)
+            ).fetchone()["cnt"]
+            if missed_rouge > 0:
+                logger.warning(
+                    f"[ROUGE RATÉ] {target_date}: {missed_rouge}/{total_preds} "
+                    f"prédictions ont raté le jour ROUGE! "
+                    f"Post-mortem nécessaire."
+                )
 
     finally:
         conn.close()
@@ -309,6 +328,46 @@ def get_recent_errors(limit: int = 5) -> list[dict]:
         conn.close()
 
 
+def get_rouge_recall_by_horizon(days: int = 90) -> dict:
+    """Audit DS P2-H : recall ROUGE par horizon (J+1..J+5).
+
+    Mesure indépendante du recall ROUGE pour chaque horizon de prédiction.
+    Permet d'identifier si certains horizons sont particulièrement faibles
+    et de prioriser les améliorations (ex: modèles par horizon).
+    """
+    conn = get_db()
+    try:
+        since = (date.today() - timedelta(days=days)).isoformat()
+        result = {}
+        for h in range(1, 6):
+            row = conn.execute(
+                """SELECT
+                     SUM(CASE WHEN couleur_predite = 'ROUGE' AND couleur_reelle = 'ROUGE'
+                         THEN 1 ELSE 0 END) as tp,
+                     SUM(CASE WHEN couleur_reelle = 'ROUGE' THEN 1 ELSE 0 END) as total_rouge,
+                     SUM(CASE WHEN couleur_predite = 'ROUGE' AND couleur_reelle != 'ROUGE'
+                         THEN 1 ELSE 0 END) as fp
+                   FROM performance
+                   WHERE date_cible >= ? AND jours_avance = ?""",
+                (since, h),
+            ).fetchone()
+            tp = row["tp"] or 0
+            total = row["total_rouge"] or 0
+            fp = row["fp"] or 0
+            recall = round(tp / total * 100, 1) if total > 0 else None
+            precision = round(tp / (tp + fp) * 100, 1) if (tp + fp) > 0 else None
+            result[f"J+{h}"] = {
+                "recall": recall,
+                "precision": precision,
+                "rouge_total": total,
+                "rouge_caught": tp,
+                "false_alarms": fp,
+            }
+        return result
+    finally:
+        conn.close()
+
+
 def get_performance_summary() -> dict:
     """Résumé complet des performances pour le dashboard admin."""
     return {
@@ -317,6 +376,7 @@ def get_performance_summary() -> dict:
         "by_horizon": get_accuracy_by_horizon(90),
         "confusion_matrix": get_confusion_matrix(90),
         "precision_recall_f1": get_precision_recall_f1(90),
+        "rouge_recall_by_horizon": get_rouge_recall_by_horizon(90),
         "recent_errors": get_recent_errors(10),
         "current_weights": get_current_weights(),
     }
@@ -429,9 +489,13 @@ def recalculate_weights():
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X)
 
+        # Audit DS : cost-sensitive training — rater un ROUGE est beaucoup
+        # plus coûteux (0.7562€/kWh) qu'une fausse alarme. Le poids ROUGE=25
+        # (au lieu de ~2.5 avec "balanced") force le modèle à prioriser le
+        # recall ROUGE, quitte à avoir plus de fausses alertes.
         model = LogisticRegression(
             multi_class="multinomial", max_iter=1000, C=1.0,
-            class_weight="balanced",
+            class_weight={"BLEU": 1, "BLANC": 3, "ROUGE": 25},
         )
 
         try:
@@ -442,11 +506,22 @@ def recalculate_weights():
             cv_acc_scores = cross_val_score(model, X_scaled, y, cv=5, scoring="accuracy")
             cv_accuracy = round(cv_acc_scores.mean() * 100, 1)
             cv_std = round(cv_acc_scores.std() * 100, 1)
+
+            # Audit DS P1-D : mesurer le recall ROUGE en CV pour monitoring
+            # F-beta=2 (recall pèse 4x plus que precision) pour la classe ROUGE
+            from sklearn.metrics import make_scorer, fbeta_score, recall_score
+            rouge_recall_scorer = make_scorer(
+                recall_score, labels=["ROUGE"], average=None, zero_division=0)
+            cv_rouge_recall = cross_val_score(
+                model, X_scaled, y, cv=5, scoring=rouge_recall_scorer)
+            cv_rouge_recall_mean = round(cv_rouge_recall.mean() * 100, 1)
+            logger.info(f"[Poids] CV ROUGE recall: {cv_rouge_recall_mean}%")
         except ValueError:
             cv_f1 = 0
             cv_f1_std = 0
             cv_accuracy = 0
             cv_std = 0
+            cv_rouge_recall_mean = 0
             logger.warning("[Poids] Cross-validation impossible (classe trop rare)")
 
         from collections import Counter
@@ -466,6 +541,21 @@ def recalculate_weights():
             )
             return None
 
+        # Audit DS P2-F : garde recall ROUGE — rejeter les poids si le
+        # recall ROUGE en CV tombe sous 30% (minimum acceptable)
+        if cv_rouge_recall_mean > 0 and cv_rouge_recall_mean < 30:
+            logger.warning(
+                f"[Poids] CV ROUGE recall trop faible ({cv_rouge_recall_mean}%), "
+                f"poids NON deployes (seuil=30%)"
+            )
+            _store_weights_entry(
+                get_current_weights(),
+                get_accuracy_global(30)["precision"], cv_accuracy, count,
+                f"REJETE rouge_recall ({cv_rouge_recall_mean}% < 30%, "
+                f"f1_macro={cv_f1}%, acc={cv_accuracy}%)",
+            )
+            return None
+
         # ML-3 : Holdout temporel
         holdout_accuracy = None
         n_rows = len(X)
@@ -479,7 +569,7 @@ def recalculate_weights():
             try:
                 model_holdout = LogisticRegression(
                     multi_class="multinomial", max_iter=1000, C=1.0,
-                    class_weight="balanced",
+                    class_weight={"BLEU": 1, "BLANC": 3, "ROUGE": 25},
                 )
                 train_classes = set(y_train_t)
                 val_classes = set(y_val_t)
@@ -554,19 +644,30 @@ def recalculate_weights():
         logger.error(f"[Poids] Erreur recalcul : {e}")
         return None
 
-    # === Phase 3 : ecriture DB (transaction courte) ===
+    # === Phase 3 : monitoring recall ROUGE (Audit DS P2-F) ===
+    # Mesurer le recall ROUGE actuel pour inclure dans l'historique des poids
+    prf = get_precision_recall_f1(90)
+    rouge_recall_actual = prf.get("ROUGE", {}).get("recall", 0)
+    rouge_f1_actual = prf.get("ROUGE", {}).get("f1", 0)
+
+    # === Phase 4 : ecriture DB (transaction courte) ===
     precision_avant = get_accuracy_global(30)["precision"]
     _store_weights_entry(
         new_weights, precision_avant, 0, count,
         f"Recalcul auto (f1_macro={cv_f1}% ± {cv_f1_std}%, "
-        f"cv_acc={cv_accuracy}%, alpha={ALPHA:.2f}, n={len(rows)}) — "
+        f"cv_acc={cv_accuracy}%, cv_rouge_recall={cv_rouge_recall_mean}%, "
+        f"actual_rouge_recall={rouge_recall_actual}%, "
+        f"actual_rouge_f1={rouge_f1_actual}%, "
+        f"alpha={ALPHA:.2f}, n={len(rows)}) — "
         f"ancien: {json.dumps(old_weights)}",
     )
 
     logger.info(f"[Poids] Nouveaux poids deployes : {new_weights}")
     logger.info(
         f"[Poids] F1-macro: {cv_f1}% ± {cv_f1_std}% | "
-        f"Accuracy: {cv_accuracy}% | Alpha={ALPHA:.2f} | n={len(rows)}"
+        f"Accuracy: {cv_accuracy}% | ROUGE recall(CV): {cv_rouge_recall_mean}% | "
+        f"ROUGE recall(actual): {rouge_recall_actual}% | "
+        f"Alpha={ALPHA:.2f} | n={len(rows)}"
     )
     return new_weights
 
@@ -975,8 +1076,19 @@ def _analyze_color_confusion(rows: list[dict]) -> list[dict]:
 
         rate = count / total_pred
         direction = "over" if _color_rank(predicted) > _color_rank(actual) else "under"
+        # Audit DS : corrections asymétriques — rater un ROUGE coûte bien
+        # plus cher (0.7562€/kWh) qu'une fausse alarme ROUGE.
+        # ROUGE raté (under, actual=ROUGE) → max_correction=10
+        # Fausse alarme ROUGE (over, predicted=ROUGE) → max_correction=4
+        # Autres confusions → max_correction=6 (défaut)
+        if actual == "ROUGE" and direction == "under":
+            mc = 10.0  # rater un ROUGE = très coûteux
+        elif predicted == "ROUGE" and direction == "over":
+            mc = 4.0   # fausse alarme ROUGE = coût modéré
+        else:
+            mc = 6.0
         correction, confidence = _compute_correction(
-            direction, rate, count, max_correction=6.0)
+            direction, rate, count, max_correction=mc)
 
         patterns.append({
             "type": "color_confusion", "key": confusion,

@@ -102,8 +102,12 @@ def compute_ml_score(
         p_bleu = float(proba[classes.index("BLEU")])
 
         # Threshold-based prediction (from model metadata)
-        rouge_thresh = (_METADATA or {}).get("rouge_threshold", 0.10)
-        blanc_thresh = (_METADATA or {}).get("blanc_threshold", 0.20)
+        # Audit DS : seuil ROUGE abaissé de 0.10 à 0.07 pour augmenter le
+        # recall ROUGE. Avec prevalence 12%, un seuil plus bas capture plus
+        # de vrais ROUGE au prix de quelques fausses alarmes acceptables.
+        # Seuil BLANC abaissé de 0.20 à 0.15 pour cohérence.
+        rouge_thresh = (_METADATA or {}).get("rouge_threshold", 0.07)
+        blanc_thresh = (_METADATA or {}).get("blanc_threshold", 0.15)
 
         if p_rouge >= rouge_thresh:
             pred = "ROUGE"
@@ -164,7 +168,14 @@ def _build_features(
     target_idx: int,
     actuals_cache: dict[str, str] | None,
 ) -> list[float]:
-    """Construit le vecteur de 33 features pour le modele."""
+    """Construit le vecteur de 33 features pour le modele.
+
+    Audit DS — features mortes à remplacer au prochain retraining :
+      - pos 9  cold_streak   → remplacer par HDD (heating degree days)
+      - pos 15 in_red_season → remplacer par remaining_rouge_pct (budget restant)
+      - pos 32 has_rte       → remplacer par conso_surprise (actual vs forecast)
+    Ne PAS modifier les positions tant que ml_model.pkl n'est pas retrainé.
+    """
     month = target_date.month
     dow = target_date.weekday()
 

@@ -342,10 +342,20 @@ def predict_day(target_date: date, weather: dict | None = None,
         ml_rouge = ml_result["score_rouge"]  # P(ROUGE) * 100
         ml_pred = ml_result["prediction"]
 
-        # 1. Filet de securite ROUGE : ML dit ROUGE + scoring >= BLANC → ROUGE
-        #    Garde thermique : temp < 8C (les rouges reels sont quasi tous < 8C)
-        #    et en saison rouge (nov-mars). Evite les faux positifs en douceur.
-        if (ml_pred == "ROUGE" and couleur != "ROUGE"
+        # 1a. ML ROUGE fort : P(ROUGE) >= 15% → override meme si scoring faible
+        #     Garde thermique stricte (< 6°C) pour eviter faux positifs hors froid
+        #     En saison rouge uniquement (nov-mars, R1)
+        #     Audit DS : le ML etait musele — ne pouvait agir que si scoring >= BLANC
+        if (ml_rouge >= 15 and couleur != "ROUGE"
+                and remaining["ROUGE"] > 0
+                and temp_moy < 6
+                and (target_date.month >= 11 or target_date.month <= 3)):
+            couleur = "ROUGE"
+            raison_ml = " · ML:ROUGE(fort)"
+
+        # 1b. ML ROUGE modere : P(ROUGE) >= 10% + scoring >= BLANC → ROUGE
+        #     Garde thermique relachee (< 8°C) car le scoring confirme la tendance
+        elif (ml_pred == "ROUGE" and couleur != "ROUGE"
                 and remaining["ROUGE"] > 0
                 and score_risque >= Config.SEUIL_BLANC
                 and temp_moy < 8
