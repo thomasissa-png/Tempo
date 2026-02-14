@@ -607,9 +607,9 @@ def _score_budget_v2(remaining: dict, d_left: int, target_date: date) -> float:
 
     ML-1 : ajout signal BLANC (43 jours/saison ignores auparavant).
     ML-2 : fonctions continues (piecewise-linear) au lieu de step functions.
-    Fix audit ML #39 : la pression ROUGE utilise les jours eligibles (jusqu'au
-    31 mars) et non les jours restants jusqu'au 31 mai. Regle EDF R1 : les jours
-    rouges ne peuvent etre places qu'entre novembre et mars.
+    Deadlines EDF :
+      - ROUGE : 31 mars (R1), jours eligibles = weekdays uniquement (R2, 5/7)
+      - BLANC : 31 mai, jours eligibles = lun-sam (R3 interdit dimanche, 6/7)
     """
     if d_left <= 0:
         return 0
@@ -634,8 +634,18 @@ def _score_budget_v2(remaining: dict, d_left: int, target_date: date) -> float:
         Config.MONTHLY_RED_PROFILE, Config.JOURS_ROUGES_TOTAL)
 
     # --- Pression BLANC (ML-1 : signal manquant) ---
+    # Deadline BLANC = 31 mai (tous les blancs doivent être placés avant juin)
+    if target_date.month <= 5:
+        white_deadline = date(target_date.year, 5, 31)
+    elif target_date.month >= 9:
+        white_deadline = date(target_date.year + 1, 5, 31)
+    else:
+        white_deadline = target_date  # juin-août, 0 jours
+    white_d_left = max(0, (white_deadline - target_date).days)
+    # Règle R3 : WHITE jamais le dimanche → 6/7 jours éligibles
+    white_eligible_days = max(1, white_d_left * 6 // 7) if white_d_left > 0 else 0
     blanc_pressure = _compute_budget_pressure(
-        remaining["BLANC"], d_left, month,
+        remaining["BLANC"], white_eligible_days, month,
         Config.MONTHLY_WHITE_PROFILE, Config.JOURS_BLANCS_TOTAL)
     # Fix audit ML #3 : plafond dynamique lie a SEUIL_ROUGE - 1.
     # La pression BLANC ne doit jamais depasser le seuil ROUGE, sinon une forte
