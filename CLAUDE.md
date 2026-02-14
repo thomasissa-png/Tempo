@@ -56,6 +56,27 @@
 - `config.py`: All thresholds, weights, city definitions, API keys
 - Dynamic RED threshold: 65 normally, 55 if temp<7°C, 50 if temp<4°C (requires budget_score>=50)
 
+### Budget Pressure Mechanics (CRITICAL)
+- `predict_range` iterates J+2 → J+15 chronologically with a `sim_remaining` counter
+- Each predicted ROUGE/BLANC decrements `sim_remaining` → pressure increases for subsequent days
+- BLEU predictions do NOT decrement, but eligible days shrink (deadline approaches) → density rises naturally
+- `_score_budget_v2` recalculates `red_d_left` / `white_d_left` from **target_date** (not today) → correct per-day pressure
+- Budget weight is only 12% → max 12 points contribution even at budget_score=100
+- **Density override** (>= 0.8): when remaining/eligible >= 0.8, temperature is irrelevant — EDF MUST place these days. Override forces ROUGE/BLANC BEFORE EDF rules (which still enforce weekends/holidays/R1-R4)
+- **ML budget guard**: ML BLANC→BLEU filter disabled when budget_score >= 50 (prevents ML from overriding budget-driven BLANC predictions)
+
+### Weather Fallback Chain
+- Primary: Meteo France via meteole (AROME + ARPEGE, 9 cities)
+- If meteole fails (Timedelta/Timestamp bugs in v0.2.5): caught by try/except, logged as WARNING
+- Fallback: Open-Meteo API (same 9 cities, source confidence 0.80 → score attenuated toward 50)
+- If both fail: no predictions generated (empty forecast list)
+
+### RTE Fallback
+- Primary: Consumption forecast + Nuclear availability (2 separate APIs)
+- If Nuclear API fails (403): score based on consumption only (no ±10-20 nuclear adjustment)
+- If both APIs fail: returns `{"score": 50, "available": False}` → predictor uses 50 (neutral)
+- RTE weight is 10% → loss of nuclear signal costs max ±2 points on final score
+
 ## Common Pitfalls
 - **Data leakage**: Never use same-day RTE consumption for predictions (only lag features D-1+)
 - **Multi-horizon storage**: `store_prediction` must only block same-horizon confirmed predictions, not all horizons

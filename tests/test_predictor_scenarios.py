@@ -738,3 +738,88 @@ class TestMlBudgetGuard:
             f"Samedi 12°C debut saison devrait etre BLEU, "
             f"got {r['couleur_predite']} (score={r['score_risque']})"
         )
+
+
+# ================================================================
+# 17. OVERRIDE DENSITÉ CRITIQUE
+# ================================================================
+
+class TestDensiteCritique:
+    """Quand le ratio remaining/eligible >= 0.8, EDF n'a plus le choix.
+
+    Le scoring normal (budget pese 12%) ne peut pas capturer cette urgence
+    absolue. L'override force ROUGE/BLANC avant les contraintes EDF
+    (qui gardent quand meme weekends/feries/R1-R4).
+    """
+
+    def test_rouge_force_meme_a_10c(self):
+        """14 ROUGE / 12 éligibles = densité 1.17 → ROUGE même à 10°C."""
+        target = date(2026, 3, 13)  # vendredi, 18j avant le 31 mars
+        remaining = {"ROUGE": 14, "BLANC": 13, "BLEU": 50}
+        r = predict(target, temp_moy=10.0, remaining=remaining)
+        assert r["couleur_predite"] == "ROUGE", (
+            f"Densité 1.17 à 10°C devrait forcer ROUGE, "
+            f"got {r['couleur_predite']} (score={r['score_risque']})"
+        )
+
+    def test_blanc_force_en_avril(self):
+        """38 BLANC / 38 éligibles = densité 1.0 → BLANC même hors saison rouge."""
+        target = date(2026, 4, 16)  # jeudi
+        remaining = {"ROUGE": 0, "BLANC": 38, "BLEU": 50}
+        r = predict(target, temp_moy=15.0, remaining=remaining)
+        assert r["couleur_predite"] == "BLANC", (
+            f"Densité BLANC 1.0 à 15°C devrait forcer BLANC, "
+            f"got {r['couleur_predite']} (score={r['score_risque']})"
+        )
+
+    def test_override_respecte_dimanche(self):
+        """Même en densité critique, dimanche reste BLEU (R2+R3)."""
+        target = date(2026, 3, 15)  # dimanche
+        remaining = {"ROUGE": 14, "BLANC": 13, "BLEU": 50}
+        r = predict(target, temp_moy=2.0, remaining=remaining)
+        assert r["couleur_predite"] == "BLEU", (
+            f"Dimanche doit rester BLEU meme en densité critique, "
+            f"got {r['couleur_predite']}"
+        )
+
+    def test_override_respecte_ferie(self):
+        """Jour férié en densité critique → BLANC (pas ROUGE, R2)."""
+        target = date(2025, 12, 25)  # Noël, jeudi
+        remaining = {"ROUGE": 18, "BLANC": 10, "BLEU": 50}
+        r = predict(target, temp_moy=0.0, remaining=remaining)
+        assert r["couleur_predite"] != "ROUGE", (
+            f"Noël ne peut pas être ROUGE (R2), "
+            f"got {r['couleur_predite']}"
+        )
+
+    def test_pas_override_si_densite_moderee(self):
+        """Densité 0.5 → pas d'override, le scoring normal décide."""
+        target = date(2026, 1, 15)  # jeudi
+        remaining = {"ROUGE": 15, "BLANC": 30, "BLEU": 100}
+        # ~75j avant le 31 mars, ~54 éligibles, densité 15/54 = 0.28
+        r = predict(target, temp_moy=12.0, remaining=remaining)
+        # À 12°C sans densité critique, ne devrait PAS être ROUGE
+        assert r["couleur_predite"] != "ROUGE", (
+            f"Densité ~0.28 + 12°C ne devrait pas forcer ROUGE, "
+            f"got {r['couleur_predite']} (score={r['score_risque']})"
+        )
+
+    def test_predict_range_densite_progressive(self):
+        """Sur 15 jours avec densité critique, sim_remaining décrémente bien."""
+        base = date(2026, 3, 13)  # vendredi
+        temps = [10, 9, 11, 10, 8, 12, 10, 9, 8, 10, 11, 9, 10, 8, 9]
+        forecasts = make_forecasts(base, temps)
+
+        predictions = predict_range(forecasts)
+        couleurs = [p["couleur_predite"] for p in predictions]
+
+        rouge_count = sum(1 for c in couleurs if c == "ROUGE")
+        blanc_count = sum(1 for c in couleurs if c == "BLANC")
+
+        # Avec 14 ROUGE + 13 BLANC restants et densité critique,
+        # on doit voir beaucoup de non-BLEU (jours éligibles)
+        non_bleu = rouge_count + blanc_count
+        assert non_bleu >= 8, (
+            f"Densité critique devrait donner au moins 8 non-BLEU sur 15 jours, "
+            f"got {non_bleu}. Couleurs: {couleurs}"
+        )

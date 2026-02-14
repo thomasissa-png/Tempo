@@ -384,6 +384,40 @@ def predict_day(target_date: date, weather: dict | None = None,
     else:
         raison_ml = ""
 
+    # === Override densité critique ===
+    # Quand le ratio remaining/eligible est tres eleve, EDF n'a plus le choix :
+    # il DOIT placer ces jours quelles que soient les conditions meteo.
+    # Le scoring normal (budget pese 12%) ne peut pas capturer cette urgence
+    # absolue — a 10°C le score atteint ~47 (BLANC) meme si la densite est 1.0+.
+    # Seuil 0.8 = il faut que 4 weekdays sur 5 soient de cette couleur.
+    if couleur != "ROUGE" and remaining["ROUGE"] > 0:
+        if target_date.month <= 3:
+            _red_deadline = date(target_date.year, 3, 31)
+        elif target_date.month >= 11:
+            _red_deadline = date(target_date.year + 1, 3, 31)
+        else:
+            _red_deadline = target_date
+        _red_d_left = max(0, (_red_deadline - target_date).days)
+        _red_eligible = max(1, _red_d_left * 5 // 7) if _red_d_left > 0 else 1
+        _red_density = remaining["ROUGE"] / _red_eligible
+        if _red_density >= 0.8 and (target_date.month >= 11 or target_date.month <= 3):
+            couleur = "ROUGE"
+            raison_ml += " · Densité critique ROUGE"
+
+    if couleur != "BLANC" and couleur != "ROUGE" and remaining["BLANC"] > 0:
+        if target_date.month <= 5:
+            _wh_deadline = date(target_date.year, 5, 31)
+        elif target_date.month >= 9:
+            _wh_deadline = date(target_date.year + 1, 5, 31)
+        else:
+            _wh_deadline = target_date
+        _wh_d_left = max(0, (_wh_deadline - target_date).days)
+        _wh_eligible = max(1, _wh_d_left * 6 // 7) if _wh_d_left > 0 else 1
+        _wh_density = remaining["BLANC"] / _wh_eligible
+        if _wh_density >= 0.8:
+            couleur = "BLANC"
+            raison_ml += " · Densité critique BLANC"
+
     # === Fix #29 : contraintes dures EDF (non outrepassables par le scoring) ===
     # Regles officielles EDF appliquees APRES le scoring pour garantir la conformite.
     dow = target_date.weekday()  # 0=lundi, 5=samedi, 6=dimanche
