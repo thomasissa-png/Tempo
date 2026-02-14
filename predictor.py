@@ -82,6 +82,32 @@ def is_french_holiday(d: date) -> bool:
     return d in _get_french_holidays(d.year)
 
 
+def _count_eligible_days(start: date, end: date, mode: str = "rouge") -> int:
+    """Compte le nombre exact de jours eligibles entre start et end (inclus).
+
+    Remplace l'approximation 5/7 ou 6/7 par un comptage exact qui tient
+    compte des weekends ET des jours feries.
+
+    mode='rouge' : eligible = weekday (lun-ven) ET pas ferie (R2)
+    mode='blanc' : eligible = lun-sam, pas dimanche (R3).
+                   Les feries restent eligibles pour BLANC.
+    """
+    if end < start:
+        return 0
+    count = 0
+    d = start
+    one_day = timedelta(days=1)
+    while d <= end:
+        if mode == "rouge":
+            if d.weekday() < 5 and not is_french_holiday(d):
+                count += 1
+        else:  # blanc
+            if d.weekday() != 6:  # pas dimanche
+                count += 1
+        d += one_day
+    return count
+
+
 # ================================================================
 # HELPERS ML : interpolation continue + wind chill
 # ================================================================
@@ -401,9 +427,8 @@ def predict_day(target_date: date, weather: dict | None = None,
             _red_deadline = date(target_date.year + 1, 3, 31)
         else:
             _red_deadline = target_date
-        _red_d_left = max(0, (_red_deadline - target_date).days)
-        _red_eligible = max(1, _red_d_left * 5 // 7) if _red_d_left > 0 else 1
-        _red_slack = _red_eligible - remaining["ROUGE"]
+        _red_eligible = _count_eligible_days(target_date, _red_deadline, "rouge")
+        _red_slack = max(_red_eligible, 1) - remaining["ROUGE"]
         if _red_slack <= 1 and (target_date.month >= 11 or target_date.month <= 3):
             couleur = "ROUGE"
             raison_ml += " · Densité critique ROUGE"
@@ -415,9 +440,8 @@ def predict_day(target_date: date, weather: dict | None = None,
             _wh_deadline = date(target_date.year + 1, 5, 31)
         else:
             _wh_deadline = target_date
-        _wh_d_left = max(0, (_wh_deadline - target_date).days)
-        _wh_eligible = max(1, _wh_d_left * 6 // 7) if _wh_d_left > 0 else 1
-        _wh_slack = _wh_eligible - remaining["BLANC"]
+        _wh_eligible = _count_eligible_days(target_date, _wh_deadline, "blanc")
+        _wh_slack = max(_wh_eligible, 1) - remaining["BLANC"]
         if _wh_slack <= 1:
             couleur = "BLANC"
             raison_ml += " · Densité critique BLANC"
@@ -677,11 +701,11 @@ def _score_budget_v2(remaining: dict, d_left: int, target_date: date) -> float:
         red_deadline = date(target_date.year + 1, 3, 31)
     else:
         red_deadline = target_date  # hors saison rouge, 0 jours
-    red_d_left = max(0, (red_deadline - target_date).days)
-    # Fix audit ML #40 : la densité d'urgence ROUGE doit compter uniquement
-    # les jours ÉLIGIBLES (weekdays lun-ven). Les weekends et fériés ne peuvent
-    # jamais être rouges (R2). Approximation 5/7 simple et suffisante.
-    red_eligible_days = max(1, red_d_left * 5 // 7) if red_d_left > 0 else 0
+    # Comptage exact des jours éligibles ROUGE : weekdays hors fériés (R2).
+    # Remplace l'approximation 5/7 qui ignorait les fériés (~4 en saison).
+    red_eligible_days = _count_eligible_days(target_date, red_deadline, "rouge")
+    if red_eligible_days == 0 and (target_date.month >= 11 or target_date.month <= 3):
+        red_eligible_days = 1  # eviter division par 0
     rouge_pressure = _compute_budget_pressure(
         remaining["ROUGE"], red_eligible_days, month,
         Config.MONTHLY_RED_PROFILE, Config.JOURS_ROUGES_TOTAL)
@@ -694,9 +718,11 @@ def _score_budget_v2(remaining: dict, d_left: int, target_date: date) -> float:
         white_deadline = date(target_date.year + 1, 5, 31)
     else:
         white_deadline = target_date  # juin-août, 0 jours
-    white_d_left = max(0, (white_deadline - target_date).days)
-    # Règle R3 : WHITE jamais le dimanche → 6/7 jours éligibles
-    white_eligible_days = max(1, white_d_left * 6 // 7) if white_d_left > 0 else 0
+    # Comptage exact des jours éligibles BLANC : lun-sam, pas dimanche (R3).
+    # Les fériés restent éligibles pour BLANC.
+    white_eligible_days = _count_eligible_days(target_date, white_deadline, "blanc")
+    if white_eligible_days == 0 and target_date.month not in (6, 7, 8):
+        white_eligible_days = 1
     blanc_pressure = _compute_budget_pressure(
         remaining["BLANC"], white_eligible_days, month,
         Config.MONTHLY_WHITE_PROFILE, Config.JOURS_BLANCS_TOTAL)

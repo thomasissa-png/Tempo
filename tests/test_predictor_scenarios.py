@@ -810,8 +810,13 @@ class TestDensiteCritique:
         )
 
     def test_5_rouges_sur_7_jours_tous_places(self):
-        """5 ROUGE / 7 jours (lun→dim) : les 5 doivent être placés lun-ven."""
-        base = date(2026, 3, 23)  # lundi
+        """5 ROUGE / 7 jours (mer→mar) : les 5 doivent être placés sur les weekdays.
+
+        Base = Mar 25 (mer) → forecast couvre mer 25 à mar 31 mars.
+        Jours éligibles ROUGE au 31 mars : mer, jeu, ven, lun, mar = 5.
+        remaining=5 → slack=0 → densité critique force ROUGE chaque weekday.
+        """
+        base = date(2026, 3, 25)  # mercredi
         temps = [8, 9, 7, 10, 8, 11, 9]  # lun→dim, doux
         forecasts = make_forecasts(base, temps)
 
@@ -835,9 +840,14 @@ class TestDensiteCritique:
                 f"ROUGE interdit le weekend ({d})"
             )
 
-    def test_3_rouges_sur_5_jours_mercredi_dimanche(self):
-        """3 ROUGE / 5 jours (mer→dim) : 3 placés mer-ven, rien le weekend."""
-        base = date(2026, 3, 25)  # mercredi
+    def test_3_rouges_sur_5_jours_vendredi_mardi(self):
+        """3 ROUGE / 5 jours (ven→mar) : 3 placés ven+lun+mar, rien le weekend.
+
+        Base = Mar 27 (ven) → forecast couvre ven 27 à mar 31 mars.
+        Jours éligibles ROUGE au 31 mars : ven, lun, mar = 3.
+        remaining=3 → slack=0 → densité critique force ROUGE chaque weekday.
+        """
+        base = date(2026, 3, 27)  # vendredi
         temps = [10, 9, 8, 11, 10]
         forecasts = make_forecasts(base, temps)
 
