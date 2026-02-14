@@ -767,6 +767,7 @@ nav a:hover, nav a.active {
 .legend-desc {
     color: var(--text-secondary);
     font-size: 0.8rem;
+    margin-left: 0.4em;
 }
 
 .legend-br {

@@ -281,7 +281,7 @@ async function loadBadge() {
 
         const el = document.getElementById('badge-text');
         if (el) {
-            if (data.total_predictions > 0) {
+            if (data.total_predictions > 0 && data.precision_30j != null) {
                 const pct = data.precision_30j;
                 document.getElementById('badge-value').textContent = `${pct}%`;
                 // P-12 : qualificatif pour donner du contexte à Paul
