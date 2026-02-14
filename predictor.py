@@ -410,16 +410,26 @@ def predict_day(target_date: date, weather: dict | None = None,
     else:
         raison_ml = ""
 
-    # === Override densité critique (logique par slack) ===
-    # Quand le nombre de jours restants a placer est proche du nombre de jours
-    # eligibles, EDF n'a plus le choix : il DOIT placer ces jours quelles que
-    # soient les conditions meteo. Le scoring normal (budget pese 12%) ne peut
-    # pas capturer cette urgence absolue.
+    # === Override densité progressive ROUGE ===
+    # Quand la densité RED (remaining/eligible) est élevée, abaisser le seuil
+    # RED effectif pour répartir les jours rouges plus uniformément.
     #
-    # Slack = eligible - remaining :
-    #   slack <= 0 : IMPOSSIBLE de tous les placer → chaque jour eligible est FORCE
-    #   slack == 1 : marge d'UN seul jour → quasi-force (1 skip max)
-    #   slack >= 2 : assez de marge → scoring normal peut decider
+    # Problème résolu : avec 14 ROUGE restants sur 32 jours éligibles (densité
+    # 44%), le budget (poids 12%) et l'urgency boost (1.16x) ne suffisent pas
+    # à atteindre le seuil ROUGE standard (65) ou froid (55) quand la
+    # température est de 5-7°C (fréquent en fév-mars). Sans cette réduction,
+    # le système attend le density override critique (slack ≤ 1) vers le
+    # ~11 mars, puis concentre tous les ROUGE en fin de saison.
+    #
+    # La réduction progressive permet de capturer les jours "moyennement
+    # froids" (5-7°C) quand la densité l'exige, sans forcer ROUGE sur les
+    # jours doux (≥ 8°C) grâce au score_risque naturellement bas.
+    #
+    # Calibration : densité 45% → réduction ~8 pts.
+    #   - 5°C : score ~63, seuil 55-8=47 → ROUGE ✓ (déjà capté sans override)
+    #   - 6°C : score ~60, seuil 55-8=47 → ROUGE ✓ (borderline capté)
+    #   - 8°C : score ~55, seuil 65-8=57 → pas ROUGE ✓ (trop doux)
+    # Densité 64% → réduction ~18 pts → capture 7°C (seuil 65-18=47)
     if couleur != "ROUGE" and remaining["ROUGE"] > 0:
         if target_date.month <= 3:
             _red_deadline = date(target_date.year, 3, 31)
@@ -429,9 +439,22 @@ def predict_day(target_date: date, weather: dict | None = None,
             _red_deadline = target_date
         _red_eligible = _count_eligible_days(target_date, _red_deadline, "rouge")
         _red_slack = max(_red_eligible, 1) - remaining["ROUGE"]
+
         if _red_slack <= 1 and (target_date.month >= 11 or target_date.month <= 3):
+            # Densité critique : force ROUGE sur chaque jour éligible
             couleur = "ROUGE"
             raison_ml += " · Densité critique ROUGE"
+        elif _red_eligible > 0 and (target_date.month >= 11 or target_date.month <= 3):
+            # Densité progressive : abaissement du seuil RED proportionnel
+            _red_density = remaining["ROUGE"] / _red_eligible
+            _density_reduction = _piecewise_linear(_red_density, [
+                (0.20, 0), (0.35, 3), (0.50, 10), (0.70, 22),
+            ])
+            if _density_reduction > 0:
+                _effective_threshold = seuil_rouge_effectif - _density_reduction
+                if score_risque >= _effective_threshold:
+                    couleur = "ROUGE"
+                    raison_ml += f" · Pression densité ROUGE ({_red_density:.0%})"
 
     if couleur != "BLANC" and couleur != "ROUGE" and remaining["BLANC"] > 0:
         if target_date.month <= 5:

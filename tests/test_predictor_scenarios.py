@@ -910,3 +910,113 @@ class TestDensiteCritique:
             f"Slack négatif devrait donner au moins 8 non-BLEU sur 15 jours, "
             f"got {non_bleu}. Couleurs: {couleurs}"
         )
+
+
+# ================================================================
+# 19. DENSITÉ PROGRESSIVE (fix pression budgétaire fév-mars)
+# ================================================================
+
+class TestDensiteProgressiveOverride:
+    """L'override densité progressive abaisse le seuil ROUGE quand la densité
+    est élevée (remaining/eligible > 0.20), AVANT le dernier recours slack ≤ 1.
+
+    Problème résolu : avec 14 ROUGE sur 32 éligibles (densité 44%), le budget
+    (12% poids) et l'urgency boost (1.16x) sont insuffisants pour atteindre
+    le seuil ROUGE (55-65) à 5-7°C. Sans densité progressive, le système
+    attend le density override critique (~11 mars) puis concentre tout.
+    """
+
+    def test_densite_44pct_6c_rouge(self):
+        """Densité 44% + 6°C → ROUGE (seuil 55 abaissé par densité)."""
+        r = predict(date(2026, 2, 17), temp_moy=6.0,  # mardi
+                    remaining={"ROUGE": 14, "BLANC": 13, "BLEU": 170})
+        assert r["couleur_predite"] == "ROUGE", (
+            f"Densité 44% + 6°C devrait être ROUGE, "
+            f"got {r['couleur_predite']} (score={r['score_risque']})"
+        )
+
+    def test_densite_44pct_8c_pas_rouge(self):
+        """Densité 44% + 8°C → PAS ROUGE (seuil standard 65, trop doux)."""
+        r = predict(date(2026, 2, 17), temp_moy=8.0,
+                    remaining={"ROUGE": 14, "BLANC": 13, "BLEU": 170})
+        assert r["couleur_predite"] != "ROUGE", (
+            f"Densité 44% + 8°C = trop doux même avec densité, "
+            f"got {r['couleur_predite']} (score={r['score_risque']})"
+        )
+
+    def test_densite_44pct_13c_pas_rouge(self):
+        """Densité 44% + 13°C → PAS ROUGE (le score_risque est trop bas)."""
+        r = predict(date(2026, 2, 17), temp_moy=13.0,
+                    remaining={"ROUGE": 14, "BLANC": 13, "BLEU": 170})
+        assert r["couleur_predite"] != "ROUGE", (
+            f"Densité 44% mais 13°C = aucune justification pour ROUGE, "
+            f"got {r['couleur_predite']} (score={r['score_risque']})"
+        )
+
+    def test_densite_faible_6c_pas_rouge(self):
+        """Densité faible (3/32 = 9%) + 6°C → PAS ROUGE (pas de réduction)."""
+        r = predict(date(2026, 2, 17), temp_moy=6.0,
+                    remaining={"ROUGE": 3, "BLANC": 13, "BLEU": 170})
+        assert r["couleur_predite"] != "ROUGE", (
+            f"Faible densité (9%) + 6°C = pas d'override, "
+            f"got {r['couleur_predite']} (score={r['score_risque']})"
+        )
+
+    def test_densite_64pct_7c_rouge(self):
+        """Densité élevée (~64%) + 7°C → ROUGE (forte réduction du seuil).
+
+        Mar 17 → 11 éligibles au 31 mars. 7 restants = densité 64%.
+        Slack = 4 > 1 → c'est l'override progressif, pas le critique.
+        Réduction ~18 pts → seuil effectif 65-18=47. Score ~57 → ROUGE.
+        """
+        r = predict(date(2026, 3, 17), temp_moy=7.0,  # mardi
+                    remaining={"ROUGE": 7, "BLANC": 5, "BLEU": 50})
+        assert r["couleur_predite"] == "ROUGE", (
+            f"Densité ~64% + 7°C devrait être ROUGE via override progressif, "
+            f"got {r['couleur_predite']} (score={r['score_risque']})"
+        )
+
+    def test_predict_range_fev_distribue_rouges(self):
+        """predict_range sur 2 semaines de fév doit distribuer les ROUGE.
+
+        Avec 14 ROUGE restants et des températures de 4-8°C (typique fév),
+        le système doit prédire au moins 3-4 ROUGE, pas 0-1.
+        """
+        base = date(2026, 2, 16)  # lundi
+        # 14 jours : typique fin février, entre 4 et 8°C
+        temps = [5, 6, 5, 4, 7, 8, 9, 6, 5, 7, 6, 4, 8, 7]
+        forecasts = make_forecasts(base, temps)
+
+        from unittest.mock import patch
+        mock_remaining = {"ROUGE": 14, "BLANC": 13, "BLEU": 170}
+        with patch("predictor.get_remaining_days", return_value=mock_remaining):
+            predictions = predict_range(forecasts)
+
+        couleurs = [p["couleur_predite"] for p in predictions]
+        rouge_count = sum(1 for c in couleurs if c == "ROUGE")
+
+        # Avec densité 44% et températures 4-8°C, on attend au moins 3 ROUGE
+        assert rouge_count >= 3, (
+            f"14 ROUGE restants + densité 44% + températures 4-8°C → "
+            f"au moins 3 ROUGE attendus, got {rouge_count}. "
+            f"Couleurs: {couleurs}"
+        )
+
+    def test_densite_progressive_respecte_r2_weekend(self):
+        """La densité progressive ne force pas ROUGE le weekend."""
+        # Samedi avec forte densité
+        r = predict(date(2026, 2, 21), temp_moy=5.0,  # samedi
+                    remaining={"ROUGE": 14, "BLANC": 13, "BLEU": 170})
+        assert r["couleur_predite"] != "ROUGE", (
+            f"Samedi ne peut JAMAIS être ROUGE (R2), "
+            f"got {r['couleur_predite']}"
+        )
+
+    def test_densite_progressive_hors_saison_rouge(self):
+        """La densité progressive ne s'applique pas en avril (hors R1)."""
+        r = predict(date(2026, 4, 15), temp_moy=5.0,  # mercredi
+                    remaining={"ROUGE": 0, "BLANC": 13, "BLEU": 170})
+        assert r["couleur_predite"] != "ROUGE", (
+            f"Avril = hors saison rouge (R1), "
+            f"got {r['couleur_predite']}"
+        )
