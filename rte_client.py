@@ -1,4 +1,4 @@
-"""Client RTE eco2mix — prevision de consommation et disponibilite nucleaire.
+"""Client RTE eco2mix — prevision de consommation et production agregee.
 
 API RTE (data.rte-france.com) avec OAuth2 Bearer token.
 Fournit le signal de consommation nationale, facteur cle pour la decision Tempo.
@@ -8,6 +8,9 @@ Corrections audit :
   - Fix #3 : type D-1 forecast au lieu de REALISED
   - Fix #12 : capacite nucleaire configurable
   - Fix #13 : fetches paralleles asyncio.gather
+  - Fix API fev 2026 : migration Generation Forecast v2→v3,
+    NUCLEAR→AGGREGATED_FRANCE (NUCLEAR n'est pas un type valide).
+    La disponibilite nucleaire n'est pas disponible via cette API.
 """
 
 import httpx
@@ -168,10 +171,18 @@ async def fetch_consumption_forecast() -> dict | None:
         return None
 
 
-async def fetch_nuclear_availability() -> dict | None:
-    """Recupere la disponibilite du parc nucleaire.
+async def fetch_generation_forecast() -> dict | None:
+    """Recupere la prevision de production agregee France (MW).
 
-    Fix #12 : capacite totale configurable via Config.
+    Fix API fev 2026 : migration v2→v3, NUCLEAR→AGGREGATED_FRANCE.
+    NUCLEAR n'est pas un type valide dans l'API Generation Forecast RTE.
+    La disponibilite nucleaire necessiterait l'API Actual Generation ou
+    Generation Installed Capacities (non implementee).
+
+    AGGREGATED_FRANCE fournit la production totale previsionnelle France.
+    Ce signal est correle a la consommation (production suit la demande)
+    et n'apporte pas d'information independante pour le scoring Tempo.
+    Il est retourne pour observabilite uniquement.
     """
     token = await _get_token("generation")
     if not token:
@@ -183,10 +194,10 @@ async def fetch_nuclear_availability() -> dict | None:
             tomorrow_d = today_d + timedelta(days=1)
             tz_offset = _paris_offset_str(today_d)
             resp = await client.get(
-                f"{Config.RTE_API_BASE}/open_api/generation_forecast/v2/forecasts",
+                f"{Config.RTE_API_BASE}/open_api/generation_forecast/v3/forecasts",
                 headers={"Authorization": f"Bearer {token}"},
                 params={
-                    "production_type": "NUCLEAR",
+                    "production_type": "AGGREGATED_FRANCE",
                     "start_date": f"{today_d.isoformat()}T00:00:00{tz_offset}",
                     "end_date": f"{tomorrow_d.isoformat()}T00:00:00{tz_offset}",
                 },
@@ -206,18 +217,19 @@ async def fetch_nuclear_availability() -> dict | None:
             if not values:
                 return None
 
-            total_capacity = Config.RTE_NUCLEAR_CAPACITY_MW
-            if total_capacity <= 0:
-                return None
-            available = round(max(values))
+            peak = round(max(values))
+            mean = round(sum(values) / len(values))
             return {
-                "available_mw": available,
-                "total_mw": total_capacity,
-                "availability_pct": round(available / total_capacity * 100, 1),
+                "gen_peak_mw": peak,
+                "gen_mean_mw": mean,
             }
     except Exception as e:
-        logger.warning(f"[RTE] Erreur nucleaire: {e}")
+        logger.warning(f"[RTE] Erreur generation forecast: {e}")
         return None
+
+
+# Alias backward-compatible (utilise dans les imports existants)
+fetch_nuclear_availability = fetch_generation_forecast
 
 
 # ================================================================
@@ -228,11 +240,16 @@ async def get_consumption_score() -> dict:
     """Calcule un score de risque base sur la consommation prevue.
 
     Fix #13 : fetches paralleles avec asyncio.gather.
+    Fix API fev 2026 : la disponibilite nucleaire n'est plus disponible
+    (NUCLEAR n'est pas un type valide dans l'API Generation Forecast).
+    Le score est base uniquement sur la prevision de consommation.
+    La production agregee (AGGREGATED_FRANCE) est recuperee pour
+    observabilite mais n'ajuste plus le score (signal correle a la conso).
     """
     # Fix #13 : lancer les deux fetches en parallele
-    conso, nuke = await asyncio.gather(
+    conso, gen = await asyncio.gather(
         fetch_consumption_forecast(),
-        fetch_nuclear_availability(),
+        fetch_generation_forecast(),
         return_exceptions=True,
     )
 
@@ -240,45 +257,40 @@ async def get_consumption_score() -> dict:
     if isinstance(conso, Exception):
         logger.warning(f"[RTE] Erreur consommation dans gather: {conso}")
         conso = None
-    if isinstance(nuke, Exception):
-        logger.warning(f"[RTE] Erreur nucleaire dans gather: {nuke}")
-        nuke = None
+    if isinstance(gen, Exception):
+        logger.warning(f"[RTE] Erreur generation dans gather: {gen}")
+        gen = None
 
-    if not conso and not nuke:
-        return {"score": 50, "peak_mw": None, "nuke_pct": None, "available": False}
+    if not conso:
+        return {"score": 50, "peak_mw": None, "nuke_pct": None,
+                "nuke_mw": None, "available": False}
 
     score = 0
 
     # Score consommation prevue
-    if conso:
-        peak = conso["peak_mw"]
-        if peak >= Config.RTE_CONSO_SEUIL_CRITIQUE:
-            score += 80
-        elif peak >= Config.RTE_CONSO_SEUIL_HAUT:
-            score += 60
-        elif peak >= Config.RTE_CONSO_SEUIL_MOYEN:
-            score += 35
-        else:
-            score += 10
+    peak = conso["peak_mw"]
+    if peak >= Config.RTE_CONSO_SEUIL_CRITIQUE:
+        score += 80
+    elif peak >= Config.RTE_CONSO_SEUIL_HAUT:
+        score += 60
+    elif peak >= Config.RTE_CONSO_SEUIL_MOYEN:
+        score += 35
+    else:
+        score += 10
 
-    # Ajustement disponibilite nucleaire
-    nuke_pct = None
-    if nuke:
-        nuke_pct = nuke["availability_pct"]
-        if nuke_pct < 60:
-            score += 20  # Beaucoup de reacteurs en maintenance
-        elif nuke_pct < 70:
-            score += 10
-        elif nuke_pct > 85:
-            score -= 10  # Parc en forme, risque reduit
+    # Production agregee France (observabilite uniquement)
+    gen_peak = gen.get("gen_peak_mw") if gen else None
+    if gen_peak:
+        logger.debug(f"[RTE] Production agregee France: peak={gen_peak} MW")
 
     return {
         "score": max(0, min(100, score)),
-        "peak_mw": conso["peak_mw"] if conso else None,
-        "mean_mw": conso["mean_mw"] if conso else None,
-        "nuke_pct": nuke_pct,
-        "nuke_mw": nuke["available_mw"] if nuke else None,
-        "available": conso is not None or nuke is not None,
+        "peak_mw": conso["peak_mw"],
+        "mean_mw": conso["mean_mw"],
+        "nuke_pct": None,   # Plus disponible (API v3 ne fournit pas NUCLEAR)
+        "nuke_mw": None,    # Plus disponible
+        "gen_peak_mw": gen_peak,
+        "available": True,
     }
 
 

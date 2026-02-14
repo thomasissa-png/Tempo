@@ -73,10 +73,30 @@
 - If both fail: no predictions generated (empty forecast list)
 
 ### RTE Fallback
-- Primary: Consumption forecast + Nuclear availability (2 separate APIs)
-- If Nuclear API fails (403): score based on consumption only (no ±10-20 nuclear adjustment)
-- If both APIs fail: returns `{"score": 50, "available": False}` → predictor uses 50 (neutral)
-- RTE weight is 10% → loss of nuclear signal costs max ±2 points on final score
+- Primary: Consumption forecast (v1 API) — seul signal de scoring
+- Generation forecast (v3 API, AGGREGATED_FRANCE) — observabilité uniquement, pas de scoring
+- **Nuclear unavailable**: NUCLEAR n'est pas un type valide dans l'API Generation Forecast RTE. La disponibilité nucléaire nécessiterait l'API Actual Generation (non implémentée). Le scoring fonctionne correctement sans ce signal.
+- If consumption API fails: returns `{"score": 50, "available": False}` → predictor uses 50 (neutral)
+- RTE weight is 10% → max 10 points contribution on final score
+
+### Learning System (performance_tracker.py)
+- **Weight recalculation**: LogisticRegression multinomial, cost-sensitive (ROUGE=25, BLANC=3, BLEU=1)
+- Uses **raw sub-scores** (C-1, before corrections) to avoid feedback loops
+- Guards: F1-macro >= 45%, ROUGE recall >= 30%, holdout temporal >= 65%
+- Holdout: trains on 80% oldest data, validates on 20% newest (temporal direction)
+- Auto-rollback (W-5): if precision drops > 5 points after weight update
+- Kill-switch (C-3): disables top 3 corrections if 14-day accuracy < 50%
+- Correction validation (A-1): disables all corrections if they degrade accuracy > 3%
+- Temporal decay: half-life 45 days on learning corrections
+
+### Scheduler Tasks
+- `daily_predictions` (18h): weather + RTE + predict_range + store
+- `daily_verification` (11h30): checks EDF official colors, confirms predictions
+- `daily_validation` (23h): evaluates prediction accuracy for the day
+- `bimonthly_weights` (1st/15th): recalculates scoring weights
+- `weekly_recap` (Sunday 20h): sends weekly summary
+- `edf_polling` (6h-11h15, every 15min): polls EDF for J+1 color
+- `post_startup` (deferred 90s): backfill + ML evaluation + predictions
 
 ## Common Pitfalls
 - **Data leakage**: Never use same-day RTE consumption for predictions (only lag features D-1+)

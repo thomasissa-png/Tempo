@@ -557,10 +557,15 @@ def recalculate_weights():
             return None
 
         # ML-3 : Holdout temporel
+        # Données triées ORDER BY date DESC : index 0 = plus récent.
+        # On entraîne sur les 80% les plus anciens (fin du tableau) et
+        # on valide sur les 20% les plus récents (début du tableau).
+        # Fix audit DS fev 2026 : les proportions étaient inversées
+        # (20% train, 80% test) — corrigé en split_idx = 0.2.
         holdout_accuracy = None
         n_rows = len(X)
         if n_rows >= 80:
-            split_idx = int(n_rows * 0.8)
+            split_idx = int(n_rows * 0.2)
             X_train_t = X_scaled[split_idx:]
             y_train_t = y[split_idx:]
             X_val_t = X_scaled[:split_idx]
