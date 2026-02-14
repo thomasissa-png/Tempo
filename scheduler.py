@@ -347,22 +347,27 @@ async def _store_rte_daily(rte_score: dict | None) -> None:
 # TÂCHE 0 : Polling réactif EDF (6h–11h15, toutes les 15 min)
 # ================================================================
 
-# Flag en mémoire pour éviter de re-confirmer en boucle le même jour
+# Flags en mémoire pour éviter de re-confirmer en boucle le même jour
 _edf_confirmed_today: str = ""
 _edf_confirmed_tomorrow: str = ""
+# Flag pour le refresh météo matinal (une fois par jour, même sans changement EDF)
+_morning_refresh_done: str = ""
 
 
 async def task_edf_polling():
-    """Polling réactif — détecte la couleur EDF dès publication.
+    """Polling réactif — détecte la couleur EDF dès publication + refresh météo matinal.
 
     Fix #27 : EDF publie parfois la couleur du jour bien avant 11h.
-    Ce job tourne toutes les 15 min entre 6h et 11h15 pour mettre
-    à jour les prédictions dès que l'info est disponible.
+    Ce job tourne toutes les 15 min entre 6h et 11h15 pour :
+      1. Confirmer les couleurs EDF dès publication (J et J+1)
+      2. Rafraîchir les prédictions J+2→J+15 avec météo fraîche du matin
 
-    Utilise des flags mémoire pour ne confirmer qu'une fois par jour
-    et éviter les appels DB / cache inutiles.
+    Le refresh météo se fait UNE FOIS par jour, dès que J+1 est confirmé
+    (ou au premier passage après 9h si J+1 n'est pas encore disponible).
+    Ceci garantit que les prédictions intègrent les dernières données météo
+    même si la couleur EDF était déjà connue.
     """
-    global _edf_confirmed_today, _edf_confirmed_tomorrow
+    global _edf_confirmed_today, _edf_confirmed_tomorrow, _morning_refresh_done
 
     today_str = date.today().isoformat()
 
@@ -370,6 +375,7 @@ async def task_edf_polling():
     if _edf_confirmed_today and not _edf_confirmed_today.startswith(today_str):
         _edf_confirmed_today = ""
         _edf_confirmed_tomorrow = ""
+        _morning_refresh_done = ""
 
     try:
         from tempo_client import fetch_tempo_today, fetch_tempo_tomorrow, store_actual
@@ -386,8 +392,6 @@ async def task_edf_polling():
                 updated = confirm_prediction(today_data["date"], today_data["couleur"])
                 if updated:
                     predictions_updated = True
-                    # Fix #31 : invalider le cache immédiatement pour que
-                    # /api/predictions reflète la confirmation sans attendre
                     invalidate_predictions_cache()
                 _edf_confirmed_today = f"{today_str}:{today_data['couleur']}"
                 logger.info(
@@ -410,10 +414,25 @@ async def task_edf_polling():
                     f"(détecté à {datetime.now().strftime('%H:%M')})"
                 )
 
-        # Fix #28 : recalculer les prédictions J+2→J+15 avec données fraîches
-        # (quotas mis à jour, météo du matin, RTE actualisé)
-        if predictions_updated:
-            await _refresh_predictions("polling_edf", send_sms=False)
+        # 3. Refresh météo matinal — une fois par jour
+        # Déclenché quand : (a) une couleur EDF vient de changer, OU
+        # (b) J+1 est confirmé et on n'a pas encore fait le refresh matinal,
+        # OU (c) après 9h si toujours pas de refresh (MF a publié ses runs).
+        now_hour = datetime.now().hour
+        need_morning_refresh = (
+            predictions_updated
+            or (_edf_confirmed_tomorrow and not _morning_refresh_done)
+            or (now_hour >= 9 and not _morning_refresh_done)
+        )
+
+        if need_morning_refresh:
+            count = await _refresh_predictions("polling_edf", send_sms=False)
+            if count:
+                _morning_refresh_done = today_str
+                logger.info(
+                    f"[Polling EDF] Refresh matinal OK — {count} prédictions "
+                    f"avec météo fraîche (à {datetime.now().strftime('%H:%M')})"
+                )
 
     except Exception as e:
         # Le polling est best-effort, on ne veut pas spammer les logs
