@@ -162,31 +162,19 @@ async def _extend_with_openmeteo(mf_days: list[dict]) -> list[dict]:
     return extended
 
 
-def _key_to_auth_kwargs(key: str) -> dict[str, str]:
-    """Convertit une cle brute en kwargs meteole (api_key= ou application_id=).
-
-    Heuristique : un JWT permanent commence par 'eyJ' et fait >100 chars.
-    Un application_id OAuth2 est un Base64 court de 'client_id:client_secret'.
-    """
-    if not key:
-        return {}
-    if len(key) < 100 and not key.startswith("eyJ"):
-        return {"application_id": key}
-    return {"api_key": key}
-
-
 def _get_meteofrance_auth(model: str = "default") -> dict[str, str]:
     """Determine le mode d'authentification Meteo France pour un modele donne.
 
     Sur le portail Meteo France, chaque API (AROME, ARPEGE, Vigilance) necessite
-    sa propre application et sa propre cle. On supporte :
+    sa propre application et sa propre cle API (duree 0, pas d'OAuth).
+    On supporte :
       - Cle par modele : METEOFRANCE_AROME_KEY, METEOFRANCE_ARPEGE_KEY, METEOFRANCE_VIGILANCE_KEY
       - Cle globale : METEOFRANCE_API_KEY (fallback si cle specifique absente)
-      - Application ID OAuth2 : METEOFRANCE_APPLICATION_ID (dernier recours)
+      - Application ID OAuth2 : METEOFRANCE_APPLICATION_ID (dernier recours, legacy)
 
     Retourne un dict de kwargs a passer a AromeForecast/ArpegeForecast/Vigilance.
     """
-    # 1. Cle specifique au modele
+    # 1. Cle specifique au modele (API key simple, pas OAuth)
     model_keys = {
         "arome": Config.METEOFRANCE_AROME_KEY,
         "arpege": Config.METEOFRANCE_ARPEGE_KEY,
@@ -194,17 +182,17 @@ def _get_meteofrance_auth(model: str = "default") -> dict[str, str]:
     }
     specific_key = model_keys.get(model, "")
     if specific_key:
-        logger.debug(f"[Meteo] Auth {model} : cle specifique")
-        return _key_to_auth_kwargs(specific_key)
+        logger.debug(f"[Meteo] Auth {model} : cle API specifique")
+        return {"api_key": specific_key}
 
-    # 2. Cle globale (fallback)
+    # 2. Cle globale (fallback, aussi API key)
     if Config.METEOFRANCE_API_KEY:
         logger.debug(f"[Meteo] Auth {model} : cle globale METEOFRANCE_API_KEY")
-        return _key_to_auth_kwargs(Config.METEOFRANCE_API_KEY)
+        return {"api_key": Config.METEOFRANCE_API_KEY}
 
-    # 3. Application ID OAuth2 (dernier recours)
+    # 3. Application ID OAuth2 (dernier recours, legacy)
     if Config.METEOFRANCE_APPLICATION_ID:
-        logger.debug(f"[Meteo] Auth {model} : application_id OAuth2")
+        logger.debug(f"[Meteo] Auth {model} : application_id OAuth2 (legacy)")
         return {"application_id": Config.METEOFRANCE_APPLICATION_ID}
 
     return {}
@@ -720,7 +708,7 @@ async def fetch_vigilance(api_key: str | None = None) -> dict:
     """
     # Utilise le meme mecanisme d'auth que AROME/ARPEGE
     if api_key:
-        auth_kwargs = _key_to_auth_kwargs(api_key)
+        auth_kwargs = {"api_key": api_key}
     else:
         auth_kwargs = _get_meteofrance_auth("vigilance")
     if not auth_kwargs:
