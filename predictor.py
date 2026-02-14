@@ -507,8 +507,10 @@ def predict_day(target_date: date, weather: dict | None = None,
             couleur = "BLANC" if remaining["BLANC"] > 0 else "BLEU"
 
     # === Probabilites (Fix #26 : softmax calibree) ===
+    # Passe la couleur finale pour garantir la coherence entre la decision
+    # (qui inclut les overrides ML, density, regles EDF) et les probabilites.
     prob_rouge, prob_blanc, prob_bleu = _compute_probabilities(
-        score_risque, remaining)
+        score_risque, remaining, couleur)
 
     # === Raison humaine ===
     raison = _build_raison_v2(
@@ -1007,13 +1009,19 @@ def _sigmoid(x: float, center: float, steepness: float) -> float:
     return 1.0 / (1.0 + math.exp(-steepness * (x - center)))
 
 
-def _compute_probabilities(score: float, remaining: dict) -> tuple[float, float, float]:
+def _compute_probabilities(score: float, remaining: dict,
+                           couleur_finale: str | None = None) -> tuple[float, float, float]:
     """Convertit le score de risque en probabilites par couleur.
 
     Fix #26 : softmax a 3 classes — chaque couleur a sa propre distribution
     independante, sans suppression artificielle de BLANC par ROUGE.
 
     Fix audit ML #4 : centres et steepness configurables dans Config.
+
+    Fix coherence : quand la couleur finale a ete forcee par un override
+    (density, ML, regles EDF), les probabilites sont ajustees pour que
+    la couleur predite soit toujours la plus probable — sinon l'affichage
+    de la barre tricolore serait contradictoire avec la prediction.
     """
     if remaining["ROUGE"] == 0 and remaining["BLANC"] == 0:
         return (0.0, 0.0, 1.0)  # Seul BLEU possible
@@ -1042,8 +1050,43 @@ def _compute_probabilities(score: float, remaining: dict) -> tuple[float, float,
     total = p_bleu + p_blanc + p_rouge
     if total <= 0:
         return (0.0, 0.0, 1.0)
-    p_rouge = round(p_rouge / total, 3)
-    p_blanc = round(p_blanc / total, 3)
+    p_rouge = p_rouge / total
+    p_blanc = p_blanc / total
+    p_bleu = max(0.0, 1.0 - p_rouge - p_blanc)
+
+    # Coherence : la couleur finale doit avoir la proba la plus haute.
+    # Si un override (density, ML, EDF rules) a change la couleur, on
+    # ajuste en transferant juste assez de masse vers la couleur choisie.
+    if couleur_finale:
+        probs = {"ROUGE": p_rouge, "BLANC": p_blanc, "BLEU": p_bleu}
+        p_chosen = probs[couleur_finale]
+        p_max = max(probs.values())
+        if p_chosen < p_max:
+            # La couleur choisie n'est pas la plus probable — on ajuste.
+            # On place la couleur finale a max + 0.05 (petit boost),
+            # puis renormalise. Cela preserve l'incertitude visible
+            # (la barre reste partagee) tout en garantissant la coherence.
+            target = min(p_max + 0.05, 0.95)
+            boost_needed = target - p_chosen
+            # Retirer proportionnellement des autres couleurs
+            others = {c: v for c, v in probs.items() if c != couleur_finale}
+            others_total = sum(others.values())
+            if others_total > 0:
+                for c in others:
+                    others[c] -= (others[c] / others_total) * boost_needed
+                    others[c] = max(0.0, others[c])
+            probs[couleur_finale] = target
+            for c in others:
+                probs[c] = others[c]
+            # Renormaliser a 1.0
+            t = sum(probs.values())
+            if t > 0:
+                p_rouge = probs["ROUGE"] / t
+                p_blanc = probs["BLANC"] / t
+                p_bleu = probs["BLEU"] / t
+
+    p_rouge = round(p_rouge, 3)
+    p_blanc = round(p_blanc, 3)
     p_bleu = round(max(0.0, 1.0 - p_rouge - p_blanc), 3)
     return (p_rouge, p_blanc, p_bleu)
 
