@@ -62,7 +62,7 @@
 - BLEU predictions do NOT decrement, but eligible days shrink (deadline approaches) → density rises naturally
 - `_score_budget_v2` recalculates `red_d_left` / `white_d_left` from **target_date** (not today) → correct per-day pressure
 - Budget weight is only 12% → max 12 points contribution even at budget_score=100
-- **Density override** (>= 0.8): when remaining/eligible >= 0.8, temperature is irrelevant — EDF MUST place these days. Override forces ROUGE/BLANC BEFORE EDF rules (which still enforce weekends/holidays/R1-R4)
+- **Density override** (slack <= 1): when eligible - remaining <= 1, temperature is irrelevant — EDF MUST place these days. Override forces ROUGE/BLANC BEFORE EDF rules (which still enforce weekends/holidays/R1-R4). Slack adapts naturally to any eligible count (avoids fixed-threshold bugs where density dips mid-sequence)
 - **ML budget guard**: ML BLANC→BLEU filter disabled when budget_score >= 50 (prevents ML from overriding budget-driven BLANC predictions)
 
 ### Weather Fallback Chain

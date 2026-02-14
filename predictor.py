@@ -384,12 +384,16 @@ def predict_day(target_date: date, weather: dict | None = None,
     else:
         raison_ml = ""
 
-    # === Override densité critique ===
-    # Quand le ratio remaining/eligible est tres eleve, EDF n'a plus le choix :
-    # il DOIT placer ces jours quelles que soient les conditions meteo.
-    # Le scoring normal (budget pese 12%) ne peut pas capturer cette urgence
-    # absolue — a 10°C le score atteint ~47 (BLANC) meme si la densite est 1.0+.
-    # Seuil 0.8 = il faut que 4 weekdays sur 5 soient de cette couleur.
+    # === Override densité critique (logique par slack) ===
+    # Quand le nombre de jours restants a placer est proche du nombre de jours
+    # eligibles, EDF n'a plus le choix : il DOIT placer ces jours quelles que
+    # soient les conditions meteo. Le scoring normal (budget pese 12%) ne peut
+    # pas capturer cette urgence absolue.
+    #
+    # Slack = eligible - remaining :
+    #   slack <= 0 : IMPOSSIBLE de tous les placer → chaque jour eligible est FORCE
+    #   slack == 1 : marge d'UN seul jour → quasi-force (1 skip max)
+    #   slack >= 2 : assez de marge → scoring normal peut decider
     if couleur != "ROUGE" and remaining["ROUGE"] > 0:
         if target_date.month <= 3:
             _red_deadline = date(target_date.year, 3, 31)
@@ -399,8 +403,8 @@ def predict_day(target_date: date, weather: dict | None = None,
             _red_deadline = target_date
         _red_d_left = max(0, (_red_deadline - target_date).days)
         _red_eligible = max(1, _red_d_left * 5 // 7) if _red_d_left > 0 else 1
-        _red_density = remaining["ROUGE"] / _red_eligible
-        if _red_density >= 0.8 and (target_date.month >= 11 or target_date.month <= 3):
+        _red_slack = _red_eligible - remaining["ROUGE"]
+        if _red_slack <= 1 and (target_date.month >= 11 or target_date.month <= 3):
             couleur = "ROUGE"
             raison_ml += " · Densité critique ROUGE"
 
@@ -413,8 +417,8 @@ def predict_day(target_date: date, weather: dict | None = None,
             _wh_deadline = target_date
         _wh_d_left = max(0, (_wh_deadline - target_date).days)
         _wh_eligible = max(1, _wh_d_left * 6 // 7) if _wh_d_left > 0 else 1
-        _wh_density = remaining["BLANC"] / _wh_eligible
-        if _wh_density >= 0.8:
+        _wh_slack = _wh_eligible - remaining["BLANC"]
+        if _wh_slack <= 1:
             couleur = "BLANC"
             raison_ml += " · Densité critique BLANC"
 

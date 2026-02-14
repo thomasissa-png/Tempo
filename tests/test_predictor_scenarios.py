@@ -745,45 +745,50 @@ class TestMlBudgetGuard:
 # ================================================================
 
 class TestDensiteCritique:
-    """Quand le ratio remaining/eligible >= 0.8, EDF n'a plus le choix.
+    """Override par slack : quand eligible - remaining <= 1, EDF n'a plus le choix.
 
     Le scoring normal (budget pese 12%) ne peut pas capturer cette urgence
     absolue. L'override force ROUGE/BLANC avant les contraintes EDF
     (qui gardent quand meme weekends/feries/R1-R4).
+
+    Slack = eligible - remaining :
+      slack <= 0 : IMPOSSIBLE → chaque jour eligible est forcé
+      slack == 1 : marge d'UN seul jour → quasi-forcé
+      slack >= 2 : assez de marge → scoring normal décide
     """
 
     def test_rouge_force_meme_a_10c(self):
-        """14 ROUGE / 12 éligibles = densité 1.17 → ROUGE même à 10°C."""
+        """14 ROUGE / 12 éligibles = slack -2 → ROUGE même à 10°C."""
         target = date(2026, 3, 13)  # vendredi, 18j avant le 31 mars
         remaining = {"ROUGE": 14, "BLANC": 13, "BLEU": 50}
         r = predict(target, temp_moy=10.0, remaining=remaining)
         assert r["couleur_predite"] == "ROUGE", (
-            f"Densité 1.17 à 10°C devrait forcer ROUGE, "
+            f"Slack -2 à 10°C devrait forcer ROUGE, "
             f"got {r['couleur_predite']} (score={r['score_risque']})"
         )
 
     def test_blanc_force_en_avril(self):
-        """38 BLANC / 38 éligibles = densité 1.0 → BLANC même hors saison rouge."""
+        """38 BLANC / 38 éligibles = slack 0 → BLANC même hors saison rouge."""
         target = date(2026, 4, 16)  # jeudi
         remaining = {"ROUGE": 0, "BLANC": 38, "BLEU": 50}
         r = predict(target, temp_moy=15.0, remaining=remaining)
         assert r["couleur_predite"] == "BLANC", (
-            f"Densité BLANC 1.0 à 15°C devrait forcer BLANC, "
+            f"Slack BLANC 0 à 15°C devrait forcer BLANC, "
             f"got {r['couleur_predite']} (score={r['score_risque']})"
         )
 
     def test_override_respecte_dimanche(self):
-        """Même en densité critique, dimanche reste BLEU (R2+R3)."""
+        """Même en slack négatif, dimanche reste BLEU (R2+R3)."""
         target = date(2026, 3, 15)  # dimanche
         remaining = {"ROUGE": 14, "BLANC": 13, "BLEU": 50}
         r = predict(target, temp_moy=2.0, remaining=remaining)
         assert r["couleur_predite"] == "BLEU", (
-            f"Dimanche doit rester BLEU meme en densité critique, "
+            f"Dimanche doit rester BLEU meme en slack negatif, "
             f"got {r['couleur_predite']}"
         )
 
     def test_override_respecte_ferie(self):
-        """Jour férié en densité critique → BLANC (pas ROUGE, R2)."""
+        """Jour férié en slack négatif → BLANC (pas ROUGE, R2)."""
         target = date(2025, 12, 25)  # Noël, jeudi
         remaining = {"ROUGE": 18, "BLANC": 10, "BLEU": 50}
         r = predict(target, temp_moy=0.0, remaining=remaining)
@@ -792,20 +797,92 @@ class TestDensiteCritique:
             f"got {r['couleur_predite']}"
         )
 
-    def test_pas_override_si_densite_moderee(self):
-        """Densité 0.5 → pas d'override, le scoring normal décide."""
+    def test_pas_override_si_slack_large(self):
+        """Slack >= 2 → pas d'override, le scoring normal décide."""
         target = date(2026, 1, 15)  # jeudi
         remaining = {"ROUGE": 15, "BLANC": 30, "BLEU": 100}
-        # ~75j avant le 31 mars, ~54 éligibles, densité 15/54 = 0.28
+        # ~75j avant le 31 mars, ~54 éligibles, slack = 54 - 15 = 39
         r = predict(target, temp_moy=12.0, remaining=remaining)
-        # À 12°C sans densité critique, ne devrait PAS être ROUGE
+        # À 12°C avec large slack, ne devrait PAS être ROUGE
         assert r["couleur_predite"] != "ROUGE", (
-            f"Densité ~0.28 + 12°C ne devrait pas forcer ROUGE, "
+            f"Slack ~39 + 12°C ne devrait pas forcer ROUGE, "
             f"got {r['couleur_predite']} (score={r['score_risque']})"
         )
 
+    def test_5_rouges_sur_7_jours_tous_places(self):
+        """5 ROUGE / 7 jours (lun→dim) : les 5 doivent être placés lun-ven."""
+        base = date(2026, 3, 23)  # lundi
+        temps = [8, 9, 7, 10, 8, 11, 9]  # lun→dim, doux
+        forecasts = make_forecasts(base, temps)
+
+        from unittest.mock import patch
+        mock_remaining = {"ROUGE": 5, "BLANC": 5, "BLEU": 50}
+        with patch("predictor.get_remaining_days", return_value=mock_remaining):
+            predictions = predict_range(forecasts)
+
+        couleurs = [p["couleur_predite"] for p in predictions]
+        rouge_count = sum(1 for c in couleurs if c == "ROUGE")
+
+        # Les 5 weekdays doivent être ROUGE
+        assert rouge_count == 5, (
+            f"5 ROUGE à placer en 7 jours → 5 attendus, got {rouge_count}. "
+            f"Couleurs: {couleurs}"
+        )
+        # Aucun ROUGE le weekend
+        for p in predictions:
+            d = date.fromisoformat(p["date"])
+            assert not (d.weekday() >= 5 and p["couleur_predite"] == "ROUGE"), (
+                f"ROUGE interdit le weekend ({d})"
+            )
+
+    def test_3_rouges_sur_5_jours_mercredi_dimanche(self):
+        """3 ROUGE / 5 jours (mer→dim) : 3 placés mer-ven, rien le weekend."""
+        base = date(2026, 3, 25)  # mercredi
+        temps = [10, 9, 8, 11, 10]
+        forecasts = make_forecasts(base, temps)
+
+        from unittest.mock import patch
+        mock_remaining = {"ROUGE": 3, "BLANC": 5, "BLEU": 50}
+        with patch("predictor.get_remaining_days", return_value=mock_remaining):
+            predictions = predict_range(forecasts)
+
+        couleurs = [p["couleur_predite"] for p in predictions]
+        rouge_count = sum(1 for c in couleurs if c == "ROUGE")
+        assert rouge_count == 3, (
+            f"3 ROUGE à placer mer→dim → 3 attendus, got {rouge_count}. "
+            f"Couleurs: {couleurs}"
+        )
+
+    def test_rouge_dimanche_corrige_ne_gaspille_pas_quota(self):
+        """L'override ne gaspille pas de ROUGE sur les jours inéligibles.
+
+        Si l'override force ROUGE un dimanche, les règles EDF corrigent en
+        BLEU. Le sim_remaining NE doit PAS décrémenter ROUGE (le jour
+        n'a pas été consommé). Vérifié via predict_range qui décrémente
+        sur la couleur FINALE (après correction EDF).
+        """
+        # Ven-Sam-Dim-Lun : 2 ROUGE restants, 2 weekdays éligibles
+        base = date(2026, 3, 27)  # vendredi
+        temps = [8, 10, 9, 7]
+        forecasts = make_forecasts(base, temps)
+
+        from unittest.mock import patch
+        mock_remaining = {"ROUGE": 2, "BLANC": 2, "BLEU": 50}
+        with patch("predictor.get_remaining_days", return_value=mock_remaining):
+            predictions = predict_range(forecasts)
+
+        couleurs = {
+            date.fromisoformat(p["date"]).strftime("%a"): p["couleur_predite"]
+            for p in predictions
+        }
+        # Vendredi et Lundi doivent être ROUGE
+        assert couleurs["Fri"] == "ROUGE", f"Vendredi devrait être ROUGE, got {couleurs['Fri']}"
+        assert couleurs["Mon"] == "ROUGE", f"Lundi devrait être ROUGE, got {couleurs['Mon']}"
+        # Dimanche ne doit JAMAIS être ROUGE
+        assert couleurs["Sun"] != "ROUGE", f"Dimanche ne peut pas être ROUGE"
+
     def test_predict_range_densite_progressive(self):
-        """Sur 15 jours avec densité critique, sim_remaining décrémente bien."""
+        """Sur 15 jours avec slack négatif, sim_remaining décrémente bien."""
         base = date(2026, 3, 13)  # vendredi
         temps = [10, 9, 11, 10, 8, 12, 10, 9, 8, 10, 11, 9, 10, 8, 9]
         forecasts = make_forecasts(base, temps)
@@ -816,10 +893,10 @@ class TestDensiteCritique:
         rouge_count = sum(1 for c in couleurs if c == "ROUGE")
         blanc_count = sum(1 for c in couleurs if c == "BLANC")
 
-        # Avec 14 ROUGE + 13 BLANC restants et densité critique,
+        # Avec 14 ROUGE + 13 BLANC restants et slack très négatif,
         # on doit voir beaucoup de non-BLEU (jours éligibles)
         non_bleu = rouge_count + blanc_count
         assert non_bleu >= 8, (
-            f"Densité critique devrait donner au moins 8 non-BLEU sur 15 jours, "
+            f"Slack négatif devrait donner au moins 8 non-BLEU sur 15 jours, "
             f"got {non_bleu}. Couleurs: {couleurs}"
         )
