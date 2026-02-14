@@ -35,37 +35,63 @@ def _paris_offset_str(d: date) -> str:
     return f"{sign}{hours:02d}:{minutes:02d}"
 
 
-# Token cache en memoire
-_token_cache = {"token": None, "expires": 0}
-_token_lock = asyncio.Lock()
+# Token caches separes par API (chaque API RTE a sa propre application/credentials)
+_token_conso = {"token": None, "expires": 0}
+_token_generation = {"token": None, "expires": 0}
+_lock_conso = asyncio.Lock()
+_lock_generation = asyncio.Lock()
 
 
 # ================================================================
 # AUTHENTIFICATION OAuth2
 # ================================================================
 
-async def _get_token() -> str | None:
-    """Obtient un token OAuth2 RTE (cache en memoire).
+def _get_credentials(api: str) -> tuple[str, str] | None:
+    """Retourne (client_id, client_secret) pour une API RTE donnee.
 
-    Fix audit v6 : asyncio.Lock pour eviter les race conditions
-    (deux appels simultanes pourraient rafraichir le token en double).
+    Chaque API RTE necessite sa propre application sur le portail.
+    Fallback sur RTE_CLIENT_ID/SECRET si cle specifique absente.
+    """
+    if api == "consumption":
+        cid = Config.RTE_CONSO_CLIENT_ID or Config.RTE_CLIENT_ID
+        sec = Config.RTE_CONSO_CLIENT_SECRET or Config.RTE_CLIENT_SECRET
+    elif api == "generation":
+        cid = Config.RTE_GENERATION_CLIENT_ID or Config.RTE_CLIENT_ID
+        sec = Config.RTE_GENERATION_CLIENT_SECRET or Config.RTE_CLIENT_SECRET
+    else:
+        cid = Config.RTE_CLIENT_ID
+        sec = Config.RTE_CLIENT_SECRET
+
+    if not cid or not sec:
+        return None
+    return (cid, sec)
+
+
+async def _get_token(api: str = "consumption") -> str | None:
+    """Obtient un token OAuth2 RTE pour une API donnee (cache en memoire).
+
+    Chaque API a son propre cache de token car les credentials sont differentes.
+    Fix audit v6 : asyncio.Lock pour eviter les race conditions.
     """
     import time
+
+    cache = _token_conso if api == "consumption" else _token_generation
+    lock = _lock_conso if api == "consumption" else _lock_generation
+
     now = time.time()
-    if _token_cache["token"] and now < _token_cache["expires"]:
-        return _token_cache["token"]
+    if cache["token"] and now < cache["expires"]:
+        return cache["token"]
 
-    async with _token_lock:
-        # Re-verifier apres acquisition du lock
+    async with lock:
         now = time.time()
-        if _token_cache["token"] and now < _token_cache["expires"]:
-            return _token_cache["token"]
+        if cache["token"] and now < cache["expires"]:
+            return cache["token"]
 
-        if not Config.RTE_CLIENT_ID or not Config.RTE_CLIENT_SECRET:
+        creds = _get_credentials(api)
+        if not creds:
             return None
 
-        credentials = f"{Config.RTE_CLIENT_ID}:{Config.RTE_CLIENT_SECRET}"
-        b64 = base64.b64encode(credentials.encode()).decode()
+        b64 = base64.b64encode(f"{creds[0]}:{creds[1]}".encode()).decode()
 
         try:
             async with httpx.AsyncClient(timeout=10) as client:
@@ -79,12 +105,12 @@ async def _get_token() -> str | None:
                 )
                 resp.raise_for_status()
                 data = resp.json()
-                _token_cache["token"] = data["access_token"]
-                _token_cache["expires"] = now + 6600
-                logger.info("[RTE] Token OAuth2 obtenu")
-                return _token_cache["token"]
+                cache["token"] = data["access_token"]
+                cache["expires"] = now + 6600
+                logger.info(f"[RTE] Token OAuth2 obtenu ({api})")
+                return cache["token"]
         except Exception as e:
-            logger.warning(f"[RTE] Erreur authentification: {e}")
+            logger.warning(f"[RTE] Erreur authentification ({api}): {e}")
             return None
 
 
@@ -97,7 +123,7 @@ async def fetch_consumption_forecast() -> dict | None:
 
     Fix #3 : utilise type D-1 (prevision) au lieu de REALISED (passe).
     """
-    token = await _get_token()
+    token = await _get_token("consumption")
     if not token:
         return None
 
@@ -117,8 +143,8 @@ async def fetch_consumption_forecast() -> dict | None:
                 },
             )
             if resp.status_code in (401, 403):
-                _token_cache["token"] = None
-                logger.warning("[RTE] Token expire, retry au prochain appel")
+                _token_conso["token"] = None
+                logger.warning("[RTE] Token conso expire, retry au prochain appel")
                 return None
             resp.raise_for_status()
             data = resp.json()
@@ -147,7 +173,7 @@ async def fetch_nuclear_availability() -> dict | None:
 
     Fix #12 : capacite totale configurable via Config.
     """
-    token = await _get_token()
+    token = await _get_token("generation")
     if not token:
         return None
 
@@ -166,7 +192,7 @@ async def fetch_nuclear_availability() -> dict | None:
                 },
             )
             if resp.status_code in (401, 403):
-                _token_cache["token"] = None
+                _token_generation["token"] = None
                 return None
             resp.raise_for_status()
             data = resp.json()
@@ -262,7 +288,7 @@ async def fetch_realised_consumption(target: date | None = None) -> dict | None:
     Stocke le resultat dans rte_daily pour alimenter les features ML lag.
     Appelee quotidiennement par le scheduler.
     """
-    token = await _get_token()
+    token = await _get_token("consumption")
     if not token:
         return None
 
@@ -283,7 +309,7 @@ async def fetch_realised_consumption(target: date | None = None) -> dict | None:
                 },
             )
             if resp.status_code in (401, 403):
-                _token_cache["token"] = None
+                _token_conso["token"] = None
                 return None
             resp.raise_for_status()
             data = resp.json()

@@ -52,8 +52,16 @@ class Config:
     ]
 
     # --- RTE eco2mix API ---
+    # Sur le portail RTE, chaque API necessite sa propre application :
+    #   - RTE_CONSO_CLIENT_ID / _SECRET : API Consumption (prevision conso J+1)
+    #   - RTE_GENERATION_CLIENT_ID / _SECRET : API Generation Forecast (nucleaire)
+    # Fallback : RTE_CLIENT_ID / _SECRET utilise si cle specifique absente.
     RTE_CLIENT_ID = os.getenv("RTE_CLIENT_ID", "")
     RTE_CLIENT_SECRET = os.getenv("RTE_CLIENT_SECRET", "")
+    RTE_CONSO_CLIENT_ID = os.getenv("RTE_CONSO_CLIENT_ID", "")
+    RTE_CONSO_CLIENT_SECRET = os.getenv("RTE_CONSO_CLIENT_SECRET", "")
+    RTE_GENERATION_CLIENT_ID = os.getenv("RTE_GENERATION_CLIENT_ID", "")
+    RTE_GENERATION_CLIENT_SECRET = os.getenv("RTE_GENERATION_CLIENT_SECRET", "")
     RTE_API_BASE = "https://digital.iservices.rte-france.com"
     # Seuils de consommation nationale (MW) pour scoring
     RTE_CONSO_SEUIL_CRITIQUE = 80000   # > 80 GW = risque rouge tres eleve
