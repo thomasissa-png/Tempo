@@ -48,7 +48,7 @@
 ### ML Model
 - GradientBoosting, 33 features, trained on 1827 samples (seasons 2019-2026)
 - Cost-sensitive: ROUGE weight=25, BLANC=3, BLEU=1
-- Thresholds: rouge_thresh=0.10, blanc_thresh=0.20
+- Thresholds: rouge_thresh=0.07, blanc_thresh=0.15
 - Test accuracy: 83.4%, ROUGE recall: 23.3%
 - Model file: `ml_model.pkl`
 

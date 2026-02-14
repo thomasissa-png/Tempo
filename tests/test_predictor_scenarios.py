@@ -32,12 +32,7 @@ from config import Config
 # HELPERS
 # ================================================================
 
-DEFAULT_WEIGHTS = {
-    "temperature": 0.27, "jours_restants": 0.20,
-    "jour_semaine": 0.10, "gradient_thermique": 0.13,
-    "clustering": 0.10, "consommation_rte": 0.13,
-    "pression": 0.07,
-}
+DEFAULT_WEIGHTS = Config.DEFAULT_WEIGHTS
 
 def make_weather(temp_moy, wind=10, temp_min=None, temp_max=None):
     """Crée un dict météo réaliste à partir de la temp moyenne."""
