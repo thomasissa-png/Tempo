@@ -1337,17 +1337,19 @@ def store_prediction(pred: dict, horizon: str = "J-1",
     conn = get_db()
     change = None
     try:
-        # Fix #31 : vérifier si ce (date, horizon) est déjà confirmé.
-        # On ne bloque que le MEME horizon : une prediction J-1 confirmée ne doit
-        # pas empecher de stocker les predictions J-2, J-3 etc. qui sont utiles
-        # pour l'evaluation multi-horizon.
-        same_confirmed = conn.execute(
-            "SELECT 1 FROM predictions WHERE date = ? AND horizon = ? AND confirmed = 1 LIMIT 1",
-            (pred["date"], horizon)
+        # Fix #31 + Fix #35 : vérifier si cette date est déjà confirmée.
+        # On bloque TOUT nouvel horizon non-confirmé pour une date confirmée.
+        # Raison : l'API fait GROUP BY date + MAX(id), donc un nouvel horizon
+        # non-confirmé (ex: J-1 après un J-2 confirmé) prendrait le dessus
+        # visuellement et afficherait l'ancienne prédiction au lieu du confirmé.
+        # Les anciens horizons (J-2, J-3) restent en base pour l'évaluation.
+        any_confirmed = conn.execute(
+            "SELECT 1 FROM predictions WHERE date = ? AND confirmed = 1 LIMIT 1",
+            (pred["date"],)
         ).fetchone()
 
-        if same_confirmed and not pred.get("confirmed"):
-            logger.debug(f"[Prediction] {pred['date']} {horizon} déjà confirmée, skip")
+        if any_confirmed and not pred.get("confirmed"):
+            logger.debug(f"[Prediction] {pred['date']} {horizon} date déjà confirmée, skip")
             return None
 
         # Récupérer la prédiction précédente pour le même (date, horizon)
