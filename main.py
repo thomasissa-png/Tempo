@@ -110,6 +110,8 @@ async def _serve_loading_response(scope, send):
     """
     path = scope.get("path", "/")
 
+    cache_control = None
+
     if path == "/health":
         body = b'{"status":"starting","detail":"FastAPI loading"}'
         content_type = b"application/json"
@@ -124,6 +126,7 @@ async def _serve_loading_response(scope, send):
         body = _static_files[path]
         ct = mimetypes.guess_type(path)[0] or "application/octet-stream"
         content_type = ct.encode()
+        cache_control = b"public, max-age=3600, stale-while-revalidate=86400"
         status = 200
     elif _dashboard_html:
         body = _dashboard_html
@@ -146,13 +149,17 @@ async def _serve_loading_response(scope, send):
         content_type = b"text/html; charset=utf-8"
         status = 200
 
+    headers = [
+        [b"content-type", content_type],
+        [b"content-length", str(len(body)).encode()],
+    ]
+    if cache_control:
+        headers.append([b"cache-control", cache_control])
+
     await send({
         "type": "http.response.start",
         "status": status,
-        "headers": [
-            [b"content-type", content_type],
-            [b"content-length", str(len(body)).encode()],
-        ],
+        "headers": headers,
     })
     await send({
         "type": "http.response.body",
