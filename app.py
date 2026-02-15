@@ -53,20 +53,35 @@ logger = logging.getLogger(__name__)
 _predictions_cache = {"data": None, "expires": 0}
 _predictions_lock = asyncio.Lock()
 
+# === Cache en mémoire pour les endpoints EDF (today/tomorrow/remaining) ===
+# EDF ne met à jour les couleurs que 1-2 fois/jour, pas besoin d'appeler
+# l'API externe à chaque visiteur. Cache court (2 min) pour réactivité.
+_edf_cache = {
+    "today": {"data": None, "expires": 0},
+    "tomorrow": {"data": None, "expires": 0},
+    "remaining": {"data": None, "expires": 0},
+}
+_EDF_CACHE_TTL = 120  # 2 minutes
+
 # === Fix #25 : Signal de disponibilité DB pour Cloud Run health checks ===
 _db_ready = asyncio.Event()
 
 
 
 def invalidate_predictions_cache():
-    """Invalide le cache mémoire des prédictions.
+    """Invalide le cache mémoire des prédictions ET des endpoints EDF.
 
-    Appelée par le scheduler après confirmation EDF (11h30) ou
+    Appelée par le scheduler après confirmation EDF (polling/11h30) ou
     après génération de nouvelles prédictions (18h00) pour que
     les visiteurs voient immédiatement les données à jour.
     """
     _predictions_cache["data"] = None
     _predictions_cache["expires"] = 0
+    # Invalider aussi les caches EDF pour que today/tomorrow/remaining
+    # reflètent immédiatement les nouvelles couleurs confirmées
+    for key in _edf_cache:
+        _edf_cache[key]["data"] = None
+        _edf_cache[key]["expires"] = 0
 
 # === Fix #16 : Rate limiting simple pour /api/subscribe ===
 _rate_limit_store: dict[str, list[float]] = defaultdict(list)
@@ -417,27 +432,52 @@ async def health():
 
 @app.get("/api/today")
 async def api_today():
-    """Couleur Tempo du jour via l'API officielle."""
+    """Couleur Tempo du jour via l'API officielle (cache 2 min)."""
+    now = time.time()
+    cached = _edf_cache["today"]
+    if cached["data"] and now < cached["expires"]:
+        return cached["data"]
+
     from tempo_client import fetch_tempo_today
     data = await fetch_tempo_today()
     if not data:
-        return {"status": "unavailable", "message": "Données non disponibles"}
-    return {"status": "ok", **data}
+        result = {"status": "unavailable", "message": "Données non disponibles"}
+    else:
+        result = {"status": "ok", **data}
+
+    cached["data"] = result
+    cached["expires"] = now + _EDF_CACHE_TTL
+    return result
 
 
 @app.get("/api/tomorrow")
 async def api_tomorrow():
-    """Couleur Tempo de demain (disponible après 11h)."""
+    """Couleur Tempo de demain (cache 2 min)."""
+    now = time.time()
+    cached = _edf_cache["tomorrow"]
+    if cached["data"] and now < cached["expires"]:
+        return cached["data"]
+
     from tempo_client import fetch_tempo_tomorrow
     data = await fetch_tempo_tomorrow()
     if not data:
-        return {"status": "unavailable", "message": "Pas encore annoncé par EDF. Détection automatique dès publication."}
-    return {"status": "ok", **data}
+        result = {"status": "unavailable", "message": "Pas encore annoncé par EDF. Détection automatique dès publication."}
+    else:
+        result = {"status": "ok", **data}
+
+    cached["data"] = result
+    cached["expires"] = now + _EDF_CACHE_TTL
+    return result
 
 
 @app.get("/api/remaining")
 async def api_remaining():
-    """Jours restants par couleur pour la saison en cours."""
+    """Jours restants par couleur pour la saison en cours (cache 2 min)."""
+    now = time.time()
+    cached = _edf_cache["remaining"]
+    if cached["data"] and now < cached["expires"]:
+        return cached["data"]
+
     from tempo_client import (get_remaining_days, days_left_in_season,
                               get_season_dates, get_blue_days_total,
                               fetch_edf_remaining, count_actuals_in_season)
@@ -464,6 +504,8 @@ async def api_remaining():
     if edf:
         result["edf_official"] = edf
 
+    cached["data"] = result
+    cached["expires"] = now + _EDF_CACHE_TTL
     return result
 
 

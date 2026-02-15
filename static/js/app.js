@@ -29,11 +29,14 @@ function fetchWithTimeout(url, options = {}, timeoutMs = 10000) {
 // ================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
-    loadToday();
-    loadTomorrow();
-    loadRemaining();
-    loadPredictions();
-    loadBadge();
+    // Charger toutes les données en parallèle (au lieu de séquentiellement)
+    Promise.all([
+        loadToday(),
+        loadTomorrow(),
+        loadRemaining(),
+        loadPredictions(),
+        loadBadge(),
+    ]);
     setupSubscribeForm();
     setupWelcomeBanner();
     setupAlertDismiss();
@@ -46,10 +49,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Fix #31 : auto-refresh toutes les 5 min pour refléter
     // les confirmations EDF sans recharger la page manuellement
     setInterval(() => {
-        loadToday();
-        loadTomorrow();
-        loadRemaining();
-        loadPredictions();
+        Promise.all([
+            loadToday(),
+            loadTomorrow(),
+            loadRemaining(),
+            loadPredictions(),
+        ]);
     }, 5 * 60 * 1000);
 });
 
