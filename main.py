@@ -19,6 +19,7 @@ Flux :
 
 import asyncio
 import logging
+import mimetypes
 import os
 import threading
 
@@ -27,6 +28,25 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
+
+# --- Pré-chargement des fichiers statiques (< 1ms, aucun import lourd) ---
+_base_dir = os.path.dirname(os.path.abspath(__file__))
+
+
+def _preload(relpath):
+    """Lit un fichier au démarrage pour le servir instantanément."""
+    try:
+        with open(os.path.join(_base_dir, relpath), "rb") as f:
+            return f.read()
+    except Exception:
+        return None
+
+
+_dashboard_html = _preload("templates/dashboard.html")
+_static_files = {
+    "/static/css/style.css": _preload("static/css/style.css"),
+    "/static/js/app.js": _preload("static/js/app.js"),
+}
 
 # --- État global du proxy ---
 _real_app = None
@@ -80,32 +100,55 @@ async def _handle_lifespan(scope, receive, send):
 
 
 async def _serve_loading_response(scope, send):
-    """Réponse HTTP minimale pendant le chargement de FastAPI."""
+    """Sert le vrai dashboard pendant le chargement de FastAPI.
+
+    Au lieu d'une page minimale 'Chargement en cours...', on sert
+    directement le dashboard HTML + CSS + JS. L'interface apparaît
+    immédiatement ; les appels API échouent gracieusement (le JS
+    affiche des boutons Réessayer) puis fonctionnent dès que FastAPI
+    est prêt.
+    """
     path = scope.get("path", "/")
 
     if path == "/health":
         body = b'{"status":"starting","detail":"FastAPI loading"}'
         content_type = b"application/json"
+        status = 200
+    elif path.startswith("/api/"):
+        # Les appels JS reçoivent un 503 propre → le JS affiche
+        # "Données non disponibles" ou "Réessayer"
+        body = b'{"status":"starting","detail":"Serveur en cours de demarrage"}'
+        content_type = b"application/json"
+        status = 503
+    elif path in _static_files and _static_files[path]:
+        body = _static_files[path]
+        ct = mimetypes.guess_type(path)[0] or "application/octet-stream"
+        content_type = ct.encode()
+        status = 200
+    elif _dashboard_html:
+        body = _dashboard_html
+        content_type = b"text/html; charset=utf-8"
+        status = 200
     else:
-        # HTML minimal avec auto-refresh pour que l'utilisateur
-        # voie le dashboard dès que FastAPI est prêt
+        # Fallback si le fichier n'a pas pu être lu
         body = (
             b"<!DOCTYPE html><html><head>"
             b"<meta charset='utf-8'>"
             b"<meta http-equiv='refresh' content='3'>"
-            b"<title>TempoForecast</title>"
+            b"<title>Calendrier Tempo EDF</title>"
             b"<style>body{font-family:sans-serif;text-align:center;"
             b"padding:50px;color:#333}</style>"
             b"</head><body>"
-            b"<h1>TempoForecast</h1>"
+            b"<h1>Calendrier Tempo EDF</h1>"
             b"<p>Chargement en cours...</p>"
             b"</body></html>"
         )
         content_type = b"text/html; charset=utf-8"
+        status = 200
 
     await send({
         "type": "http.response.start",
-        "status": 200,
+        "status": status,
         "headers": [
             [b"content-type", content_type],
             [b"content-length", str(len(body)).encode()],

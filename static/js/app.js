@@ -30,13 +30,7 @@ function fetchWithTimeout(url, options = {}, timeoutMs = 10000) {
 
 document.addEventListener('DOMContentLoaded', () => {
     // Charger toutes les données en parallèle (au lieu de séquentiellement)
-    Promise.all([
-        loadToday(),
-        loadTomorrow(),
-        loadRemaining(),
-        loadPredictions(),
-        loadBadge(),
-    ]);
+    loadAllData();
     setupSubscribeForm();
     setupWelcomeBanner();
     setupAlertDismiss();
@@ -57,6 +51,37 @@ document.addEventListener('DOMContentLoaded', () => {
         ]);
     }, 5 * 60 * 1000);
 });
+
+/**
+ * Charge toutes les données. Si l'API n'est pas encore prête (cold start),
+ * retente automatiquement après 2s puis 4s pour que les données apparaissent
+ * dès que le serveur est opérationnel, sans attendre le refresh de 5 min.
+ */
+async function loadAllData(attempt = 0) {
+    const results = await Promise.all([
+        loadToday(),
+        loadTomorrow(),
+        loadRemaining(),
+        loadPredictions(),
+        loadBadge(),
+    ]);
+
+    // Détecter si l'API est en cold start (les fonctions load* ne retournent
+    // pas de valeur, on vérifie via un appel léger)
+    if (attempt < 3) {
+        try {
+            const resp = await fetchWithTimeout('/api/today', {}, 3000);
+            if (resp.status === 503) {
+                const delay = (attempt + 1) * 2000; // 2s, 4s, 6s
+                setTimeout(() => loadAllData(attempt + 1), delay);
+            }
+        } catch {
+            // Erreur réseau — retenter aussi
+            const delay = (attempt + 1) * 2000;
+            setTimeout(() => loadAllData(attempt + 1), delay);
+        }
+    }
+}
 
 // ================================================================
 // CHARGEMENT DES DONNÉES
