@@ -459,6 +459,36 @@ async def health():
 # API : DONNÉES TEMPO
 # ================================================================
 
+
+def _propagate_edf_confirmation(date_str: str | None, couleur: str | None):
+    """Propage une couleur EDF confirmée vers la DB predictions.
+
+    Appelé par /api/today et /api/tomorrow quand ils récupèrent
+    une couleur fraîche depuis l'API EDF. Garantit que la table
+    predictions reflète immédiatement le statut 'confirmé', même
+    si le scheduler n'a pas encore tourné (après redémarrage, etc.).
+
+    Opérations idempotentes : store_actual fait INSERT OR REPLACE,
+    confirm_prediction ne touche que les lignes confirmed=0.
+    """
+    if not date_str or not couleur:
+        return
+    try:
+        from tempo_client import store_actual
+        from predictor import confirm_prediction
+
+        store_actual(date_str, couleur)
+        updated = confirm_prediction(date_str, couleur)
+        if updated:
+            invalidate_predictions_cache()
+            logger.info(
+                f"[API→DB] Confirmation propagée: {date_str}={couleur} "
+                f"({updated} prédictions mises à jour)"
+            )
+    except Exception as e:
+        logger.debug(f"[API→DB] Erreur propagation {date_str}: {e}")
+
+
 @app.get("/api/today")
 async def api_today():
     """Couleur Tempo du jour via l'API officielle (cache 2 min)."""
@@ -473,6 +503,10 @@ async def api_today():
         result = {"status": "unavailable", "message": "Données non disponibles"}
     else:
         result = {"status": "ok", **data}
+        # Fix : propager la confirmation vers la DB predictions
+        # pour que /api/predictions reflète immédiatement le statut confirmé,
+        # même si le scheduler n'a pas encore tourné (ex: après un redémarrage).
+        _propagate_edf_confirmation(data.get("date"), data.get("couleur"))
 
     cached["data"] = result
     cached["expires"] = now + _EDF_CACHE_TTL
@@ -493,6 +527,7 @@ async def api_tomorrow():
         result = {"status": "unavailable", "message": "Pas encore annoncé par EDF. Détection automatique dès publication."}
     else:
         result = {"status": "ok", **data}
+        _propagate_edf_confirmation(data.get("date"), data.get("couleur"))
 
     cached["data"] = result
     cached["expires"] = now + _EDF_CACHE_TTL
@@ -657,6 +692,29 @@ async def api_predictions():
                 if r["couleur_precedente"]:
                     pred["couleur_precedente"] = r["couleur_precedente"]
                 predictions.append(pred)
+
+            # Fix : cross-check avec le cache EDF live (/api/today, /api/tomorrow).
+            # Si le navigateur a appelé /api/tomorrow avant /api/predictions,
+            # le cache EDF contient la couleur fraîche. On l'utilise pour
+            # confirmer les prédictions même si la DB n'a pas encore été mise à jour.
+            edf_live: dict[str, str] = {}
+            for key in ("today", "tomorrow"):
+                entry = _edf_cache.get(key, {})
+                data = entry.get("data")
+                if (data and isinstance(data, dict)
+                        and data.get("status") == "ok"
+                        and data.get("couleur") and data.get("date")):
+                    edf_live[data["date"]] = data["couleur"]
+
+            for pred in predictions:
+                if not pred.get("confirmed") and pred["date"] in edf_live:
+                    couleur = edf_live[pred["date"]]
+                    pred["confirmed"] = True
+                    pred["couleur_predite"] = couleur
+                    pred["probabilite_rouge"] = 1.0 if couleur == "ROUGE" else 0.0
+                    pred["probabilite_blanc"] = 1.0 if couleur == "BLANC" else 0.0
+                    pred["probabilite_bleu"] = 1.0 if couleur == "BLEU" else 0.0
+                    pred["raison"] = "Couleur officielle EDF"
 
             accuracy = get_accuracy_global(30)
             cycle_id = rows[0]["cycle_id"] if rows else ""
