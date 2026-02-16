@@ -101,7 +101,26 @@
 
 ## Common Pitfalls
 - **Data leakage**: Never use same-day RTE consumption for predictions (only lag features D-1+)
-- **Multi-horizon storage**: `store_prediction` must only block same-horizon confirmed predictions, not all horizons
+- **Multi-horizon storage**: `store_prediction` blocks ANY new non-confirmed prediction if the date already has a confirmed row (any horizon). This prevents new horizons from shadowing confirmed predictions via `GROUP BY date + MAX(id)` queries
 - **Orphan cleanup**: Must preserve multi-horizon prediction history (clean per-horizon, not per-date)
 - **Weather insert**: `fetched_at` column is NOT NULL — always include it in INSERT statements
 - **DB migrations**: Always update version assertions in tests when adding new migrations
+- **Dependencies**: `fastapi` requires `python-multipart` for Form data — ensure both are installed
+- **EDF confirmation propagation**: API endpoints (`/api/today`, `/api/tomorrow`) must call `store_actual()` + `confirm_prediction()` when they detect fresh EDF colors — don't rely solely on the 15-min polling scheduler
+
+### EDF Confirmation & Caching Strategy
+- **Two-layer confirmation**: Scheduler polls EDF every 15min (6h-11h15) AND API endpoints propagate confirmations on each request via `_propagate_edf_confirmation()` (idempotent INSERT OR REPLACE)
+- **In-memory EDF cache**: 2-minute TTL for `/api/today`, `/api/tomorrow`, `/api/remaining` (external EDF API is slow ~200-600ms but data changes 1-2x/day max)
+- Cache invalidated by `invalidate_predictions_cache()` when scheduler detects a new confirmation
+- **Cold start resilience**: After restart, in-memory cache is empty; API endpoints re-fetch from EDF and propagate confirmations immediately instead of waiting for next polling cycle
+
+### Probability Display & Rule Enforcement
+- **Probability bar**: Tricolor bar (BLEU/BLANC/ROUGE) under each forecast card; segments shown only if > 5%, labels only if > 10%; hidden for EDF-confirmed days
+- **Hésitation badge**: Shown when gap between top two probabilities < 30% (e.g. "Hésitation Rouge/Blanc")
+- **EDF rules in probabilities**: `_compute_probabilities()` receives `edf_impossible` set — Sundays get 0% ROUGE + 0% BLANC (R2+R3), Saturdays/holidays get 0% ROUGE (R2), dates outside Nov-Mar get 0% ROUGE (R1). Mass redistributed to remaining colors before softmax normalization
+- **Color-probability coherence**: Predicted color is always guaranteed to be the highest probability; if classical/ML scoring disagrees with probability ranking, probability is adjusted minimally (max+5%) to prevent UI contradictions
+
+### API Performance
+- **Frontend parallelization**: 5 API calls (today, tomorrow, remaining, predictions, badge) fire simultaneously via `Promise.all()` instead of sequentially
+- **Cache-Control headers**: `/static/` 1h + stale-while-revalidate; `/api/today|tomorrow|remaining` 2min; `/api/predictions|performance/badge` 5min
+- **Cold start UX**: During FastAPI startup, ASGI proxy serves real `dashboard.html` + CSS + JS (not a loading placeholder). JS detects 503 responses and retries with exponential backoff (2-4s) via `loadAllData()`
