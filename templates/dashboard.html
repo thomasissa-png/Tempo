@@ -6,7 +6,7 @@
     <!-- Fix #S5 : titre optimisé avec mot-clé en premier -->
     <title>Prévision Tempo EDF — Couleur du jour et 15 jours | Calendrier Tempo EDF</title>
     <!-- Fix #S6 : meta description optimisée avec accents et CTA -->
-    <meta name="description" content="Anticipez les jours Tempo EDF rouges et blancs jusqu'à 15 jours à l'avance grâce à notre algorithme prédictif. Alertes SMS gratuites pour les 900 000 abonnés Tempo. Consultez la couleur du jour et de demain.">
+    <meta name="description" content="Anticipez les jours Tempo EDF rouges et blancs jusqu'à 15 jours à l'avance grâce à notre algorithme prédictif. Alertes WhatsApp gratuites pour les 900 000 abonnés Tempo. Consultez la couleur du jour et de demain.">
     <!-- Fix #S4 : canonical URL -->
     <link rel="canonical" href="https://tempoforecast.fr/">
     <!-- Fix #S10 : hreflang -->
@@ -15,7 +15,7 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%232196F3'/><path d='M50 5A45 45 0 0 1 95 50H5A45 45 0 0 1 50 5z' fill='%23F44336'/><circle cx='50' cy='50' r='20' fill='white'/></svg>" type="image/svg+xml">
     <!-- Fix #S2 : Open Graph -->
     <meta property="og:title" content="Prévision Tempo EDF — Couleur du jour et 15 jours">
-    <meta property="og:description" content="Anticipez les jours rouges Tempo EDF jusqu'à 15 jours à l'avance. Alertes SMS gratuites.">
+    <meta property="og:description" content="Anticipez les jours rouges Tempo EDF jusqu'à 15 jours à l'avance. Alertes WhatsApp gratuites.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://tempoforecast.fr/">
     <meta property="og:locale" content="fr_FR">
@@ -23,14 +23,14 @@
     <!-- Fix #S2 : Twitter Card -->
     <meta name="twitter:card" content="summary">
     <meta name="twitter:title" content="Prévision Tempo EDF — Couleur du jour et 15 jours">
-    <meta name="twitter:description" content="Anticipez les jours rouges Tempo EDF. Alertes SMS gratuites pour les abonnés.">
+    <meta name="twitter:description" content="Anticipez les jours rouges Tempo EDF. Alertes WhatsApp gratuites pour les abonnés.">
     <!-- Fix #S3 : JSON-LD WebApplication -->
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
         "@type": "WebApplication",
         "name": "TempoForecast",
-        "description": "Service de prévision des jours Tempo EDF avec alertes SMS gratuites",
+        "description": "Service de prévision des jours Tempo EDF avec alertes WhatsApp gratuites",
         "url": "https://tempoforecast.fr/",
         "applicationCategory": "UtilitiesApplication",
         "operatingSystem": "Web",
@@ -110,7 +110,7 @@
         </button>
         <nav id="main-nav" aria-label="Navigation principale">
             <a href="/" class="active" aria-current="page">Accueil</a>
-            <a href="#subscribe">Alertes SMS</a>
+            <a href="#subscribe">Alertes WhatsApp</a>
             <a href="#comment-ca-marche">Comment ça marche ?</a>
             <a href="/mentions-legales">Mentions légales</a>
         </nav>
@@ -200,7 +200,7 @@
 
     <!-- P-03 : Mini CTA sticky pour Paul (visible after badge, hidden if already subscribed) -->
     <div class="cta-banner" id="cta-banner">
-        <span class="cta-banner-text">Recevez un SMS gratuit avant chaque jour rouge</span>
+        <span class="cta-banner-text">Recevez un WhatsApp gratuit avant chaque jour rouge</span>
         <a href="#subscribe" class="cta-banner-btn">S'inscrire</a>
     </div>
 
@@ -282,8 +282,8 @@
             </div>
             <div class="step-card">
                 <div class="step-number">2</div>
-                <h3>Recevez un SMS la veille</h3>
-                <p>Inscrivez-vous (gratuit, 30 secondes). Vous recevrez un SMS <strong>avant chaque jour rouge</strong> avec le conseil d'action : reportez vos machines et baissez le chauffage.</p>
+                <h3>Recevez un WhatsApp la veille</h3>
+                <p>Inscrivez-vous (gratuit, 30 secondes). Vous recevrez un message WhatsApp <strong>avant chaque jour rouge</strong> avec le conseil d'action : reportez vos machines et baissez le chauffage.</p>
             </div>
             <div class="step-card">
                 <div class="step-number">3</div>
@@ -303,19 +303,24 @@
         </div>
     </div>
 
-    <!-- Inscription alertes SMS -->
+    <!-- Inscription alertes WhatsApp -->
     <section class="subscribe-section" id="subscribe">
-        <h2>Recevez un SMS avant chaque jour cher</h2>
+        <h2>Recevez un WhatsApp avant chaque jour cher</h2>
         <p class="sub-desc">
             Soyez pr&eacute;venu la veille (ou jusqu'&agrave; 3 jours avant) d'un jour rouge ou blanc.
-            <strong>100% gratuit, sans engagement, 1 SMS par jour maximum.</strong>
+            <strong>100% gratuit, sans engagement, 1 message par jour maximum.</strong>
         </p>
 
-        <!-- P-09 : Aperçu du SMS reçu -->
+        <!-- P-09 : Aperçu du message WhatsApp reçu -->
         <div class="sms-preview">
-            <div class="sms-preview-label">Exemple de SMS que vous recevrez :</div>
+            <div class="sms-preview-label">Exemple de message WhatsApp que vous recevrez :</div>
             <div class="sms-bubble">
-                TempoForecast : Jour ROUGE pr&eacute;vu demain Mardi 18 f&eacute;v (87%). Reportez lessive et recharge VE. &Eacute;conomisez !
+                ⚠️ <strong>TempoForecast</strong><br><br>
+                <strong>Jour ROUGE</strong> pr&eacute;vu Mardi 18/02 (87% confiance).<br>
+                Temp min: 2°C.<br><br>
+                👉 Reportez lessive, s&egrave;che-linge, four et recharge VE.<br>
+                Limitez votre conso entre 6h-22h !<br><br>
+                📋 G&eacute;rer mes alertes : tempoforecast.fr/manage/...
             </div>
         </div>
 
@@ -369,7 +374,7 @@
             <p class="form-legal">
                 <strong class="social-proof">Rejoint par des centaines d'abonn&eacute;s Tempo en France.</strong><br>
                 Votre num&eacute;ro est chiffr&eacute; (AES-256) et ne sera jamais partag&eacute;.
-                D&eacute;sinscription en 1 clic &agrave; tout moment (SMS STOP ou formulaire).
+                D&eacute;sinscription en 1 clic &agrave; tout moment (WhatsApp STOP ou lien dans chaque message).
                 <a href="/mentions-legales">Politique de confidentialit&eacute;</a>
             </p>
         </form>

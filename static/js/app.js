@@ -724,8 +724,11 @@ function setupSubscribeForm() {
 
             if (resp.ok) {
                 // P-14 : message post-inscription plus précis et rassurant
-                showFormResult(resultEl, 'success',
-                    data.message || 'C\'est fait ! Vous recevrez un SMS la veille de chaque jour rouge. Désinscription possible à tout moment par SMS (STOP) ou ci-dessous.');
+                let successMsg = data.message || 'C\'est fait ! Vous recevrez un WhatsApp la veille de chaque jour rouge.';
+                if (data.manage_url) {
+                    successMsg += ' Vous pourrez modifier vos préférences via le lien inclus dans chaque message.';
+                }
+                showFormResult(resultEl, 'success', successMsg);
                 form.reset();
             } else {
                 showFormResult(resultEl, 'error', data.detail || "Erreur lors de l'inscription");
@@ -988,7 +991,7 @@ function setupUnsubscribeForm() {
 
             if (resp.ok) {
                 showFormResult(resultEl, 'success',
-                    data.message || 'Désinscription effectuée. Vous ne recevrez plus de SMS.');
+                    data.message || 'Désinscription effectuée. Vous ne recevrez plus de messages.');
                 form.reset();
             } else {
                 showFormResult(resultEl, 'error',

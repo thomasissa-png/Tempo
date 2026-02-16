@@ -353,7 +353,7 @@ class TestMigrationV8:
         conn = get_db()
         try:
             version = conn.execute("PRAGMA user_version").fetchone()[0]
-            assert version == 15
+            assert version == 16
         finally:
             conn.close()
 
@@ -418,23 +418,148 @@ class TestCacheTTLConfig:
         assert len(matches) == 0, "Cache TTL encore hardcodé à 300"
 
 
-class TestSmsSendRetry:
-    """H-03 : send_sms retente 3 fois max."""
+class TestWhatsAppSendRetry:
+    """H-03 : send_whatsapp retente 3 fois max."""
     def test_retry_on_failure(self):
-        from alerts import send_sms
+        from alerts import send_whatsapp
         # Mode simulation (pas de Twilio client) — doit toujours réussir
-        sid, status = send_sms("+33699999999", "Test retry")
+        sid, status = send_whatsapp("+33699999999", "Test retry")
         assert status == "simulated"
         assert sid.startswith("SIM_")
 
-    def test_message_truncation(self):
-        """M-10 : messages > 160 chars tronqués."""
-        from alerts import send_sms
-        long_msg = "A" * 200
-        sid, status = send_sms("+33699999999", long_msg)
+    def test_send_sms_alias_works(self):
+        """send_sms est un alias de send_whatsapp (compatibilité)."""
+        from alerts import send_sms, send_whatsapp
+        assert send_sms is send_whatsapp
+
+    def test_long_message_not_truncated(self):
+        """WhatsApp n'a pas de limite 160 chars."""
+        from alerts import send_whatsapp
+        long_msg = "A" * 500
+        sid, status = send_whatsapp("+33699999999", long_msg)
         assert status == "simulated"
-        # En mode simulation, le message tronqué est passé mais pas vérifié
-        # On vérifie juste que ça ne crash pas
+
+
+# ================================================================
+# Migration v16 : manage_token
+# ================================================================
+
+class TestManageToken:
+    def test_register_returns_manage_token(self):
+        """register_user retourne un manage_token."""
+        from alerts import register_user
+        result = register_user("+33655555555")
+        assert result.get("success")
+        assert "manage_token" in result
+        assert len(result["manage_token"]) > 10
+
+    def test_get_user_by_token(self):
+        """get_user_by_token retrouve un user actif."""
+        from alerts import register_user, get_user_by_token
+        result = register_user("+33655555556")
+        assert result.get("success")
+        token = result["manage_token"]
+
+        user = get_user_by_token(token)
+        assert user is not None
+        assert user["phone_last4"] == "5556"
+
+    def test_get_user_by_invalid_token(self):
+        """Token invalide retourne None."""
+        from alerts import get_user_by_token
+        assert get_user_by_token("invalid_token_xyz") is None
+        assert get_user_by_token("") is None
+
+    def test_update_preferences(self):
+        """update_user_preferences modifie les préférences."""
+        from alerts import register_user, update_user_preferences, get_user_by_token
+        result = register_user("+33655555557")
+        token = result["manage_token"]
+
+        # Modifier les préférences
+        update_result = update_user_preferences(
+            token, seuil_rouge=90, delai=3,
+            alerte_blanc=True, recap_hebdo=True
+        )
+        assert update_result.get("success")
+
+        # Vérifier
+        user = get_user_by_token(token)
+        assert user["seuil_alerte_rouge"] == 90
+        assert user["delai_alerte"] == 3
+        assert user["alerte_blanc"] == 1
+        assert user["recap_hebdo"] == 1
+
+    def test_db_has_manage_token_column(self):
+        """La migration v16 a ajouté la colonne manage_token."""
+        from database import get_db
+        conn = get_db()
+        try:
+            info = conn.execute("PRAGMA table_info(users)").fetchall()
+            columns = [row[1] for row in info]
+            assert "manage_token" in columns
+        finally:
+            conn.close()
+
+
+# ================================================================
+# WhatsApp : messages contiennent le lien de gestion
+# ================================================================
+
+class TestWhatsAppMessages:
+    def test_rouge_message_has_manage_link(self):
+        """Le message ROUGE contient le lien de gestion."""
+        from alerts import format_alert_rouge
+        msg = format_alert_rouge(
+            date(2026, 2, 17),
+            {"probabilite_rouge": 0.87, "temp_min_prevue": 2},
+            manage_token="abc123"
+        )
+        assert "manage/abc123" in msg
+        assert "Gérer mes alertes" in msg
+        assert "*Jour ROUGE*" in msg
+
+    def test_blanc_message_has_manage_link(self):
+        """Le message BLANC contient le lien de gestion."""
+        from alerts import format_alert_blanc
+        msg = format_alert_blanc(
+            date(2026, 2, 17),
+            {"probabilite_blanc": 0.65},
+            manage_token="def456"
+        )
+        assert "manage/def456" in msg
+
+    def test_officiel_message_has_manage_link(self):
+        """Le message officiel contient le lien de gestion."""
+        from alerts import format_alert_officiel
+        msg = format_alert_officiel(date(2026, 2, 17), "ROUGE", manage_token="ghi789")
+        assert "manage/ghi789" in msg
+
+    def test_recap_message_has_manage_link(self):
+        """Le récap hebdo contient le lien de gestion."""
+        from alerts import format_recap_hebdo
+        preds = [
+            {"date": "2026-02-17", "couleur_predite": "BLEU"},
+            {"date": "2026-02-18", "couleur_predite": "ROUGE"},
+        ]
+        msg = format_recap_hebdo(preds, manage_token="jkl012")
+        assert "manage/jkl012" in msg
+
+    def test_message_without_token_no_link(self):
+        """Sans token, pas de lien de gestion."""
+        from alerts import format_alert_rouge
+        msg = format_alert_rouge(
+            date(2026, 2, 17),
+            {"probabilite_rouge": 0.87, "temp_min_prevue": 2}
+        )
+        assert "Gérer mes alertes" not in msg
+
+    def test_handle_incoming_whatsapp_prefix(self):
+        """handle_incoming_sms gère le préfixe whatsapp: de Twilio."""
+        from alerts import register_user, handle_incoming_sms
+        register_user("+33655555558")
+        response = handle_incoming_sms("whatsapp:+33655555558", "STOP")
+        assert "désinscrit" in response.lower()
 
 
 class TestOriginCheck:

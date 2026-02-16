@@ -4,14 +4,17 @@ Endpoints :
   - GET  /                       → Dashboard principal (HTML)
   - GET  /admin                  → Dashboard performance (HTML)
   - GET  /mentions-legales       → Page légale (HTML)
+  - GET  /manage/{token}         → Page de gestion des préférences (HTML)
   - GET  /api/predictions        → Prédictions J+1→J+15 (JSON)
   - GET  /api/today              → Couleur Tempo du jour (JSON)
   - GET  /api/tomorrow           → Couleur Tempo de demain (JSON)
   - GET  /api/remaining          → Jours restants par couleur (JSON)
   - GET  /api/performance        → Métriques de performance (JSON)
   - GET  /api/performance/csv    → Export CSV mensuel
-  - POST /api/subscribe          → Inscription alertes SMS
-  - POST /api/unsubscribe        → Désinscription alertes SMS
+  - POST /api/subscribe          → Inscription alertes WhatsApp
+  - POST /api/unsubscribe        → Désinscription alertes WhatsApp
+  - GET  /api/manage/{token}     → Récupérer les préférences (JSON)
+  - POST /api/manage/{token}     → Mettre à jour les préférences (JSON)
   - POST /admin/run-task         → Exécuter une tâche manuellement
 """
 
@@ -243,7 +246,7 @@ async def lifespan(app: FastAPI):
 # === App FastAPI ===
 app = FastAPI(
     title="TempoForecast",
-    description="Prévision des jours Tempo EDF avec alertes SMS",
+    description="Prévision des jours Tempo EDF avec alertes WhatsApp",
     version="1.0.0",
     lifespan=lifespan,
 )
@@ -394,6 +397,26 @@ async def page_legal(request: Request):
     return templates.TemplateResponse("legal.html", {"request": request})
 
 
+@app.get("/manage/{token}", response_class=HTMLResponse)
+async def page_manage(request: Request, token: str):
+    """Page de gestion des préférences (lien envoyé dans chaque message WhatsApp)."""
+    from alerts import get_user_by_token
+    user = get_user_by_token(token)
+    if not user:
+        return templates.TemplateResponse("manage.html", {
+            "request": request,
+            "user": None,
+            "token": token,
+            "error": "Lien invalide ou expiré. Réinscrivez-vous depuis la page d'accueil.",
+        })
+    return templates.TemplateResponse("manage.html", {
+        "request": request,
+        "user": user,
+        "token": token,
+        "error": None,
+    })
+
+
 # Fix #S7 : robots.txt et sitemap.xml pour le SEO
 @app.get("/robots.txt", response_class=PlainTextResponse)
 async def robots_txt():
@@ -403,6 +426,7 @@ async def robots_txt():
         "Allow: /\n"
         "Disallow: /admin\n"
         "Disallow: /api/\n"
+        "Disallow: /manage/\n"
         "\n"
         "Sitemap: https://tempoforecast.fr/sitemap.xml\n"
     )
@@ -895,7 +919,7 @@ async def api_subscribe(
     alerte_blanc: bool = Form(False),
     recap_hebdo: bool = Form(False),
 ):
-    """Inscription aux alertes SMS (Fix #16 : rate limiting + CSRF check)."""
+    """Inscription aux alertes WhatsApp (Fix #16 : rate limiting + CSRF check)."""
     # Fix #16 (CSRF) : verify origin
     if not _check_origin(request):
         raise HTTPException(status_code=403, detail="Origine de la requête non autorisée")
@@ -921,12 +945,15 @@ async def api_subscribe(
     result = register_user(phone, seuil_rouge, delai, alerte_blanc, recap_hebdo)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
+    # Ajouter le lien de gestion dans la réponse
+    if result.get("manage_token"):
+        result["manage_url"] = f"/manage/{result['manage_token']}"
     return result
 
 
 @app.post("/api/unsubscribe")
 async def api_unsubscribe(request: Request, phone: str = Form(...)):
-    """Désinscription des alertes SMS."""
+    """Désinscription des alertes WhatsApp."""
     # Fix #16 (CSRF) : verify origin
     if not _check_origin(request):
         raise HTTPException(status_code=403, detail="Origine de la requête non autorisée")
@@ -1012,6 +1039,79 @@ async def api_user_stats(request: Request, authorization: str | None = Header(No
     verify_admin(authorization, request.client.host if request.client else "unknown")
     from alerts import get_user_count
     return {"status": "ok", **get_user_count()}
+
+
+# ================================================================
+# API : GESTION DES PRÉFÉRENCES PAR TOKEN
+# ================================================================
+
+@app.get("/api/manage/{token}")
+async def api_manage_get(token: str):
+    """Récupère les préférences d'un utilisateur via son token."""
+    from alerts import get_user_by_token
+    user = get_user_by_token(token)
+    if not user:
+        raise HTTPException(status_code=404, detail="Lien invalide ou expiré.")
+    return {
+        "status": "ok",
+        "phone_last4": user["phone_last4"],
+        "seuil_alerte_rouge": user["seuil_alerte_rouge"],
+        "delai_alerte": user["delai_alerte"],
+        "alerte_blanc": bool(user["alerte_blanc"]),
+        "recap_hebdo": bool(user["recap_hebdo"]),
+    }
+
+
+@app.post("/api/manage/{token}")
+async def api_manage_update(
+    request: Request,
+    token: str,
+    seuil_rouge: int = Form(70),
+    delai: int = Form(1),
+    alerte_blanc: bool = Form(False),
+    recap_hebdo: bool = Form(False),
+):
+    """Met à jour les préférences via le token de gestion."""
+    # CSRF check
+    if not _check_origin(request):
+        raise HTTPException(status_code=403, detail="Origine de la requête non autorisée")
+
+    # Valider les paramètres
+    seuil_rouge = max(0, min(100, seuil_rouge))
+    delai = max(1, min(3, delai))
+
+    from alerts import update_user_preferences
+    result = update_user_preferences(token, seuil_rouge, delai, alerte_blanc, recap_hebdo)
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    return result
+
+
+@app.post("/api/manage/{token}/unsubscribe")
+async def api_manage_unsubscribe(request: Request, token: str):
+    """Désinscription via le token de gestion (pas besoin de numéro)."""
+    if not _check_origin(request):
+        raise HTTPException(status_code=403, detail="Origine de la requête non autorisée")
+
+    from alerts import get_user_by_token
+    from database import get_db
+    from datetime import datetime
+
+    user = get_user_by_token(token)
+    if not user:
+        raise HTTPException(status_code=404, detail="Lien invalide ou expiré.")
+
+    conn = get_db()
+    try:
+        conn.execute(
+            "UPDATE users SET actif = 0, updated_at = ? WHERE id = ?",
+            (datetime.now().isoformat(), user["id"]),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+    return {"success": True, "message": "Désinscription effectuée."}
 
 
 # ================================================================

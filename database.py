@@ -703,6 +703,36 @@ def init_db():
         conn.commit()
         logger.info("Migration v15 appliquee (table rte_daily)")
 
+    if version < 16:
+        # Migration v16 — Token de gestion des préférences + migration SMS → WhatsApp
+        # Chaque abonné reçoit un token unique pour modifier ses préférences
+        # via un lien cliquable dans les messages WhatsApp.
+        import secrets
+        try:
+            conn.execute(
+                "ALTER TABLE users ADD COLUMN manage_token TEXT DEFAULT ''"
+            )
+        except sqlite3.OperationalError:
+            logger.debug("Migration v16: colonne manage_token existe deja")
+
+        # Générer un token pour les users existants
+        existing_users = conn.execute("SELECT id FROM users").fetchall()
+        for u in existing_users:
+            token = secrets.token_urlsafe(16)
+            conn.execute(
+                "UPDATE users SET manage_token = ? WHERE id = ?",
+                (token, u["id"]),
+            )
+
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_users_manage_token "
+            "ON users(manage_token)"
+        )
+
+        conn.execute("PRAGMA user_version = 16")
+        conn.commit()
+        logger.info("Migration v16 appliquee (manage_token pour preferences WhatsApp)")
+
     # Poids initiaux si vide
     existing = conn.execute("SELECT COUNT(*) as c FROM weights_history").fetchone()
     if existing["c"] == 0:

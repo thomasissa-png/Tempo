@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gérer mes alertes — TempoForecast</title>
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%232196F3'/><path d='M50 5A45 45 0 0 1 95 50H5A45 45 0 0 1 50 5z' fill='%23F44336'/><circle cx='50' cy='50' r='20' fill='white'/></svg>" type="image/svg+xml">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<header role="banner">
+    <div class="container header-row">
+        <a href="/" class="header-brand">
+            <h1>TempoForecast</h1>
+        </a>
+        <nav aria-label="Navigation principale">
+            <a href="/">Accueil</a>
+        </nav>
+    </div>
+</header>
+
+<main class="container" role="main" style="max-width: 600px; margin: 0 auto; padding: 24px 16px;">
+
+    {% if error %}
+    <div style="background:#FFEBEE;border:2px solid #F44336;border-radius:12px;padding:24px;margin:24px 0;text-align:center">
+        <p style="font-size:1.1rem;margin:0">{{ error }}</p>
+        <a href="/" style="display:inline-block;margin-top:16px;padding:10px 24px;background:var(--bleu, #2196F3);color:white;border-radius:8px;text-decoration:none;font-weight:600">Retour à l'accueil</a>
+    </div>
+    {% else %}
+
+    <section class="subscribe-section" style="margin-top:16px">
+        <h2 style="text-align:center">Gérer mes alertes WhatsApp</h2>
+        <p class="sub-desc" style="text-align:center">
+            Compte ****{{ user.phone_last4 }} — Modifiez vos préférences ci-dessous.
+        </p>
+
+        <form id="manage-form">
+            <div class="form-grid" style="margin-top:16px">
+                <div class="form-group">
+                    <label for="seuil_rouge">Quand vous prévenir ?</label>
+                    <select id="seuil_rouge" name="seuil_rouge">
+                        <option value="70" {% if user.seuil_alerte_rouge == 70 %}selected{% endif %}>Prudent — dès qu'un jour rouge est probable</option>
+                        <option value="80" {% if user.seuil_alerte_rouge == 80 %}selected{% endif %}>Recommandé — bon équilibre</option>
+                        <option value="90" {% if user.seuil_alerte_rouge == 90 %}selected{% endif %}>Sûr — alertes rares, quasi certaines</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="delai">Combien de temps avant ?</label>
+                    <select id="delai" name="delai">
+                        <option value="1" {% if user.delai_alerte == 1 %}selected{% endif %}>La veille — le plus fiable</option>
+                        <option value="2" {% if user.delai_alerte == 2 %}selected{% endif %}>2 jours avant</option>
+                        <option value="3" {% if user.delai_alerte == 3 %}selected{% endif %}>3 jours avant — pour mieux planifier</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Options</label>
+                    <div class="form-checkbox">
+                        <input type="checkbox" id="alerte_blanc" name="alerte_blanc" value="true" {% if user.alerte_blanc %}checked{% endif %}>
+                        <label for="alerte_blanc">Prévenir aussi pour les jours blancs</label>
+                    </div>
+                    <div class="form-checkbox" style="margin-top:8px">
+                        <input type="checkbox" id="recap_hebdo" name="recap_hebdo" value="true" {% if user.recap_hebdo %}checked{% endif %}>
+                        <label for="recap_hebdo">Récap hebdomadaire chaque dimanche</label>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-subscribe" id="manage-btn" style="margin-top:20px;width:100%">Enregistrer mes préférences</button>
+        </form>
+
+        <div id="manage-result" class="form-result" style="display:none"></div>
+
+        <hr style="margin:32px 0;border:none;border-top:1px solid #e0e0e0">
+
+        <div style="text-align:center">
+            <p style="color:var(--text-secondary, #666);margin-bottom:12px">Vous ne souhaitez plus recevoir d'alertes ?</p>
+            <button type="button" class="btn btn-unsub" id="unsub-manage-btn" style="margin:0 auto">Me désinscrire</button>
+            <div id="unsub-manage-result" class="form-result" style="display:none"></div>
+        </div>
+    </section>
+
+    {% endif %}
+
+</main>
+
+<footer role="contentinfo">
+    <div class="container">
+        <p><strong>TempoForecast</strong> — Service indépendant et gratuit.</p>
+        <p style="margin-top:4px"><a href="/mentions-legales">Mentions légales & RGPD</a></p>
+    </div>
+</footer>
+
+{% if not error %}
+<script>
+(function() {
+    const token = "{{ token }}";
+
+    // Formulaire de mise à jour des préférences
+    const form = document.getElementById('manage-form');
+    const resultEl = document.getElementById('manage-result');
+    const btn = document.getElementById('manage-btn');
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        resultEl.style.display = 'none';
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = 'Enregistrement...';
+
+        try {
+            const formData = new FormData(form);
+            const resp = await fetch('/api/manage/' + token, {
+                method: 'POST',
+                body: formData,
+            });
+            const data = await resp.json();
+
+            if (resp.ok) {
+                resultEl.className = 'form-result success';
+                resultEl.textContent = data.message || 'Préférences mises à jour !';
+            } else {
+                resultEl.className = 'form-result error';
+                resultEl.textContent = data.detail || 'Erreur lors de la mise à jour.';
+            }
+        } catch {
+            resultEl.className = 'form-result error';
+            resultEl.textContent = 'Erreur de connexion au serveur.';
+        } finally {
+            resultEl.style.display = 'block';
+            btn.disabled = false;
+            btn.textContent = originalText;
+        }
+    });
+
+    // Bouton de désinscription
+    const unsubBtn = document.getElementById('unsub-manage-btn');
+    const unsubResult = document.getElementById('unsub-manage-result');
+
+    unsubBtn.addEventListener('click', async function() {
+        if (!confirm('Voulez-vous vraiment vous désinscrire des alertes TempoForecast ?')) return;
+
+        unsubResult.style.display = 'none';
+        unsubBtn.disabled = true;
+        unsubBtn.textContent = 'Désinscription...';
+
+        try {
+            const resp = await fetch('/api/manage/' + token + '/unsubscribe', {
+                method: 'POST',
+            });
+            const data = await resp.json();
+
+            if (resp.ok) {
+                unsubResult.className = 'form-result success';
+                unsubResult.textContent = 'Désinscription effectuée. Vous ne recevrez plus d\'alertes.';
+                // Masquer le formulaire de préférences
+                form.style.display = 'none';
+                unsubBtn.style.display = 'none';
+            } else {
+                unsubResult.className = 'form-result error';
+                unsubResult.textContent = data.detail || 'Erreur lors de la désinscription.';
+                unsubBtn.disabled = false;
+                unsubBtn.textContent = 'Me désinscrire';
+            }
+        } catch {
+            unsubResult.className = 'form-result error';
+            unsubResult.textContent = 'Erreur de connexion au serveur.';
+            unsubBtn.disabled = false;
+            unsubBtn.textContent = 'Me désinscrire';
+        } finally {
+            unsubResult.style.display = 'block';
+        }
+    });
+})();
+</script>
+{% endif %}
+
+</body>
+</html>
