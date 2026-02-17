@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog Tempo EDF — Conseils et astuces pour économiser | Calendrier Tempo EDF</title>
+    <meta name="description" content="Retrouvez nos guides et conseils pour économiser avec l'offre Tempo EDF : jours rouges, comparatifs, alertes et astuces chauffage. Mis à jour chaque semaine.">
+    <link rel="canonical" href="https://www.calendrier-tempo.fr/blog/">
+    <link rel="alternate" hreflang="fr" href="https://www.calendrier-tempo.fr/blog/">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%232196F3'/><path d='M50 5A45 45 0 0 1 95 50H5A45 45 0 0 1 50 5z' fill='%23F44336'/><circle cx='50' cy='50' r='20' fill='white'/></svg>" type="image/svg+xml">
+    <meta name="application-name" content="Calendrier Tempo">
+    <meta name="apple-mobile-web-app-title" content="Calendrier Tempo">
+    <meta name="theme-color" content="#1565C0">
+    <link rel="manifest" href="/manifest.json">
+    <!-- Open Graph -->
+    <meta property="og:title" content="Blog Tempo EDF — Conseils pour économiser">
+    <meta property="og:description" content="Guides et astuces pour économiser avec Tempo EDF. Mis à jour chaque semaine.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://www.calendrier-tempo.fr/blog/">
+    <meta property="og:locale" content="fr_FR">
+    <meta property="og:site_name" content="Calendrier Tempo EDF">
+    <meta property="og:image" content="https://www.calendrier-tempo.fr/static/og-image.png">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<a href="#main-content" class="skip-link">Aller au contenu principal</a>
+
+<header role="banner">
+    <div class="container header-row">
+        <a href="/" class="header-brand">
+            <span class="header-title">Calendrier Tempo EDF</span>
+            <span class="header-baseline">Anticipez les jours rouges Tempo &mdash; gratuit</span>
+        </a>
+        <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu de navigation" aria-expanded="false" aria-controls="main-nav">
+            <span class="bar"></span>
+            <span class="bar"></span>
+            <span class="bar"></span>
+        </button>
+        <nav id="main-nav" aria-label="Navigation principale">
+            <a href="/">Accueil</a>
+            <a href="/#subscribe">Alertes WhatsApp</a>
+            <a href="/blog/" class="active" aria-current="page">Blog</a>
+            <a href="/mentions-legales">Mentions l&eacute;gales</a>
+        </nav>
+    </div>
+</header>
+
+<main id="main-content" class="container" role="main" style="max-width:800px">
+
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb" aria-label="Fil d'Ariane">
+        <a href="/">Accueil</a> <span aria-hidden="true">&rsaquo;</span>
+        <span aria-current="page">Blog</span>
+    </nav>
+
+    <h1>Blog Tempo EDF</h1>
+    <p class="blog-index-intro">Guides, conseils et astuces pour <strong>économiser avec l'offre Tempo EDF</strong>. Un nouvel article chaque mardi.</p>
+
+    {% if articles %}
+    <div class="blog-list">
+        {% for article in articles %}
+        <article class="blog-card">
+            <a href="/blog/{{ article.slug }}" class="blog-card-link">
+                <div class="blog-card-meta">
+                    <time datetime="{{ article.publish_date.isoformat() }}">{{ article.publish_date.strftime('%d/%m/%Y') }}</time>
+                    <span class="blog-reading-time">{{ article.reading_time }} min de lecture</span>
+                </div>
+                <h2>{{ article.title }}</h2>
+                <p>{{ article.description }}</p>
+                <span class="blog-read-more">Lire l'article &rarr;</span>
+            </a>
+        </article>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p>Aucun article pour le moment. Revenez bient&ocirc;t !</p>
+    {% endif %}
+
+    <!-- CTA -->
+    <section class="blog-cta">
+        <h2>Ne ratez plus aucun jour rouge</h2>
+        <p>Recevez une alerte WhatsApp gratuite la veille de chaque jour rouge ou blanc Tempo.</p>
+        <a href="/#subscribe" class="btn btn-primary">S'inscrire aux alertes</a>
+    </section>
+
+</main>
+
+<footer role="contentinfo">
+    <div class="container">
+        <p><strong>Calendrier Tempo EDF</strong> &mdash; Cr&eacute;&eacute; en 2025 pour aider les 900&nbsp;000 abonn&eacute;s Tempo &agrave; &eacute;conomiser. Service ind&eacute;pendant et gratuit.</p>
+        <p style="margin-top:4px">
+            Donn&eacute;es : <a href="https://www.api-couleur-tempo.fr/" target="_blank" rel="noopener">API Tempo</a> &middot;
+            <a href="/mentions-legales">Mentions l&eacute;gales & RGPD</a> &middot;
+            <a href="/blog/">Blog</a>
+        </p>
+    </div>
+</footer>
+
+<script>
+(function() {
+    const btn = document.getElementById('hamburger-btn');
+    const nav = document.getElementById('main-nav');
+    if (!btn || !nav) return;
+    btn.addEventListener('click', () => {
+        const open = nav.classList.toggle('open');
+        btn.setAttribute('aria-expanded', open);
+    });
+})();
+</script>
+
+</body>
+</html>

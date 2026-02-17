@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ article.title }} | Calendrier Tempo EDF</title>
+    <meta name="description" content="{{ article.description }}">
+    <meta name="keywords" content="{{ article.keywords }}">
+    <link rel="canonical" href="https://www.calendrier-tempo.fr/blog/{{ article.slug }}">
+    <link rel="alternate" hreflang="fr" href="https://www.calendrier-tempo.fr/blog/{{ article.slug }}">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%232196F3'/><path d='M50 5A45 45 0 0 1 95 50H5A45 45 0 0 1 50 5z' fill='%23F44336'/><circle cx='50' cy='50' r='20' fill='white'/></svg>" type="image/svg+xml">
+    <meta name="application-name" content="Calendrier Tempo">
+    <meta name="apple-mobile-web-app-title" content="Calendrier Tempo">
+    <meta name="theme-color" content="#1565C0">
+    <link rel="manifest" href="/manifest.json">
+    <!-- Open Graph -->
+    <meta property="og:title" content="{{ article.title }}">
+    <meta property="og:description" content="{{ article.description }}">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://www.calendrier-tempo.fr/blog/{{ article.slug }}">
+    <meta property="og:locale" content="fr_FR">
+    <meta property="og:site_name" content="Calendrier Tempo EDF">
+    <meta property="og:image" content="https://www.calendrier-tempo.fr/static/og-image.png">
+    <meta property="article:published_time" content="{{ article.publish_date.isoformat() }}">
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ article.title }}">
+    <meta name="twitter:description" content="{{ article.description }}">
+    <meta name="twitter:image" content="https://www.calendrier-tempo.fr/static/og-image.png">
+    <!-- JSON-LD Article -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": "{{ article.title }}",
+        "description": "{{ article.description }}",
+        "datePublished": "{{ article.publish_date.isoformat() }}",
+        "dateModified": "{{ article.publish_date.isoformat() }}",
+        "author": {
+            "@type": "Organization",
+            "name": "Calendrier Tempo EDF",
+            "url": "https://www.calendrier-tempo.fr/"
+        },
+        "publisher": {
+            "@type": "Organization",
+            "name": "Calendrier Tempo EDF",
+            "url": "https://www.calendrier-tempo.fr/"
+        },
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": "https://www.calendrier-tempo.fr/blog/{{ article.slug }}"
+        },
+        "image": "https://www.calendrier-tempo.fr/static/og-image.png"
+    }
+    </script>
+    <!-- JSON-LD BreadcrumbList -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://www.calendrier-tempo.fr/"},
+            {"@type": "ListItem", "position": 2, "name": "Blog", "item": "https://www.calendrier-tempo.fr/blog/"},
+            {"@type": "ListItem", "position": 3, "name": "{{ article.title }}"}
+        ]
+    }
+    </script>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<a href="#main-content" class="skip-link">Aller au contenu principal</a>
+
+<header role="banner">
+    <div class="container header-row">
+        <a href="/" class="header-brand">
+            <span class="header-title">Calendrier Tempo EDF</span>
+            <span class="header-baseline">Anticipez les jours rouges Tempo &mdash; gratuit</span>
+        </a>
+        <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu de navigation" aria-expanded="false" aria-controls="main-nav">
+            <span class="bar"></span>
+            <span class="bar"></span>
+            <span class="bar"></span>
+        </button>
+        <nav id="main-nav" aria-label="Navigation principale">
+            <a href="/">Accueil</a>
+            <a href="/#subscribe">Alertes WhatsApp</a>
+            <a href="/blog/" class="active">Blog</a>
+            <a href="/mentions-legales">Mentions l&eacute;gales</a>
+        </nav>
+    </div>
+</header>
+
+<main id="main-content" class="container" role="main" style="max-width:800px">
+
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb" aria-label="Fil d'Ariane">
+        <a href="/">Accueil</a> <span aria-hidden="true">&rsaquo;</span>
+        <a href="/blog/">Blog</a> <span aria-hidden="true">&rsaquo;</span>
+        <span aria-current="page">{{ article.title }}</span>
+    </nav>
+
+    <article class="blog-article" itemscope itemtype="https://schema.org/Article">
+        <header class="blog-article-header">
+            <h1 itemprop="headline">{{ article.title }}</h1>
+            <div class="blog-article-meta">
+                <time datetime="{{ article.publish_date.isoformat() }}" itemprop="datePublished">
+                    Publi&eacute; le {{ article.publish_date.strftime('%d/%m/%Y') }}
+                </time>
+                <span class="blog-reading-time">{{ article.reading_time }} min de lecture</span>
+            </div>
+        </header>
+
+        <div class="blog-article-body" itemprop="articleBody">
+            {{ article.content_html | safe }}
+        </div>
+
+        <!-- CTA mid-article -->
+        <aside class="blog-cta-inline">
+            <strong>Ne ratez plus aucun jour rouge Tempo</strong>
+            <p>Recevez une alerte WhatsApp gratuite la veille. Inscription en 30 secondes.</p>
+            <a href="/#subscribe" class="btn btn-primary">S'inscrire gratuitement</a>
+        </aside>
+    </article>
+
+    <!-- Navigation articles -->
+    <nav class="blog-nav-articles" aria-label="Articles du blog">
+        <a href="/blog/">&larr; Retour au blog</a>
+    </nav>
+
+</main>
+
+<footer role="contentinfo">
+    <div class="container">
+        <p><strong>Calendrier Tempo EDF</strong> &mdash; Cr&eacute;&eacute; en 2025 pour aider les 900&nbsp;000 abonn&eacute;s Tempo &agrave; &eacute;conomiser. Service ind&eacute;pendant et gratuit.</p>
+        <p style="margin-top:4px">
+            Donn&eacute;es : <a href="https://www.api-couleur-tempo.fr/" target="_blank" rel="noopener">API Tempo</a> &middot;
+            <a href="/mentions-legales">Mentions l&eacute;gales & RGPD</a> &middot;
+            <a href="/blog/">Blog</a>
+        </p>
+    </div>
+</footer>
+
+<script>
+(function() {
+    const btn = document.getElementById('hamburger-btn');
+    const nav = document.getElementById('main-nav');
+    if (!btn || !nav) return;
+    btn.addEventListener('click', () => {
+        const open = nav.classList.toggle('open');
+        btn.setAttribute('aria-expanded', open);
+    });
+})();
+</script>
+
+</body>
+</html>

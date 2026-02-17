@@ -301,6 +301,8 @@ async def wait_for_db(request: Request, call_next):
 _CACHE_RULES: list[tuple[str, str]] = [
     # Fichiers statiques (CSS/JS) : 1h, revalidation en arrière-plan
     ("/static/", "public, max-age=3600, stale-while-revalidate=86400"),
+    # Blog articles : cache 10min (contenu statique, change rarement)
+    ("/blog/", "public, max-age=600, stale-while-revalidate=1800"),
     # API données EDF (cache serveur 2 min → idem côté client)
     ("/api/today", "public, max-age=120"),
     ("/api/tomorrow", "public, max-age=120"),
@@ -318,6 +320,7 @@ _CACHE_RULES: list[tuple[str, str]] = [
 _CACHE_EXACT: dict[str, str] = {
     "/": "public, max-age=300, stale-while-revalidate=600",
     "/mentions-legales": "public, max-age=3600",
+    "/blog/": "public, max-age=600, stale-while-revalidate=1800",
 }
 
 
@@ -438,6 +441,30 @@ async def page_legal(request: Request):
     return templates.TemplateResponse("legal.html", {"request": request})
 
 
+@app.get("/blog/", response_class=HTMLResponse)
+async def page_blog_index(request: Request):
+    """Page index du blog — liste les articles publiés."""
+    from blog import get_published_articles
+    articles = get_published_articles()
+    return templates.TemplateResponse("blog_index.html", {
+        "request": request,
+        "articles": articles,
+    })
+
+
+@app.get("/blog/{slug}", response_class=HTMLResponse)
+async def page_blog_article(request: Request, slug: str):
+    """Page d'un article de blog individuel."""
+    from blog import get_article_by_slug
+    article = get_article_by_slug(slug)
+    if not article:
+        raise HTTPException(status_code=404, detail="Article non trouvé")
+    return templates.TemplateResponse("blog_article.html", {
+        "request": request,
+        "article": article,
+    })
+
+
 @app.get("/manage/{token}", response_class=HTMLResponse)
 async def page_manage(request: Request, token: str):
     """Page de gestion des préférences (lien envoyé dans chaque message WhatsApp)."""
@@ -497,22 +524,48 @@ async def robots_txt():
 
 @app.get("/sitemap.xml", response_class=PlainTextResponse)
 async def sitemap_xml():
-    """Sitemap XML dynamique."""
+    """Sitemap XML dynamique — inclut les articles de blog publiés."""
+    from blog import get_all_article_slugs
     today = date.today().isoformat()
-    xml = (
-        '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    urls = [
         "  <url>\n"
         "    <loc>https://www.calendrier-tempo.fr/</loc>\n"
         f"    <lastmod>{today}</lastmod>\n"
         "    <changefreq>daily</changefreq>\n"
         "    <priority>1.0</priority>\n"
-        "  </url>\n"
+        "  </url>",
         "  <url>\n"
         "    <loc>https://www.calendrier-tempo.fr/mentions-legales</loc>\n"
         "    <changefreq>monthly</changefreq>\n"
         "    <priority>0.3</priority>\n"
-        "  </url>\n"
+        "  </url>",
+    ]
+    # Blog index
+    blog_slugs = get_all_article_slugs()
+    if blog_slugs:
+        latest_date = max(d for _, d in blog_slugs).isoformat()
+        urls.append(
+            "  <url>\n"
+            "    <loc>https://www.calendrier-tempo.fr/blog/</loc>\n"
+            f"    <lastmod>{latest_date}</lastmod>\n"
+            "    <changefreq>weekly</changefreq>\n"
+            "    <priority>0.7</priority>\n"
+            "  </url>"
+        )
+    # Individual articles
+    for slug, pub_date in blog_slugs:
+        urls.append(
+            "  <url>\n"
+            f"    <loc>https://www.calendrier-tempo.fr/blog/{slug}</loc>\n"
+            f"    <lastmod>{pub_date.isoformat()}</lastmod>\n"
+            "    <changefreq>monthly</changefreq>\n"
+            "    <priority>0.6</priority>\n"
+            "  </url>"
+        )
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        + "\n".join(urls) + "\n"
         "</urlset>\n"
     )
     return PlainTextResponse(content=xml, media_type="application/xml")
