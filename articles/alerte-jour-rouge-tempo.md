@@ -4,17 +4,17 @@ description: Découvrez comment recevoir une alerte WhatsApp gratuite avant chaq
 publish_date: 2026-03-17
 keywords: alerte tempo, notification jour rouge tempo, alerte whatsapp tempo edf, prévenir jour rouge
 ---
-Avec l'offre Tempo EDF, rater un jour rouge peut coûter très cher. Pendant les heures pleines d'un jour rouge, le tarif grimpe à **0,7562 €/kWh**, soit plus de six fois le prix d'un jour bleu. Sur une seule journée, un foyer qui ne s'adapte pas peut voir sa facture exploser de 15 € ou plus. La solution ? Recevoir une **alerte jour rouge Tempo** avant qu'il ne soit trop tard. Dans cet article, nous détaillons pourquoi ces alertes sont indispensables et comment s'y inscrire gratuitement en 30 secondes sur calendrier-tempo.fr.
+Avec l'offre Tempo EDF, rater un jour rouge peut coûter très cher. Pendant les heures pleines d'un jour rouge, le tarif grimpe à **0,7060 €/kWh**, soit plus de quatre fois le prix d'un jour bleu. Sur une seule journée, un foyer qui ne s'adapte pas peut voir sa facture exploser de 13 € ou plus. La solution ? Recevoir une **alerte jour rouge Tempo** avant qu'il ne soit trop tard. Dans cet article, nous détaillons pourquoi ces alertes sont indispensables et comment s'y inscrire gratuitement en 30 secondes sur calendrier-tempo.fr.
 
 ## Pourquoi une alerte Tempo est indispensable pour votre portefeuille
 
-### Le piège des jours rouges : un tarif multiplié par six
+### Le piège des jours rouges : un tarif multiplié par quatre
 
-Le principe de l'offre Tempo EDF est simple : 300 jours bleus à prix avantageux financent les économies, mais 22 jours rouges concentrés entre novembre et mars facturent l'électricité à un tarif dissuasif. En heures pleines d'un jour rouge, vous payez **0,7562 €/kWh** contre 0,1369 €/kWh en jour bleu. Le rapport est de 5,5 pour 1.
+Le principe de l'offre Tempo EDF est simple : 300 jours bleus à prix avantageux financent les économies, mais 22 jours rouges concentrés entre novembre et mars facturent l'électricité à un tarif dissuasif. En heures pleines d'un jour rouge, vous payez **0,7060 €/kWh** contre 0,1612 €/kWh en jour bleu. Le rapport est de 4,4 pour 1.
 
-Prenons un exemple concret. Un foyer qui consomme 25 kWh en heures pleines un jour rouge paiera **18,91 €** pour cette seule journée. La même consommation un jour bleu ne coûte que 3,42 €. La différence ? Plus de **15 € perdus** parce que vous ne saviez pas que c'était un jour rouge.
+Prenons un exemple concret. Un foyer qui consomme 25 kWh en heures pleines un jour rouge paiera **17,65 €** pour cette seule journée. La même consommation un jour bleu ne coûte que 4,03 €. La différence ? Plus de **13 € perdus** parce que vous ne saviez pas que c'était un jour rouge.
 
-Multipliez cette erreur par ne serait-ce que 5 jours rouges ratés dans la saison, et ce sont **75 à 100 € d'économies envolées**. L'alerte Tempo n'est pas un confort : c'est une nécessité financière pour tout abonné Tempo.
+Multipliez cette erreur par ne serait-ce que 5 jours rouges ratés dans la saison, et ce sont **65 à 80 € d'économies envolées**. L'alerte Tempo n'est pas un confort : c'est une nécessité financière pour tout abonné Tempo.
 
 ### Le problème : EDF ne prévient que la veille vers 17h
 
@@ -77,19 +77,14 @@ La distinction entre couleur confirmée par EDF et prévision est toujours clair
 
 Tous les abonnés Tempo n'ont pas les mêmes besoins. Certains ne veulent être alertés que pour les jours rouges, les plus coûteux. D'autres préfèrent anticiper aussi les jours blancs, dont le tarif est intermédiaire mais tout de même supérieur aux jours bleus.
 
-Sur calendrier-tempo.fr, vous pouvez choisir parmi trois modes :
+Sur calendrier-tempo.fr, vous pouvez choisir parmi deux modes :
 
-- **Jours rouges uniquement** : vous ne recevez une alerte que lorsqu'un jour rouge est annoncé ou prévu. Idéal si vous voulez limiter les notifications au strict minimum.
-- **Jours rouges et blancs** : vous êtes prévenu pour les deux types de jours chers. C'est le réglage que nous recommandons pour optimiser réellement votre facture, car les 43 jours blancs représentent aussi un surcoût par rapport aux jours bleus.
-- **Toutes les couleurs** : vous recevez un message chaque jour avec la couleur du lendemain, quelle qu'elle soit. Utile si vous aimez avoir une visibilité complète.
+- **Jours rouges uniquement** (par défaut) : vous ne recevez une alerte que lorsqu'un jour rouge est annoncé ou prévu.
+- **Jours rouges et blancs** : activez cette option pour être aussi prévenu des jours blancs, dont le tarif intermédiaire mérite aussi de l'attention.
 
-### Ajustez le seuil de confiance des prévisions
+### Seuil de sensibilité
 
-Notre algorithme attribue un score de confiance à chaque prévision. Vous pouvez régler le seuil de déclenchement :
-
-- **Prudent** : vous êtes alerté dès qu'un jour rouge est probable. Vous recevrez davantage d'alertes, y compris quelques fausses alertes, mais vous ne raterez quasiment jamais un vrai jour rouge.
-- **Recommandé** (par défaut) : bon équilibre entre le nombre d'alertes et leur fiabilité.
-- **Sur** : alertes rares et quasi certaines. Moins de notifications, mais un risque plus élevé de rater un jour rouge non anticipé.
+Notre algorithme attribue un score de risque à chaque prévision. Par défaut, le seuil est calibré pour offrir un bon équilibre entre le nombre d'alertes et leur fiabilité. Vous pouvez ajuster ce seuil dans vos préférences : un seuil plus bas vous enverra davantage d'alertes préventives (au risque de quelques fausses alarmes), tandis qu'un seuil plus élevé ne déclenchera que les alertes quasi certaines.
 
 ### Le récapitulatif hebdomadaire du dimanche soir
 
@@ -104,9 +99,9 @@ Ce récapitulatif vous permet de planifier votre semaine entière : programmer l
 | **Canal** | Push notification | Push notification | WhatsApp |
 | **Installation requise** | Application EDF | Application tierce | Aucune |
 | **Prévisions J+2 à J+5** | Non | Variable | Oui, algorithme prédictif |
-| **Choix des couleurs alertées** | Limité | Variable | Rouge seul, Rouge+Blanc, ou toutes |
+| **Choix des couleurs alertées** | Limité | Variable | Rouge seul ou Rouge+Blanc |
 | **Récapitulatif hebdomadaire** | Non | Rare | Oui, chaque dimanche |
-| **Seuil de confiance réglable** | Non | Non | Oui, 3 niveaux |
+| **Seuil ajustable** | Non | Non | Oui |
 | **Prix** | Gratuit | Gratuit ou payant | Gratuit |
 | **Désinscription** | Désinstaller l'app | Désinstaller l'app | 1 clic ou STOP |
 | **Données personnelles** | Compte EDF complet | Variable | Numéro de téléphone uniquement |
