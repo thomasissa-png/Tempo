@@ -110,10 +110,13 @@ def hash_phone(phone: str) -> str:
 # ================================================================
 
 def get_db() -> sqlite3.Connection:
-    """Obtenir une connexion à la base de données."""
+    """Obtenir une connexion à la base de données.
+
+    Note: PRAGMA journal_mode=WAL est défini une seule fois dans init_db()
+    car il persiste au niveau du fichier (pas besoin de le répéter).
+    """
     conn = sqlite3.connect(Config.DATABASE_PATH)
     conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
     conn.execute("PRAGMA busy_timeout=5000")
     return conn
@@ -126,6 +129,8 @@ def get_db() -> sqlite3.Connection:
 def init_db():
     """Créer toutes les tables et index."""
     conn = get_db()
+    # WAL persiste sur le fichier : une seule activation suffit
+    conn.execute("PRAGMA journal_mode=WAL")
     conn.executescript("""
         CREATE TABLE IF NOT EXISTS predictions (
             id                   INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -732,6 +737,18 @@ def init_db():
         conn.execute("PRAGMA user_version = 16")
         conn.commit()
         logger.info("Migration v16 appliquee (manage_token pour preferences WhatsApp)")
+
+    if version < 17:
+        # Migration v17 — Index de couverture pour la requête /api/predictions
+        # La requête GROUP BY date + MAX(CASE WHEN confirmed) bénéficie d'un index
+        # (date, confirmed, id) pour éviter un scan complet de la table.
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_predictions_date_confirmed_id "
+            "ON predictions(date, confirmed, id)"
+        )
+        conn.execute("PRAGMA user_version = 17")
+        conn.commit()
+        logger.info("Migration v17 appliquee (index couverture predictions)")
 
     # Poids initiaux si vide
     existing = conn.execute("SELECT COUNT(*) as c FROM weights_history").fetchone()

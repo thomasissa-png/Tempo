@@ -36,6 +36,7 @@ def _now_paris() -> datetime:
     return datetime.now(tz=_PARIS_TZ)
 
 from fastapi import FastAPI, Request, Form, HTTPException, Header
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -209,6 +210,17 @@ async def _deferred_startup():
     except Exception as e:
         logger.error(f"[Startup] Erreur import scheduler: {e}")
 
+    # 3b. Pré-charger le modèle ML dans thread pool (évite 2-5s de latence
+    #     sur la première requête /api/predictions après un cold start)
+    try:
+        def _preload_ml():
+            from ml_scorer import ml_score_available
+            ml_score_available()
+        await loop.run_in_executor(None, _preload_ml)
+        logger.info("[Startup] Modèle ML pré-chargé")
+    except Exception as e:
+        logger.warning(f"[Startup] ML pré-chargement échoué (non critique): {e}")
+
     # Yield explicite : laisser l'event loop traiter les health checks en attente
     await asyncio.sleep(0)
 
@@ -258,6 +270,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(GZipMiddleware, minimum_size=500)  # Compresse CSS/JS/JSON > 500 octets
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
@@ -299,11 +312,25 @@ _CACHE_RULES: list[tuple[str, str]] = [
 ]
 
 
+# Pages HTML : cache court pour éviter des re-rendus Jinja2 inutiles
+# stale-while-revalidate permet au navigateur de servir le cache périmé
+# tout en re-fetching en arrière-plan → UX instantanée
+_CACHE_EXACT: dict[str, str] = {
+    "/": "public, max-age=300, stale-while-revalidate=600",
+    "/mentions-legales": "public, max-age=3600",
+}
+
+
 @app.middleware("http")
 async def add_cache_headers(request: Request, call_next):
     """Ajoute Cache-Control sur les réponses statiques et API."""
     response = await call_next(request)
     path = request.url.path
+    # Match exact d'abord (pages HTML)
+    if path in _CACHE_EXACT:
+        response.headers["Cache-Control"] = _CACHE_EXACT[path]
+        return response
+    # Match par préfixe (static + API)
     for prefix, directive in _CACHE_RULES:
         if path.startswith(prefix):
             response.headers["Cache-Control"] = directive

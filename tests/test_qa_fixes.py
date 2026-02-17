@@ -353,7 +353,7 @@ class TestMigrationV8:
         conn = get_db()
         try:
             version = conn.execute("PRAGMA user_version").fetchone()[0]
-            assert version == 16
+            assert version == 17
         finally:
             conn.close()
 
