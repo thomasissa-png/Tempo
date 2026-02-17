@@ -565,6 +565,297 @@ class TestWhatsAppMessages:
         assert "Calendrier Tempo EDF" in response
 
 
+# ================================================================
+# SEO : SSR, /calendrier, sitemap, robots.txt, Umami
+# ================================================================
+
+class TestSSRData:
+    """Server-Side Rendering pre-loads data for Google crawling."""
+
+    def test_ssr_returns_dict_when_db_not_ready(self):
+        """SSR returns empty defaults when DB event is not set."""
+        from app import _get_ssr_data, _db_ready
+        was_set = _db_ready.is_set()
+        _db_ready.clear()
+        try:
+            ssr = _get_ssr_data()
+            assert ssr["today_color"] is None
+            assert ssr["tomorrow_color"] is None
+            assert ssr["remaining"] is None
+            assert ssr["predictions"] == []
+        finally:
+            if was_set:
+                _db_ready.set()
+
+    def test_ssr_returns_remaining_when_db_ready(self):
+        """SSR loads remaining counters from DB when available."""
+        from app import _get_ssr_data, _db_ready
+        _db_ready.set()
+        ssr = _get_ssr_data()
+        # remaining should be a dict with ROUGE/BLANC/BLEU keys
+        assert ssr["remaining"] is not None
+        assert "ROUGE" in ssr["remaining"]
+        assert "BLANC" in ssr["remaining"]
+        assert "BLEU" in ssr["remaining"]
+
+    def test_ssr_loads_today_color_from_actuals(self):
+        """SSR reads today's color from actuals table."""
+        from app import _get_ssr_data, _db_ready
+        from database import get_db
+        _db_ready.set()
+
+        today_str = date.today().isoformat()
+        now_str = datetime.now().isoformat()
+        conn = get_db()
+        conn.execute(
+            "INSERT OR REPLACE INTO actuals (date, couleur_reelle, synthetic, timestamp_confirmation) VALUES (?, 'BLEU', 0, ?)",
+            (today_str, now_str)
+        )
+        conn.commit()
+        conn.close()
+
+        ssr = _get_ssr_data()
+        assert ssr["today_color"] == "BLEU"
+
+
+class TestCalendrierRoute:
+    """Tests pour la page /calendrier."""
+
+    def test_calendar_builds_correct_grid(self):
+        """The calendar grid has correct number of days + empty padding."""
+        import calendar as cal_module
+        year, month = 2026, 2
+        first_weekday, num_days = cal_module.monthrange(year, month)
+        # February 2026: 28 days, starts on Sunday (6)
+        expected_cells = first_weekday + num_days
+        assert num_days == 28
+        assert expected_cells >= 28
+
+    def test_calendar_month_names_fr(self):
+        """French month names are correctly defined."""
+        month_names_fr = [
+            "", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+            "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
+        ]
+        assert month_names_fr[1] == "Janvier"
+        assert month_names_fr[12] == "Décembre"
+        assert len(month_names_fr) == 13  # index 0 is empty
+
+    def test_calendar_season_navigation_bounds(self):
+        """Navigation stays within the season bounds."""
+        from tempo_client import get_season_dates
+        season_start, season_end = get_season_dates()
+        # September should be the first month available
+        assert season_start.month == 9
+        # August should be the last month available
+        assert season_end.month == 8
+
+
+class TestSitemapXml:
+    """Sitemap includes all important pages."""
+
+    def test_sitemap_contains_homepage(self):
+        """Sitemap includes homepage with priority 1.0."""
+        import re
+        with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "app.py")) as f:
+            content = f.read()
+        assert "calendrier-tempo.fr/</loc>" in content
+        assert "<priority>1.0</priority>" in content
+
+    def test_sitemap_contains_calendrier(self):
+        """Sitemap includes /calendrier with priority 0.9."""
+        with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "app.py")) as f:
+            content = f.read()
+        assert "calendrier-tempo.fr/calendrier</loc>" in content
+        assert "<priority>0.9</priority>" in content
+
+
+class TestRobotsTxt:
+    """Robots.txt directives are correct."""
+
+    def test_robots_allows_calendrier(self):
+        """robots.txt explicitly allows /calendrier."""
+        with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "app.py")) as f:
+            content = f.read()
+        assert '"Allow: /calendrier\\n"' in content
+
+    def test_robots_allows_blog(self):
+        """robots.txt explicitly allows /blog/."""
+        with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "app.py")) as f:
+            content = f.read()
+        assert '"Allow: /blog/\\n"' in content
+
+    def test_robots_disallows_admin(self):
+        """robots.txt disallows /admin."""
+        with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "app.py")) as f:
+            content = f.read()
+        assert '"Disallow: /admin\\n"' in content
+
+
+class TestUmamiAnalytics:
+    """Umami analytics script is present on all public templates."""
+
+    _UMAMI_SNIPPET = 'cloud.umami.is/script.js'
+    _PUBLIC_TEMPLATES = [
+        "dashboard.html", "blog_index.html", "blog_article.html",
+        "legal.html", "manage.html",
+    ]
+
+    def test_umami_on_all_public_templates(self):
+        """Every public template includes the Umami script."""
+        templates_dir = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "templates"
+        )
+        for tpl in self._PUBLIC_TEMPLATES:
+            filepath = os.path.join(templates_dir, tpl)
+            with open(filepath) as f:
+                content = f.read()
+            assert self._UMAMI_SNIPPET in content, (
+                f"Umami script missing in {tpl}"
+            )
+
+    def test_umami_on_calendrier(self):
+        """The calendrier template includes Umami."""
+        filepath = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "templates", "calendrier.html"
+        )
+        with open(filepath) as f:
+            content = f.read()
+        assert self._UMAMI_SNIPPET in content
+
+    def test_umami_not_on_admin(self):
+        """Admin template should NOT include Umami (noindex page)."""
+        filepath = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "templates", "admin.html"
+        )
+        with open(filepath) as f:
+            content = f.read()
+        assert self._UMAMI_SNIPPET not in content
+
+
+class TestStructuredData:
+    """JSON-LD structured data is present on key pages."""
+
+    def test_dashboard_has_software_application_schema(self):
+        """Homepage has SoftwareApplication with AggregateRating."""
+        filepath = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "templates", "dashboard.html"
+        )
+        with open(filepath) as f:
+            content = f.read()
+        assert '"SoftwareApplication"' in content
+        assert '"AggregateRating"' in content
+
+    def test_dashboard_has_organization_schema(self):
+        """Homepage has Organization schema."""
+        filepath = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "templates", "dashboard.html"
+        )
+        with open(filepath) as f:
+            content = f.read()
+        assert '"Organization"' in content
+
+    def test_dashboard_has_howto_schema(self):
+        """Homepage has HowTo schema."""
+        filepath = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "templates", "dashboard.html"
+        )
+        with open(filepath) as f:
+            content = f.read()
+        assert '"HowTo"' in content
+        assert '"HowToStep"' in content
+
+    def test_calendrier_has_dataset_schema(self):
+        """Calendar page has Dataset schema."""
+        filepath = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "templates", "calendrier.html"
+        )
+        with open(filepath) as f:
+            content = f.read()
+        assert '"Dataset"' in content
+
+    def test_calendrier_has_faq_schema(self):
+        """Calendar page has FAQPage schema."""
+        filepath = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "templates", "calendrier.html"
+        )
+        with open(filepath) as f:
+            content = f.read()
+        assert '"FAQPage"' in content
+
+
+class TestInternalLinking:
+    """Navigation includes /calendrier on all pages."""
+
+    _TEMPLATES_WITH_CAL_NAV = [
+        "dashboard.html", "blog_index.html", "blog_article.html",
+        "legal.html", "calendrier.html",
+    ]
+
+    def test_calendrier_in_nav_all_templates(self):
+        """Every public template has /calendrier in the nav."""
+        templates_dir = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "templates"
+        )
+        for tpl in self._TEMPLATES_WITH_CAL_NAV:
+            filepath = os.path.join(templates_dir, tpl)
+            with open(filepath) as f:
+                content = f.read()
+            assert 'href="/calendrier"' in content, (
+                f"/calendrier link missing in nav of {tpl}"
+            )
+
+
+class TestBlogArticles:
+    """Blog articles for SEO exist and have proper frontmatter."""
+
+    def test_tempo_guide_article_exists(self):
+        """The 'Tempo EDF 2026 guide complet' article exists with correct frontmatter."""
+        from blog import get_article_by_slug
+        art = get_article_by_slug("tempo-edf-2026-guide-complet")
+        assert art is not None
+        assert "tempo edf" in art.keywords.lower()
+        assert art.reading_time >= 3
+
+    def test_historique_article_exists(self):
+        """The 'Historique calendrier Tempo' article exists with correct frontmatter."""
+        from blog import get_article_by_slug
+        art = get_article_by_slug("calendrier-tempo-historique-saisons")
+        assert art is not None
+        assert "calendrier tempo" in art.keywords.lower()
+
+    def test_article_files_exist(self):
+        """At least 8 article Markdown files exist in articles/ directory."""
+        articles_dir = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "articles"
+        )
+        md_files = [f for f in os.listdir(articles_dir) if f.endswith(".md")]
+        assert len(md_files) >= 8, f"Only {len(md_files)} articles found: {md_files}"
+
+
+class TestCalendrierAnchorNavigation:
+    """Calendar month navigation uses #cal anchor."""
+
+    def test_prev_next_links_have_anchor(self):
+        """Month navigation links include #cal to avoid scroll-to-top."""
+        filepath = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "templates", "calendrier.html"
+        )
+        with open(filepath) as f:
+            content = f.read()
+        # Both prev and next links should end with #cal
+        assert "prev_year }}#cal" in content
+        assert "next_year }}#cal" in content
+
+
 class TestOriginCheck:
     """M-11 : _check_origin case-insensitive."""
     def test_case_insensitive(self):

@@ -122,5 +122,17 @@
 
 ### API Performance
 - **Frontend parallelization**: 5 API calls (today, tomorrow, remaining, predictions, badge) fire simultaneously via `Promise.all()` instead of sequentially
-- **Cache-Control headers**: `/static/` 1h + stale-while-revalidate; `/api/today|tomorrow|remaining` 2min; `/api/predictions|performance/badge` 5min
+- **Cache-Control headers**: `/static/` 1h + stale-while-revalidate; `/api/today|tomorrow|remaining` 2min; `/api/predictions|performance/badge` 5min; `/calendrier` 10min + stale-while-revalidate
 - **Cold start UX**: During FastAPI startup, ASGI proxy serves real `dashboard.html` + CSS + JS (not a loading placeholder). JS detects 503 responses and retries with exponential backoff (2-4s) via `loadAllData()`
+
+### SEO & Server-Side Rendering
+- **SSR on homepage**: `_get_ssr_data()` pre-loads today/tomorrow colors, remaining counters, and first 7 predictions from DB. Jinja2 renders real content instead of JS placeholders ("—", "Chargement..."). JS takes over on client-side. Best-effort: if DB not ready, falls back to empty placeholders.
+- **Dedicated `/calendrier` page**: Monthly grid of Tempo colors (past = EDF official from `actuals`, future = predictions). Server-side rendered via `page_calendrier()`. Navigation with `#cal` anchor to avoid scroll-to-top on mobile. Targets "calendrier tempo" / "calendrier tempo edf" keywords.
+- **Structured Data (JSON-LD)**: Homepage has `SoftwareApplication` with `AggregateRating`, `Organization`, `BreadcrumbList`, `HowTo` (3 steps), `FAQPage` (5 questions). Calendar page has `Dataset`, `BreadcrumbList`, `FAQPage` (3 questions).
+- **Sitemap**: Dynamic `/sitemap.xml` includes `/` (priority 1.0), `/calendrier` (priority 0.9), `/blog/` (0.7), individual articles (0.6), `/mentions-legales` (0.3).
+- **Robots.txt**: Explicit `Allow: /calendrier`, `Allow: /blog/`. Disallows `/admin`, `/api/`, `/manage/`.
+- **Internal linking**: "Calendrier" in nav across all templates. Footer links to Calendrier, Blog, Mentions légales on every page. Blog articles cross-link to `/calendrier` and `/#subscribe`.
+- **Blog SEO articles**: 8 articles total — 6 original + "Tempo EDF 2026 guide complet" (targets "tempo edf") + "Historique calendrier Tempo" (targets "calendrier tempo").
+
+### Analytics
+- **Umami**: Cloud-hosted analytics (`cloud.umami.is`) on all public templates (dashboard, blog_index, blog_article, legal, manage). Script loaded with `defer`. Website ID: `1d187359-b4a6-4ba8-ba41-c449b356832f`.
