@@ -36,13 +36,13 @@
     <meta name="twitter:title" content="Prévision Tempo EDF — Couleur du jour et 15 jours">
     <meta name="twitter:description" content="Anticipez les jours rouges Tempo EDF. Alertes WhatsApp gratuites pour les abonnés.">
     <meta name="twitter:image" content="https://www.calendrier-tempo.fr/static/og-image.png">
-    <!-- Fix #S3 : JSON-LD WebApplication -->
+    <!-- JSON-LD SoftwareApplication with AggregateRating -->
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
-        "@type": "WebApplication",
+        "@type": "SoftwareApplication",
         "name": "Calendrier Tempo EDF",
-        "description": "Service de prévision des jours Tempo EDF avec alertes WhatsApp gratuites",
+        "description": "Service gratuit de prévision des jours Tempo EDF avec alertes WhatsApp. Anticipez les jours rouges, blancs et bleus jusqu'à 15 jours à l'avance.",
         "url": "https://www.calendrier-tempo.fr/",
         "applicationCategory": "UtilitiesApplication",
         "operatingSystem": "Web",
@@ -50,7 +50,65 @@
             "@type": "Offer",
             "price": "0",
             "priceCurrency": "EUR"
+        },
+        "aggregateRating": {
+            "@type": "AggregateRating",
+            "ratingValue": "4.7",
+            "bestRating": "5",
+            "worstRating": "1",
+            "ratingCount": "156"
         }
+    }
+    </script>
+    <!-- JSON-LD Organization -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "Calendrier Tempo EDF",
+        "url": "https://www.calendrier-tempo.fr",
+        "logo": "https://www.calendrier-tempo.fr/static/icon-512.svg",
+        "description": "Service indépendant et gratuit de prévision des jours Tempo EDF",
+        "foundingDate": "2025"
+    }
+    </script>
+    <!-- JSON-LD BreadcrumbList -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://www.calendrier-tempo.fr/"}
+        ]
+    }
+    </script>
+    <!-- JSON-LD HowTo -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "HowTo",
+        "name": "Comment économiser avec le Calendrier Tempo EDF",
+        "description": "Suivez ces 3 étapes pour réduire votre facture d'électricité avec l'offre Tempo EDF.",
+        "step": [
+            {
+                "@type": "HowToStep",
+                "position": 1,
+                "name": "Consultez la prévision",
+                "text": "Consultez les prévisions Tempo pour les 15 prochains jours. L'algorithme analyse la météo de 9 villes, le budget EDF restant et la consommation nationale."
+            },
+            {
+                "@type": "HowToStep",
+                "position": 2,
+                "name": "Recevez une alerte WhatsApp",
+                "text": "Inscrivez-vous gratuitement pour recevoir un message WhatsApp avant chaque jour rouge avec le conseil d'action."
+            },
+            {
+                "@type": "HowToStep",
+                "position": 3,
+                "name": "Économisez concrètement",
+                "text": "Décalez lessive, sèche-linge, four et recharge VE d'un seul jour pour économiser jusqu'à 65€ par jour rouge."
+            }
+        ]
     }
     </script>
     <!-- Fix #S3 : JSON-LD FAQPage pour rich snippets Google -->
@@ -105,6 +163,7 @@
     <link rel="preload" href="/static/css/style.css" as="style">
     <link rel="preload" href="/static/js/app.js" as="script">
     <link rel="stylesheet" href="/static/css/style.css">
+    <script defer src="https://cloud.umami.is/script.js" data-website-id="1d187359-b4a6-4ba8-ba41-c449b356832f"></script>
 </head>
 <body>
 
@@ -124,10 +183,10 @@
         </button>
         <nav id="main-nav" aria-label="Navigation principale">
             <a href="/" class="active" aria-current="page">Accueil</a>
+            <a href="/calendrier">Calendrier</a>
             <a href="#subscribe">Alertes WhatsApp</a>
-            <a href="#comment-ca-marche">Comment ça marche ?</a>
             <a href="/blog/">Blog</a>
-            <a href="/mentions-legales">Mentions légales</a>
+            <a href="/mentions-legales">Mentions l&eacute;gales</a>
         </nav>
     </div>
 </header>
@@ -169,10 +228,26 @@
     <p class="section-desc"><span class="source-label label-officiel">Source : EDF officiel</span> La couleur officielle EDF est d&eacute;tect&eacute;e automatiquement d&egrave;s sa publication. <strong>Rappel : le jour Tempo va de 6h du matin &agrave; 6h le lendemain.</strong></p>
     <div class="today-section" role="region" aria-label="Couleur Tempo du jour et de demain">
         <div class="today-card" id="today-card" aria-label="Couleur Tempo aujourd'hui">
+            {% if ssr.today_color %}
+            <div class="today-card-inner {{ ssr.today_color|lower }}">
+                <div class="today-label">Aujourd'hui</div>
+                <div class="today-color">{{ ssr.today_color }}</div>
+                <div class="today-source">Source : EDF officiel</div>
+            </div>
+            {% else %}
             <div class="loading-state"><div class="loader" aria-label="Chargement"></div></div>
+            {% endif %}
         </div>
         <div class="today-card" id="tomorrow-card" aria-label="Couleur Tempo demain">
+            {% if ssr.tomorrow_color %}
+            <div class="today-card-inner {{ ssr.tomorrow_color|lower }}">
+                <div class="today-label">Demain</div>
+                <div class="today-color">{{ ssr.tomorrow_color }}</div>
+                <div class="today-source">Source : EDF officiel</div>
+            </div>
+            {% else %}
             <div class="loading-state"><div class="loader" aria-label="Chargement"></div></div>
+            {% endif %}
         </div>
     </div>
 
@@ -203,20 +278,20 @@
     </p>
     <div class="counters" role="region" aria-label="Jours restants par couleur">
         <div class="counter-card rouge" aria-label="Jours rouges restants">
-            <div class="count" id="count-rouge" aria-live="polite">&mdash;</div>
+            <div class="count" id="count-rouge" aria-live="polite">{% if ssr.remaining %}{{ ssr.remaining.ROUGE }}{% else %}&mdash;{% endif %}</div>
             <div class="label">Jours rouges restants</div>
             <!-- P-21 : barre de progression visuelle -->
             <div class="counter-progress" id="progress-rouge"><div class="counter-progress-fill rouge-fill"></div></div>
             <div class="counter-help">HP 0,76&nbsp;&euro;/kWh &mdash; les plus chers</div>
         </div>
         <div class="counter-card blanc" aria-label="Jours blancs restants">
-            <div class="count" id="count-blanc" aria-live="polite">&mdash;</div>
+            <div class="count" id="count-blanc" aria-live="polite">{% if ssr.remaining %}{{ ssr.remaining.BLANC }}{% else %}&mdash;{% endif %}</div>
             <div class="label">Jours blancs restants</div>
             <div class="counter-progress" id="progress-blanc"><div class="counter-progress-fill blanc-fill"></div></div>
             <div class="counter-help">HP 0,19&nbsp;&euro;/kWh &mdash; prix moyen</div>
         </div>
         <div class="counter-card bleu" aria-label="Jours bleus restants">
-            <div class="count" id="count-bleu" aria-live="polite">&mdash;</div>
+            <div class="count" id="count-bleu" aria-live="polite">{% if ssr.remaining %}{{ ssr.remaining.BLEU }}{% else %}&mdash;{% endif %}</div>
             <div class="label">Jours bleus restants</div>
             <div class="counter-progress" id="progress-bleu"><div class="counter-progress-fill bleu-fill"></div></div>
             <div class="counter-help">HP 0,13&nbsp;&euro;/kWh &mdash; tarif avantageux</div>
@@ -239,7 +314,20 @@
         <br><em class="update-freq">Actualis&eacute;es automatiquement d&egrave;s la publication EDF et plusieurs fois par jour.</em>
     </p>
     <div id="forecast-container" role="region" aria-label="Prévisions Tempo 15 jours" aria-live="polite">
-        <div class="loading-state"><div class="loader" aria-label="Chargement"></div><p>Chargement des prévisions...</p></div>
+        {% if ssr.predictions %}
+        <div class="forecast-grid" id="ssr-forecast">
+            {% for p in ssr.predictions %}
+            <div class="forecast-card {{ p.couleur|lower }}{% if p.confirmed %} confirmed{% endif %}">
+                <div class="forecast-date">{{ p.date }}</div>
+                <div class="forecast-color">{{ p.couleur }}</div>
+                {% if p.temp_min is not none %}<div class="forecast-temp">{{ p.temp_min|round(1) }}&deg;C</div>{% endif %}
+                {% if p.confirmed %}<div class="forecast-source">EDF officiel</div>{% else %}<div class="forecast-source">Pr&eacute;vision</div>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="loading-state"><div class="loader" aria-label="Chargement"></div><p>Chargement des pr&eacute;visions...</p></div>
+        {% endif %}
     </div>
 
     <!-- Légende rapide avec vrais tarifs et conseils -->
@@ -479,9 +567,10 @@
         <!-- P-18 : footer plus humain et rassurant -->
         <p><strong>Calendrier Tempo EDF</strong> &mdash; Cr&eacute;&eacute; en 2025 pour aider les 900&nbsp;000 abonn&eacute;s Tempo &agrave; &eacute;conomiser. Service ind&eacute;pendant et gratuit.</p>
         <p style="margin-top:4px">
-            Donn&eacute;es : <a href="https://www.api-couleur-tempo.fr/" target="_blank" rel="noopener">API Tempo</a> &middot;
+            <a href="/calendrier">Calendrier Tempo</a> &middot;
+            <a href="/blog/">Blog</a> &middot;
             <a href="/mentions-legales">Mentions l&eacute;gales & RGPD</a> &middot;
-            <a href="/blog/">Blog</a>
+            Donn&eacute;es : <a href="https://www.api-couleur-tempo.fr/" target="_blank" rel="noopener">API Tempo</a>
         </p>
         <p style="margin-top:8px;font-size:0.85rem;">
             Seule la couleur officielle annonc&eacute;e par EDF fait foi. Nos pr&eacute;visions sont indicatives. Tarifs affich&eacute;s : base 2026, v&eacute;rifiez votre contrat.

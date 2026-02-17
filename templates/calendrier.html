@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendrier Tempo EDF {{ season_label }} — Jours rouges, blancs et bleus | calendrier-tempo.fr</title>
+    <meta name="description" content="Consultez le calendrier Tempo EDF {{ season_label }} : dates des jours rouges, blancs et bleus. Historique complet de la saison en cours et prévisions à 15 jours. Mis à jour quotidiennement.">
+    <link rel="canonical" href="https://www.calendrier-tempo.fr/calendrier">
+    <link rel="alternate" hreflang="fr" href="https://www.calendrier-tempo.fr/calendrier">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%232196F3'/><path d='M50 5A45 45 0 0 1 95 50H5A45 45 0 0 1 50 5z' fill='%23F44336'/><circle cx='50' cy='50' r='20' fill='white'/></svg>" type="image/svg+xml">
+    <meta name="application-name" content="Calendrier Tempo">
+    <meta name="apple-mobile-web-app-title" content="Calendrier Tempo">
+    <meta name="theme-color" content="#1565C0">
+    <link rel="manifest" href="/manifest.json">
+    <!-- Open Graph -->
+    <meta property="og:title" content="Calendrier Tempo EDF {{ season_label }} — Toutes les dates">
+    <meta property="og:description" content="Calendrier complet des jours Tempo EDF : rouges, blancs et bleus. Saison {{ season_label }}.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://www.calendrier-tempo.fr/calendrier">
+    <meta property="og:locale" content="fr_FR">
+    <meta property="og:site_name" content="Calendrier Tempo EDF">
+    <meta property="og:image" content="https://www.calendrier-tempo.fr/static/og-image.png">
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Calendrier Tempo EDF {{ season_label }}">
+    <meta name="twitter:description" content="Toutes les dates des jours rouges, blancs et bleus Tempo EDF.">
+    <meta name="twitter:image" content="https://www.calendrier-tempo.fr/static/og-image.png">
+    <!-- JSON-LD BreadcrumbList -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://www.calendrier-tempo.fr/"},
+            {"@type": "ListItem", "position": 2, "name": "Calendrier Tempo EDF"}
+        ]
+    }
+    </script>
+    <!-- JSON-LD Dataset -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "Dataset",
+        "name": "Calendrier Tempo EDF {{ season_label }}",
+        "description": "Historique complet des jours Tempo EDF pour la saison {{ season_label }} : 22 jours rouges, 43 jours blancs et 300 jours bleus.",
+        "url": "https://www.calendrier-tempo.fr/calendrier",
+        "license": "https://creativecommons.org/licenses/by/4.0/",
+        "creator": {
+            "@type": "Organization",
+            "name": "Calendrier Tempo EDF"
+        },
+        "temporalCoverage": "{{ season_start }}/{{ season_end }}"
+    }
+    </script>
+    <!-- JSON-LD FAQPage -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            {
+                "@type": "Question",
+                "name": "Quand sont les prochains jours rouges Tempo EDF ?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Les jours rouges Tempo EDF tombent uniquement entre le 1er novembre et le 31 mars, jamais le week-end ni les jours fériés. EDF annonce la couleur du lendemain chaque jour vers 17h. Notre algorithme anticipe ces jours jusqu'à 15 jours à l'avance en analysant la météo et la consommation nationale."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Combien de jours rouges reste-t-il cette saison ?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "La saison Tempo {{ season_label }} comporte exactement 22 jours rouges, 43 jours blancs et 300 jours bleus. Consultez le compteur en haut de cette page pour voir combien il en reste à placer."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Le calendrier Tempo EDF est-il le même chaque année ?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Non, les dates des jours rouges et blancs changent chaque saison. EDF les choisit en fonction de la demande en électricité, qui dépend principalement de la météo hivernale. C'est pourquoi notre service de prévision est utile : il anticipe les choix d'EDF."
+                }
+            }
+        ]
+    }
+    </script>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script defer src="https://cloud.umami.is/script.js" data-website-id="1d187359-b4a6-4ba8-ba41-c449b356832f"></script>
+    <style>
+        .cal-nav { display: flex; justify-content: center; align-items: center; gap: 16px; margin: 24px 0; flex-wrap: wrap; }
+        .cal-nav a, .cal-nav span { padding: 8px 16px; border-radius: var(--radius-sm); text-decoration: none; font-weight: 600; font-size: 0.95rem; }
+        .cal-nav a { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+        .cal-nav a:hover { background: var(--bleu-bg); border-color: var(--bleu); }
+        .cal-nav .cal-current { background: var(--bleu); color: white; padding: 8px 20px; }
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin: 0 auto 32px; max-width: 700px; }
+        .cal-header { text-align: center; font-weight: 700; font-size: 0.85rem; padding: 8px 4px; color: var(--text-secondary); }
+        .cal-day { text-align: center; padding: 10px 4px; border-radius: var(--radius-sm); font-size: 0.9rem; font-weight: 500; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+        .cal-day.empty { background: transparent; }
+        .cal-day.rouge { background: var(--rouge); color: white; font-weight: 700; }
+        .cal-day.blanc { background: var(--blanc-bg); color: var(--text); border: 1px solid var(--blanc); }
+        .cal-day.bleu { background: var(--bleu-bg); color: var(--bleu); }
+        .cal-day.future { opacity: 0.5; font-style: italic; }
+        .cal-day.today { box-shadow: 0 0 0 3px var(--bleu); }
+        .cal-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; max-width: 500px; margin: 0 auto 32px; }
+        .cal-stat { text-align: center; padding: 16px; border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+        .cal-stat .stat-count { font-size: 2rem; font-weight: 800; }
+        .cal-stat .stat-label { font-size: 0.85rem; color: var(--text-secondary); margin-top: 4px; }
+        .cal-stat.rouge .stat-count { color: var(--rouge); }
+        .cal-stat.blanc .stat-count { color: var(--blanc); }
+        .cal-stat.bleu .stat-count { color: var(--bleu); }
+        .cal-seo-content { max-width: 800px; margin: 0 auto; padding: 32px 0; }
+        .cal-seo-content h2 { font-size: 1.4rem; margin: 24px 0 12px; color: var(--text); }
+        .cal-seo-content p { line-height: 1.8; color: var(--text-secondary); margin-bottom: 16px; }
+        .cal-seo-content strong { color: var(--text); }
+        .cal-legend { display: flex; justify-content: center; gap: 24px; margin: 16px 0 24px; flex-wrap: wrap; }
+        .cal-legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; }
+        .cal-legend-dot { width: 16px; height: 16px; border-radius: 4px; }
+        @media (max-width: 600px) {
+            .cal-grid { gap: 2px; }
+            .cal-day { padding: 8px 2px; font-size: 0.8rem; min-height: 36px; }
+            .cal-stats { grid-template-columns: 1fr; max-width: 300px; }
+        }
+    </style>
+</head>
+<body>
+
+<a href="#main-content" class="skip-link">Aller au contenu principal</a>
+
+<header role="banner">
+    <div class="container header-row">
+        <a href="/" class="header-brand">
+            <span class="header-title">Calendrier Tempo EDF</span>
+            <span class="header-baseline">Anticipez les jours rouges Tempo &mdash; gratuit</span>
+        </a>
+        <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu de navigation" aria-expanded="false" aria-controls="main-nav">
+            <span class="bar"></span>
+            <span class="bar"></span>
+            <span class="bar"></span>
+        </button>
+        <nav id="main-nav" aria-label="Navigation principale">
+            <a href="/">Accueil</a>
+            <a href="/calendrier" class="active" aria-current="page">Calendrier</a>
+            <a href="/#subscribe">Alertes WhatsApp</a>
+            <a href="/blog/">Blog</a>
+            <a href="/mentions-legales">Mentions l&eacute;gales</a>
+        </nav>
+    </div>
+</header>
+
+<main id="main-content" class="container" role="main">
+
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb" aria-label="Fil d'Ariane">
+        <a href="/">Accueil</a> <span aria-hidden="true">&rsaquo;</span>
+        <span aria-current="page">Calendrier Tempo EDF</span>
+    </nav>
+
+    <h1>Calendrier Tempo EDF {{ season_label }}</h1>
+    <p class="section-desc">
+        Retrouvez ci-dessous le <strong>calendrier complet des jours Tempo EDF</strong> pour la saison {{ season_label }}.
+        Les jours pass&eacute;s affichent la <strong>couleur officielle EDF</strong>, les jours futurs nos <strong>pr&eacute;visions</strong>.
+    </p>
+
+    <!-- Compteurs de la saison -->
+    <div class="cal-stats" role="region" aria-label="Bilan de la saison">
+        <div class="cal-stat rouge">
+            <div class="stat-count">{{ stats.rouge_used }} / 22</div>
+            <div class="stat-label">Jours rouges utilis&eacute;s</div>
+        </div>
+        <div class="cal-stat blanc">
+            <div class="stat-count">{{ stats.blanc_used }} / 43</div>
+            <div class="stat-label">Jours blancs utilis&eacute;s</div>
+        </div>
+        <div class="cal-stat bleu">
+            <div class="stat-count">{{ stats.bleu_used }}</div>
+            <div class="stat-label">Jours bleus &eacute;coul&eacute;s</div>
+        </div>
+    </div>
+
+    <!-- Navigation entre mois -->
+    <nav class="cal-nav" aria-label="Navigation entre mois">
+        {% if prev_month %}
+        <a href="/calendrier?month={{ prev_month }}&year={{ prev_year }}">&larr; {{ prev_month_label }}</a>
+        {% endif %}
+        <span class="cal-current">{{ current_month_label }}</span>
+        {% if next_month %}
+        <a href="/calendrier?month={{ next_month }}&year={{ next_year }}">{{ next_month_label }} &rarr;</a>
+        {% endif %}
+    </nav>
+
+    <!-- Légende -->
+    <div class="cal-legend">
+        <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--rouge)"></div> Rouge</div>
+        <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--blanc);border:1px solid #999"></div> Blanc</div>
+        <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--bleu)"></div> Bleu</div>
+    </div>
+
+    <!-- Grille du calendrier -->
+    <div class="cal-grid" role="grid" aria-label="Calendrier Tempo {{ current_month_label }}">
+        <div class="cal-header" role="columnheader">Lun</div>
+        <div class="cal-header" role="columnheader">Mar</div>
+        <div class="cal-header" role="columnheader">Mer</div>
+        <div class="cal-header" role="columnheader">Jeu</div>
+        <div class="cal-header" role="columnheader">Ven</div>
+        <div class="cal-header" role="columnheader">Sam</div>
+        <div class="cal-header" role="columnheader">Dim</div>
+        {% for day in calendar_days %}
+            {% if day.empty %}
+            <div class="cal-day empty" role="gridcell"></div>
+            {% else %}
+            <div class="cal-day {{ day.color|lower }}{% if day.is_today %} today{% endif %}{% if day.is_future %} future{% endif %}" role="gridcell" aria-label="{{ day.num }} {{ current_month_label }} - {{ day.color }}{% if day.is_future %} (pr&eacute;vision){% endif %}">
+                {{ day.num }}
+            </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+
+    <!-- CTA -->
+    <section class="blog-cta" style="margin: 32px 0">
+        <h2>Recevez une alerte avant chaque jour rouge</h2>
+        <p>Inscrivez-vous gratuitement pour recevoir un WhatsApp la veille de chaque jour rouge ou blanc Tempo.</p>
+        <a href="/#subscribe" class="btn btn-primary">S'inscrire aux alertes gratuites</a>
+    </section>
+
+    <!-- Contenu SEO -->
+    <section class="cal-seo-content">
+        <h2>Comprendre le calendrier Tempo EDF</h2>
+        <p>
+            Le <strong>calendrier Tempo EDF</strong> d&eacute;coupe chaque saison (du 1<sup>er</sup> septembre au 31 ao&ucirc;t)
+            en trois types de jours : <strong>22 jours rouges</strong>, <strong>43 jours blancs</strong> et
+            <strong>300 jours bleus</strong>. Le prix du kilowatt-heure varie consid&eacute;rablement selon la couleur :
+            0,13&nbsp;&euro; en heures pleines un jour bleu contre <strong>0,76&nbsp;&euro;</strong> un jour rouge,
+            soit pr&egrave;s de 6 fois plus cher.
+        </p>
+
+        <h2>Quand tombent les jours rouges Tempo ?</h2>
+        <p>
+            Les <strong>jours rouges Tempo</strong> sont r&eacute;serv&eacute;s &agrave; la p&eacute;riode hivernale,
+            du <strong>1<sup>er</sup> novembre au 31 mars</strong>. Ils ne tombent jamais le week-end ni les jours f&eacute;ri&eacute;s.
+            EDF les choisit parmi les jours o&ugrave; la demande en &eacute;lectricit&eacute; est la plus forte,
+            g&eacute;n&eacute;ralement lors de vagues de froid. Notre algorithme analyse la m&eacute;t&eacute;o de 9 villes
+            fran&ccedil;aises et la consommation nationale pour <strong>anticiper ces jours jusqu'&agrave; 15 jours &agrave; l'avance</strong>.
+        </p>
+
+        <h2>Comment utiliser ce calendrier ?</h2>
+        <p>
+            Les jours pass&eacute;s affichent la <strong>couleur officielle confirm&eacute;e par EDF</strong>.
+            Les jours futurs en italique montrent nos <strong>pr&eacute;visions</strong>, avec une fiabilit&eacute; qui
+            diminue au-del&agrave; de 5 jours. Pour &ecirc;tre pr&eacute;venu automatiquement la veille d'un jour rouge,
+            <a href="/#subscribe"><strong>inscrivez-vous aux alertes WhatsApp gratuites</strong></a>.
+        </p>
+        <p>
+            Vous pouvez aussi consulter notre <a href="/">page d'accueil</a> pour voir la couleur du jour et de demain,
+            ou notre <a href="/blog/">blog</a> pour des conseils d'&eacute;conomies les jours rouges.
+        </p>
+    </section>
+
+</main>
+
+<footer role="contentinfo">
+    <div class="container">
+        <p><strong>Calendrier Tempo EDF</strong> &mdash; Cr&eacute;&eacute; en 2025 pour aider les 900&nbsp;000 abonn&eacute;s Tempo &agrave; &eacute;conomiser. Service ind&eacute;pendant et gratuit.</p>
+        <p style="margin-top:4px">
+            <a href="/">Accueil</a> &middot;
+            <a href="/calendrier">Calendrier</a> &middot;
+            <a href="/blog/">Blog</a> &middot;
+            <a href="/mentions-legales">Mentions l&eacute;gales & RGPD</a>
+        </p>
+    </div>
+</footer>
+
+<script>
+(function() {
+    const btn = document.getElementById('hamburger-btn');
+    const nav = document.getElementById('main-nav');
+    if (!btn || !nav) return;
+    btn.addEventListener('click', () => {
+        const open = nav.classList.toggle('open');
+        btn.setAttribute('aria-expanded', open);
+    });
+})();
+</script>
+
+</body>
+</html>

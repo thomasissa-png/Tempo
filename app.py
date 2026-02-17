@@ -321,6 +321,7 @@ _CACHE_EXACT: dict[str, str] = {
     "/": "public, max-age=300, stale-while-revalidate=600",
     "/mentions-legales": "public, max-age=3600",
     "/blog/": "public, max-age=600, stale-while-revalidate=1800",
+    "/calendrier": "public, max-age=600, stale-while-revalidate=1800",
 }
 
 
@@ -416,10 +417,211 @@ def _check_origin(request: Request) -> bool:
 # PAGES HTML
 # ================================================================
 
+def _get_ssr_data() -> dict:
+    """Pré-charge les données depuis la DB pour le Server-Side Rendering.
+
+    Retourne un dict avec today, tomorrow, remaining, predictions.
+    Best-effort : si la DB n'est pas prête, retourne des valeurs vides.
+    Ceci permet à Google de crawler du contenu réel au lieu de placeholders JS.
+    """
+    ssr = {
+        "today_color": None, "tomorrow_color": None,
+        "remaining": None, "predictions": [],
+    }
+    if not _db_ready.is_set():
+        return ssr
+    try:
+        from database import get_db
+        conn = get_db()
+        try:
+            today_str = date.today().isoformat()
+            tomorrow_str = (date.today() + timedelta(days=1)).isoformat()
+
+            # Couleur d'aujourd'hui depuis actuals
+            row = conn.execute(
+                "SELECT couleur_reelle FROM actuals WHERE date = ? AND synthetic = 0",
+                (today_str,)
+            ).fetchone()
+            if row:
+                ssr["today_color"] = row["couleur_reelle"]
+
+            # Couleur de demain depuis actuals ou predictions confirmées
+            row = conn.execute(
+                "SELECT couleur_reelle FROM actuals WHERE date = ? AND synthetic = 0",
+                (tomorrow_str,)
+            ).fetchone()
+            if row:
+                ssr["tomorrow_color"] = row["couleur_reelle"]
+            else:
+                row = conn.execute(
+                    "SELECT couleur_predite FROM predictions WHERE date = ? AND confirmed = 1 LIMIT 1",
+                    (tomorrow_str,)
+                ).fetchone()
+                if row:
+                    ssr["tomorrow_color"] = row["couleur_predite"]
+
+            # Jours restants
+            from tempo_client import get_remaining_days
+            ssr["remaining"] = get_remaining_days()
+
+            # Premières prédictions (J+1 à J+7 pour le SSR)
+            rows = conn.execute(
+                """SELECT date, couleur_predite, probabilite_rouge,
+                          probabilite_blanc, probabilite_bleu,
+                          temp_min_prevue, confirmed
+                   FROM predictions
+                   WHERE date >= ? AND id IN (
+                       SELECT COALESCE(
+                           MAX(CASE WHEN confirmed = 1 THEN id END),
+                           MAX(id)
+                       ) FROM predictions WHERE date >= ? GROUP BY date
+                   )
+                   ORDER BY date ASC LIMIT 7""",
+                (today_str, today_str)
+            ).fetchall()
+            # Croiser avec actuals
+            actual_rows = conn.execute(
+                "SELECT date, couleur_reelle FROM actuals WHERE date >= ? AND synthetic = 0",
+                (today_str,)
+            ).fetchall()
+            actuals_map = {r["date"]: r["couleur_reelle"] for r in actual_rows}
+
+            for r in rows:
+                actual = actuals_map.get(r["date"])
+                ssr["predictions"].append({
+                    "date": r["date"],
+                    "couleur": actual or r["couleur_predite"],
+                    "confirmed": bool(actual or r["confirmed"]),
+                    "temp_min": r["temp_min_prevue"],
+                })
+        finally:
+            conn.close()
+    except Exception as e:
+        logger.debug(f"[SSR] Erreur pré-chargement: {e}")
+    return ssr
+
+
 @app.get("/", response_class=HTMLResponse)
 async def page_dashboard(request: Request):
     """Page principale — dashboard des prévisions."""
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+    ssr = _get_ssr_data()
+    return templates.TemplateResponse("dashboard.html", {"request": request, "ssr": ssr})
+
+
+@app.get("/calendrier", response_class=HTMLResponse)
+async def page_calendrier(request: Request, month: int = None, year: int = None):
+    """Page calendrier Tempo EDF — vue mensuelle avec couleurs passées et prévisions.
+
+    Cible SEO : 'calendrier tempo', 'calendrier tempo edf'.
+    Le contenu est entièrement server-side rendered pour le crawl Google.
+    """
+    import calendar as cal_module
+
+    today = date.today()
+    # Mois affiché (défaut: mois actuel)
+    if not month or not year:
+        month = today.month
+        year = today.year
+    month = max(1, min(12, month))
+    year = max(2020, min(2030, year))
+
+    # Label saison
+    from tempo_client import get_season_dates
+    season_start, season_end = get_season_dates()
+    season_label = f"{season_start.year}-{season_end.year}"
+
+    # Charger les couleurs depuis la DB
+    colors_map: dict[str, str] = {}  # "YYYY-MM-DD" -> "ROUGE"|"BLANC"|"BLEU"
+    try:
+        from database import get_db
+        conn = get_db()
+        try:
+            # Actuals (couleurs officielles)
+            rows = conn.execute(
+                "SELECT date, couleur_reelle FROM actuals WHERE date LIKE ?",
+                (f"{year}-{month:02d}-%",)
+            ).fetchall()
+            for r in rows:
+                colors_map[r["date"]] = r["couleur_reelle"]
+
+            # Prédictions pour les jours futurs non confirmés
+            pred_rows = conn.execute(
+                """SELECT date, couleur_predite FROM predictions
+                   WHERE date LIKE ? AND date > ? AND id IN (
+                       SELECT COALESCE(
+                           MAX(CASE WHEN confirmed = 1 THEN id END),
+                           MAX(id)
+                       ) FROM predictions WHERE date LIKE ? GROUP BY date
+                   )""",
+                (f"{year}-{month:02d}-%", today.isoformat(), f"{year}-{month:02d}-%")
+            ).fetchall()
+            for r in pred_rows:
+                if r["date"] not in colors_map:
+                    colors_map[r["date"]] = r["couleur_predite"]
+        finally:
+            conn.close()
+    except Exception as e:
+        logger.debug(f"[Calendrier] Erreur DB: {e}")
+
+    # Stats de la saison
+    stats = {"rouge_used": 0, "blanc_used": 0, "bleu_used": 0}
+    try:
+        from tempo_client import count_used_days
+        used = count_used_days()
+        stats["rouge_used"] = used.get("ROUGE", 0)
+        stats["blanc_used"] = used.get("BLANC", 0)
+        stats["bleu_used"] = used.get("BLEU", 0)
+    except Exception:
+        pass
+
+    # Construire la grille du calendrier
+    month_names_fr = [
+        "", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+        "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
+    ]
+    first_weekday, num_days = cal_module.monthrange(year, month)
+    # first_weekday: 0=lundi, 6=dimanche
+    calendar_days = []
+    # Cases vides au début
+    for _ in range(first_weekday):
+        calendar_days.append({"empty": True})
+    # Jours du mois
+    for day in range(1, num_days + 1):
+        d = date(year, month, day)
+        d_str = d.isoformat()
+        color = colors_map.get(d_str, "BLEU")  # default bleu hors saison
+        is_future = d > today
+        is_today = d == today
+        calendar_days.append({
+            "empty": False, "num": day, "color": color,
+            "is_future": is_future, "is_today": is_today,
+        })
+
+    # Navigation mois précédent / suivant
+    prev_m = month - 1 if month > 1 else 12
+    prev_y = year if month > 1 else year - 1
+    next_m = month + 1 if month < 12 else 1
+    next_y = year if month < 12 else year + 1
+
+    # Limiter la navigation à la saison
+    show_prev = date(prev_y, prev_m, 1) >= date(season_start.year, season_start.month, 1)
+    show_next = date(next_y, next_m, 1) <= date(season_end.year, season_end.month, 1)
+
+    return templates.TemplateResponse("calendrier.html", {
+        "request": request,
+        "season_label": season_label,
+        "season_start": season_start.isoformat(),
+        "season_end": season_end.isoformat(),
+        "stats": stats,
+        "calendar_days": calendar_days,
+        "current_month_label": f"{month_names_fr[month]} {year}",
+        "prev_month": prev_m if show_prev else None,
+        "prev_year": prev_y,
+        "prev_month_label": f"{month_names_fr[prev_m]} {prev_y}" if show_prev else "",
+        "next_month": next_m if show_next else None,
+        "next_year": next_y,
+        "next_month_label": f"{month_names_fr[next_m]} {next_y}" if show_next else "",
+    })
 
 
 @app.get("/admin", response_class=HTMLResponse)
@@ -514,6 +716,8 @@ async def robots_txt():
     return (
         "User-agent: *\n"
         "Allow: /\n"
+        "Allow: /calendrier\n"
+        "Allow: /blog/\n"
         "Disallow: /admin\n"
         "Disallow: /api/\n"
         "Disallow: /manage/\n"
@@ -533,6 +737,12 @@ async def sitemap_xml():
         f"    <lastmod>{today}</lastmod>\n"
         "    <changefreq>daily</changefreq>\n"
         "    <priority>1.0</priority>\n"
+        "  </url>",
+        "  <url>\n"
+        "    <loc>https://www.calendrier-tempo.fr/calendrier</loc>\n"
+        f"    <lastmod>{today}</lastmod>\n"
+        "    <changefreq>daily</changefreq>\n"
+        "    <priority>0.9</priority>\n"
         "  </url>",
         "  <url>\n"
         "    <loc>https://www.calendrier-tempo.fr/mentions-legales</loc>\n"
