@@ -322,10 +322,17 @@ _CACHE_EXACT: dict[str, str] = {
 
 
 @app.middleware("http")
-async def add_cache_headers(request: Request, call_next):
-    """Ajoute Cache-Control sur les réponses statiques et API."""
+async def add_cache_and_security_headers(request: Request, call_next):
+    """Ajoute Cache-Control et headers de sécurité sur toutes les réponses."""
     response = await call_next(request)
     path = request.url.path
+    # --- Headers de sécurité (SEO trust signal + protection) ---
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    # --- Cache-Control ---
     # Match exact d'abord (pages HTML)
     if path in _CACHE_EXACT:
         response.headers["Cache-Control"] = _CACHE_EXACT[path]
