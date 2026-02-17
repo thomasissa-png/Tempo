@@ -76,7 +76,12 @@ send_sms = send_whatsapp
 # FORMATAGE DES MESSAGES
 # ================================================================
 
-JOURS_FR = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
+JOURS_FR = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
+
+MOIS_FR = [
+    "janvier", "février", "mars", "avril", "mai", "juin",
+    "juillet", "août", "septembre", "octobre", "novembre", "décembre",
+]
 
 
 def _manage_link(manage_token: str) -> str:
@@ -86,17 +91,23 @@ def _manage_link(manage_token: str) -> str:
     return f"{Config.BASE_URL}/manage/{manage_token}"
 
 
+def _format_date_fr(d: date) -> str:
+    """Formate une date en français complet : 'mardi 18 février'."""
+    jour = JOURS_FR[d.weekday()]
+    mois = MOIS_FR[d.month - 1]
+    return f"{jour} {d.day} {mois}"
+
+
 def format_alert_rouge(target_date: date, prediction: dict, manage_token: str = "") -> str:
     """Message d'alerte jour ROUGE."""
-    jour = JOURS_FR[target_date.weekday()]
-    date_fr = target_date.strftime("%d/%m")
+    date_fr = _format_date_fr(target_date)
     prob = round(prediction.get("probabilite_rouge", 0) * 100)
     temp = prediction.get("temp_min_prevue", "?")
     temp_str = f"{temp:.0f}°C" if isinstance(temp, (int, float)) else "?"
 
     msg = (
-        f"⚠️ *TempoForecast*\n\n"
-        f"*Jour ROUGE* prévu {jour} {date_fr} ({prob}% confiance).\n"
+        f"⚠️ *Calendrier Tempo EDF*\n\n"
+        f"*Jour ROUGE* prévu {date_fr} ({prob}% confiance).\n"
         f"Temp min: {temp_str}.\n\n"
         f"👉 Reportez lessive, sèche-linge, four et recharge VE.\n"
         f"Limitez votre conso entre 6h-22h !"
@@ -110,13 +121,12 @@ def format_alert_rouge(target_date: date, prediction: dict, manage_token: str = 
 
 def format_alert_blanc(target_date: date, prediction: dict, manage_token: str = "") -> str:
     """Message d'alerte jour BLANC."""
-    jour = JOURS_FR[target_date.weekday()]
-    date_fr = target_date.strftime("%d/%m")
+    date_fr = _format_date_fr(target_date)
     prob = round(prediction.get("probabilite_blanc", 0) * 100)
 
     msg = (
-        f"📢 *TempoForecast*\n\n"
-        f"*Jour BLANC* prévu {jour} {date_fr} ({prob}% confiance).\n"
+        f"📢 *Calendrier Tempo EDF*\n\n"
+        f"*Jour BLANC* prévu {date_fr} ({prob}% confiance).\n"
         f"Tarif intermédiaire."
     )
     link = _manage_link(manage_token)
@@ -128,11 +138,10 @@ def format_alert_blanc(target_date: date, prediction: dict, manage_token: str = 
 
 def format_alert_officiel(target_date: date, couleur: str, manage_token: str = "") -> str:
     """Message pour couleur officielle confirmée."""
-    jour = JOURS_FR[target_date.weekday()]
-    date_fr = target_date.strftime("%d/%m")
+    date_fr = _format_date_fr(target_date)
     emoji = {"ROUGE": "🔴", "BLANC": "⚪", "BLEU": "🔵"}.get(couleur, "")
 
-    msg = f"{emoji} *Tempo confirmé: {couleur}* {jour} {date_fr}."
+    msg = f"{emoji} *Tempo confirmé : {couleur}* {date_fr}."
     if couleur == "ROUGE":
         msg += "\nHeures pleines 6h-22h très chères !\n👉 Reportez vos machines."
     link = _manage_link(manage_token)
@@ -144,12 +153,13 @@ def format_alert_officiel(target_date: date, couleur: str, manage_token: str = "
 
 def format_recap_hebdo(predictions: list[dict], manage_token: str = "") -> str:
     """Récapitulatif hebdomadaire (dimanche soir)."""
-    lines = ["📊 *TempoForecast — Semaine à venir*\n"]
+    lines = ["📊 *Calendrier Tempo EDF — Semaine à venir*\n"]
     for p in predictions[:7]:
         d = date.fromisoformat(p["date"])
         jour = JOURS_FR[d.weekday()][:3]
+        mois = MOIS_FR[d.month - 1][:3]
         emoji = {"ROUGE": "🔴", "BLANC": "⚪", "BLEU": "🔵"}.get(p["couleur_predite"], "❓")
-        lines.append(f"  {emoji} {jour} {d.strftime('%d/%m')}")
+        lines.append(f"  {emoji} {jour}. {d.day} {mois}.")
     link = _manage_link(manage_token)
     if link:
         lines.append(f"\n📋 Gérer mes alertes : {link}")
@@ -550,20 +560,20 @@ def handle_incoming_sms(from_number: str, body: str) -> str:
         result = unsubscribe_user(phone_clean)
         if result.get("success"):
             logger.info(f"[WhatsApp IN] Désinscription: ****{phone_clean[-4:]}")
-            return "Vous êtes désinscrit de TempoForecast. Répondez START pour vous réinscrire."
+            return "Vous êtes désinscrit du Calendrier Tempo EDF. Répondez START pour vous réinscrire."
         else:
             logger.info(f"[WhatsApp IN] Tentative STOP numéro inconnu: ****{phone_clean[-4:]}")
-            return "Ce numéro n'est pas inscrit à TempoForecast."
+            return "Ce numéro n'est pas inscrit au Calendrier Tempo EDF."
 
     if body_clean in ("START", "OUI", "INSCRIRE"):
         result = register_user(phone_clean)
         if result.get("success"):
             logger.info(f"[WhatsApp IN] Réinscription: ****{phone_clean[-4:]}")
-            return "Vous êtes réinscrit aux alertes TempoForecast !"
+            return "Vous êtes réinscrit aux alertes du Calendrier Tempo EDF !"
         else:
             return result.get("error", "Erreur lors de la réinscription.")
 
-    return "TempoForecast : répondez STOP pour vous désinscrire ou START pour vous réinscrire."
+    return "Calendrier Tempo EDF : répondez STOP pour vous désinscrire ou START pour vous réinscrire."
 
 
 def cleanup_inactive_users(months: int = 6):

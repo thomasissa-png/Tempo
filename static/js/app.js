@@ -217,14 +217,20 @@ async function loadPredictions() {
             return;
         }
 
-        // Date de dernière mise à jour
+        // Date de dernière mise à jour (timezone Paris)
         if (data.generated_at) {
-            const genDate = new Date(data.generated_at);
+            let ts = data.generated_at;
+            // Si le timestamp n'a pas de timezone, assumer UTC
+            if (ts.length > 10 && !ts.includes('+') && !ts.includes('Z') && !ts.match(/\d{2}:\d{2}:\d{2}-/)) {
+                ts += 'Z';
+            }
+            const genDate = new Date(ts);
             if (!isNaN(genDate.getTime())) {
                 const meta = document.createElement('div');
                 meta.className = 'forecast-meta';
-                meta.textContent = `Dernière mise à jour : ${genDate.toLocaleDateString('fr-FR')} ` +
-                    `à ${genDate.toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'})}`;
+                const opts = {timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit'};
+                meta.textContent = `Dernière mise à jour : ${genDate.toLocaleDateString('fr-FR', {timeZone: 'Europe/Paris'})} ` +
+                    `à ${genDate.toLocaleTimeString('fr-FR', opts)}`;
                 container.appendChild(meta);
             }
         }

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TempoForecast — Admin / Performance</title>
+    <title>Calendrier Tempo EDF — Admin / Performance</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%232196F3'/><path d='M50 5A45 45 0 0 1 95 50H5A45 45 0 0 1 50 5z' fill='%23F44336'/><circle cx='50' cy='50' r='20' fill='white'/></svg>" type="image/svg+xml">
     <link rel="stylesheet" href="/static/css/style.css">
     <!-- Fix #S8 : preconnect pour CDN -->
@@ -19,7 +19,7 @@
 <header role="banner">
     <div class="container header-row">
         <a href="/" class="header-brand">
-            <h1>TempoForecast — Admin</h1>
+            <h1>Calendrier Tempo EDF — Admin</h1>
         </a>
         <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu de navigation" aria-expanded="false" aria-controls="main-nav">
             <span class="bar"></span>
@@ -121,7 +121,7 @@
                 Exécuter les tâches du scheduler manuellement :
             </p>
             <button class="task-btn" onclick="runTask('verification')">Vérification EDF + recalcul</button>
-            <button class="task-btn" onclick="runTask('predictions')">Prédictions + alertes SMS</button>
+            <button class="task-btn" onclick="runTask('predictions')">Prédictions + alertes WhatsApp</button>
             <button class="task-btn" onclick="runTask('weights')">Recalcul poids</button>
             <button class="task-btn" onclick="runTask('recap')">Récap hebdo</button>
             <button class="task-btn" onclick="runTask('backfill')">Backfill saison</button>
@@ -130,7 +130,7 @@
 
         <!-- Stats utilisateurs -->
         <div class="admin-card" style="margin-bottom:24px">
-            <h3>Utilisateurs SMS</h3>
+            <h3>Utilisateurs WhatsApp</h3>
             <div id="user-stats">Chargement...</div>
         </div>
 
@@ -163,7 +163,7 @@
 
 <footer role="contentinfo">
     <div class="container">
-        <p>TempoForecast Admin &mdash; <a href="/">Retour au dashboard</a></p>
+        <p>Calendrier Tempo EDF — Admin &mdash; <a href="/">Retour au dashboard</a></p>
     </div>
 </footer>
 

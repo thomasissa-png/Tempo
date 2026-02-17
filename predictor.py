@@ -28,6 +28,14 @@ import logging
 import math
 from functools import lru_cache
 from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
+
+_PARIS_TZ = ZoneInfo("Europe/Paris")
+
+def _now_paris() -> datetime:
+    """Retourne l'heure actuelle en timezone Paris (CET/CEST)."""
+    return datetime.now(tz=_PARIS_TZ)
+
 from database import get_db, get_current_weights
 from config import Config
 from tempo_client import get_remaining_days, is_in_season, days_left_in_season
@@ -1391,7 +1399,7 @@ def store_prediction(pred: dict, horizon: str = "J-1",
                 (pred["date"], horizon,
                  prev["couleur_predite"], pred["couleur_predite"],
                  prev["score_risque"], pred["score_risque"],
-                 cycle_id, datetime.now().isoformat()),
+                 cycle_id, _now_paris().isoformat()),
             )
 
         conn.execute(
@@ -1417,7 +1425,7 @@ def store_prediction(pred: dict, horizon: str = "J-1",
              pred.get("pression_prevue"),
              pred.get("jours_rouges_restants"), pred.get("jours_blancs_restants"),
              pred.get("raison", ""), horizon,
-             datetime.now().isoformat(),
+             _now_paris().isoformat(),
              pred.get("score_temperature", 0), pred.get("score_budget", 0),
              pred.get("score_weekday", 0), pred.get("score_gradient", 0),
              pred.get("score_clustering", 0), pred.get("score_rte", 0),

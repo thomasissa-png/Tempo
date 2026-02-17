@@ -518,6 +518,8 @@ class TestWhatsAppMessages:
         assert "manage/abc123" in msg
         assert "Gérer mes alertes" in msg
         assert "*Jour ROUGE*" in msg
+        assert "Calendrier Tempo EDF" in msg
+        assert "mardi 17 février" in msg
 
     def test_blanc_message_has_manage_link(self):
         """Le message BLANC contient le lien de gestion."""
@@ -560,6 +562,7 @@ class TestWhatsAppMessages:
         register_user("+33655555558")
         response = handle_incoming_sms("whatsapp:+33655555558", "STOP")
         assert "désinscrit" in response.lower()
+        assert "Calendrier Tempo EDF" in response
 
 
 class TestOriginCheck:

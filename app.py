@@ -27,6 +27,13 @@ from collections import defaultdict
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta
 from logging.handlers import RotatingFileHandler
+from zoneinfo import ZoneInfo
+
+_PARIS_TZ = ZoneInfo("Europe/Paris")
+
+def _now_paris() -> datetime:
+    """Retourne l'heure actuelle en timezone Paris (CET/CEST)."""
+    return datetime.now(tz=_PARIS_TZ)
 
 from fastapi import FastAPI, Request, Form, HTTPException, Header
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
@@ -782,7 +789,7 @@ async def api_predictions():
                 "status": "ok",
                 "predictions": [],
                 "accuracy": get_accuracy_global(30),
-                "generated_at": datetime.now().isoformat(),
+                "generated_at": _now_paris().isoformat(),
                 "message": "Données météo temporairement indisponibles. "
                            "Les prédictions se mettront à jour automatiquement.",
             }
@@ -799,7 +806,7 @@ async def api_predictions():
             "status": "ok",
             "predictions": predictions,
             "accuracy": accuracy,
-            "generated_at": datetime.now().isoformat(),
+            "generated_at": _now_paris().isoformat(),
             "cycle_id": cycle_id,
         }
 
@@ -907,7 +914,7 @@ async def api_learning_health(request: Request, authorization: str | None = Head
 
 
 # ================================================================
-# API : ALERTES SMS
+# API : ALERTES WHATSAPP
 # ================================================================
 
 @app.post("/api/subscribe")
@@ -985,11 +992,11 @@ async def api_unsubscribe(request: Request, phone: str = Form(...)):
 
 @app.post("/api/sms/incoming")
 async def api_sms_incoming(request: Request):
-    """Webhook Twilio pour SMS entrants (STOP/START).
+    """Webhook Twilio pour messages WhatsApp entrants (STOP/START).
 
     Twilio envoie From, Body, etc. en POST form-data.
     Retourne du TwiML pour répondre automatiquement.
-    BUG-01 QA : endpoint manquant pour l'opt-out par SMS.
+    BUG-01 QA : endpoint manquant pour l'opt-out par message.
     BUG-05 QA : vérification de la signature Twilio.
     """
     from alerts import handle_incoming_sms
@@ -1156,7 +1163,7 @@ async def admin_weights_history(request: Request, authorization: str | None = He
 
 @app.get("/admin/sms-logs")
 async def admin_sms_logs(request: Request, authorization: str | None = Header(None), limit: int = 50):
-    """Derniers SMS envoyés."""
+    """Derniers messages envoyés."""
     verify_admin(authorization, request.client.host if request.client else "unknown")
     # H-05 QA : valider le paramètre limit
     limit = max(1, min(limit, 500))
