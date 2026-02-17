@@ -737,6 +737,7 @@ async def api_predictions():
                         and data.get("couleur") and data.get("date")):
                     edf_live[data["date"]] = data["couleur"]
 
+            edf_modified = False
             for pred in predictions:
                 if not pred.get("confirmed") and pred["date"] in edf_live:
                     couleur = edf_live[pred["date"]]
@@ -746,10 +747,18 @@ async def api_predictions():
                     pred["probabilite_blanc"] = 1.0 if couleur == "BLANC" else 0.0
                     pred["probabilite_bleu"] = 1.0 if couleur == "BLEU" else 0.0
                     pred["raison"] = "Couleur officielle EDF"
+                    edf_modified = True
 
             accuracy = get_accuracy_global(30)
             cycle_id = rows[0]["cycle_id"] if rows else ""
-            generated_at = rows[0]["timestamp_prediction"] if rows else ""
+            # Utiliser le MAX des timestamps pour refléter la donnée la plus récente
+            all_timestamps = [r["timestamp_prediction"] for r in rows if r["timestamp_prediction"]]
+            generated_at = max(all_timestamps) if all_timestamps else ""
+
+            # Si des prédictions ont été modifiées par le cross-check EDF live,
+            # mettre à jour le timestamp pour refléter que les données ont changé
+            if edf_modified:
+                generated_at = _now_paris().isoformat()
 
             result = {
                 "status": "ok",
@@ -1102,7 +1111,6 @@ async def api_manage_unsubscribe(request: Request, token: str):
 
     from alerts import get_user_by_token
     from database import get_db
-    from datetime import datetime
 
     user = get_user_by_token(token)
     if not user:
@@ -1112,7 +1120,7 @@ async def api_manage_unsubscribe(request: Request, token: str):
     try:
         conn.execute(
             "UPDATE users SET actif = 0, updated_at = ? WHERE id = ?",
-            (datetime.now().isoformat(), user["id"]),
+            (_now_paris().isoformat(), user["id"]),
         )
         conn.commit()
     finally:

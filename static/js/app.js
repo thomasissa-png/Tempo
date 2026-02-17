@@ -217,22 +217,9 @@ async function loadPredictions() {
             return;
         }
 
-        // Date de dernière mise à jour (timezone Paris)
+        // Date de dernière mise à jour (timezone Paris) — affichée en haut de page
         if (data.generated_at) {
-            let ts = data.generated_at;
-            // Si le timestamp n'a pas de timezone, assumer UTC
-            if (ts.length > 10 && !ts.includes('+') && !ts.includes('Z') && !ts.match(/\d{2}:\d{2}:\d{2}-/)) {
-                ts += 'Z';
-            }
-            const genDate = new Date(ts);
-            if (!isNaN(genDate.getTime())) {
-                const meta = document.createElement('div');
-                meta.className = 'forecast-meta';
-                const opts = {timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit'};
-                meta.textContent = `Dernière mise à jour : ${genDate.toLocaleDateString('fr-FR', {timeZone: 'Europe/Paris'})} ` +
-                    `à ${genDate.toLocaleTimeString('fr-FR', opts)}`;
-                container.appendChild(meta);
-            }
+            updateLastUpdateBar(data.generated_at);
         }
 
         // Résumé de la semaine
@@ -825,6 +812,28 @@ function setProgress(id, ratio) {
     if (!el) return;
     const fill = el.querySelector('.counter-progress-fill');
     if (fill) fill.style.width = `${Math.round(Math.max(0, Math.min(1, ratio)) * 100)}%`;
+}
+
+/**
+ * Met à jour la barre "Dernière mise à jour" en haut de page.
+ */
+function updateLastUpdateBar(timestamp) {
+    const bar = document.getElementById('last-update-bar');
+    const textEl = document.getElementById('last-update-text');
+    if (!bar || !textEl) return;
+
+    let ts = timestamp;
+    // Si le timestamp n'a pas de timezone, assumer UTC
+    if (ts.length > 10 && !ts.includes('+') && !ts.includes('Z') && !ts.match(/\d{2}:\d{2}:\d{2}-/)) {
+        ts += 'Z';
+    }
+    const genDate = new Date(ts);
+    if (!isNaN(genDate.getTime())) {
+        const opts = {timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit'};
+        textEl.textContent = `Dernière mise à jour : ${genDate.toLocaleDateString('fr-FR', {timeZone: 'Europe/Paris'})} ` +
+            `à ${genDate.toLocaleTimeString('fr-FR', opts)}`;
+        bar.style.display = '';
+    }
 }
 
 function escapeHtml(str) {

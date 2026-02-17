@@ -149,32 +149,15 @@
                 EDF ne pr&eacute;vient que la veille &mdash;
                 <strong>le Calendrier Tempo vous alerte jusqu'&agrave; 15 jours &agrave; l'avance.</strong>
             </p>
-            <!-- P-08 : Infographie concrète d'économie -->
-            <div class="savings-comparison">
-                <div class="savings-item savings-bad">
-                    <div class="savings-label">Jour rouge sans anticipation</div>
-                    <div class="savings-value">~80&nbsp;&euro;</div>
-                    <div class="savings-detail">Machine + chauffage + four en HP</div>
-                </div>
-                <div class="savings-arrow" aria-hidden="true">&rarr;</div>
-                <div class="savings-item savings-good">
-                    <div class="savings-label">Jour rouge anticip&eacute;</div>
-                    <div class="savings-value">~15&nbsp;&euro;</div>
-                    <div class="savings-detail">Machines report&eacute;es, chauffage baiss&eacute;</div>
-                </div>
-                <div class="savings-result">
-                    = <strong>jusqu'&agrave; 65&nbsp;&euro; &eacute;conomis&eacute;s</strong> par jour rouge
-                </div>
-            </div>
-            <!-- P-19 : scénario concret -->
-            <p class="welcome-scenario">
-                <em>Exemple r&eacute;el :</em> &laquo;&nbsp;Mardi, nos abonn&eacute;s ont &eacute;t&eacute; pr&eacute;venus 48h avant un jour rouge.
-                Ils ont lanc&eacute; leurs machines le lundi, baiss&eacute; le chauffage et &eacute;conomis&eacute; en moyenne <strong>50&nbsp;&euro;</strong>.&nbsp;&raquo;
-            </p>
             <!-- P-03 : CTA visible dans le welcome banner -->
             <a href="#subscribe" class="btn btn-cta-welcome">Recevoir les alertes gratuites</a>
         </div>
     </section>
+
+    <!-- Dernière mise à jour (rempli par JS depuis /api/predictions) -->
+    <div class="last-update-bar" id="last-update-bar" role="status" aria-live="polite" style="display:none">
+        <span id="last-update-text"></span>
+    </div>
 
     <!-- Couleur du jour : utile immédiatement pour Jean-Pierre ET Paul -->
     <h2 class="section-title">Couleur Tempo EDF aujourd'hui et demain</h2>
@@ -211,7 +194,7 @@
     <h2 class="section-title">O&ugrave; en est la saison Tempo ?</h2>
     <p class="section-desc" id="season-desc">
         Chaque saison (1<sup>er</sup> sept. &rarr; 31 ao&ucirc;t), EDF r&eacute;partit
-        22 jours rouges <strong>entre novembre et mars</strong>, 43 blancs <strong>jusque fin mai</strong> et le reste en bleus.
+        22 jours rouges <strong>entre novembre et mars</strong>, 43 blancs et le reste en bleus.
         Plus il reste de jours rouges &agrave; placer avant fin mars, plus le risque augmente.
     </p>
     <div class="counters" role="region" aria-label="Jours restants par couleur">
@@ -291,6 +274,28 @@
                 <p>En d&eacute;calant lessive, s&egrave;che-linge, four et recharge VE d'un seul jour, vous pouvez &eacute;conomiser <strong>jusqu'&agrave; 65&nbsp;&euro; par jour rouge</strong>. Sur une saison : <strong>plusieurs centaines d'euros</strong>.</p>
             </div>
         </div>
+        <!-- P-08 : Infographie concrète d'économie (déplacée depuis le welcome banner) -->
+        <div class="savings-comparison" style="margin-top:24px">
+            <div class="savings-item savings-bad">
+                <div class="savings-label">Jour rouge sans anticipation</div>
+                <div class="savings-value">~80&nbsp;&euro;</div>
+                <div class="savings-detail">Machine + chauffage + four en HP</div>
+            </div>
+            <div class="savings-arrow" aria-hidden="true">&rarr;</div>
+            <div class="savings-item savings-good">
+                <div class="savings-label">Jour rouge anticip&eacute;</div>
+                <div class="savings-value">~15&nbsp;&euro;</div>
+                <div class="savings-detail">Machines report&eacute;es, chauffage baiss&eacute;</div>
+            </div>
+            <div class="savings-result">
+                = <strong>jusqu'&agrave; 65&nbsp;&euro; &eacute;conomis&eacute;s</strong> par jour rouge
+            </div>
+        </div>
+        <!-- P-19 : scénario concret -->
+        <p class="welcome-scenario" style="margin-top:16px">
+            <em>Exemple r&eacute;el :</em> &laquo;&nbsp;Mardi, nos abonn&eacute;s ont &eacute;t&eacute; pr&eacute;venus 48h avant un jour rouge.
+            Ils ont lanc&eacute; leurs machines le lundi, baiss&eacute; le chauffage et &eacute;conomis&eacute; en moyenne <strong>50&nbsp;&euro;</strong>.&nbsp;&raquo;
+        </p>
     </section>
 
     <!-- P-15 : message hors-saison (masqué par défaut, affiché par JS si besoin) -->
