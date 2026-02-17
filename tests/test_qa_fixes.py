@@ -573,8 +573,8 @@ class TestOriginCheck:
 
         request = MagicMock()
         request.headers = {
-            "origin": "https://TEMPOFORECAST.FR",
-            "host": "tempoforecast.fr",
+            "origin": "https://WWW.CALENDRIER-TEMPO.FR",
+            "host": "www.calendrier-tempo.fr",
         }
         assert _check_origin(request) is True
 
@@ -584,7 +584,7 @@ class TestOriginCheck:
 
         request = MagicMock()
         request.headers = {
-            "origin": "https://tempoforecast.fr:443",
-            "host": "tempoforecast.fr",
+            "origin": "https://www.calendrier-tempo.fr:443",
+            "host": "www.calendrier-tempo.fr",
         }
         assert _check_origin(request) is True

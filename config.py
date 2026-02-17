@@ -76,7 +76,7 @@ class Config:
     TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER", "")
 
     # --- URL de base du site (pour les liens dans les messages WhatsApp) ---
-    BASE_URL = os.getenv("BASE_URL", "https://tempoforecast.fr")
+    BASE_URL = os.getenv("BASE_URL", "https://www.calendrier-tempo.fr")
 
     # --- Admin ---
     # Fix audit v6 : ne plus utiliser de mot de passe par défaut en dur

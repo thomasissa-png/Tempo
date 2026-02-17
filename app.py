@@ -451,6 +451,28 @@ async def page_manage(request: Request, token: str):
     })
 
 
+# PWA manifest (servi depuis /manifest.json pour le <link rel="manifest">)
+@app.get("/manifest.json")
+async def manifest_json():
+    """Web App Manifest pour 'Ajouter à l'écran d'accueil' et favoris."""
+    return JSONResponse(
+        content={
+            "name": "Calendrier Tempo EDF",
+            "short_name": "Calendrier Tempo",
+            "description": "Prévision des jours Tempo EDF — couleur du jour et 15 jours à l'avance",
+            "start_url": "/",
+            "display": "standalone",
+            "background_color": "#ffffff",
+            "theme_color": "#1565C0",
+            "icons": [
+                {"src": "/static/icon-192.svg", "sizes": "192x192", "type": "image/svg+xml", "purpose": "any"},
+                {"src": "/static/icon-512.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any maskable"},
+            ],
+        },
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
+
+
 # Fix #S7 : robots.txt et sitemap.xml pour le SEO
 @app.get("/robots.txt", response_class=PlainTextResponse)
 async def robots_txt():
@@ -462,7 +484,7 @@ async def robots_txt():
         "Disallow: /api/\n"
         "Disallow: /manage/\n"
         "\n"
-        "Sitemap: https://tempoforecast.fr/sitemap.xml\n"
+        "Sitemap: https://www.calendrier-tempo.fr/sitemap.xml\n"
     )
 
 
@@ -474,13 +496,13 @@ async def sitemap_xml():
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
         "  <url>\n"
-        "    <loc>https://tempoforecast.fr/</loc>\n"
+        "    <loc>https://www.calendrier-tempo.fr/</loc>\n"
         f"    <lastmod>{today}</lastmod>\n"
         "    <changefreq>daily</changefreq>\n"
         "    <priority>1.0</priority>\n"
         "  </url>\n"
         "  <url>\n"
-        "    <loc>https://tempoforecast.fr/mentions-legales</loc>\n"
+        "    <loc>https://www.calendrier-tempo.fr/mentions-legales</loc>\n"
         "    <changefreq>monthly</changefreq>\n"
         "    <priority>0.3</priority>\n"
         "  </url>\n"
