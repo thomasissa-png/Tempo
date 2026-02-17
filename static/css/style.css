@@ -658,38 +658,11 @@ nav a:hover, nav a.active {
     line-height: 1.4;
 }
 
-/* === Alerte rouge overlay (ne pousse pas le contenu) === */
-.alert-rouge {
-    background: var(--rouge-bg);
-    border: 2px solid var(--rouge);
-    border-radius: var(--radius-sm);
-    padding: 16px 20px;
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 200;
-    max-width: 600px;
-    width: calc(100% - 32px);
-    box-shadow: 0 8px 32px rgba(244,67,54,0.3);
-    display: none;
-}
-
-.alert-rouge.visible { display: flex; align-items: center; gap: 12px; }
-
-.alert-rouge .alert-icon { font-size: 1.6rem; }
-
-.alert-rouge .alert-text {
-    font-weight: 600;
-    color: var(--rouge);
-    flex: 1;
-}
-
+/* Alert close button (kept for potential reuse) */
 .alert-close {
     background: none;
     border: none;
     font-size: 1.5rem;
-    color: var(--rouge);
     cursor: pointer;
     padding: 8px;
     min-width: 44px;
@@ -1330,8 +1303,6 @@ footer a {
     .counter-card .label { font-size: 0.8rem; }
     .counter-help { font-size: 0.75rem; }
 
-    /* Alert overlay position adjustment */
-    .alert-rouge { bottom: 16px; }
 }
 
 @media (max-width: 480px) {

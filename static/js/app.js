@@ -33,7 +33,6 @@ document.addEventListener('DOMContentLoaded', () => {
     loadAllData();
     setupSubscribeForm();
     setupWelcomeBanner();
-    setupAlertDismiss();
     setupHamburger();
     setupBackToTop();
     setupPhoneValidation();
@@ -200,13 +199,8 @@ async function loadPredictions() {
         }
 
         container.innerHTML = '';
-        const alertEl = document.getElementById('alert-rouge');
 
         const preds = data.predictions || [];
-
-        // Alerte rouge uniquement si un jour rouge dans les 5 prochains jours
-        // (au-delà, l'alerte serait prématurée et stressante pour l'utilisateur)
-        const hasRouge = preds.slice(0, 5).some(p => p.couleur_predite === 'ROUGE');
 
         // P-05 : Résumé "Prochain jour rouge" pour Paul
         renderNextRougeSummary(preds);
@@ -275,20 +269,6 @@ async function loadPredictions() {
             container.appendChild(grid3);
         }
 
-        // Alerte rouge si nécessaire — Fix #31 : distingue confirmé/prévu
-        // et masque l'alerte quand il n'y a plus de rouge
-        if (alertEl && hasRouge && !sessionStorage.getItem('alert-rouge-dismissed')) {
-            const rougePreds = preds.filter(p => p.couleur_predite === 'ROUGE');
-            const first = rougePreds[0];
-            const dateStr = formatDateFr(first.date);
-            const isConfirmed = first.confirmed;
-            alertEl.querySelector('.alert-text').innerHTML = isConfirmed
-                ? `<strong>Jour rouge confirm\u00e9 ce ${escapeHtml(dateStr)} !</strong> Reportez vos machines et baissez le chauffage.`
-                : `<strong>Jour rouge pr\u00e9vu ce ${escapeHtml(dateStr)} !</strong> Reportez vos machines et baissez le chauffage.`;
-            alertEl.classList.add('visible');
-        } else if (alertEl && !hasRouge) {
-            alertEl.classList.remove('visible');
-        }
     } catch (e) {
         container.innerHTML = '<p class="loading-state">Erreur de connexion au serveur<br><button class="retry-btn" onclick="loadPredictions()">Réessayer</button></p>';
         console.error('Erreur prédictions:', e);
@@ -763,21 +743,6 @@ function setupWelcomeBanner() {
     closeBtn.addEventListener('click', () => {
         banner.classList.add('hidden');
         try { localStorage.setItem('welcome-dismissed', '1'); } catch { /* ok */ }
-    });
-}
-
-// ================================================================
-// ALERTE ROUGE DISMISSABLE (sessionStorage)
-// ================================================================
-
-function setupAlertDismiss() {
-    const alertEl = document.getElementById('alert-rouge');
-    const closeBtn = document.getElementById('alert-close');
-    if (!alertEl || !closeBtn) return;
-
-    closeBtn.addEventListener('click', () => {
-        alertEl.classList.remove('visible');
-        sessionStorage.setItem('alert-rouge-dismissed', '1');
     });
 }
 
