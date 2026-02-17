@@ -179,13 +179,13 @@
     </div>
 
     <!-- Navigation entre mois -->
-    <nav class="cal-nav" aria-label="Navigation entre mois">
+    <nav id="cal" class="cal-nav" aria-label="Navigation entre mois">
         {% if prev_month %}
-        <a href="/calendrier?month={{ prev_month }}&year={{ prev_year }}">&larr; {{ prev_month_label }}</a>
+        <a href="/calendrier?month={{ prev_month }}&year={{ prev_year }}#cal">&larr; {{ prev_month_label }}</a>
         {% endif %}
         <span class="cal-current">{{ current_month_label }}</span>
         {% if next_month %}
-        <a href="/calendrier?month={{ next_month }}&year={{ next_year }}">{{ next_month_label }} &rarr;</a>
+        <a href="/calendrier?month={{ next_month }}&year={{ next_year }}#cal">{{ next_month_label }} &rarr;</a>
         {% endif %}
     </nav>
 
