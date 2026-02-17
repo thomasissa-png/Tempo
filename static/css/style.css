@@ -677,7 +677,7 @@ nav a:hover, nav a.active {
 
 .alert-close:hover { opacity: 1; }
 
-/* === Bandeau d'accueil (collapsible avec transition) === */
+/* === Bandeau d'accueil (toujours visible) === */
 .welcome-banner {
     background: var(--surface);
     border-radius: var(--radius);
@@ -685,46 +685,7 @@ nav a:hover, nav a.active {
     margin: 20px 0;
     box-shadow: var(--shadow);
     border-left: 5px solid var(--bleu);
-    max-height: 500px;
-    opacity: 1;
-    overflow: hidden;
-    transition: max-height 0.4s ease, opacity 0.3s ease, margin 0.4s ease, padding 0.4s ease;
 }
-
-.welcome-banner.hidden {
-    max-height: 0;
-    opacity: 0;
-    margin: 0;
-    padding: 0 28px;
-    pointer-events: none;
-}
-
-.welcome-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 12px;
-}
-
-.welcome-close {
-    background: none;
-    border: none;
-    font-size: 1.4rem;
-    color: var(--text-secondary);
-    cursor: pointer;
-    padding: 8px;
-    min-width: 44px;
-    min-height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    line-height: 1;
-    flex-shrink: 0;
-    opacity: 0.6;
-    transition: opacity 0.2s;
-}
-
-.welcome-close:hover { opacity: 1; }
 
 .welcome-banner h2 {
     font-size: 1.15rem;
@@ -1294,8 +1255,7 @@ footer a {
     .today-card { padding: 18px 14px; }
     .today-card h3 { font-size: 0.8rem; margin-bottom: 8px; }
     header[role="banner"] h1 { font-size: 1.2rem; }
-    .welcome-banner { padding: 18px; max-height: 900px; }
-    .welcome-banner.hidden { padding: 0 18px; }
+    .welcome-banner { padding: 18px; }
 
     /* Counter cards compact on mobile */
     .counter-card { padding: 12px 8px; }

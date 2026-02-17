@@ -32,7 +32,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Charger toutes les données en parallèle (au lieu de séquentiellement)
     loadAllData();
     setupSubscribeForm();
-    setupWelcomeBanner();
     setupHamburger();
     setupBackToTop();
     setupPhoneValidation();
@@ -724,27 +723,8 @@ function showFormResult(el, type, message) {
 }
 
 // ================================================================
-// WELCOME BANNER (collapsible, remember via localStorage)
+// WELCOME BANNER (always visible, not dismissable)
 // ================================================================
-
-function setupWelcomeBanner() {
-    const banner = document.getElementById('welcome-banner');
-    const closeBtn = document.getElementById('welcome-close');
-    if (!banner || !closeBtn) return;
-
-    // L-04 QA : try/catch pour localStorage (peut être désactivé)
-    try {
-        if (localStorage.getItem('welcome-dismissed')) {
-            banner.classList.add('hidden');
-            return;
-        }
-    } catch { /* localStorage indisponible */ }
-
-    closeBtn.addEventListener('click', () => {
-        banner.classList.add('hidden');
-        try { localStorage.setItem('welcome-dismissed', '1'); } catch { /* ok */ }
-    });
-}
 
 // ================================================================
 // UTILITAIRES
