@@ -43,8 +43,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // les confirmations EDF sans recharger la page manuellement
     setInterval(() => {
         Promise.all([
-            loadToday(),
-            loadTomorrow(),
             loadRemaining(),
             loadPredictions(),
         ]);
@@ -58,8 +56,6 @@ document.addEventListener('DOMContentLoaded', () => {
  */
 async function loadAllData(attempt = 0) {
     const results = await Promise.all([
-        loadToday(),
-        loadTomorrow(),
         loadRemaining(),
         loadPredictions(),
         loadBadge(),
@@ -290,17 +286,15 @@ async function loadBadge() {
         const data = await resp.json();
         if (!data || data.status !== 'ok') return;
 
-        const el = document.getElementById('badge-text');
-        if (el) {
+        // Inject precision into FAQ "Vos prévisions sont-elles fiables ?"
+        const faqValue = document.getElementById('faq-precision-value');
+        if (faqValue) {
             if (data.total_predictions > 0 && data.precision_30j != null) {
                 const pct = data.precision_30j;
-                document.getElementById('badge-value').textContent = `${pct}%`;
-                // P-12 : qualificatif pour donner du contexte à Paul
-                const qualif = pct >= 90 ? 'Excellente' : pct >= 80 ? 'Très bonne' : pct >= 70 ? 'Bonne' : 'En amélioration';
-                el.textContent = `${qualif} précision J+2 à J+5 sur 30 jours`;
+                const qualif = pct >= 90 ? 'Excellente' : pct >= 80 ? 'Tr\u00e8s bonne' : pct >= 70 ? 'Bonne' : 'En am\u00e9lioration';
+                faqValue.textContent = `${pct}% (${qualif}).`;
             } else {
-                document.getElementById('badge-value').textContent = '—';
-                el.textContent = 'Précision en cours de calcul (pas encore assez de données)';
+                faqValue.textContent = 'en cours de calcul (pas encore assez de donn\u00e9es).';
             }
         }
     } catch (e) {
@@ -375,8 +369,8 @@ function renderWeekSummary(preds) {
             ].sort((a, b) => b.val - a.val);
             const gap = probs[0].val - probs[1].val;
             if (gap < 0.30 && probs[1].val > 0.15) {
-                const colorNames = { R: 'R', B: 'Bc', Bl: 'Bl' };
-                infoHtml += `<span class="week-dot-hesitation">${colorNames[probs[0].color]}/${colorNames[probs[1].color]}</span>`;
+                const colorVars = { R: 'var(--rouge)', B: 'var(--blanc)', Bl: 'var(--bleu)' };
+                infoHtml += `<span class="week-dot-hesitation"><span class="hesi-dot" style="background:${colorVars[probs[0].color]}"></span><span class="hesi-separator">?</span><span class="hesi-dot" style="background:${colorVars[probs[1].color]}"></span></span>`;
             }
         }
 

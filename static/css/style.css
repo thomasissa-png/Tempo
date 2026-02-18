@@ -450,9 +450,9 @@ nav a:hover, nav a.active {
 }
 
 .week-summary-title {
-    font-size: 1rem;
+    font-size: 1.2rem;
     font-weight: 700;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
 }
 
 .week-summary-text {
@@ -525,9 +525,27 @@ nav a:hover, nav a.active {
     font-weight: 600;
     color: #E65100;
     background: #FFF3E0;
-    padding: 1px 4px;
+    padding: 2px 5px;
     border-radius: 6px;
     white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.hesi-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1px solid rgba(0,0,0,0.15);
+    flex-shrink: 0;
+}
+
+.hesi-separator {
+    font-size: 0.6rem;
+    color: #E65100;
+    font-weight: 700;
 }
 
 /* Groupes de prévisions par horizon */

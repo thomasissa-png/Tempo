@@ -138,7 +138,7 @@
                 "name": "Quelle est la fiabilité des prévisions Tempo ?",
                 "acceptedAnswer": {
                     "@type": "Answer",
-                    "text": "Notre précision est affichée dans le badge en haut de page (données réelles sur les 30 derniers jours). Au-delà de 4-5 jours, les prévisions météo deviennent moins précises, donc les nôtres aussi. Nous recommandons de prendre les décisions importantes sur la base des prévisions à 2-3 jours."
+                    "text": "Notre précision J+2 à J+5 sur les 30 derniers jours est mise à jour automatiquement dans la FAQ. Au-delà de 4-5 jours, les prévisions météo deviennent moins précises, donc les nôtres aussi. Nous recommandons de prendre les décisions importantes sur la base des prévisions à 2-3 jours."
                 }
             },
             {
@@ -243,41 +243,6 @@
         </div>
         {% endif %}
     </div>
-
-    <!-- Couleur du jour : utile immédiatement -->
-    <div class="today-section" role="region" aria-label="Couleur Tempo du jour et de demain">
-        <div class="today-card" id="today-card" aria-label="Couleur Tempo aujourd'hui">
-            {% if ssr.today_color %}
-            <div class="today-card-inner {{ ssr.today_color|lower }}">
-                <div class="today-label">Aujourd'hui</div>
-                <div class="today-color">{{ ssr.today_color }}</div>
-                <div class="today-source">Source : EDF officiel</div>
-            </div>
-            {% else %}
-            <div class="loading-state"><div class="loader" aria-label="Chargement"></div></div>
-            {% endif %}
-        </div>
-        <div class="today-card" id="tomorrow-card" aria-label="Couleur Tempo demain">
-            {% if ssr.tomorrow_color %}
-            <div class="today-card-inner {{ ssr.tomorrow_color|lower }}">
-                <div class="today-label">Demain</div>
-                <div class="today-color">{{ ssr.tomorrow_color }}</div>
-                <div class="today-source">Source : EDF officiel</div>
-            </div>
-            {% else %}
-            <div class="loading-state"><div class="loader" aria-label="Chargement"></div></div>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- Fix #13 : badge cliquable avec lien vers FAQ -->
-    <a href="#faq-fiabilite" class="badge-fiabilite" id="badge-link">
-        <div class="badge-icon">&#9889;</div>
-        <div>
-            <div class="badge-value" id="badge-value">&mdash;</div>
-            <div class="badge-text" id="badge-text">Chargement de la précision...</div>
-        </div>
-    </a>
 
     <!-- P-05 : Résumé "prochain jour rouge" — rempli par JS -->
     <div id="next-rouge-summary" class="next-rouge-summary" role="region" aria-label="Prochain jour rouge" aria-live="polite"></div>
@@ -561,8 +526,9 @@
             <details class="faq-item" id="faq-fiabilite">
                 <summary>Vos pr&eacute;visions sont-elles fiables ?</summary>
                 <div class="faq-content">
-                <p>Notre pr&eacute;cision est affich&eacute;e dans le badge en haut de page
-                    (donn&eacute;es r&eacute;elles sur les 30 derniers jours). Au-del&agrave; de 4&ndash;5 jours, les pr&eacute;visions
+                <p id="faq-precision-text">Notre pr&eacute;cision sur les 30 derniers jours (J+2 &agrave; J+5) :
+                    <strong id="faq-precision-value">chargement...</strong>
+                    Au-del&agrave; de 4&ndash;5 jours, les pr&eacute;visions
                     m&eacute;t&eacute;o deviennent moins pr&eacute;cises, donc les n&ocirc;tres aussi : c'est une <strong>tendance</strong>,
                     pas une certitude. Nous recommandons de prendre les d&eacute;cisions importantes
                     (report d'une grosse lessive, recharge VE) sur la base des pr&eacute;visions &agrave; 2&ndash;3 jours.</p>
