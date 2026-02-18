@@ -1014,6 +1014,17 @@ async def api_user_stats(request: Request, authorization: str | None = Header(No
     return {"status": "ok", **get_user_count()}
 
 
+@app.get("/api/subscriber-count")
+async def api_subscriber_count():
+    """Public endpoint: rounded subscriber count for social proof."""
+    from alerts import get_user_count
+    stats = get_user_count()
+    total = stats.get("active", stats.get("total", 0))
+    # Round down to nearest 10 for privacy
+    rounded = max((total // 10) * 10, 10) if total >= 10 else total
+    return {"count": rounded}
+
+
 # ================================================================
 # ADMIN : EXÉCUTION MANUELLE DES TÂCHES
 # ================================================================
