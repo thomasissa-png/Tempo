@@ -426,7 +426,7 @@ def _get_ssr_data() -> dict:
     """
     ssr = {
         "today_color": None, "tomorrow_color": None,
-        "remaining": None, "predictions": [],
+        "remaining": None, "predictions": [], "week_summary": [],
     }
     if not _db_ready.is_set():
         return ssr
@@ -486,14 +486,33 @@ def _get_ssr_data() -> dict:
             ).fetchall()
             actuals_map = {r["date"]: r["couleur_reelle"] for r in actual_rows}
 
+            # weekday(): 0=Mon..6=Sun → map to French labels
+            JOURS_SSR = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"]
             for r in rows:
                 actual = actuals_map.get(r["date"])
+                couleur = actual or r["couleur_predite"]
+                is_confirmed = bool(actual or r["confirmed"])
                 ssr["predictions"].append({
                     "date": r["date"],
-                    "couleur": actual or r["couleur_predite"],
-                    "confirmed": bool(actual or r["confirmed"]),
+                    "couleur": couleur,
+                    "confirmed": is_confirmed,
                     "temp_min": r["temp_min_prevue"],
                 })
+                # Build week_summary data (first 7 days)
+                if len(ssr["week_summary"]) < 7:
+                    try:
+                        d = date.fromisoformat(r["date"])
+                        prob_key = f"probabilite_{couleur.lower()}"
+                        confidence = round((r[prob_key] or 0) * 100)
+                        ssr["week_summary"].append({
+                            "day_label": JOURS_SSR[d.weekday()],
+                            "day_num": d.day,
+                            "couleur": couleur,
+                            "confirmed": is_confirmed,
+                            "confidence": confidence,
+                        })
+                    except Exception:
+                        pass
         finally:
             conn.close()
     except Exception as e:

@@ -210,6 +210,7 @@
                 Un jour <strong class="color-tag rouge">ROUGE</strong> co&ucirc;te
                 <strong>6 fois plus cher</strong> qu'un jour
                 <strong class="color-tag bleu">BLEU</strong> en heures pleines.
+                Un jour rouge mal g&eacute;r&eacute; peut co&ucirc;ter <strong>80 &agrave; 150&nbsp;&euro; de plus</strong> &agrave; votre foyer.
                 EDF ne pr&eacute;vient que la veille &mdash;
                 <strong>le Calendrier Tempo vous alerte jusqu'&agrave; 15 jours &agrave; l'avance.</strong>
             </p>
@@ -224,12 +225,26 @@
     </div>
 
     <!-- Résumé rapide de la semaine — PRIORITÉ #1 pour les prospects -->
-    <div class="week-summary week-summary-top" id="week-summary" role="region" aria-label="Résumé des 7 prochains jours"></div>
+    <div class="week-summary week-summary-top" id="week-summary" role="region" aria-label="Résumé des 7 prochains jours">
+        {% if ssr.week_summary %}
+        <div class="week-summary-card{% if ssr.week_summary|selectattr('couleur', 'equalto', 'ROUGE')|list %} has-rouge{% endif %}">
+            <div class="week-summary-title">R&eacute;sum&eacute; des 7 prochains jours</div>
+            <div class="week-summary-dots">
+                {% for d in ssr.week_summary %}
+                <div class="week-dot">
+                    <div class="week-dot-circle{% if d.couleur == 'BLANC' %} dot-blanc{% elif d.couleur == 'ROUGE' %} dot-rouge{% endif %}{% if d.confirmed %} confirmed-dot{% endif %}" style="background:var(--{{ d.couleur|lower }})">{{ d.couleur[0] }}</div>
+                    <span class="week-dot-label">{{ d.day_label }} {{ d.day_num }}</span>
+                    <div class="week-dot-info">
+                        {% if d.confirmed %}<span class="week-dot-confirmed">Confirm&eacute;</span>{% else %}<span class="week-dot-proba">{{ d.confidence }}%</span>{% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
 
-    <!-- Couleur du jour : utile immédiatement pour Jean-Pierre ET Paul -->
-    <h2 class="section-title">Couleur Tempo EDF aujourd'hui et demain</h2>
-    <!-- P-13 : label source clarifié -->
-    <p class="section-desc"><span class="source-label label-officiel">Source : EDF officiel</span> La couleur officielle EDF est d&eacute;tect&eacute;e automatiquement d&egrave;s sa publication. <strong>Rappel : le jour Tempo va de 6h du matin &agrave; 6h le lendemain.</strong></p>
+    <!-- Couleur du jour : utile immédiatement -->
     <div class="today-section" role="region" aria-label="Couleur Tempo du jour et de demain">
         <div class="today-card" id="today-card" aria-label="Couleur Tempo aujourd'hui">
             {% if ssr.today_color %}
@@ -263,12 +278,6 @@
             <div class="badge-text" id="badge-text">Chargement de la précision...</div>
         </div>
     </a>
-
-    <!-- P-03 : Mini CTA sticky pour Paul (visible after badge, hidden if already subscribed) -->
-    <div class="cta-banner" id="cta-banner">
-        <span class="cta-banner-text">Recevez un WhatsApp gratuit avant chaque jour rouge</span>
-        <a href="#subscribe" class="cta-banner-btn">S'inscrire</a>
-    </div>
 
     <!-- P-05 : Résumé "prochain jour rouge" — rempli par JS -->
     <div id="next-rouge-summary" class="next-rouge-summary" role="region" aria-label="Prochain jour rouge" aria-live="polite"></div>
@@ -334,18 +343,110 @@
     <!-- Légende rapide avec vrais tarifs et conseils -->
     <div class="legend">
         <div class="legend-item">
-            <span class="legend-dot" style="background:var(--bleu)"></span>
+            <span class="legend-dot" style="background:var(--bleu)" aria-hidden="true"></span>
             <div><strong>BLEU</strong> <span class="legend-price">(HP 0,13&nbsp;&euro;)</span><br class="legend-br"><span class="legend-desc">Consommez librement, c'est le meilleur tarif</span></div>
         </div>
         <div class="legend-item">
-            <span class="legend-dot" style="background:var(--blanc)"></span>
+            <span class="legend-dot" style="background:var(--blanc)" aria-hidden="true"></span>
             <div><strong>BLANC</strong> <span class="legend-price">(HP 0,19&nbsp;&euro;)</span><br class="legend-br"><span class="legend-desc">Tarif moyen, pas de pr&eacute;caution particuli&egrave;re</span></div>
         </div>
         <div class="legend-item">
-            <span class="legend-dot" style="background:var(--rouge)"></span>
+            <span class="legend-dot" style="background:var(--rouge)" aria-hidden="true"></span>
             <div><strong>ROUGE</strong> <span class="legend-price">(HP 0,76&nbsp;&euro;)</span><br class="legend-br"><span class="legend-desc"><strong>Reportez lessive, s&egrave;che-linge, four, recharge VE</strong></span></div>
         </div>
+        <div class="legend-note">Tarifs heures pleines indicatifs, f&eacute;vrier 2026.</div>
     </div>
+
+    <!-- Inscription alertes WhatsApp — remonté avant "Comment ça marche" -->
+    <section class="subscribe-section" id="subscribe">
+        <h2>Recevez un WhatsApp avant chaque jour cher</h2>
+        <p class="sub-desc">
+            Soyez pr&eacute;venu la veille (ou jusqu'&agrave; 3 jours avant) d'un jour rouge ou blanc.
+            <strong>100% gratuit, sans engagement, 1 message par jour maximum.</strong>
+        </p>
+
+        <!-- P-09 : Aperçu du message WhatsApp reçu -->
+        <div class="sms-preview">
+            <div class="sms-preview-label">&#128172; Exemple de message WhatsApp que vous recevrez :</div>
+            <div class="sms-bubble">
+                ⚠️ <strong>Calendrier Tempo EDF</strong><br><br>
+                <strong>Jour ROUGE</strong> pr&eacute;vu mardi 18 f&eacute;vrier (87% confiance).<br>
+                Temp min: 2°C.<br><br>
+                👉 Reportez lessive, s&egrave;che-linge, four et recharge VE.<br>
+                Limitez votre conso entre 6h-22h !<br><br>
+                📋 G&eacute;rer mes alertes : calendrier-tempo.fr/manage/...
+            </div>
+        </div>
+
+        <form id="subscribe-form">
+            <!-- P-10 : Formulaire simplifié — uniquement le numéro visible -->
+            <div class="form-simple">
+                <div class="form-group">
+                    <label for="phone">Votre num&eacute;ro de mobile</label>
+                    <input type="tel" id="phone" name="phone" placeholder="06 12 34 56 78" required autocomplete="tel" inputmode="tel">
+                    <span class="form-hint">Tapez votre num&eacute;ro au format habituel (06 ou 07)</span>
+                    <span class="phone-feedback" id="phone-feedback" aria-live="polite"></span>
+                </div>
+            </div>
+
+            <!-- P-10 : Options avancées masquées par défaut (progressive disclosure) -->
+            <details class="form-advanced" id="form-advanced">
+                <summary class="form-advanced-toggle">Options avanc&eacute;es (facultatif)</summary>
+                <div class="form-grid" style="margin-top:16px">
+                    <div class="form-group">
+                        <label for="seuil_rouge">Quand vous pr&eacute;venir ?</label>
+                        <select id="seuil_rouge" name="seuil_rouge">
+                            <option value="70">Prudent &mdash; d&egrave;s qu'un jour rouge est probable</option>
+                            <option value="80" selected>Recommand&eacute; &mdash; bon &eacute;quilibre</option>
+                            <option value="90">S&ucirc;r &mdash; alertes rares, quasi certaines</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="delai">Combien de temps avant ?</label>
+                        <select id="delai" name="delai">
+                            <option value="1">La veille &mdash; le plus fiable</option>
+                            <option value="2">2 jours avant</option>
+                            <option value="3">3 jours avant &mdash; pour mieux planifier</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Options</label>
+                        <div class="form-checkbox">
+                            <input type="checkbox" id="alerte_blanc" name="alerte_blanc" value="true">
+                            <label for="alerte_blanc">Pr&eacute;venir aussi pour les jours blancs</label>
+                        </div>
+                        <div class="form-checkbox" style="margin-top:8px">
+                            <input type="checkbox" id="recap_hebdo" name="recap_hebdo" value="true">
+                            <label for="recap_hebdo">R&eacute;cap hebdomadaire chaque dimanche</label>
+                        </div>
+                    </div>
+                </div>
+            </details>
+
+            <button type="submit" class="btn btn-subscribe" id="subscribe-btn">Recevoir mon alerte WhatsApp gratuite</button>
+            <!-- P-04 + P-17 : social proof + note rassurante -->
+            <p class="form-legal">
+                <strong class="social-proof">Rejoint par des abonn&eacute;s Tempo dans toute la France.</strong><br>
+                Votre num&eacute;ro est prot&eacute;g&eacute; et ne sera jamais partag&eacute;.
+                D&eacute;sinscription en 1 clic &agrave; tout moment (WhatsApp STOP ou lien dans chaque message).
+                <a href="/mentions-legales">Politique de confidentialit&eacute;</a>
+            </p>
+        </form>
+
+        <div id="form-result" class="form-result"></div>
+
+        <!-- Désinscription (BUG-02 QA : formulaire manquant) -->
+        <div class="unsubscribe-block" id="unsubscribe-block">
+            <p class="unsub-toggle">D&eacute;j&agrave; inscrit ? <button type="button" class="link-btn" id="show-unsubscribe">Se d&eacute;sinscrire</button></p>
+            <form id="unsubscribe-form" class="unsub-form hidden">
+                <div class="form-group form-inline">
+                    <input type="tel" id="unsub-phone" name="phone" placeholder="06 12 34 56 78" required autocomplete="tel" inputmode="tel">
+                    <button type="submit" class="btn btn-unsub" id="unsub-btn">Me d&eacute;sinscrire</button>
+                </div>
+                <div id="unsub-result" class="form-result"></div>
+            </form>
+        </div>
+    </section>
 
     <!-- P-07 : Comment ça marche centré utilisateur (pas algo) -->
     <section class="how-it-works" id="comment-ca-marche">
@@ -401,97 +502,6 @@
         </div>
     </div>
 
-    <!-- Inscription alertes WhatsApp -->
-    <section class="subscribe-section" id="subscribe">
-        <h2>Recevez un WhatsApp avant chaque jour cher</h2>
-        <p class="sub-desc">
-            Soyez pr&eacute;venu la veille (ou jusqu'&agrave; 3 jours avant) d'un jour rouge ou blanc.
-            <strong>100% gratuit, sans engagement, 1 message par jour maximum.</strong>
-        </p>
-
-        <!-- P-09 : Aperçu du message WhatsApp reçu -->
-        <div class="sms-preview">
-            <div class="sms-preview-label">Exemple de message WhatsApp que vous recevrez :</div>
-            <div class="sms-bubble">
-                ⚠️ <strong>Calendrier Tempo EDF</strong><br><br>
-                <strong>Jour ROUGE</strong> pr&eacute;vu mardi 18 f&eacute;vrier (87% confiance).<br>
-                Temp min: 2°C.<br><br>
-                👉 Reportez lessive, s&egrave;che-linge, four et recharge VE.<br>
-                Limitez votre conso entre 6h-22h !<br><br>
-                📋 G&eacute;rer mes alertes : calendrier-tempo.fr/manage/...
-            </div>
-        </div>
-
-        <form id="subscribe-form">
-            <!-- P-10 : Formulaire simplifié — uniquement le numéro visible -->
-            <div class="form-simple">
-                <div class="form-group">
-                    <label for="phone">Votre num&eacute;ro de mobile</label>
-                    <input type="tel" id="phone" name="phone" placeholder="06 12 34 56 78" required>
-                    <span class="form-hint">Tapez votre num&eacute;ro au format habituel (06 ou 07)</span>
-                    <span class="phone-feedback" id="phone-feedback" aria-live="polite"></span>
-                </div>
-            </div>
-
-            <!-- P-10 : Options avancées masquées par défaut (progressive disclosure) -->
-            <details class="form-advanced" id="form-advanced">
-                <summary class="form-advanced-toggle">Personnaliser mes pr&eacute;f&eacute;rences</summary>
-                <div class="form-grid" style="margin-top:16px">
-                    <div class="form-group">
-                        <label for="seuil_rouge">Quand vous pr&eacute;venir ?</label>
-                        <select id="seuil_rouge" name="seuil_rouge">
-                            <option value="70">Prudent &mdash; d&egrave;s qu'un jour rouge est probable</option>
-                            <option value="80" selected>Recommand&eacute; &mdash; bon &eacute;quilibre</option>
-                            <option value="90">S&ucirc;r &mdash; alertes rares, quasi certaines</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="delai">Combien de temps avant ?</label>
-                        <select id="delai" name="delai">
-                            <option value="1">La veille &mdash; le plus fiable</option>
-                            <option value="2">2 jours avant</option>
-                            <option value="3">3 jours avant &mdash; pour mieux planifier</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Options</label>
-                        <div class="form-checkbox">
-                            <input type="checkbox" id="alerte_blanc" name="alerte_blanc" value="true">
-                            <label for="alerte_blanc">Pr&eacute;venir aussi pour les jours blancs</label>
-                        </div>
-                        <div class="form-checkbox" style="margin-top:8px">
-                            <input type="checkbox" id="recap_hebdo" name="recap_hebdo" value="true">
-                            <label for="recap_hebdo">R&eacute;cap hebdomadaire chaque dimanche</label>
-                        </div>
-                    </div>
-                </div>
-            </details>
-
-            <button type="submit" class="btn btn-subscribe" id="subscribe-btn">M'inscrire gratuitement</button>
-            <!-- P-04 + P-17 : social proof + note rassurante -->
-            <p class="form-legal">
-                <strong class="social-proof">Rejoint par des centaines d'abonn&eacute;s Tempo en France.</strong><br>
-                Votre num&eacute;ro est chiffr&eacute; (AES-256) et ne sera jamais partag&eacute;.
-                D&eacute;sinscription en 1 clic &agrave; tout moment (WhatsApp STOP ou lien dans chaque message).
-                <a href="/mentions-legales">Politique de confidentialit&eacute;</a>
-            </p>
-        </form>
-
-        <div id="form-result" class="form-result"></div>
-
-        <!-- Désinscription (BUG-02 QA : formulaire manquant) -->
-        <div class="unsubscribe-block" id="unsubscribe-block">
-            <p class="unsub-toggle">D&eacute;j&agrave; inscrit ? <button type="button" class="link-btn" id="show-unsubscribe">Se d&eacute;sinscrire</button></p>
-            <form id="unsubscribe-form" class="unsub-form hidden">
-                <div class="form-group form-inline">
-                    <input type="tel" id="unsub-phone" name="phone" placeholder="06 12 34 56 78" required>
-                    <button type="submit" class="btn btn-unsub" id="unsub-btn">Me d&eacute;sinscrire</button>
-                </div>
-                <div id="unsub-result" class="form-result"></div>
-            </form>
-        </div>
-    </section>
-
     <!-- FAQ pratique pour Jean-Pierre -->
     <section class="faq-section">
         <h2 class="section-title">Tout comprendre sur Tempo en 2 minutes</h2>
@@ -524,6 +534,15 @@
                 </div>
             </details>
             <details class="faq-item">
+                <summary>Ce service est-il officiel EDF ?</summary>
+                <div class="faq-content">
+                <p>Non, le Calendrier Tempo EDF est ind&eacute;pendant et gratuit.
+                    Seule la couleur annonc&eacute;e par EDF fait foi.
+                    Nos pr&eacute;visions sont des estimations pour vous aider &agrave; <strong>anticiper</strong>,
+                    pas des informations officielles.</p>
+                </div>
+            </details>
+            <details class="faq-item">
                 <summary>&Agrave; quelle heure commence et finit un jour rouge ?</summary>
                 <div class="faq-content">
                 <p>Un jour Tempo va de <strong>6h du matin &agrave; 6h le lendemain matin</strong>, et non
@@ -547,15 +566,6 @@
                     m&eacute;t&eacute;o deviennent moins pr&eacute;cises, donc les n&ocirc;tres aussi : c'est une <strong>tendance</strong>,
                     pas une certitude. Nous recommandons de prendre les d&eacute;cisions importantes
                     (report d'une grosse lessive, recharge VE) sur la base des pr&eacute;visions &agrave; 2&ndash;3 jours.</p>
-                </div>
-            </details>
-            <details class="faq-item">
-                <summary>Ce service est-il officiel EDF ?</summary>
-                <div class="faq-content">
-                <p>Non, le Calendrier Tempo EDF est ind&eacute;pendant et gratuit.
-                    Seule la couleur annonc&eacute;e par EDF fait foi.
-                    Nos pr&eacute;visions sont des estimations pour vous aider &agrave; <strong>anticiper</strong>,
-                    pas des informations officielles.</p>
                 </div>
             </details>
         </div>

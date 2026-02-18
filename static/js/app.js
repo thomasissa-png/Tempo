@@ -257,11 +257,19 @@ async function loadPredictions() {
         if (groupFar.length > 0) {
             const label3 = document.createElement('div');
             label3.className = 'forecast-group-label';
-            label3.textContent = 'Semaine prochaine et au-delà — tendances indicatives';
+            label3.textContent = 'Semaine prochaine et au-del\u00e0 \u2014 tendances indicatives';
             container.appendChild(label3);
 
+            // UX audit #27: explanation for distant predictions
+            const hint3 = document.createElement('div');
+            hint3.className = 'forecast-group-hint';
+            hint3.textContent = 'Ces tendances \u00e9voluent souvent \u2014 consultez \u00e0 nouveau dans 2-3 jours pour confirmer.';
+            hint3.style.cssText = 'font-size:0.8rem;color:var(--text-secondary);margin:-6px 0 10px;font-style:italic;';
+            container.appendChild(hint3);
+
+            // UX audit #9: desaturated grid for far predictions
             const grid3 = document.createElement('div');
-            grid3.className = 'forecast-grid';
+            grid3.className = 'forecast-grid forecast-grid-far';
             groupFar.forEach(pred => {
                 grid3.appendChild(createForecastCard(pred));
 
@@ -372,9 +380,13 @@ function renderWeekSummary(preds) {
             }
         }
 
+        // UX audit #25: shape classes for colorblind users + #16: confirmed border
+        const shapeClass = couleur === 'BLANC' ? ' dot-blanc' : couleur === 'ROUGE' ? ' dot-rouge' : '';
+        const confirmedClass = p.confirmed ? ' confirmed-dot' : '';
+
         dotsHtml += `
             <div class="week-dot">
-                <div class="week-dot-circle" style="background:${bg}">${couleur[0]}</div>
+                <div class="week-dot-circle${shapeClass}${confirmedClass}" style="background:${bg}">${couleur[0]}</div>
                 <span class="week-dot-label">${escapeHtml(dayLabel)} ${dayNum}</span>
                 <div class="week-dot-info">${infoHtml}</div>
             </div>`;
@@ -548,7 +560,7 @@ function createForecastCard(pred) {
 
     let changedHtml = '';
     if (pred.couleur_precedente) {
-        changedHtml = `<div class="fc-changed">Était ${escapeHtml(pred.couleur_precedente)}</div>`;
+        changedHtml = `<div class="fc-changed" title="Notre prévision a changé suite aux nouvelles données météo.">Était ${escapeHtml(pred.couleur_precedente)}</div>`;
     }
 
     // Tip actionnable pour les jours ROUGE
