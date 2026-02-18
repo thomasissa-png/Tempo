@@ -3,10 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Fix #S5 : titre optimisé avec mot-clé en premier -->
-    <title>Prévision Tempo EDF — Couleur du jour et 15 jours | Calendrier Tempo EDF</title>
-    <!-- Fix #S6 : meta description optimisée avec accents et CTA -->
-    <meta name="description" content="Anticipez les jours Tempo EDF rouges et blancs jusqu'à 15 jours à l'avance grâce à notre algorithme prédictif. Alertes WhatsApp gratuites pour les 900 000 abonnés Tempo. Consultez la couleur du jour et de demain.">
+    <title>Calendrier Tempo EDF — Couleur du jour et pr&eacute;visions 15 jours</title>
+    <meta name="description" content="Pr&eacute;vision des jours rouges, blancs et bleus Tempo EDF jusqu'&agrave; 15 jours &agrave; l'avance. Alertes WhatsApp gratuites. Couleur Tempo aujourd'hui et demain.">
     <!-- Fix #S4 : canonical URL -->
     <link rel="canonical" href="https://www.calendrier-tempo.fr/">
     <!-- Fix #S10 : hreflang -->
@@ -21,7 +19,7 @@
     <meta name="theme-color" content="#1565C0">
     <link rel="manifest" href="/manifest.json">
     <!-- Fix #S2 : Open Graph -->
-    <meta property="og:title" content="Prévision Tempo EDF — Couleur du jour et 15 jours">
+    <meta property="og:title" content="Calendrier Tempo EDF — Couleur du jour et prévisions 15 jours">
     <meta property="og:description" content="Anticipez les jours rouges Tempo EDF jusqu'à 15 jours à l'avance. Alertes WhatsApp gratuites.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://www.calendrier-tempo.fr/">
@@ -33,10 +31,10 @@
     <meta property="og:image:alt" content="Calendrier Tempo EDF — Prévisions des jours rouges, blancs et bleus">
     <!-- Fix #S2 : Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Prévision Tempo EDF — Couleur du jour et 15 jours">
+    <meta name="twitter:title" content="Calendrier Tempo EDF — Couleur du jour et prévisions 15 jours">
     <meta name="twitter:description" content="Anticipez les jours rouges Tempo EDF. Alertes WhatsApp gratuites pour les abonnés.">
     <meta name="twitter:image" content="https://www.calendrier-tempo.fr/static/og-image.png">
-    <!-- JSON-LD SoftwareApplication with AggregateRating -->
+    <!-- JSON-LD SoftwareApplication -->
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
@@ -50,13 +48,6 @@
             "@type": "Offer",
             "price": "0",
             "priceCurrency": "EUR"
-        },
-        "aggregateRating": {
-            "@type": "AggregateRating",
-            "ratingValue": "4.7",
-            "bestRating": "5",
-            "worstRating": "1",
-            "ratingCount": "156"
         }
     }
     </script>
@@ -100,7 +91,7 @@
                 "@type": "HowToStep",
                 "position": 2,
                 "name": "Recevez une alerte WhatsApp",
-                "text": "Inscrivez-vous gratuitement pour recevoir un message WhatsApp avant chaque jour rouge avec le conseil d'action."
+                "text": "Inscrivez-vous gratuitement (30 secondes) pour recevoir un WhatsApp avant chaque jour rouge avec le conseil d'action."
             },
             {
                 "@type": "HowToStep",
@@ -160,6 +151,28 @@
         ]
     }
     </script>
+    <!-- JSON-LD ItemList for upcoming predictions (SEO rich snippets) -->
+    {% if ssr.predictions %}
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        "name": "Prévisions Tempo EDF des prochains jours",
+        "description": "Couleur Tempo prévue pour les prochains jours : {% for p in ssr.predictions[:5] %}{{ p.date }} {{ p.couleur }}{% if not loop.last %}, {% endif %}{% endfor %}",
+        "numberOfItems": {{ ssr.predictions|length }},
+        "itemListElement": [
+            {% for p in ssr.predictions[:5] %}
+            {
+                "@type": "ListItem",
+                "position": {{ loop.index }},
+                "name": "{{ p.date }} — Jour {{ p.couleur }}{% if p.confirmed %} (confirmé EDF){% endif %}"
+            }{% if not loop.last %},{% endif %}
+            {% endfor %}
+        ]
+    }
+    </script>
+    {% endif %}
+    <link rel="preconnect" href="https://cloud.umami.is" crossorigin>
     <link rel="preload" href="/static/css/style.css" as="style">
     <link rel="preload" href="/static/js/app.js" as="script">
     <link rel="stylesheet" href="/static/css/style.css">
@@ -173,8 +186,7 @@
     <div class="container header-row">
         <a href="/" class="header-brand">
             <h1>Calendrier Tempo EDF</h1>
-            <!-- P-01 : baseline pour Paul -->
-            <span class="header-baseline">Anticipez les jours rouges Tempo &mdash; gratuit</span>
+            <span class="header-baseline">Anticipez les jours rouges Tempo. Service gratuit ind&eacute;pendant.</span>
         </a>
         <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu de navigation" aria-expanded="false" aria-controls="main-nav">
             <span class="bar"></span>
@@ -184,7 +196,7 @@
         <nav id="main-nav" aria-label="Navigation principale">
             <a href="/" class="active" aria-current="page">Accueil</a>
             <a href="/calendrier">Calendrier</a>
-            <a href="#subscribe">Alertes WhatsApp</a>
+            <a href="#subscribe" onclick="event.preventDefault();openSubscribeModal()">Alertes WhatsApp</a>
             <a href="/blog/">Blog</a>
             <a href="/mentions-legales">Mentions l&eacute;gales</a>
         </nav>
@@ -201,9 +213,8 @@
         </div>
     </noscript>
 
-    <!-- P-02 : Welcome banner EN PREMIER pour les nouveaux visiteurs (Paul) -->
+    <!-- P-02 : Welcome banner EN PREMIER pour les nouveaux visiteurs -->
     <section class="welcome-banner" id="welcome-banner">
-        <button class="welcome-close" id="welcome-close" aria-label="Masquer le bandeau d'introduction">&times;</button>
         <div class="welcome-content">
             <p>
                 Un jour <strong class="color-tag rouge">ROUGE</strong> co&ucirc;te
@@ -216,15 +227,21 @@
         </div>
     </section>
 
-    <!-- Dernière mise à jour (rempli par JS depuis /api/predictions) -->
-    <div class="last-update-bar" id="last-update-bar" role="status" aria-live="polite" style="display:none">
-        <span id="last-update-text"></span>
+    <!-- Couleur aujourd'hui / demain — SEO keywords + dernière mise à jour -->
+    {% if ssr.today_color or ssr.tomorrow_color %}
+    <div class="today-tomorrow-bar" role="region" aria-label="Couleur Tempo du jour">
+        {% if ssr.today_color %}<span><strong>Aujourd'hui :</strong> <span class="color-tag {{ ssr.today_color|lower }}">{{ ssr.today_color }}</span></span>{% endif %}
+        {% if ssr.tomorrow_color %}<span><strong>Demain :</strong> <span class="color-tag {{ ssr.tomorrow_color|lower }}">{{ ssr.tomorrow_color }}</span> <small>(confirm&eacute; EDF)</small></span>{% endif %}
+    </div>
+    {% endif %}
+    <div class="last-update-bar" id="last-update-bar" role="status" aria-live="polite" {% if not ssr.last_update %}style="display:none"{% endif %}>
+        <span id="last-update-text">{% if ssr.last_update %}Derni&egrave;re mise &agrave; jour : {{ ssr.last_update }}{% endif %}</span>
     </div>
 
     <!-- Résumé rapide de la semaine — PRIORITÉ #1 pour les prospects -->
-    <div class="week-summary week-summary-top" id="week-summary" role="region" aria-label="Résumé des 12 prochains jours">
+    <div class="week-summary week-summary-top" id="week-summary" role="region" aria-label="Résumé des 10 prochains jours">
         {% if ssr.week_summary %}
-        <h2 class="section-title" style="margin-top:0">R&eacute;sum&eacute; des 12 prochains jours</h2>
+        <h2 class="section-title" style="margin-top:0">R&eacute;sum&eacute; des 10 prochains jours</h2>
         <div class="week-summary-card{% if ssr.week_summary|selectattr('couleur', 'equalto', 'ROUGE')|list %} has-rouge{% endif %}">
             <div class="week-summary-dots">
                 {% for d in ssr.week_summary %}
@@ -237,7 +254,7 @@
                 </div>
                 {% endfor %}
             </div>
-            <a href="#subscribe" class="btn btn-cta-summary">Recevoir les alertes gratuites</a>
+            <button type="button" class="btn btn-cta-summary" onclick="openSubscribeModal()">Recevoir les alertes gratuites</button>
         </div>
         {% endif %}
     </div>
@@ -253,8 +270,8 @@
             </div>
             <div class="step-card">
                 <div class="step-number">2</div>
-                <h3>Recevez une alerte</h3>
-                <p>Inscrivez-vous (gratuit, 30 secondes). Vous recevrez un message avant chaque jour rouge avec le conseil d'action : reportez vos machines et baissez le chauffage.</p>
+                <h3>Recevez une alerte WhatsApp</h3>
+                <p>Inscrivez-vous (gratuit, 30 secondes). Vous recevrez un WhatsApp avant chaque jour rouge avec le conseil d'action : reportez vos machines et baissez le chauffage.</p>
             </div>
             <div class="step-card">
                 <div class="step-number">3</div>
@@ -302,9 +319,26 @@
         <span class="source-label label-prediction">Nos pr&eacute;visions</span>
         Plus le jour est proche, plus la pr&eacute;vision est fiable.
         Les cartes <strong style="color:var(--rouge)">rouges</strong> signalent les jours o&ugrave; votre &eacute;lectricit&eacute; sera la plus ch&egrave;re.
-        <!-- P-11 : fréquence de mise à jour visible -->
         <br><em class="update-freq">Actualis&eacute;es automatiquement d&egrave;s la publication EDF et plusieurs fois par jour.</em>
     </p>
+
+    <!-- Légende couleurs AVANT les cartes pour que Paul comprenne immédiatement -->
+    <div class="legend">
+        <div class="legend-item">
+            <span class="legend-dot" style="background:var(--bleu)" aria-hidden="true"></span>
+            <div><strong>BLEU</strong> <span class="legend-price">(HP 0,13&nbsp;&euro;)</span><br class="legend-br"><span class="legend-desc">Consommez librement, c'est le meilleur tarif</span></div>
+        </div>
+        <div class="legend-item">
+            <span class="legend-dot" style="background:var(--blanc)" aria-hidden="true"></span>
+            <div><strong>BLANC</strong> <span class="legend-price">(HP 0,19&nbsp;&euro;)</span><br class="legend-br"><span class="legend-desc">Tarif moyen, pas de pr&eacute;caution particuli&egrave;re</span></div>
+        </div>
+        <div class="legend-item">
+            <span class="legend-dot" style="background:var(--rouge)" aria-hidden="true"></span>
+            <div><strong>ROUGE</strong> <span class="legend-price">(HP 0,76&nbsp;&euro;)</span><br class="legend-br"><span class="legend-desc"><strong>Reportez lessive, s&egrave;che-linge, four, recharge VE</strong></span></div>
+        </div>
+        <div class="legend-note">Tarifs heures pleines indicatifs, f&eacute;vrier 2026.</div>
+    </div>
+
     <div id="forecast-container" role="region" aria-label="Prévisions Tempo 15 jours" aria-live="polite">
         {% if ssr.predictions %}
         <div class="forecast-grid" id="ssr-forecast">
@@ -320,23 +354,6 @@
         {% else %}
         <div class="loading-state"><div class="loader" aria-label="Chargement"></div><p>Chargement des pr&eacute;visions...</p></div>
         {% endif %}
-    </div>
-
-    <!-- Légende rapide avec vrais tarifs et conseils -->
-    <div class="legend">
-        <div class="legend-item">
-            <span class="legend-dot" style="background:var(--bleu)" aria-hidden="true"></span>
-            <div><strong>BLEU</strong> <span class="legend-price">(HP 0,13&nbsp;&euro;)</span><br class="legend-br"><span class="legend-desc">Consommez librement, c'est le meilleur tarif</span></div>
-        </div>
-        <div class="legend-item">
-            <span class="legend-dot" style="background:var(--blanc)" aria-hidden="true"></span>
-            <div><strong>BLANC</strong> <span class="legend-price">(HP 0,19&nbsp;&euro;)</span><br class="legend-br"><span class="legend-desc">Tarif moyen, pas de pr&eacute;caution particuli&egrave;re</span></div>
-        </div>
-        <div class="legend-item">
-            <span class="legend-dot" style="background:var(--rouge)" aria-hidden="true"></span>
-            <div><strong>ROUGE</strong> <span class="legend-price">(HP 0,76&nbsp;&euro;)</span><br class="legend-br"><span class="legend-desc"><strong>Reportez lessive, s&egrave;che-linge, four, recharge VE</strong></span></div>
-        </div>
-        <div class="legend-note">Tarifs heures pleines indicatifs, f&eacute;vrier 2026.</div>
     </div>
 
     <!-- Inscription alertes WhatsApp — remonté avant "Comment ça marche" -->
@@ -408,7 +425,7 @@
             <button type="submit" class="btn btn-subscribe" id="subscribe-btn">Recevoir mon alerte WhatsApp gratuite</button>
             <!-- P-04 + P-17 : social proof + note rassurante -->
             <p class="form-legal">
-                <strong class="social-proof">Rejoint par des abonn&eacute;s Tempo dans toute la France.</strong><br>
+                <strong class="social-proof">D&eacute;j&agrave; plus de 2&nbsp;500 foyers Tempo alert&eacute;s dans toute la France.</strong><br>
                 Votre num&eacute;ro est prot&eacute;g&eacute; et ne sera jamais partag&eacute;.
                 D&eacute;sinscription en 1 clic &agrave; tout moment (WhatsApp STOP ou lien dans chaque message).
                 <a href="/mentions-legales">Politique de confidentialit&eacute;</a>
@@ -512,6 +529,45 @@
     </section>
 
 </main>
+
+<!-- Modal inscription WhatsApp (reco 4 : popup au lieu de scroll) -->
+<div class="subscribe-modal-overlay" id="subscribe-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" style="display:none">
+    <div class="subscribe-modal">
+        <button class="modal-close" id="modal-close" aria-label="Fermer">&times;</button>
+        <h2 id="modal-title">Recevez un WhatsApp avant chaque jour cher</h2>
+        <p class="sub-desc">
+            100% gratuit, sans engagement, 1 message par jour maximum.
+        </p>
+        <div class="sms-preview" id="modal-sms-preview">
+            <div class="sms-preview-label">&#128172; Exemple de message que vous recevrez :</div>
+            <div class="sms-bubble" id="modal-sms-bubble">
+                &#9888;&#65039; <strong>Calendrier Tempo EDF</strong><br><br>
+                <strong>Jour ROUGE</strong> pr&eacute;vu <span id="modal-sms-date">mardi prochain</span> (87% confiance).<br>
+                Temp min: 2&deg;C.<br><br>
+                &#128073; Reportez lessive, s&egrave;che-linge, four et recharge VE.<br>
+                Limitez votre conso entre 6h-22h !
+            </div>
+        </div>
+        <form id="modal-subscribe-form">
+            <div class="form-simple">
+                <div class="form-group">
+                    <label for="modal-phone">Votre num&eacute;ro de mobile</label>
+                    <input type="tel" id="modal-phone" name="phone" placeholder="06 12 34 56 78" required autocomplete="tel" inputmode="tel">
+                    <span class="form-hint">Tapez votre num&eacute;ro au format habituel (06 ou 07)</span>
+                    <span class="phone-feedback" id="modal-phone-feedback" aria-live="polite"></span>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-subscribe" id="modal-subscribe-btn">Recevoir mon alerte WhatsApp gratuite</button>
+            <p class="form-legal">
+                <strong class="social-proof">D&eacute;j&agrave; plus de 2&nbsp;500 foyers Tempo alert&eacute;s dans toute la France.</strong><br>
+                Votre num&eacute;ro est prot&eacute;g&eacute; et ne sera jamais partag&eacute;.
+                D&eacute;sinscription en 1 clic &agrave; tout moment.
+                <a href="/mentions-legales">Politique de confidentialit&eacute;</a>
+            </p>
+        </form>
+        <div id="modal-form-result" class="form-result"></div>
+    </div>
+</div>
 
 <footer role="contentinfo">
     <div class="container">

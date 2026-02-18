@@ -158,14 +158,15 @@ async function loadRemaining() {
             const rougeDeadline = new Date(seasonEndYear, 2, 31); // 31 mars
             const daysLeftRouge = Math.max(0, Math.ceil((rougeDeadline - new Date()) / 86400000));
             if (r.ROUGE === 0) {
-                ctxEl.textContent = 'Tous les jours rouges de la saison ont \u00e9t\u00e9 utilis\u00e9s. Bonne nouvelle !';
+                ctxEl.textContent = 'Tous les jours rouges de la saison ont \u00e9t\u00e9 utilis\u00e9s. Bonne nouvelle\u00a0!';
             } else if (daysLeftRouge === 0) {
-                ctxEl.textContent = 'La p\u00e9riode des jours rouges est termin\u00e9e (fin mars). Plus de risque !';
+                ctxEl.textContent = 'La p\u00e9riode des jours rouges est termin\u00e9e (fin mars). Plus de risque\u00a0!';
             } else if (daysLeftRouge < 60) {
-                const density = (r.ROUGE / daysLeftRouge * 100).toFixed(0);
-                ctxEl.innerHTML = `<strong style="color:var(--rouge)">Attention :</strong> il reste ${r.ROUGE} jours rouges \u00e0 placer en ${daysLeftRouge} jours \u2014 risque de ${density}% par jour.`;
+                // Fréquence en langage naturel (1 jour rouge par X jours)
+                const freq = Math.round(daysLeftRouge / r.ROUGE);
+                ctxEl.innerHTML = `<strong style="color:var(--rouge)">Attention\u00a0:</strong> il reste ${r.ROUGE} jour${r.ROUGE > 1 ? 's' : ''} rouge${r.ROUGE > 1 ? 's' : ''} \u00e0 placer en ${daysLeftRouge} jours \u2014 attendez-vous \u00e0 environ <strong>1 jour rouge tous les ${freq} jours</strong>.`;
             } else {
-                ctxEl.textContent = `Encore ${r.ROUGE} jours rouges \u00e0 placer d'ici fin mars. Restez vigilant !`;
+                ctxEl.textContent = `Encore ${r.ROUGE} jours rouges \u00e0 placer d'ici fin mars. Restez vigilant\u00a0!`;
             }
         }
     } catch (e) {
@@ -307,8 +308,8 @@ function renderWeekSummary(preds) {
     const container = document.getElementById('week-summary');
     if (!container) return;
 
-    // Prendre les 12 premiers jours (2 lignes de 6)
-    const weekPreds = preds.slice(0, 12);
+    // Prendre les 10 premiers jours (2 lignes de 5)
+    const weekPreds = preds.slice(0, 10);
     if (weekPreds.length === 0) return;
 
     const rougeCount = weekPreds.filter(p => p.couleur_predite === 'ROUGE').length;
@@ -372,14 +373,14 @@ function renderWeekSummary(preds) {
     const title = document.createElement('h2');
     title.className = 'section-title';
     title.style.marginTop = '0';
-    title.textContent = 'R\u00e9sum\u00e9 des 12 prochains jours';
+    title.textContent = 'R\u00e9sum\u00e9 des 10 prochains jours';
 
     const card = document.createElement('div');
     card.className = 'week-summary-card' + (rougeCount > 0 ? ' has-rouge' : '');
     card.innerHTML = `
         <div class="week-summary-text">${summaryText}</div>
         ${dotsHtml}
-        <a href="#subscribe" class="btn btn-cta-summary">Recevoir les alertes gratuites</a>
+        <button type="button" class="btn btn-cta-summary" onclick="openSubscribeModal()">Recevoir les alertes gratuites</button>
     `;
     container.innerHTML = '';
     container.appendChild(title);
@@ -482,11 +483,7 @@ function createForecastCard(pred) {
         tempHtml = `<div class="fc-temp">${escapeHtml(String(pred.temp_min_prevue))}° / ${escapeHtml(String(pred.temp_max_prevue))}°</div>`;
     }
 
-    // Raison simplifiée — pas de jargon technique
-    let raisonHtml = '';
-    if (pred.raison && pred.raison !== 'Conditions normales') {
-        raisonHtml = `<div class="fc-raison">${escapeHtml(simplifyRaison(pred.raison))}</div>`;
-    }
+    // Raison technique supprimée (reco 3 audit UX — pas utile pour le prospect)
 
     let confirmedHtml = '';
     if (pred.confirmed) {
@@ -565,7 +562,6 @@ function createForecastCard(pred) {
         ${uncertainHtml}
         ${probaBarHtml}
         ${changedHtml}
-        ${raisonHtml}
         ${tipHtml}
     `;
 
@@ -705,19 +701,7 @@ function showFormResult(el, type, message) {
 // ================================================================
 
 function setupWelcomeBanner() {
-    const banner = document.getElementById('welcome-banner');
-    const closeBtn = document.getElementById('welcome-close');
-    if (!banner || !closeBtn) return;
-
-    // Masquer si déjà fermé par l'utilisateur
-    if (localStorage.getItem('welcome-banner-hidden') === '1') {
-        banner.classList.add('hidden');
-    }
-
-    closeBtn.addEventListener('click', () => {
-        banner.classList.add('hidden');
-        localStorage.setItem('welcome-banner-hidden', '1');
-    });
+    // Welcome banner is now always visible (no close button)
 }
 
 // ================================================================
@@ -959,3 +943,186 @@ function setupUnsubscribeForm() {
         }
     });
 }
+
+// ================================================================
+// SUBSCRIBE MODAL (reco 4 : popup au lieu de scroll)
+// ================================================================
+
+function openSubscribeModal() {
+    const modal = document.getElementById('subscribe-modal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+
+    // Dynamic SMS date (reco 6) — use next predicted RED day or generic
+    updateModalSmsDate();
+
+    // Focus on phone input
+    const phoneInput = document.getElementById('modal-phone');
+    if (phoneInput) setTimeout(() => phoneInput.focus(), 100);
+}
+
+function closeSubscribeModal() {
+    const modal = document.getElementById('subscribe-modal');
+    if (!modal) return;
+    modal.style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+/**
+ * Updates the SMS preview date in the modal with the next predicted RED day.
+ */
+function updateModalSmsDate() {
+    const el = document.getElementById('modal-sms-date');
+    if (!el) return;
+
+    // Try to find next RED day from existing forecast data
+    const container = document.getElementById('forecast-container');
+    if (container) {
+        const redCard = container.querySelector('.forecast-card.color-ROUGE .fc-date');
+        if (redCard && redCard.textContent) {
+            el.textContent = redCard.textContent;
+            return;
+        }
+    }
+    // Fallback: next weekday
+    const now = new Date();
+    let next = new Date(now);
+    next.setDate(next.getDate() + 2);
+    // Skip weekends
+    while (next.getDay() === 0 || next.getDay() === 6) next.setDate(next.getDate() + 1);
+    el.textContent = JOURS_FULL[next.getDay()].toLowerCase() + ' ' + next.getDate() + ' ' + MOIS_FULL[next.getMonth()];
+}
+
+// Setup modal event listeners
+document.addEventListener('DOMContentLoaded', () => {
+    // Close on X button
+    const closeBtn = document.getElementById('modal-close');
+    if (closeBtn) closeBtn.addEventListener('click', closeSubscribeModal);
+
+    // Close on overlay click
+    const modal = document.getElementById('subscribe-modal');
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeSubscribeModal();
+        });
+    }
+
+    // Close on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeSubscribeModal();
+    });
+
+    // Modal phone validation (reuse logic)
+    const modalPhone = document.getElementById('modal-phone');
+    const modalFeedback = document.getElementById('modal-phone-feedback');
+    if (modalPhone && modalFeedback) {
+        modalPhone.addEventListener('input', () => {
+            const val = modalPhone.value.replace(/[\s.\-()]/g, '');
+            if (!val || val.length < 2) {
+                modalFeedback.textContent = '';
+                modalFeedback.className = 'phone-feedback';
+                return;
+            }
+            if (/^0[67]/.test(val)) {
+                if (/^0[67]\d{8}$/.test(val)) {
+                    modalFeedback.textContent = 'Num\u00e9ro valide';
+                    modalFeedback.className = 'phone-feedback valid';
+                } else if (val.length < 10) {
+                    modalFeedback.textContent = `Encore ${10 - val.length} chiffre(s)`;
+                    modalFeedback.className = 'phone-feedback';
+                } else if (val.length > 10) {
+                    modalFeedback.textContent = 'Trop de chiffres';
+                    modalFeedback.className = 'phone-feedback invalid';
+                }
+                return;
+            }
+            if (/^\+?33/.test(val)) {
+                const digits = val.replace(/^\+?33/, '');
+                if (/^[67]\d{8}$/.test(digits)) {
+                    modalFeedback.textContent = 'Num\u00e9ro valide';
+                    modalFeedback.className = 'phone-feedback valid';
+                } else if (digits.length < 9) {
+                    modalFeedback.textContent = `Encore ${9 - digits.length} chiffre(s)`;
+                    modalFeedback.className = 'phone-feedback';
+                } else {
+                    modalFeedback.textContent = 'V\u00e9rifiez le num\u00e9ro';
+                    modalFeedback.className = 'phone-feedback invalid';
+                }
+                return;
+            }
+            modalFeedback.textContent = 'Tapez un num\u00e9ro en 06 ou 07';
+            modalFeedback.className = 'phone-feedback invalid';
+        });
+    }
+
+    // Modal subscribe form
+    const modalForm = document.getElementById('modal-subscribe-form');
+    if (modalForm) {
+        let modalSubmitting = false;
+        modalForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (modalSubmitting) return;
+            modalSubmitting = true;
+            const resultEl = document.getElementById('modal-form-result');
+            const btn = document.getElementById('modal-subscribe-btn');
+            resultEl.className = 'form-result';
+            resultEl.style.display = 'none';
+
+            const rawPhone = document.getElementById('modal-phone').value;
+            const phone = normalizePhone(rawPhone);
+            if (!phone) {
+                showFormResult(resultEl, 'error', 'Num\u00e9ro non reconnu. Tapez votre num\u00e9ro au format 06 12 34 56 78');
+                modalSubmitting = false;
+                return;
+            }
+
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="btn-spinner"></span> Inscription en cours...';
+
+            try {
+                const formData = new FormData(modalForm);
+                formData.set('phone', phone);
+                const resp = await fetchWithTimeout('/api/subscribe', {
+                    method: 'POST',
+                    body: formData,
+                });
+                const data = await resp.json();
+
+                if (resp.ok) {
+                    // Reco 12 : micro-animation success
+                    resultEl.className = 'form-result success';
+                    resultEl.innerHTML = '<span class="success-check">\u2713</span> ' +
+                        (data.message || 'C\'est fait\u00a0! Vous recevrez un WhatsApp la veille de chaque jour rouge.');
+                    resultEl.style.display = 'block';
+                    modalForm.reset();
+                    // Close modal after 3s
+                    setTimeout(() => closeSubscribeModal(), 3000);
+                } else {
+                    showFormResult(resultEl, 'error', data.detail || "Erreur lors de l'inscription");
+                }
+            } catch {
+                showFormResult(resultEl, 'error', 'Erreur de connexion au serveur');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+                modalSubmitting = false;
+            }
+        });
+    }
+});
+
+// Also update the static SMS preview date in the inline form (reco 6)
+document.addEventListener('DOMContentLoaded', () => {
+    const smsBubble = document.querySelector('#subscribe .sms-bubble');
+    if (smsBubble) {
+        // Replace static date with dynamic one
+        const now = new Date();
+        let next = new Date(now);
+        next.setDate(next.getDate() + 2);
+        while (next.getDay() === 0 || next.getDay() === 6) next.setDate(next.getDate() + 1);
+        const dynamicDate = JOURS_FULL[next.getDay()].toLowerCase() + ' ' + next.getDate() + ' ' + MOIS_FULL[next.getMonth()];
+        smsBubble.innerHTML = smsBubble.innerHTML.replace(/mardi 18 f.vrier/, dynamicDate);
+    }
+});

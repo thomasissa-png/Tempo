@@ -427,6 +427,7 @@ def _get_ssr_data() -> dict:
     ssr = {
         "today_color": None, "tomorrow_color": None,
         "remaining": None, "predictions": [], "week_summary": [],
+        "last_update": None,
     }
     if not _db_ready.is_set():
         return ssr
@@ -498,8 +499,8 @@ def _get_ssr_data() -> dict:
                     "confirmed": is_confirmed,
                     "temp_min": r["temp_min_prevue"],
                 })
-                # Build week_summary data (first 12 days)
-                if len(ssr["week_summary"]) < 12:
+                # Build week_summary data (first 10 days — 2 rows of 5)
+                if len(ssr["week_summary"]) < 10:
                     try:
                         d = date.fromisoformat(r["date"])
                         prob_key = f"probabilite_{couleur.lower()}"
@@ -513,6 +514,23 @@ def _get_ssr_data() -> dict:
                         })
                     except Exception:
                         pass
+
+            # SSR: dernière mise à jour (reco 21)
+            try:
+                row = conn.execute(
+                    "SELECT MAX(created_at) as last_update FROM predictions WHERE date >= ?",
+                    (today_str,)
+                ).fetchone()
+                if row and row["last_update"]:
+                    from datetime import datetime as dt
+                    ts = row["last_update"]
+                    try:
+                        parsed = dt.fromisoformat(ts)
+                        ssr["last_update"] = parsed.strftime("%d/%m/%Y à %Hh%M")
+                    except Exception:
+                        pass
+            except Exception:
+                pass
         finally:
             conn.close()
     except Exception as e:

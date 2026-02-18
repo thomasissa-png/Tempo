@@ -469,7 +469,7 @@ nav a:hover, nav a.active {
 
 .week-summary-dots {
     display: grid;
-    grid-template-columns: repeat(6, 1fr);
+    grid-template-columns: repeat(5, 1fr);
     gap: 6px;
     margin-top: 10px;
 }
@@ -1911,7 +1911,7 @@ footer a {
     .week-summary-card { padding: 12px 16px; }
     .week-summary-title { font-size: 1rem; margin: 0 0 6px; padding-bottom: 6px; }
     .week-summary-text { font-size: 0.85rem; }
-    .week-summary-dots { gap: 4px; grid-template-columns: repeat(6, 1fr); }
+    .week-summary-dots { gap: 4px; grid-template-columns: repeat(5, 1fr); }
     .week-dot { min-width: auto; }
     .week-dot-circle { width: 28px; height: 28px; font-size: 0.7rem; }
 }
@@ -2182,6 +2182,143 @@ select:focus-visible {
     .blog-article-body h2 { font-size: 1.2rem; }
     .blog-card-link { padding: 16px; }
     .blog-cta, .blog-cta-inline { padding: 20px; }
+}
+
+/* === Today/Tomorrow bar (SEO keywords) === */
+.today-tomorrow-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    padding: 10px 16px;
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow);
+    margin-bottom: 12px;
+    font-size: 0.95rem;
+    flex-wrap: wrap;
+}
+
+.today-tomorrow-bar small {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+/* === Subscribe modal === */
+.subscribe-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    animation: fadeIn 0.2s ease;
+}
+
+.subscribe-modal {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 32px;
+    max-width: 520px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.2);
+    animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.modal-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    background: none;
+    border: none;
+    font-size: 1.6rem;
+    line-height: 1;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px 8px;
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.2s, color 0.2s;
+}
+
+.modal-close:hover {
+    background: var(--border);
+    color: var(--text);
+}
+
+.subscribe-modal h2 {
+    font-size: 1.2rem;
+    margin-bottom: 8px;
+    padding-right: 40px;
+}
+
+.subscribe-modal .sub-desc {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 16px;
+}
+
+.subscribe-modal .form-simple {
+    max-width: 100%;
+}
+
+/* Success check animation (reco 12) */
+.success-check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #2E7D32;
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 700;
+    margin-right: 6px;
+    animation: popIn 0.3s ease;
+    vertical-align: middle;
+}
+
+@keyframes popIn {
+    0%   { transform: scale(0); }
+    60%  { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+/* Mobile modal adjustments */
+@media (max-width: 768px) {
+    .subscribe-modal { padding: 24px 20px; }
+    .subscribe-modal .sms-bubble { max-width: 100%; }
+
+    /* Week summary 5-col on mobile */
+    .week-summary-dots { grid-template-columns: repeat(5, 1fr); }
+}
+
+@media (max-width: 480px) {
+    .subscribe-modal { padding: 20px 16px; max-height: 95vh; }
+    .today-tomorrow-bar { gap: 12px; font-size: 0.9rem; }
 }
 
 /* Respecter prefers-reduced-motion */

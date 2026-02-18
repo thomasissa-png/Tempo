@@ -739,7 +739,7 @@ class TestStructuredData:
     """JSON-LD structured data is present on key pages."""
 
     def test_dashboard_has_software_application_schema(self):
-        """Homepage has SoftwareApplication with AggregateRating."""
+        """Homepage has SoftwareApplication schema (AggregateRating removed — no real reviews)."""
         filepath = os.path.join(
             os.path.dirname(os.path.dirname(__file__)),
             "templates", "dashboard.html"
@@ -747,7 +747,6 @@ class TestStructuredData:
         with open(filepath) as f:
             content = f.read()
         assert '"SoftwareApplication"' in content
-        assert '"AggregateRating"' in content
 
     def test_dashboard_has_organization_schema(self):
         """Homepage has Organization schema."""
