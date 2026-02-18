@@ -64,6 +64,7 @@ async function loadAllData(attempt = 0) {
         loadRemaining(),
         loadPredictions(),
         loadBadge(),
+        loadSubscriberCount(),
     ]);
 
     // Détecter si l'API est en cold start (les fonctions load* ne retournent
@@ -240,14 +241,21 @@ async function loadPredictions() {
         if (groupPrimary.length > 0) {
             const label1 = document.createElement('div');
             label1.className = 'forecast-group-label';
-            label1.textContent = 'Les 3 prochains jours — prévisions fiables';
+            label1.textContent = 'Les 3 prochains jours \u2014 pr\u00e9visions fiables';
             container.appendChild(label1);
+
+            // UX: tip rouge once per group, not per card
+            if (groupPrimary.some(p => p.couleur_predite === 'ROUGE' && !p.confirmed)) {
+                const tip = document.createElement('div');
+                tip.className = 'fc-group-tip';
+                tip.textContent = 'Jours rouges d\u00e9tect\u00e9s \u2014 Reportez lessive, s\u00e8che-linge, four et recharge VE !';
+                container.appendChild(tip);
+            }
 
             const grid1 = document.createElement('div');
             grid1.className = 'forecast-grid forecast-grid-primary';
             groupPrimary.forEach(pred => {
-                grid1.appendChild(createForecastCard(pred));
-
+                grid1.appendChild(createForecastCard(pred, true));
             });
             container.appendChild(grid1);
         }
@@ -255,14 +263,20 @@ async function loadPredictions() {
         if (groupMedium.length > 0) {
             const label2 = document.createElement('div');
             label2.className = 'forecast-group-label';
-            label2.textContent = 'Cette semaine — prévisions moyennes';
+            label2.textContent = 'Cette semaine \u2014 pr\u00e9visions moyennes';
             container.appendChild(label2);
+
+            if (groupMedium.some(p => p.couleur_predite === 'ROUGE' && !p.confirmed)) {
+                const tip = document.createElement('div');
+                tip.className = 'fc-group-tip';
+                tip.textContent = 'Jours rouges d\u00e9tect\u00e9s \u2014 Planifiez vos grosses consommations sur les jours bleus.';
+                container.appendChild(tip);
+            }
 
             const grid2 = document.createElement('div');
             grid2.className = 'forecast-grid';
             groupMedium.forEach(pred => {
-                grid2.appendChild(createForecastCard(pred));
-
+                grid2.appendChild(createForecastCard(pred, true));
             });
             container.appendChild(grid2);
         }
@@ -270,14 +284,13 @@ async function loadPredictions() {
         if (groupFar.length > 0) {
             const label3 = document.createElement('div');
             label3.className = 'forecast-group-label';
-            label3.textContent = 'Semaine prochaine et au-delà — tendances indicatives';
+            label3.textContent = 'Semaine prochaine et au-del\u00e0 \u2014 tendances indicatives';
             container.appendChild(label3);
 
             const grid3 = document.createElement('div');
             grid3.className = 'forecast-grid';
             groupFar.forEach(pred => {
-                grid3.appendChild(createForecastCard(pred));
-
+                grid3.appendChild(createForecastCard(pred, true));
             });
             container.appendChild(grid3);
         }
@@ -324,6 +337,27 @@ async function loadBadge() {
         }
     } catch (e) {
         console.error('Erreur badge:', e);
+    }
+}
+
+// ================================================================
+// UX: SOCIAL PROOF — SUBSCRIBER COUNT
+// ================================================================
+
+async function loadSubscriberCount() {
+    const el = document.getElementById('subscriber-count');
+    if (!el) return;
+    try {
+        const resp = await fetchWithTimeout('/api/subscriber-count', {}, 5000);
+        if (!resp.ok) { el.textContent = 'Des centaines d\u2019'; return; }
+        const data = await resp.json();
+        if (data && data.count > 0) {
+            el.textContent = `${data.count}+`;
+        } else {
+            el.textContent = 'Des centaines d\u2019';
+        }
+    } catch {
+        el.textContent = 'Des centaines d\u2019';
     }
 }
 
@@ -493,6 +527,13 @@ function renderTodayCard(el, data, label) {
         priceHtml = `<div class="today-price" style="color:${couleur === 'ROUGE' ? 'var(--rouge)' : 'var(--text-secondary)'}">${escapeHtml(getPriceLabel(couleur))}</div>`;
     }
 
+    // UX: Tomorrow card gets visual prominence when ROUGE or BLANC
+    el.classList.remove('tomorrow-rouge', 'tomorrow-blanc');
+    if (label === 'Demain') {
+        if (couleur === 'ROUGE') el.classList.add('tomorrow-rouge');
+        else if (couleur === 'BLANC') el.classList.add('tomorrow-blanc');
+    }
+
     el.innerHTML = `
         <h3>${escapeHtml(label)}</h3>
         <div class="couleur-circle couleur-${couleur}" role="img" aria-label="Couleur ${escapeHtml(couleurLabel)}">${couleur === 'UNKNOWN' ? '?' : couleur[0]}</div>
@@ -503,7 +544,7 @@ function renderTodayCard(el, data, label) {
     `;
 }
 
-function createForecastCard(pred) {
+function createForecastCard(pred, skipTip) {
     const VALID_COULEURS = ['BLEU', 'BLANC', 'ROUGE'];
     const couleur = VALID_COULEURS.includes(pred.couleur_predite) ? pred.couleur_predite : 'BLEU';
 
@@ -548,9 +589,9 @@ function createForecastCard(pred) {
         changedHtml = `<div class="fc-changed">Était ${escapeHtml(pred.couleur_precedente)}</div>`;
     }
 
-    // Tip actionnable pour les jours ROUGE
+    // UX: tip is now shown once per group (fc-group-tip), not per card
     let tipHtml = '';
-    if (couleur === 'ROUGE' && !pred.confirmed) {
+    if (couleur === 'ROUGE' && !pred.confirmed && !skipTip) {
         tipHtml = '<div class="fc-tip">Reportez vos machines !</div>';
     }
 

@@ -134,7 +134,27 @@
         <button class="alert-close" id="alert-close" aria-label="Fermer l'alerte">&times;</button>
     </div>
 
-    <!-- P-02 : Welcome banner EN PREMIER pour les nouveaux visiteurs (Paul) -->
+    <!-- UX-P0 : Couleur du jour EN PREMIER — l'info la plus cherchée -->
+    <div class="today-section hero-section" role="region" aria-label="Couleur Tempo du jour et de demain">
+        <div class="today-card" id="today-card" aria-label="Couleur Tempo aujourd'hui">
+            <div class="skeleton skeleton-today"><div class="skeleton-circle"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+        </div>
+        <div class="today-card" id="tomorrow-card" aria-label="Couleur Tempo demain">
+            <div class="skeleton skeleton-today"><div class="skeleton-circle"></div><div class="skeleton-line"></div><div class="skeleton-line short"></div></div>
+        </div>
+    </div>
+    <p class="today-source-note"><span class="source-label label-officiel">EDF officiel</span> D&eacute;tection automatique d&egrave;s publication. Le jour Tempo va de 6h &agrave; 6h.</p>
+
+    <!-- UX-P1 : badge fiabilité en position premium, juste sous les hero cards -->
+    <a href="#faq-fiabilite" class="badge-fiabilite" id="badge-link">
+        <div class="badge-icon">&#9889;</div>
+        <div>
+            <div class="badge-value" id="badge-value">&mdash;</div>
+            <div class="badge-text" id="badge-text">Chargement de la pr&eacute;cision...</div>
+        </div>
+    </a>
+
+    <!-- Welcome banner APRÈS la valeur — pour les nouveaux visiteurs (Paul) -->
     <!-- Masqué pour Jean-Pierre via localStorage -->
     <section class="welcome-banner" id="welcome-banner">
         <div class="welcome-content">
@@ -149,7 +169,6 @@
                 EDF ne pr&eacute;vient que la veille &mdash;
                 <strong>TempoForecast vous alerte jusqu'&agrave; 15 jours &agrave; l'avance.</strong>
             </p>
-            <!-- P-08 : Infographie concrète d'économie -->
             <div class="savings-comparison">
                 <div class="savings-item savings-bad">
                     <div class="savings-label">Jour rouge sans anticipation</div>
@@ -166,39 +185,14 @@
                     = <strong>jusqu'&agrave; 65&nbsp;&euro; &eacute;conomis&eacute;s</strong> par jour rouge
                 </div>
             </div>
-            <!-- P-19 : scénario concret -->
             <p class="welcome-scenario">
                 <em>Exemple r&eacute;el :</em> &laquo;&nbsp;Mardi, nos abonn&eacute;s ont &eacute;t&eacute; pr&eacute;venus 48h avant un jour rouge.
                 Ils ont lanc&eacute; leurs machines le lundi, baiss&eacute; le chauffage et &eacute;conomis&eacute; en moyenne <strong>50&nbsp;&euro;</strong>.&nbsp;&raquo;
             </p>
-            <!-- P-03 : CTA visible dans le welcome banner -->
-            <a href="#subscribe" class="btn btn-cta-welcome">Recevoir les alertes gratuites</a>
         </div>
     </section>
 
-    <!-- Couleur du jour : utile immédiatement pour Jean-Pierre ET Paul -->
-    <h2 class="section-title">Couleur Tempo EDF aujourd'hui et demain</h2>
-    <!-- P-13 : label source clarifié -->
-    <p class="section-desc"><span class="source-label label-officiel">Source : EDF officiel</span> La couleur officielle EDF est d&eacute;tect&eacute;e automatiquement d&egrave;s sa publication. <strong>Rappel : le jour Tempo va de 6h du matin &agrave; 6h le lendemain.</strong></p>
-    <div class="today-section" role="region" aria-label="Couleur Tempo du jour et de demain">
-        <div class="today-card" id="today-card" aria-label="Couleur Tempo aujourd'hui">
-            <div class="loading-state"><div class="loader" aria-label="Chargement"></div></div>
-        </div>
-        <div class="today-card" id="tomorrow-card" aria-label="Couleur Tempo demain">
-            <div class="loading-state"><div class="loader" aria-label="Chargement"></div></div>
-        </div>
-    </div>
-
-    <!-- Fix #13 : badge cliquable avec lien vers FAQ -->
-    <a href="#faq-fiabilite" class="badge-fiabilite" id="badge-link">
-        <div class="badge-icon">&#9889;</div>
-        <div>
-            <div class="badge-value" id="badge-value">&mdash;</div>
-            <div class="badge-text" id="badge-text">Chargement de la précision...</div>
-        </div>
-    </a>
-
-    <!-- P-03 : Mini CTA sticky pour Paul (visible after badge, hidden if already subscribed) -->
+    <!-- UX-P2 : CTA unique sticky (réduit de 4 à 1 CTA hors formulaire) -->
     <div class="cta-banner" id="cta-banner">
         <span class="cta-banner-text">Recevez un SMS gratuit avant chaque jour rouge</span>
         <a href="#subscribe" class="cta-banner-btn">S'inscrire</a>
@@ -252,7 +246,11 @@
         <br><em class="update-freq">Actualis&eacute;es automatiquement d&egrave;s la publication EDF et plusieurs fois par jour.</em>
     </p>
     <div id="forecast-container" role="region" aria-label="Prévisions Tempo 15 jours" aria-live="polite">
-        <div class="loading-state"><div class="loader" aria-label="Chargement"></div><p>Chargement des prévisions...</p></div>
+        <div class="skeleton-forecast-grid">
+            <div class="skeleton skeleton-card"><div class="skeleton-line short"></div><div class="skeleton-line"></div><div class="skeleton-badge"></div><div class="skeleton-line short"></div></div>
+            <div class="skeleton skeleton-card"><div class="skeleton-line short"></div><div class="skeleton-line"></div><div class="skeleton-badge"></div><div class="skeleton-line short"></div></div>
+            <div class="skeleton skeleton-card"><div class="skeleton-line short"></div><div class="skeleton-line"></div><div class="skeleton-badge"></div><div class="skeleton-line short"></div></div>
+        </div>
     </div>
 
     <!-- Légende rapide avec vrais tarifs et conseils -->
@@ -311,16 +309,7 @@
             <strong>100% gratuit, sans engagement, 1 SMS par jour maximum.</strong>
         </p>
 
-        <!-- P-09 : Aperçu du SMS reçu -->
-        <div class="sms-preview">
-            <div class="sms-preview-label">Exemple de SMS que vous recevrez :</div>
-            <div class="sms-bubble">
-                TempoForecast : Jour ROUGE pr&eacute;vu demain Mardi 18 f&eacute;v (87%). Reportez lessive et recharge VE. &Eacute;conomisez !
-            </div>
-        </div>
-
         <form id="subscribe-form">
-            <!-- P-10 : Formulaire simplifié — uniquement le numéro visible -->
             <div class="form-simple">
                 <div class="form-group">
                     <label for="phone">Votre num&eacute;ro de mobile</label>
@@ -330,7 +319,6 @@
                 </div>
             </div>
 
-            <!-- P-10 : Options avancées masquées par défaut (progressive disclosure) -->
             <details class="form-advanced" id="form-advanced">
                 <summary class="form-advanced-toggle">Personnaliser mes pr&eacute;f&eacute;rences</summary>
                 <div class="form-grid" style="margin-top:16px">
@@ -365,14 +353,21 @@
             </details>
 
             <button type="submit" class="btn btn-subscribe" id="subscribe-btn">M'inscrire gratuitement</button>
-            <!-- P-04 + P-17 : social proof + note rassurante -->
+            <!-- UX-P2 : social proof dynamique + RGPD raccourci -->
             <p class="form-legal">
-                <strong class="social-proof">Rejoint par des centaines d'abonn&eacute;s Tempo en France.</strong><br>
-                Votre num&eacute;ro est chiffr&eacute; (AES-256) et ne sera jamais partag&eacute;.
-                D&eacute;sinscription en 1 clic &agrave; tout moment (SMS STOP ou formulaire).
-                <a href="/mentions-legales">Politique de confidentialit&eacute;</a>
+                <strong class="social-proof"><span id="subscriber-count"></span> abonn&eacute;s re&ccedil;oivent d&eacute;j&agrave; nos alertes.</strong>
+                Num&eacute;ro prot&eacute;g&eacute;, d&eacute;sinscription en 1 SMS.
+                <a href="/mentions-legales">En savoir plus</a>
             </p>
         </form>
+
+        <!-- UX-P2 : aperçu SMS APRÈS le formulaire (confirmation visuelle) -->
+        <div class="sms-preview">
+            <div class="sms-preview-label">Exemple de SMS que vous recevrez :</div>
+            <div class="sms-bubble">
+                TempoForecast : Jour ROUGE pr&eacute;vu demain Mardi 18 f&eacute;v (87%). Reportez lessive et recharge VE. &Eacute;conomisez !
+            </div>
+        </div>
 
         <div id="form-result" class="form-result"></div>
 
@@ -462,15 +457,27 @@
 
 <footer role="contentinfo">
     <div class="container">
-        <!-- P-18 : footer plus humain et rassurant -->
-        <p><strong>TempoForecast</strong> &mdash; Cr&eacute;&eacute; en 2024 pour aider les 900&nbsp;000 abonn&eacute;s Tempo &agrave; &eacute;conomiser. Service ind&eacute;pendant et gratuit.</p>
-        <p style="margin-top:4px">
-            Donn&eacute;es : <a href="https://www.api-couleur-tempo.fr/" target="_blank" rel="noopener">API Tempo</a> &middot;
-            <a href="/mentions-legales">Mentions l&eacute;gales & RGPD</a>
-        </p>
-        <p style="margin-top:8px;font-size:0.85rem;">
-            Seule la couleur officielle annonc&eacute;e par EDF fait foi. Nos pr&eacute;visions sont indicatives. Tarifs affich&eacute;s : base 2026, v&eacute;rifiez votre contrat.
-        </p>
+        <div class="footer-grid">
+            <div class="footer-col">
+                <strong class="footer-brand">TempoForecast</strong>
+                <p>Cr&eacute;&eacute; en 2024 par un abonn&eacute; Tempo, pour aider les 900&nbsp;000 foyers Tempo &agrave; &eacute;conomiser. Service ind&eacute;pendant et 100% gratuit.</p>
+            </div>
+            <div class="footer-col">
+                <strong>Liens utiles</strong>
+                <a href="#subscribe">Alertes SMS gratuites</a>
+                <a href="#comment-ca-marche">Comment &ccedil;a marche</a>
+                <a href="/mentions-legales">Mentions l&eacute;gales &amp; RGPD</a>
+            </div>
+            <div class="footer-col">
+                <strong>Sources de donn&eacute;es</strong>
+                <a href="https://www.api-couleur-tempo.fr/" target="_blank" rel="noopener">API Tempo EDF</a>
+                <a href="https://www.rte-france.com/" target="_blank" rel="noopener">RTE France</a>
+                <a href="https://meteofrance.com/" target="_blank" rel="noopener">M&eacute;t&eacute;o France</a>
+            </div>
+        </div>
+        <div class="footer-disclaimer">
+            Seule la couleur officielle annonc&eacute;e par EDF fait foi. Nos pr&eacute;visions sont indicatives. Tarifs : base 2026, v&eacute;rifiez votre contrat.
+        </div>
     </div>
 </footer>
 

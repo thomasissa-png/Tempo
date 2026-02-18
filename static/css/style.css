@@ -1,12 +1,13 @@
 /* ============================================================
-   TempoForecast — Design System v2
+   TempoForecast — Design System v3 (UX Audit Redesign)
    ============================================================ */
 
 :root {
     --bleu: #2196F3;
     --bleu-bg: #E3F2FD;
     --blanc: #757575;  /* H-08 QA : contrast ratio 4.6:1 vs white (WCAG AA) */
-    --blanc-bg: #F5F5F5;
+    --blanc-bg: #FFF8E1;  /* UX: warm beige instead of gray-on-gray */
+    --blanc-border: #F9A825;  /* UX: warm amber for BLANC identity */
     --rouge: #F44336;
     --rouge-bg: #FFEBEE;
     --incertain: #BDBDBD;
@@ -194,7 +195,7 @@ nav a:hover, nav a.active {
     color: var(--text);
 }
 
-/* === Aujourd'hui / Demain === */
+/* === Aujourd'hui / Demain — Hero Section === */
 .today-section {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -202,12 +203,24 @@ nav a:hover, nav a.active {
     margin: 20px 0;
 }
 
+.today-section.hero-section {
+    margin: 24px 0 12px;
+    gap: 24px;
+}
+
 .today-card {
     background: var(--surface);
     border-radius: var(--radius);
-    padding: 24px;
+    padding: 28px 24px;
     box-shadow: var(--shadow);
     text-align: center;
+    transition: box-shadow 0.2s;
+}
+
+.hero-section .today-card {
+    padding: 32px 24px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+    border: 1px solid var(--border);
 }
 
 .today-card h3 {
@@ -219,17 +232,26 @@ nav a:hover, nav a.active {
 }
 
 .today-card .couleur-circle {
-    width: 80px;
-    height: 80px;
+    width: 96px;
+    height: 96px;
     border-radius: 50%;
     margin: 0 auto 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
+    font-size: 1.7rem;
     font-weight: 700;
     color: white;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+}
+
+/* UX: subtle source note under hero cards */
+.today-source-note {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    text-align: center;
+    margin: 4px 0 8px;
+    line-height: 1.5;
 }
 
 .couleur-BLEU  { background: var(--bleu); }
@@ -260,7 +282,7 @@ nav a:hover, nav a.active {
 }
 
 .counter-card.rouge { border-top-color: var(--rouge); }
-.counter-card.blanc { border-top-color: var(--blanc); }
+.counter-card.blanc { border-top-color: var(--blanc-border); }
 .counter-card.bleu  { border-top-color: var(--bleu); }
 
 .counter-card .count {
@@ -398,11 +420,11 @@ nav a:hover, nav a.active {
     text-align: right;
 }
 
-/* === Calendrier prévisions === */
+/* === Sections — breathing between major blocks === */
 .section-title {
     font-size: 1.2rem;
     font-weight: 700;
-    margin: 32px 0 16px;
+    margin: 40px 0 16px;
     padding-bottom: 8px;
     border-bottom: 2px solid var(--border);
 }
@@ -533,7 +555,7 @@ nav a:hover, nav a.active {
 }
 
 .forecast-card.color-BLEU  { border-left-color: var(--bleu); background: var(--bleu-bg); }
-.forecast-card.color-BLANC { border-left-color: var(--blanc); background: var(--blanc-bg); }
+.forecast-card.color-BLANC { border-left-color: var(--blanc-border); background: var(--blanc-bg); }
 .forecast-card.color-ROUGE { border-left-color: var(--rouge); background: var(--rouge-bg); }
 
 .forecast-card .fc-day {
@@ -1272,7 +1294,7 @@ footer a {
 /* === Responsive === */
 @media (max-width: 768px) {
     /* Hamburger menu on mobile */
-    .hamburger-btn { display: block; }
+    .hamburger-btn { display: block; padding: 12px; }
 
     nav {
         display: none;
@@ -1302,42 +1324,47 @@ footer a {
     .counters { grid-template-columns: repeat(3, 1fr); }
     .form-grid { grid-template-columns: 1fr; }
     .forecast-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
-    /* Primary forecast cards keep 3-column differentiation */
     .forecast-grid.forecast-grid-primary { grid-template-columns: repeat(3, 1fr); }
     .steps-grid { grid-template-columns: 1fr; }
     .legend { flex-direction: column; gap: 12px; padding: 14px 16px; }
     .legend-br { display: inline; }
     .legend-item { align-items: flex-start; }
     .today-card { padding: 18px 14px; }
+    .hero-section .today-card { padding: 24px 16px; }
     .today-card h3 { font-size: 0.8rem; margin-bottom: 8px; }
     header h1 { font-size: 1.2rem; }
     .welcome-banner { padding: 18px; max-height: 900px; }
     .welcome-banner.hidden { padding: 0 18px; }
 
-    /* Counter cards compact on mobile */
     .counter-card { padding: 12px 8px; }
     .counter-card .count { font-size: 1.6rem; }
     .counter-card .label { font-size: 0.8rem; }
     .counter-help { font-size: 0.75rem; }
 
-    /* Alert overlay position adjustment */
     .alert-rouge { bottom: 16px; }
+
+    /* Footer responsive */
+    .footer-grid { grid-template-columns: 1fr; text-align: center; }
 }
 
 @media (max-width: 480px) {
-    .forecast-grid { grid-template-columns: repeat(2, 1fr); }
-    /* L-01 QA : 1 colonne sur très petit écran pour éviter l'écrasement */
+    /* UX: All forecast grids 1 column on small screens */
+    .forecast-grid { grid-template-columns: 1fr; }
     .forecast-grid.forecast-grid-primary { grid-template-columns: 1fr; }
     .container { padding: 0 12px; }
     .today-section { grid-template-columns: 1fr; gap: 12px; }
     .today-card { padding: 20px 16px; }
-    .today-card .couleur-circle { width: 64px; height: 64px; font-size: 1.3rem; }
+    .today-card .couleur-circle { width: 72px; height: 72px; font-size: 1.4rem; }
     .today-tip { font-size: 0.85rem; }
-    .counter-card .count { font-size: 1.4rem; }
-    .counter-card .label { font-size: 0.75rem; }
-    .counter-help { font-size: 0.7rem; }
 
-    /* Fix #32 : remonter back-to-top au-dessus de l'alerte rouge */
+    /* UX: Counters stacked 1-column on small screens */
+    .counters { grid-template-columns: 1fr; gap: 12px; }
+    .counter-card { padding: 16px; display: flex; align-items: center; gap: 12px; text-align: left; }
+    .counter-card .count { font-size: 1.6rem; min-width: 70px; }
+    .counter-card .label { font-size: 0.85rem; }
+    .counter-help { font-size: 0.75rem; }
+    .counter-progress { margin-top: 4px; }
+
     .back-to-top { bottom: 80px; right: 16px; }
 }
 
@@ -1835,6 +1862,7 @@ footer a {
     .savings-comparison { flex-direction: column; }
     .next-rouge-card { flex-direction: column; text-align: center; }
     .hors-saison-banner { flex-direction: column; text-align: center; }
+    .today-source-note { font-size: 0.75rem; }
 }
 
 /* === Fix audit v6 : Accessibilité === */
@@ -1876,4 +1904,293 @@ select:focus-visible {
     .btn:hover {
         transform: none;
     }
+}
+
+/* ================================================================
+   UX AUDIT v3 — New components
+   ================================================================ */
+
+/* === Skeleton screens (perceived performance) === */
+@keyframes shimmer {
+    0%   { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
+.skeleton {
+    animation: shimmer 1.5s ease-in-out infinite;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    border-radius: var(--radius-sm);
+}
+
+.skeleton-today {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    padding: 20px;
+}
+
+.skeleton-circle {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    background: #e0e0e0;
+}
+
+.skeleton-line {
+    height: 14px;
+    width: 80%;
+    border-radius: 7px;
+    background: #e0e0e0;
+}
+
+.skeleton-line.short {
+    width: 50%;
+}
+
+.skeleton-badge {
+    height: 24px;
+    width: 60px;
+    border-radius: 12px;
+    background: #e0e0e0;
+}
+
+.skeleton-forecast-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+}
+
+.skeleton-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 20px 16px;
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow);
+}
+
+@media (max-width: 480px) {
+    .skeleton-forecast-grid { grid-template-columns: 1fr; }
+    .skeleton-circle { width: 72px; height: 72px; }
+}
+
+/* === Tomorrow card prominence when ROUGE === */
+.today-card.tomorrow-rouge {
+    border: 2px solid var(--rouge);
+    box-shadow: 0 4px 20px rgba(244, 67, 54, 0.20);
+    background: var(--rouge-bg);
+}
+
+.today-card.tomorrow-blanc {
+    border: 2px solid var(--blanc-border);
+    background: var(--blanc-bg);
+}
+
+/* === Footer structured grid === */
+.footer-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 32px;
+    text-align: left;
+    margin-bottom: 20px;
+}
+
+.footer-col {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.footer-col strong {
+    font-size: 0.9rem;
+    color: var(--text);
+    margin-bottom: 4px;
+}
+
+.footer-brand {
+    font-size: 1rem;
+    color: var(--text);
+}
+
+.footer-col p {
+    font-size: 0.85rem;
+    line-height: 1.6;
+}
+
+.footer-col a {
+    font-size: 0.85rem;
+    color: var(--bleu);
+    text-decoration: none;
+    padding: 2px 0;
+    min-height: auto;
+    line-height: 1.6;
+    display: inline;
+}
+
+.footer-col a:hover {
+    text-decoration: underline;
+}
+
+.footer-disclaimer {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    text-align: center;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    line-height: 1.5;
+}
+
+/* === Forecast tip: once per group, not per card === */
+.fc-group-tip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #C62828;
+    background: #FFEBEE;
+    padding: 8px 14px;
+    border-radius: var(--radius-sm);
+    margin-bottom: 12px;
+    border-left: 4px solid var(--rouge);
+}
+
+/* ================================================================
+   Dark Mode (prefers-color-scheme)
+   ================================================================ */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #121212;
+        --surface: #1E1E1E;
+        --text: #E0E0E0;
+        --text-secondary: #9E9E9E;
+        --border: #333333;
+        --shadow: 0 2px 8px rgba(0,0,0,0.3);
+        --shadow-lg: 0 4px 20px rgba(0,0,0,0.4);
+        --bleu-bg: #0D2137;
+        --blanc-bg: #2A2418;
+        --rouge-bg: #2A1215;
+        --incertain-bg: #2A2A2A;
+    }
+
+    body { background: var(--bg); color: var(--text); }
+
+    header {
+        background: linear-gradient(135deg, #0D47A1 0%, #091B38 100%);
+    }
+
+    nav a { color: rgba(255,255,255,0.7); }
+    nav a:hover, nav a.active { color: white; background: rgba(255,255,255,0.1); }
+
+    .today-card, .forecast-card, .counter-card, .week-summary-card,
+    .badge-fiabilite, .faq-item, .subscribe-section, .legend,
+    .step-card, .admin-card, .legal-section, .skeleton-card {
+        background: var(--surface);
+        border-color: var(--border);
+    }
+
+    .hero-section .today-card {
+        border-color: var(--border);
+    }
+
+    .cta-banner {
+        background: linear-gradient(135deg, #0D2137 0%, #091B38 100%);
+        border-color: var(--bleu);
+    }
+
+    .cta-banner-text { color: #90CAF9; }
+
+    .welcome-banner {
+        background: var(--surface);
+        border-left-color: var(--bleu);
+    }
+
+    .welcome-banner h2 { color: var(--text); }
+    .welcome-banner p { color: var(--text-secondary); }
+    .welcome-banner strong { color: var(--text); }
+
+    .savings-bad { background: var(--rouge-bg); border-color: #5F2120; }
+    .savings-good { background: #0E2A10; border-color: #1B5E20; }
+    .savings-result { color: #81C784; }
+
+    .couleur-circle { box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+
+    .today-card.tomorrow-rouge {
+        border-color: var(--rouge);
+        background: var(--rouge-bg);
+    }
+
+    .today-card.tomorrow-blanc {
+        border-color: var(--blanc-border);
+        background: var(--blanc-bg);
+    }
+
+    .fc-tip { background: var(--rouge-bg); color: #EF9A9A; }
+    .fc-group-tip { background: var(--rouge-bg); color: #EF9A9A; border-left-color: var(--rouge); }
+    .fc-confirmed { background: #0E2A10; color: #81C784; }
+    .fc-changed { background: #2A1F0E; color: #FFB74D; }
+    .fc-uncertain-badge { background: #2A1F0E; color: #FFB74D; border-color: #5D4037; }
+
+    .form-result.success { background: #0E2A10; color: #81C784; border-color: #1B5E20; }
+    .form-result.error { background: var(--rouge-bg); color: #EF9A9A; border-color: #5F2120; }
+
+    .alert-rouge { background: var(--rouge-bg); border-color: var(--rouge); }
+    .alert-rouge .alert-text { color: #EF9A9A; }
+
+    .week-summary-card.has-rouge { background: var(--rouge-bg); }
+
+    .next-rouge-card { background: var(--rouge-bg); }
+    .next-rouge-card.next-rouge-confirmed { background: #2A1F0E; border-left-color: #E65100; }
+    .next-rouge-card.next-rouge-safe { background: #0E2A10; border-left-color: #2E7D32; }
+
+    .sms-bubble { background: #0D2137; }
+
+    .form-group input, .form-group select {
+        background: #2A2A2A;
+        color: var(--text);
+        border-color: var(--border);
+    }
+
+    .form-group input:focus, .form-group select:focus {
+        border-color: var(--bleu);
+        box-shadow: 0 0 0 3px rgba(33,150,243,0.2);
+    }
+
+    .unsub-form input {
+        background: #2A2A2A;
+        color: var(--text);
+        border-color: var(--border);
+    }
+
+    .hors-saison-banner { background: #2A2418; border-color: #5D4037; }
+
+    footer { border-top-color: var(--border); }
+    .footer-disclaimer { border-top-color: var(--border); }
+    .footer-col strong { color: var(--text); }
+    .footer-brand { color: var(--text); }
+
+    /* Skeleton dark */
+    .skeleton {
+        background: linear-gradient(90deg, #1E1E1E 25%, #2A2A2A 50%, #1E1E1E 75%);
+        background-size: 200% 100%;
+    }
+    .skeleton-circle, .skeleton-line, .skeleton-badge { background: #2A2A2A; }
+
+    /* Confusion table dark */
+    .confusion-table th { background: #2A2A2A; }
+    .confusion-table th, .confusion-table td { border-color: var(--border); }
+
+    .simulated-warning { background: #2A1F0E; border-color: #5D4037; color: #FFB74D; }
+
+    .social-proof { color: #81C784; }
+
+    .back-to-top {
+        background: linear-gradient(135deg, #1565C0 0%, #0D47A1 100%);
+    }
+
+    .today-source-note { color: var(--text-secondary); }
 }
