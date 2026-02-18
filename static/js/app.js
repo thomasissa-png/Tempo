@@ -372,7 +372,7 @@ function renderWeekSummary(preds) {
     const card = document.createElement('div');
     card.className = 'week-summary-card' + (rougeCount > 0 ? ' has-rouge' : '');
     card.innerHTML = `
-        <div class="week-summary-title">R\u00e9sum\u00e9 des 12 prochains jours</div>
+        <h2 class="week-summary-title">R\u00e9sum\u00e9 des 12 prochains jours</h2>
         <div class="week-summary-text">${summaryText}</div>
         ${dotsHtml}
         <a href="#subscribe" class="btn btn-cta-summary">Recevoir les alertes gratuites</a>

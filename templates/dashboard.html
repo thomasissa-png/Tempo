@@ -205,7 +205,7 @@
     <section class="welcome-banner" id="welcome-banner">
         <button class="welcome-close" id="welcome-close" aria-label="Masquer le bandeau d'introduction">&times;</button>
         <div class="welcome-content">
-            <h2>Ne subissez plus les jours rouges Tempo &mdash; anticipez-les.</h2>
+            <h2>Ne subissez plus les jours rouges Tempo. Anticipez-les.</h2>
             <p>
                 Un jour <strong class="color-tag rouge">ROUGE</strong> co&ucirc;te
                 <strong>6 fois plus cher</strong> qu'un jour
@@ -226,7 +226,7 @@
     <div class="week-summary week-summary-top" id="week-summary" role="region" aria-label="Résumé des 12 prochains jours">
         {% if ssr.week_summary %}
         <div class="week-summary-card{% if ssr.week_summary|selectattr('couleur', 'equalto', 'ROUGE')|list %} has-rouge{% endif %}">
-            <div class="week-summary-title">R&eacute;sum&eacute; des 12 prochains jours</div>
+            <h2 class="week-summary-title">R&eacute;sum&eacute; des 12 prochains jours</h2>
             <div class="week-summary-dots">
                 {% for d in ssr.week_summary %}
                 <div class="week-dot">
@@ -242,6 +242,28 @@
         </div>
         {% endif %}
     </div>
+
+    <!-- P-07 : Comment ça marche centré utilisateur (pas algo) -->
+    <section class="how-it-works" id="comment-ca-marche">
+        <h2>Comment &eacute;conomiser avec le Calendrier Tempo ?</h2>
+        <div class="steps-grid">
+            <div class="step-card">
+                <div class="step-number">1</div>
+                <h3>Consultez la pr&eacute;vision</h3>
+                <p>Nous analysons en continu la m&eacute;t&eacute;o de 9 villes, le budget EDF restant et la consommation nationale pour pr&eacute;dire les <strong>15 prochains jours</strong>. Les pr&eacute;visions se recalculent d&egrave;s qu'EDF publie une couleur officielle.</p>
+            </div>
+            <div class="step-card">
+                <div class="step-number">2</div>
+                <h3>Recevez un WhatsApp la veille</h3>
+                <p>Inscrivez-vous (gratuit, 30 secondes). Vous recevrez un message WhatsApp <strong>avant chaque jour rouge</strong> avec le conseil d'action : reportez vos machines et baissez le chauffage.</p>
+            </div>
+            <div class="step-card">
+                <div class="step-number">3</div>
+                <h3>&Eacute;conomisez concr&egrave;tement</h3>
+                <p>En d&eacute;calant lessive, s&egrave;che-linge, four et recharge VE d'un seul jour, vous pouvez &eacute;conomiser <strong>jusqu'&agrave; 65&nbsp;&euro; par jour rouge</strong>. Sur une saison : <strong>plusieurs centaines d'euros</strong>.</p>
+            </div>
+        </div>
+    </section>
 
     <!-- Compteurs jours restants -->
     <h2 class="section-title">O&ugrave; en est la saison Tempo ?</h2>
@@ -409,49 +431,6 @@
         </div>
     </section>
 
-    <!-- P-07 : Comment ça marche centré utilisateur (pas algo) -->
-    <section class="how-it-works" id="comment-ca-marche">
-        <h2>Comment &eacute;conomiser avec le Calendrier Tempo ?</h2>
-        <div class="steps-grid">
-            <div class="step-card">
-                <div class="step-number">1</div>
-                <h3>Consultez la pr&eacute;vision</h3>
-                <p>Nous analysons en continu la m&eacute;t&eacute;o de 9 villes, le budget EDF restant et la consommation nationale pour pr&eacute;dire les <strong>15 prochains jours</strong>. Les pr&eacute;visions se recalculent d&egrave;s qu'EDF publie une couleur officielle.</p>
-            </div>
-            <div class="step-card">
-                <div class="step-number">2</div>
-                <h3>Recevez un WhatsApp la veille</h3>
-                <p>Inscrivez-vous (gratuit, 30 secondes). Vous recevrez un message WhatsApp <strong>avant chaque jour rouge</strong> avec le conseil d'action : reportez vos machines et baissez le chauffage.</p>
-            </div>
-            <div class="step-card">
-                <div class="step-number">3</div>
-                <h3>&Eacute;conomisez concr&egrave;tement</h3>
-                <p>En d&eacute;calant lessive, s&egrave;che-linge, four et recharge VE d'un seul jour, vous pouvez &eacute;conomiser <strong>jusqu'&agrave; 65&nbsp;&euro; par jour rouge</strong>. Sur une saison : <strong>plusieurs centaines d'euros</strong>.</p>
-            </div>
-        </div>
-        <!-- P-08 : Infographie concrète d'économie (déplacée depuis le welcome banner) -->
-        <div class="savings-comparison" style="margin-top:24px">
-            <div class="savings-item savings-bad">
-                <div class="savings-label">Jour rouge sans anticipation</div>
-                <div class="savings-value">~80&nbsp;&euro;</div>
-                <div class="savings-detail">Machine + chauffage + four en HP</div>
-            </div>
-            <div class="savings-arrow" aria-hidden="true">&rarr;</div>
-            <div class="savings-item savings-good">
-                <div class="savings-label">Jour rouge anticip&eacute;</div>
-                <div class="savings-value">~15&nbsp;&euro;</div>
-                <div class="savings-detail">Machines report&eacute;es, chauffage baiss&eacute;</div>
-            </div>
-            <div class="savings-result">
-                = <strong>jusqu'&agrave; 65&nbsp;&euro; &eacute;conomis&eacute;s</strong> par jour rouge
-            </div>
-        </div>
-        <!-- P-19 : scénario concret -->
-        <p class="welcome-scenario" style="margin-top:16px">
-            <em>Exemple r&eacute;el :</em> &laquo;&nbsp;Mardi, nos abonn&eacute;s ont &eacute;t&eacute; pr&eacute;venus 48h avant un jour rouge.
-            Ils ont lanc&eacute; leurs machines le lundi, baiss&eacute; le chauffage et &eacute;conomis&eacute; en moyenne <strong>50&nbsp;&euro;</strong>.&nbsp;&raquo;
-        </p>
-    </section>
 
     <!-- P-15 : message hors-saison (masqué par défaut, affiché par JS si besoin) -->
     <div class="hors-saison-banner" id="hors-saison-banner" style="display:none" role="alert">
