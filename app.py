@@ -498,8 +498,8 @@ def _get_ssr_data() -> dict:
                     "confirmed": is_confirmed,
                     "temp_min": r["temp_min_prevue"],
                 })
-                # Build week_summary data (first 7 days)
-                if len(ssr["week_summary"]) < 7:
+                # Build week_summary data (first 12 days)
+                if len(ssr["week_summary"]) < 12:
                     try:
                         d = date.fromisoformat(r["date"])
                         prob_key = f"probabilite_{couleur.lower()}"

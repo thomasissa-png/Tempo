@@ -214,8 +214,6 @@
                 EDF ne pr&eacute;vient que la veille &mdash;
                 <strong>le Calendrier Tempo vous alerte jusqu'&agrave; 15 jours &agrave; l'avance.</strong>
             </p>
-            <!-- P-03 : CTA visible dans le welcome banner -->
-            <a href="#subscribe" class="btn btn-cta-welcome">Recevoir les alertes gratuites</a>
         </div>
     </section>
 
@@ -225,10 +223,10 @@
     </div>
 
     <!-- Résumé rapide de la semaine — PRIORITÉ #1 pour les prospects -->
-    <div class="week-summary week-summary-top" id="week-summary" role="region" aria-label="Résumé des 7 prochains jours">
+    <div class="week-summary week-summary-top" id="week-summary" role="region" aria-label="Résumé des 12 prochains jours">
         {% if ssr.week_summary %}
         <div class="week-summary-card{% if ssr.week_summary|selectattr('couleur', 'equalto', 'ROUGE')|list %} has-rouge{% endif %}">
-            <div class="week-summary-title">R&eacute;sum&eacute; des 7 prochains jours</div>
+            <div class="week-summary-title">R&eacute;sum&eacute; des 12 prochains jours</div>
             <div class="week-summary-dots">
                 {% for d in ssr.week_summary %}
                 <div class="week-dot">
@@ -240,12 +238,10 @@
                 </div>
                 {% endfor %}
             </div>
+            <a href="#subscribe" class="btn btn-cta-summary">Recevoir les alertes gratuites</a>
         </div>
         {% endif %}
     </div>
-
-    <!-- P-05 : Résumé "prochain jour rouge" — rempli par JS -->
-    <div id="next-rouge-summary" class="next-rouge-summary" role="region" aria-label="Prochain jour rouge" aria-live="polite"></div>
 
     <!-- Compteurs jours restants -->
     <h2 class="section-title">O&ugrave; en est la saison Tempo ?</h2>

@@ -198,9 +198,6 @@ async function loadPredictions() {
 
         const preds = data.predictions || [];
 
-        // P-05 : Résumé "Prochain jour rouge" pour Paul
-        renderNextRougeSummary(preds);
-
         if (preds.length === 0) {
             container.innerHTML = '<p class="loading-state">' +
                 escapeHtml(data.message || 'Aucune prévision disponible. Les prévisions se mettent à jour automatiquement.') + '</p>';
@@ -310,8 +307,8 @@ function renderWeekSummary(preds) {
     const container = document.getElementById('week-summary');
     if (!container) return;
 
-    // Prendre les 7 premiers jours
-    const weekPreds = preds.slice(0, 7);
+    // Prendre les 12 premiers jours (2 lignes de 6)
+    const weekPreds = preds.slice(0, 12);
     if (weekPreds.length === 0) return;
 
     const rougeCount = weekPreds.filter(p => p.couleur_predite === 'ROUGE').length;
@@ -357,21 +354,6 @@ function renderWeekSummary(preds) {
             const probKey = `probabilite_${couleur.toLowerCase()}`;
             const confidence = Math.round((p[probKey] || 0) * 100);
             infoHtml = `<span class="week-dot-proba">${confidence}%</span>`;
-
-            // Détection hésitation (écart < 30% entre les 2 premières probas)
-            const pRouge = p.probabilite_rouge || 0;
-            const pBlanc = p.probabilite_blanc || 0;
-            const pBleu  = p.probabilite_bleu  || 0;
-            const probs = [
-                { color: 'R', val: pRouge },
-                { color: 'B', val: pBlanc },
-                { color: 'Bl', val: pBleu },
-            ].sort((a, b) => b.val - a.val);
-            const gap = probs[0].val - probs[1].val;
-            if (gap < 0.30 && probs[1].val > 0.15) {
-                const colorVars = { R: 'var(--rouge)', B: 'var(--blanc)', Bl: 'var(--bleu)' };
-                infoHtml += `<span class="week-dot-hesitation"><span class="hesi-dot" style="background:${colorVars[probs[0].color]}"></span><span class="hesi-separator">?</span><span class="hesi-dot" style="background:${colorVars[probs[1].color]}"></span></span>`;
-            }
         }
 
         // UX audit #25: shape classes for colorblind users + #16: confirmed border
@@ -390,59 +372,13 @@ function renderWeekSummary(preds) {
     const card = document.createElement('div');
     card.className = 'week-summary-card' + (rougeCount > 0 ? ' has-rouge' : '');
     card.innerHTML = `
-        <div class="week-summary-title">R\u00e9sum\u00e9 des 7 prochains jours</div>
+        <div class="week-summary-title">R\u00e9sum\u00e9 des 12 prochains jours</div>
         <div class="week-summary-text">${summaryText}</div>
         ${dotsHtml}
+        <a href="#subscribe" class="btn btn-cta-summary">Recevoir les alertes gratuites</a>
     `;
     container.innerHTML = '';
     container.appendChild(card);
-}
-
-// ================================================================
-// P-05 : RÉSUMÉ PROCHAIN JOUR ROUGE
-// ================================================================
-
-function renderNextRougeSummary(preds) {
-    const container = document.getElementById('next-rouge-summary');
-    if (!container) return;
-
-    const rougePreds = preds.filter(p => p.couleur_predite === 'ROUGE' && !p.confirmed);
-    const confirmedRouge = preds.filter(p => p.couleur_predite === 'ROUGE' && p.confirmed);
-
-    if (confirmedRouge.length > 0) {
-        const first = confirmedRouge[0];
-        const dateStr = formatDateFr(first.date);
-        container.innerHTML = `
-            <div class="next-rouge-card next-rouge-confirmed">
-                <span class="next-rouge-icon" aria-hidden="true">&#9888;&#65039;</span>
-                <div>
-                    <strong>Jour rouge confirm&eacute; ce ${escapeHtml(dateStr)}</strong>
-                    <span class="next-rouge-detail">Reportez vos machines et baissez le chauffage. <a href="#subscribe">Recevoir les alertes</a></span>
-                </div>
-            </div>`;
-    } else if (rougePreds.length > 0) {
-        const first = rougePreds[0];
-        const dateStr = formatDateFr(first.date);
-        const probKey = `probabilite_rouge`;
-        const confidence = Math.round((first[probKey] || 0) * 100);
-        container.innerHTML = `
-            <div class="next-rouge-card">
-                <span class="next-rouge-icon" aria-hidden="true">&#128308;</span>
-                <div>
-                    <strong>Prochain jour rouge pr&eacute;vu ce ${escapeHtml(dateStr)}</strong> (${confidence}% de probabilit&eacute;)
-                    <span class="next-rouge-detail">Anticipez vos consommations. <a href="#subscribe">Recevoir les alertes</a></span>
-                </div>
-            </div>`;
-    } else {
-        container.innerHTML = `
-            <div class="next-rouge-card next-rouge-safe">
-                <span class="next-rouge-icon" aria-hidden="true">&#9989;</span>
-                <div>
-                    <strong>Aucun jour rouge en vue</strong> pour les 15 prochains jours.
-                    <span class="next-rouge-detail">Consommez normalement !</span>
-                </div>
-            </div>`;
-    }
 }
 
 // ================================================================
