@@ -429,6 +429,11 @@ nav a:hover, nav a.active {
     display: none;
 }
 
+/* Week summary en position haute — plus de visibilité */
+.week-summary-top {
+    margin: 16px 0 20px;
+}
+
 .week-summary-card {
     background: var(--surface);
     border-radius: var(--radius);
@@ -488,6 +493,39 @@ nav a:hover, nav a.active {
 .week-dot-label {
     font-size: 0.8rem;
     color: var(--text-secondary);
+}
+
+.week-dot-info {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    line-height: 1.3;
+    text-align: center;
+    max-width: 60px;
+}
+
+.week-dot-confirmed {
+    font-size: 0.6rem;
+    font-weight: 700;
+    color: #2E7D32;
+    background: #E8F5E9;
+    padding: 1px 5px;
+    border-radius: 6px;
+}
+
+.week-dot-proba {
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.week-dot-hesitation {
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: #E65100;
+    background: #FFF3E0;
+    padding: 1px 4px;
+    border-radius: 6px;
+    white-space: nowrap;
 }
 
 /* Groupes de prévisions par horizon */
@@ -680,7 +718,7 @@ nav a:hover, nav a.active {
 
 .alert-close:hover { opacity: 1; }
 
-/* === Bandeau d'accueil (toujours visible) === */
+/* === Bandeau d'accueil (masquable par l'utilisateur) === */
 .welcome-banner {
     background: var(--surface);
     border-radius: var(--radius);
@@ -688,6 +726,34 @@ nav a:hover, nav a.active {
     margin: 20px 0;
     box-shadow: var(--shadow);
     border-left: 5px solid var(--bleu);
+    position: relative;
+}
+
+.welcome-banner.hidden { display: none; }
+
+.welcome-close {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    line-height: 1;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px 8px;
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background 0.2s, color 0.2s;
+}
+
+.welcome-close:hover {
+    background: var(--border);
+    color: var(--text);
 }
 
 .welcome-banner h2 {

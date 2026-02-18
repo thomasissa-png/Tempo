@@ -203,6 +203,7 @@
 
     <!-- P-02 : Welcome banner EN PREMIER pour les nouveaux visiteurs (Paul) -->
     <section class="welcome-banner" id="welcome-banner">
+        <button class="welcome-close" id="welcome-close" aria-label="Masquer le bandeau d'introduction">&times;</button>
         <div class="welcome-content">
             <h2>Ne subissez plus les jours rouges Tempo &mdash; anticipez-les.</h2>
             <p>
@@ -221,6 +222,9 @@
     <div class="last-update-bar" id="last-update-bar" role="status" aria-live="polite" style="display:none">
         <span id="last-update-text"></span>
     </div>
+
+    <!-- Résumé rapide de la semaine — PRIORITÉ #1 pour les prospects -->
+    <div class="week-summary week-summary-top" id="week-summary" role="region" aria-label="Résumé des 7 prochains jours"></div>
 
     <!-- Couleur du jour : utile immédiatement pour Jean-Pierre ET Paul -->
     <h2 class="section-title">Couleur Tempo EDF aujourd'hui et demain</h2>
@@ -300,9 +304,6 @@
     <p class="days-left-text" id="days-left"></p>
     <!-- P-06 : contexte humain des compteurs -->
     <p class="counter-context" id="counter-context"></p>
-
-    <!-- Résumé rapide de la semaine -->
-    <div class="week-summary" id="week-summary" role="region" aria-label="Résumé de la semaine"></div>
 
     <h2 class="section-title">Pr&eacute;visions des 15 prochains jours</h2>
     <!-- P-13 : label source clarifié -->

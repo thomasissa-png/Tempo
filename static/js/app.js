@@ -36,6 +36,7 @@ document.addEventListener('DOMContentLoaded', () => {
     setupBackToTop();
     setupPhoneValidation();
     setupUnsubscribeForm();
+    setupWelcomeBanner();
     checkHorsSaison();
 
     // Fix #31 : auto-refresh toutes les 5 min pour refléter
@@ -335,17 +336,47 @@ function renderWeekSummary(preds) {
         summaryText = parts.join(' et ') + ' en vue. <strong>Planifiez vos machines les jours bleus.</strong>';
     }
 
-    // Dots visuels
+    // Dots visuels avec info Confirmé / probabilité / hésitation
     let dotsHtml = '<div class="week-summary-dots">';
     weekPreds.forEach(p => {
         const d = parseLocalDate(p.date);
         const dayLabel = JOURS[d.getDay()];
+        const dayNum = d.getDate();
+        const month = MOIS[d.getMonth()];
         const couleur = p.couleur_predite;
         const bg = couleur === 'ROUGE' ? 'var(--rouge)' : couleur === 'BLANC' ? 'var(--blanc)' : 'var(--bleu)';
+
+        // Info sous le dot : Confirmé ou probabilité + éventuelle hésitation
+        let infoHtml = '';
+        if (p.confirmed) {
+            infoHtml = '<span class="week-dot-confirmed">Confirm\u00e9</span>';
+        } else {
+            // Probabilité de la couleur prédite
+            const probKey = `probabilite_${couleur.toLowerCase()}`;
+            const confidence = Math.round((p[probKey] || 0) * 100);
+            infoHtml = `<span class="week-dot-proba">${confidence}%</span>`;
+
+            // Détection hésitation (écart < 30% entre les 2 premières probas)
+            const pRouge = p.probabilite_rouge || 0;
+            const pBlanc = p.probabilite_blanc || 0;
+            const pBleu  = p.probabilite_bleu  || 0;
+            const probs = [
+                { color: 'R', val: pRouge },
+                { color: 'B', val: pBlanc },
+                { color: 'Bl', val: pBleu },
+            ].sort((a, b) => b.val - a.val);
+            const gap = probs[0].val - probs[1].val;
+            if (gap < 0.30 && probs[1].val > 0.15) {
+                const colorNames = { R: 'R', B: 'Bc', Bl: 'Bl' };
+                infoHtml += `<span class="week-dot-hesitation">${colorNames[probs[0].color]}/${colorNames[probs[1].color]}</span>`;
+            }
+        }
+
         dotsHtml += `
             <div class="week-dot">
                 <div class="week-dot-circle" style="background:${bg}">${couleur[0]}</div>
-                <span class="week-dot-label">${escapeHtml(dayLabel)}</span>
+                <span class="week-dot-label">${escapeHtml(dayLabel)} ${dayNum}</span>
+                <div class="week-dot-info">${infoHtml}</div>
             </div>`;
     });
     dotsHtml += '</div>';
@@ -353,7 +384,7 @@ function renderWeekSummary(preds) {
     const card = document.createElement('div');
     card.className = 'week-summary-card' + (rougeCount > 0 ? ' has-rouge' : '');
     card.innerHTML = `
-        <div class="week-summary-title">Résumé des 7 prochains jours</div>
+        <div class="week-summary-title">R\u00e9sum\u00e9 des 7 prochains jours</div>
         <div class="week-summary-text">${summaryText}</div>
         ${dotsHtml}
     `;
@@ -723,8 +754,24 @@ function showFormResult(el, type, message) {
 }
 
 // ================================================================
-// WELCOME BANNER (always visible, not dismissable)
+// WELCOME BANNER (dismissable, remembered in localStorage)
 // ================================================================
+
+function setupWelcomeBanner() {
+    const banner = document.getElementById('welcome-banner');
+    const closeBtn = document.getElementById('welcome-close');
+    if (!banner || !closeBtn) return;
+
+    // Masquer si déjà fermé par l'utilisateur
+    if (localStorage.getItem('welcome-banner-hidden') === '1') {
+        banner.classList.add('hidden');
+    }
+
+    closeBtn.addEventListener('click', () => {
+        banner.classList.add('hidden');
+        localStorage.setItem('welcome-banner-hidden', '1');
+    });
+}
 
 // ================================================================
 // UTILITAIRES
