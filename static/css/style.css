@@ -81,10 +81,13 @@ header[role="banner"] {
     color: white;
 }
 
-header[role="banner"] h1 {
+header[role="banner"] h1,
+.header-title {
     font-size: 1.3rem;
     font-weight: 700;
     letter-spacing: -0.5px;
+    margin: 0;
+    color: white;
 }
 
 header[role="banner"] .subtitle {
@@ -1811,17 +1814,23 @@ select:focus-visible {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 0;
+    gap: 6px;
     font-size: 0.9rem;
     color: var(--text-secondary);
     margin: 16px 0 24px;
+    line-height: 1.4;
 }
 .breadcrumb a {
     color: var(--bleu);
     text-decoration: none;
 }
 .breadcrumb a:hover { text-decoration: underline; }
-.breadcrumb span[aria-hidden] { margin: 0 6px; display: inline-flex; align-items: center; }
+.breadcrumb span[aria-hidden] {
+    color: var(--text-secondary);
+    font-size: 0.8em;
+    line-height: 1;
+    user-select: none;
+}
 .breadcrumb span[aria-current] { color: var(--text-secondary); }
 
 /* Blog index */
