@@ -1808,6 +1808,10 @@ select:focus-visible {
 
 /* Breadcrumb */
 .breadcrumb {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0;
     font-size: 0.9rem;
     color: var(--text-secondary);
     margin: 16px 0 24px;
@@ -1817,7 +1821,8 @@ select:focus-visible {
     text-decoration: none;
 }
 .breadcrumb a:hover { text-decoration: underline; }
-.breadcrumb span[aria-hidden] { margin: 0 6px; }
+.breadcrumb span[aria-hidden] { margin: 0 6px; display: inline-flex; align-items: center; }
+.breadcrumb span[aria-current] { color: var(--text-secondary); }
 
 /* Blog index */
 .blog-index-intro {

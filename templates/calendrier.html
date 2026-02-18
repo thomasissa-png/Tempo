@@ -280,6 +280,32 @@
         btn.setAttribute('aria-expanded', open);
     });
 })();
+
+/* Calendar month navigation: maintain exact scroll position */
+(function() {
+    var calNav = document.getElementById('cal');
+    if (!calNav) return;
+
+    /* On page load: restore saved position instead of using #cal anchor */
+    var saved = sessionStorage.getItem('cal_scroll_top');
+    if (saved !== null && location.hash === '#cal') {
+        /* Remove hash to prevent browser default scroll */
+        history.replaceState(null, '', location.pathname + location.search);
+        /* Scroll to the cal-nav element's offset for consistency */
+        var navTop = calNav.getBoundingClientRect().top + window.pageYOffset;
+        var headerH = document.querySelector('header[role="banner"]');
+        var offset = headerH ? headerH.offsetHeight + 8 : 0;
+        window.scrollTo(0, navTop - offset);
+        sessionStorage.removeItem('cal_scroll_top');
+    }
+
+    /* On click: save position before navigating */
+    calNav.querySelectorAll('a').forEach(function(link) {
+        link.addEventListener('click', function() {
+            sessionStorage.setItem('cal_scroll_top', '1');
+        });
+    });
+})();
 </script>
 
 </body>
