@@ -219,12 +219,14 @@ def load_local_rte() -> dict[str, dict]:
 
 
 async def fetch_odre_rte(start_date: date, end_date: date) -> dict[str, dict]:
-    """Récupère la consommation RTE depuis l'API ODRE (gratuite, sans auth).
+    """Récupère les données RTE depuis l'API ODRE (gratuite, sans auth).
 
+    Récupère consommation + éolien + solaire + nucléaire pour calculer C_nette.
     Pour la période non couverte par les fichiers locaux (2025+).
     """
     import httpx
 
+    FIELDS = "date_heure,consommation,eolien,solaire,nucleaire,gaz,hydraulique,prevision_j1"
     daily = {}
     chunk_start = start_date
 
@@ -239,7 +241,7 @@ async def fetch_odre_rte(start_date: date, end_date: date) -> dict[str, dict]:
                     f"date_heure >= '{chunk_start.isoformat()}' "
                     f"AND date_heure <= '{chunk_end.isoformat()}T23:59:59'"
                 ),
-                "select": "date_heure, consommation",
+                "select": FIELDS,
                 "order_by": "date_heure",
                 "limit": 100,
                 "offset": offset,
@@ -262,8 +264,17 @@ async def fetch_odre_rte(start_date: date, end_date: date) -> dict[str, dict]:
                             continue
                         day = dt_str[:10]
                         if day not in chunk_raw:
-                            chunk_raw[day] = []
-                        chunk_raw[day].append(conso)
+                            chunk_raw[day] = {"conso": [], "eol": [], "sol": [],
+                                              "nuc": [], "gaz": [], "hyd": [],
+                                              "prev_j1": []}
+                        chunk_raw[day]["conso"].append(conso)
+                        for field, key in [("eolien", "eol"), ("solaire", "sol"),
+                                           ("nucleaire", "nuc"), ("gaz", "gaz"),
+                                           ("hydraulique", "hyd"),
+                                           ("prevision_j1", "prev_j1")]:
+                            v = rec.get(field)
+                            if v is not None:
+                                chunk_raw[day][key].append(v)
 
                     if len(records) < 100:
                         break
@@ -273,11 +284,18 @@ async def fetch_odre_rte(start_date: date, end_date: date) -> dict[str, dict]:
                 logger.warning(f"  ODRE erreur (offset={offset}): {e}")
                 break
 
-        # Agréger
+        # Agréger par jour
         for d, vals in chunk_raw.items():
+            cv = vals["conso"]
             daily[d] = {
-                "conso_peak_mw": max(vals),
-                "conso_mean_mw": round(sum(vals) / len(vals)),
+                "conso_peak_mw": max(cv),
+                "conso_mean_mw": round(sum(cv) / len(cv)),
+                "prevision_j1_peak_mw": max(vals["prev_j1"]) if vals["prev_j1"] else None,
+                "nucleaire_mean_mw": round(sum(vals["nuc"]) / len(vals["nuc"])) if vals["nuc"] else None,
+                "eolien_mean_mw": round(sum(vals["eol"]) / len(vals["eol"])) if vals["eol"] else None,
+                "solaire_mean_mw": round(sum(vals["sol"]) / len(vals["sol"])) if vals["sol"] else None,
+                "gaz_mean_mw": round(sum(vals["gaz"]) / len(vals["gaz"])) if vals["gaz"] else None,
+                "hydraulique_mean_mw": round(sum(vals["hyd"]) / len(vals["hyd"])) if vals["hyd"] else None,
             }
 
         logger.info(f"  ODRE {chunk_start} → {chunk_end}: {len(chunk_raw)} jours")
@@ -288,20 +306,25 @@ async def fetch_odre_rte(start_date: date, end_date: date) -> dict[str, dict]:
 
 
 def store_rte(rte_data: dict[str, dict]) -> int:
-    """Stocke les données RTE dans rte_daily."""
+    """Stocke les données RTE dans rte_daily.
+
+    Utilise INSERT OR REPLACE pour que les données complètes (avec éolien/solaire)
+    écrasent les données partielles (conso seule) insérées par ODRE.
+    """
     conn = get_db()
     try:
         inserted = 0
         for d_str, vals in sorted(rte_data.items()):
             cursor = conn.execute(
-                """INSERT OR IGNORE INTO rte_daily
-                   (date, conso_peak_mw, conso_mean_mw, nucleaire_mean_mw,
-                    eolien_mean_mw, solaire_mean_mw, gaz_mean_mw,
-                    hydraulique_mean_mw, taux_co2_mean)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                """INSERT OR REPLACE INTO rte_daily
+                   (date, conso_peak_mw, conso_mean_mw, prevision_j1_peak_mw,
+                    nucleaire_mean_mw, eolien_mean_mw, solaire_mean_mw,
+                    gaz_mean_mw, hydraulique_mean_mw, taux_co2_mean)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (d_str,
                  vals.get("conso_peak_mw"),
                  vals.get("conso_mean_mw"),
+                 vals.get("prevision_j1_peak_mw"),
                  vals.get("nucleaire_mean_mw"),
                  vals.get("eolien_mean_mw"),
                  vals.get("solaire_mean_mw"),
@@ -452,14 +475,21 @@ async def fetch_weather_period(start_date: date, end_date: date, label: str) -> 
 
 
 def store_weather(weather_data: dict[str, dict]) -> int:
-    """Stocke la météo dans weather_cache."""
+    """Stocke la météo dans weather_cache.
+
+    Utilise DELETE + INSERT au lieu de INSERT OR IGNORE car weather_cache
+    a un UNIQUE INDEX sur date (migration v3) et la migration dé-duplique
+    par MAX(id). On écrase les entrées existantes pour injecter l'historique.
+    """
     conn = get_db()
     try:
         inserted = 0
         now = datetime.now().isoformat()
         for d_str, w in sorted(weather_data.items()):
-            cursor = conn.execute(
-                """INSERT OR IGNORE INTO weather_cache
+            # Supprimer l'entrée existante pour cette date
+            conn.execute("DELETE FROM weather_cache WHERE date = ?", (d_str,))
+            conn.execute(
+                """INSERT INTO weather_cache
                    (date, temp_min, temp_max, temp_moy, pressure,
                     humidity, wind_speed, description, fetched_at)
                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
@@ -467,8 +497,7 @@ def store_weather(weather_data: dict[str, dict]) -> int:
                  w.get("pressure"), w.get("humidity", 70),
                  w["wind_speed"], "Open-Meteo Archive (horaire agrégé)", now),
             )
-            if cursor.rowcount > 0:
-                inserted += 1
+            inserted += 1
         conn.commit()
         return inserted
     finally:
@@ -501,6 +530,9 @@ async def main():
     logger.info(f"  → {len(rte_local)} jours locaux, {rte_inserted} insérés")
 
     # Compléter avec ODRE pour la période manquante (2025+)
+    # IMPORTANT : les TSV locaux sont chargés en premier (INSERT OR REPLACE)
+    # pour que les données complètes (avec éolien/solaire) priment.
+    # ODRE ne vient combler que les dates ABSENTES des TSV.
     local_rte_dates = set(rte_local.keys())
     color_dates = set(colors.keys())
     missing_rte_dates = sorted(color_dates - local_rte_dates)
