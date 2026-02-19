@@ -48,7 +48,8 @@ HOURLY_VARS = "temperature_2m,relative_humidity_2m,pressure_msl,wind_speed_10m"
 
 # ODRE (Open Data Réseaux Énergies) — consommation nationale RTE
 ODRE_API_URL = "https://odre.opendatasoft.com/api/explore/v2.1/catalog/datasets"
-ODRE_DATASET = "eco2mix-national-cons-def"
+ODRE_DATASET_CONSDEF = "eco2mix-national-cons-def"  # Consolidé+définitif (jan 2012 → ~nov 2024)
+ODRE_DATASET_TR = "eco2mix-national-tr"              # Temps réel (~dernier mois glissant)
 
 
 # ================================================================
@@ -221,41 +222,78 @@ def load_local_rte() -> dict[str, dict]:
 async def fetch_odre_rte(start_date: date, end_date: date) -> dict[str, dict]:
     """Récupère les données RTE depuis l'API ODRE (gratuite, sans auth).
 
-    Optimisation : agrégation côté serveur (GROUP BY jour via ODSQL) pour
-    réduire le nombre d'appels API de ~43 à ~1 par chunk de 90 jours.
-    eco2mix a ~48 enregistrements/jour (demi-horaires) ; l'agrégation renvoie
-    1 ligne/jour directement, éliminant la pagination lente par 100 records.
+    Stratégie en 2 passes :
+      1. eco2mix-national-cons-def (consolidé+définitif, jan 2012 → ~nov 2024)
+      2. eco2mix-national-tr (temps réel, ~dernier mois glissant) pour les trous
 
-    Fallback sur pagination record par record si l'agrégation échoue.
+    Agrégation côté serveur (GROUP BY jour via ODSQL) : ~1 requête par chunk
+    de 90 jours au lieu de ~43 (pagination par 100 records éliminée).
     """
     import httpx
 
     daily = {}
-    chunk_start = start_date
 
     async with httpx.AsyncClient(timeout=60) as client:
-        while chunk_start <= end_date:
-            chunk_end = min(chunk_start + timedelta(days=90), end_date)
+        # Passe 1 : données consolidées (historique profond)
+        logger.info(f"    Passe 1 : cons-def ({start_date} → {end_date})...")
+        consdef = await _fetch_odre_dataset(client, ODRE_DATASET_CONSDEF, start_date, end_date)
+        daily.update(consdef)
+        logger.info(f"    → cons-def: {len(consdef)} jours")
 
-            # Tenter l'agrégation serveur (1 requête = 90 jours)
-            chunk_data = await _fetch_odre_chunk_aggregated(client, chunk_start, chunk_end)
+        # Passe 2 : temps réel pour les dates manquantes
+        # (eco2mix-national-tr ne garde que ~1 mois glissant, mais couvre
+        # le trou entre la fin de cons-def et aujourd'hui)
+        expected_days = set()
+        d = start_date
+        while d <= end_date:
+            expected_days.add(d.isoformat())
+            d += timedelta(days=1)
+        missing = expected_days - set(daily.keys())
 
-            if chunk_data is None:
-                # Fallback : pagination classique avec réutilisation du client
-                chunk_data = await _fetch_odre_chunk_paginated(client, chunk_start, chunk_end)
-
-            daily.update(chunk_data)
-            logger.info(f"  ODRE {chunk_start} → {chunk_end}: {len(chunk_data)} jours")
-            chunk_start = chunk_end + timedelta(days=1)
-            await asyncio.sleep(0.5)
+        if missing:
+            miss_sorted = sorted(missing)
+            tr_start = date.fromisoformat(miss_sorted[0])
+            tr_end = date.fromisoformat(miss_sorted[-1])
+            logger.info(f"    Passe 2 : temps-réel ({tr_start} → {tr_end}, {len(missing)} jours manquants)...")
+            tr_data = await _fetch_odre_dataset(client, ODRE_DATASET_TR, tr_start, tr_end)
+            daily.update(tr_data)
+            logger.info(f"    → temps-réel: {len(tr_data)} jours récupérés")
+        else:
+            logger.info(f"    → Pas de trous, passe temps-réel inutile")
 
     return daily
 
 
-async def _fetch_odre_chunk_aggregated(client, chunk_start: date, chunk_end: date) -> dict | None:
+async def _fetch_odre_dataset(client, dataset: str, start_date: date, end_date: date) -> dict:
+    """Récupère les données d'un dataset ODRE par chunks de 90 jours.
+
+    Tente l'agrégation ODSQL d'abord, puis fallback pagination si échec.
+    """
+    daily = {}
+    chunk_start = start_date
+
+    while chunk_start <= end_date:
+        chunk_end = min(chunk_start + timedelta(days=90), end_date)
+
+        # Tenter l'agrégation serveur (1 requête = 90 jours)
+        chunk_data = await _fetch_odre_chunk_aggregated(client, dataset, chunk_start, chunk_end)
+
+        if chunk_data is None:
+            # Fallback : pagination classique avec réutilisation du client
+            chunk_data = await _fetch_odre_chunk_paginated(client, dataset, chunk_start, chunk_end)
+
+        daily.update(chunk_data)
+        chunk_start = chunk_end + timedelta(days=1)
+        await asyncio.sleep(0.5)
+
+    return daily
+
+
+async def _fetch_odre_chunk_aggregated(client, dataset: str, chunk_start: date, chunk_end: date) -> dict | None:
     """Agrégation côté serveur : MAX/AVG par jour en une seule requête ODSQL.
 
-    Réduit ~4320 records (90j × 48 demi-heures) à ~90 lignes agrégées.
+    Réduit ~4320 records (90j × 48 demi-heures cons-def, ou 96 quarts-heure
+    pour temps-réel) à ~90 lignes agrégées.
     Retourne None si l'API ne supporte pas l'agrégation (fallback pagination).
     """
     select = (
@@ -283,7 +321,7 @@ async def _fetch_odre_chunk_aggregated(client, chunk_start: date, chunk_end: dat
     }
 
     try:
-        url = f"{ODRE_API_URL}/{ODRE_DATASET}/records"
+        url = f"{ODRE_API_URL}/{dataset}/records"
         resp = await client.get(url, params=params)
         resp.raise_for_status()
         data = resp.json()
@@ -311,11 +349,11 @@ async def _fetch_odre_chunk_aggregated(client, chunk_start: date, chunk_end: dat
         return result
 
     except Exception as e:
-        logger.warning(f"  ODRE agrégation échouée, fallback pagination: {e}")
+        logger.warning(f"  ODRE agrégation échouée ({dataset}), fallback pagination: {e}")
         return None
 
 
-async def _fetch_odre_chunk_paginated(client, chunk_start: date, chunk_end: date) -> dict:
+async def _fetch_odre_chunk_paginated(client, dataset: str, chunk_start: date, chunk_end: date) -> dict:
     """Fallback : pagination classique record par record (limit=100).
 
     Utilisé uniquement si l'agrégation ODSQL échoue. Le client httpx est
@@ -338,7 +376,7 @@ async def _fetch_odre_chunk_paginated(client, chunk_start: date, chunk_end: date
         }
 
         try:
-            url = f"{ODRE_API_URL}/{ODRE_DATASET}/records"
+            url = f"{ODRE_API_URL}/{dataset}/records"
             resp = await client.get(url, params=params)
             resp.raise_for_status()
             data = resp.json()
@@ -370,7 +408,7 @@ async def _fetch_odre_chunk_paginated(client, chunk_start: date, chunk_end: date
             offset += 100
 
         except Exception as e:
-            logger.warning(f"  ODRE erreur (offset={offset}): {e}")
+            logger.warning(f"  ODRE erreur ({dataset}, offset={offset}): {e}")
             break
 
     # Agréger par jour
