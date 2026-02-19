@@ -466,7 +466,7 @@ def _get_ssr_data() -> dict:
             from tempo_client import get_remaining_days
             ssr["remaining"] = get_remaining_days()
 
-            # Premières prédictions (J+1 à J+7 pour le SSR)
+            # Premières prédictions (J+1 à J+10 pour le SSR — résumé 10 jours)
             rows = conn.execute(
                 """SELECT date, couleur_predite, probabilite_rouge,
                           probabilite_blanc, probabilite_bleu,
@@ -478,7 +478,7 @@ def _get_ssr_data() -> dict:
                            MAX(id)
                        ) FROM predictions WHERE date >= ? GROUP BY date
                    )
-                   ORDER BY date ASC LIMIT 7""",
+                   ORDER BY date ASC LIMIT 10""",
                 (today_str, today_str)
             ).fetchall()
             # Croiser avec actuals
