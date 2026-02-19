@@ -196,7 +196,7 @@
         <nav id="main-nav" aria-label="Navigation principale">
             <a href="/" class="active" aria-current="page">Accueil</a>
             <a href="/calendrier">Calendrier</a>
-            <a href="#subscribe" onclick="event.preventDefault();openSubscribeModal()">Alertes WhatsApp</a>
+            <a href="/alertes">Alertes gratuites</a>
             <a href="/blog/">Blog</a>
             <a href="/mentions-legales">Mentions l&eacute;gales</a>
         </nav>
@@ -464,44 +464,7 @@
 
 </main>
 
-<!-- Modal inscription WhatsApp (reco 4 : popup au lieu de scroll) -->
-<div class="subscribe-modal-overlay" id="subscribe-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" style="display:none">
-    <div class="subscribe-modal">
-        <button class="modal-close" id="modal-close" aria-label="Fermer">&times;</button>
-        <h2 id="modal-title">Recevez un WhatsApp avant chaque jour cher</h2>
-        <p class="sub-desc">
-            100% gratuit, sans engagement, 1 message par jour maximum.
-        </p>
-        <div class="sms-preview" id="modal-sms-preview">
-            <div class="sms-preview-label">&#128172; Exemple de message que vous recevrez :</div>
-            <div class="sms-bubble" id="modal-sms-bubble">
-                &#9888;&#65039; <strong>Calendrier Tempo EDF</strong><br><br>
-                <strong>Jour ROUGE</strong> pr&eacute;vu <span id="modal-sms-date">mardi prochain</span> (87% confiance).<br>
-                Temp min: 2&deg;C.<br><br>
-                &#128073; Reportez lessive, s&egrave;che-linge, four et recharge VE.<br>
-                Limitez votre conso entre 6h-22h !
-            </div>
-        </div>
-        <form id="modal-subscribe-form">
-            <div class="form-simple">
-                <div class="form-group">
-                    <label for="modal-phone">Votre num&eacute;ro de mobile</label>
-                    <input type="tel" id="modal-phone" name="phone" placeholder="06 12 34 56 78" required autocomplete="tel" inputmode="tel">
-                    <span class="form-hint">Tapez votre num&eacute;ro au format habituel (06 ou 07)</span>
-                    <span class="phone-feedback" id="modal-phone-feedback" aria-live="polite"></span>
-                </div>
-            </div>
-            <button type="submit" class="btn btn-subscribe" id="modal-subscribe-btn">Recevoir mon alerte WhatsApp gratuite</button>
-            <p class="form-legal">
-                <strong class="social-proof">D&eacute;j&agrave; plus de 2&nbsp;500 foyers Tempo alert&eacute;s dans toute la France.</strong><br>
-                Votre num&eacute;ro est prot&eacute;g&eacute; et ne sera jamais partag&eacute;.
-                D&eacute;sinscription en 1 clic &agrave; tout moment.
-                <a href="/mentions-legales">Politique de confidentialit&eacute;</a>
-            </p>
-        </form>
-        <div id="modal-form-result" class="form-result"></div>
-    </div>
-</div>
+{% include '_subscribe_modal.html' %}
 
 <footer role="contentinfo">
     <div class="container">

@@ -322,6 +322,7 @@ _CACHE_EXACT: dict[str, str] = {
     "/mentions-legales": "public, max-age=3600",
     "/blog/": "public, max-age=600, stale-while-revalidate=1800",
     "/calendrier": "public, max-age=600, stale-while-revalidate=1800",
+    "/alertes": "public, max-age=3600, stale-while-revalidate=7200",
 }
 
 
@@ -569,6 +570,7 @@ async def page_calendrier(request: Request, month: int = None, year: int = None)
 
     # Charger les couleurs depuis la DB
     colors_map: dict[str, str] = {}  # "YYYY-MM-DD" -> "ROUGE"|"BLANC"|"BLEU"
+    actuals_set: set[str] = set()    # dates confirmed by EDF
     try:
         from database import get_db
         conn = get_db()
@@ -580,6 +582,7 @@ async def page_calendrier(request: Request, month: int = None, year: int = None)
             ).fetchall()
             for r in rows:
                 colors_map[r["date"]] = r["couleur_reelle"]
+                actuals_set.add(r["date"])
 
             # Prédictions pour les jours futurs non confirmés
             pred_rows = conn.execute(
@@ -627,7 +630,7 @@ async def page_calendrier(request: Request, month: int = None, year: int = None)
         d = date(year, month, day)
         d_str = d.isoformat()
         color = colors_map.get(d_str, "BLEU")  # default bleu hors saison
-        is_future = d > today
+        is_future = d > today and d_str not in actuals_set
         is_today = d == today
         calendar_days.append({
             "empty": False, "num": day, "color": color,
@@ -659,6 +662,15 @@ async def page_calendrier(request: Request, month: int = None, year: int = None)
         "next_year": next_y,
         "next_month_label": f"{month_names_fr[next_m]} {next_y}" if show_next else "",
     })
+
+
+@app.get("/alertes", response_class=HTMLResponse)
+async def page_alertes(request: Request):
+    """Page dédiée aux alertes WhatsApp gratuites.
+
+    Cible SEO : 'alerte tempo', 'alerte jour rouge tempo'.
+    """
+    return templates.TemplateResponse("alertes.html", {"request": request})
 
 
 @app.get("/admin", response_class=HTMLResponse)
@@ -754,6 +766,7 @@ async def robots_txt():
         "User-agent: *\n"
         "Allow: /\n"
         "Allow: /calendrier\n"
+        "Allow: /alertes\n"
         "Allow: /blog/\n"
         "Disallow: /admin\n"
         "Disallow: /api/\n"
@@ -780,6 +793,11 @@ async def sitemap_xml():
         f"    <lastmod>{today}</lastmod>\n"
         "    <changefreq>daily</changefreq>\n"
         "    <priority>0.9</priority>\n"
+        "  </url>",
+        "  <url>\n"
+        "    <loc>https://www.calendrier-tempo.fr/alertes</loc>\n"
+        "    <changefreq>monthly</changefreq>\n"
+        "    <priority>0.8</priority>\n"
         "  </url>",
         "  <url>\n"
         "    <loc>https://www.calendrier-tempo.fr/mentions-legales</loc>\n"

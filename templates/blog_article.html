@@ -86,7 +86,7 @@
         <nav id="main-nav" aria-label="Navigation principale">
             <a href="/">Accueil</a>
             <a href="/calendrier">Calendrier</a>
-            <a href="/#subscribe">Alertes WhatsApp</a>
+            <a href="/alertes">Alertes gratuites</a>
             <a href="/blog/" class="active">Blog</a>
             <a href="/mentions-legales">Mentions l&eacute;gales</a>
         </nav>
@@ -119,7 +119,7 @@
         <aside class="blog-cta-inline">
             <strong>Ne ratez plus aucun jour rouge Tempo</strong>
             <p>Recevez une alerte WhatsApp gratuite la veille. Inscription en 30 secondes.</p>
-            <a href="/#subscribe" class="btn btn-primary">S'inscrire gratuitement</a>
+            <button type="button" class="btn btn-primary" onclick="openSubscribeModal()">S'inscrire gratuitement</button>
         </aside>
     </article>
 
@@ -127,10 +127,12 @@
     <nav class="blog-nav-articles" aria-label="Articles du blog" style="display:flex;flex-wrap:wrap;gap:12px;margin:24px 0">
         <a href="/blog/">&larr; Retour au blog</a>
         <a href="/calendrier">Calendrier Tempo EDF</a>
-        <a href="/#subscribe">Alertes WhatsApp gratuites</a>
+        <a href="/alertes">Alertes WhatsApp gratuites</a>
     </nav>
 
 </main>
+
+{% include '_subscribe_modal.html' %}
 
 <footer role="contentinfo">
     <div class="container">

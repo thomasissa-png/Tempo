@@ -141,7 +141,7 @@
         <nav id="main-nav" aria-label="Navigation principale">
             <a href="/">Accueil</a>
             <a href="/calendrier" class="active" aria-current="page">Calendrier</a>
-            <a href="/#subscribe">Alertes WhatsApp</a>
+            <a href="/alertes">Alertes gratuites</a>
             <a href="/blog/">Blog</a>
             <a href="/mentions-legales">Mentions l&eacute;gales</a>
         </nav>
@@ -219,7 +219,7 @@
     <section class="blog-cta" style="margin: 32px 0">
         <h2>Recevez une alerte avant chaque jour rouge</h2>
         <p>Inscrivez-vous gratuitement pour recevoir un WhatsApp la veille de chaque jour rouge ou blanc Tempo.</p>
-        <a href="/#subscribe" class="btn btn-primary">S'inscrire aux alertes gratuites</a>
+        <button type="button" class="btn btn-primary" onclick="openSubscribeModal()">S'inscrire aux alertes gratuites</button>
     </section>
 
     <!-- Contenu SEO -->
@@ -247,7 +247,7 @@
             Les jours pass&eacute;s affichent la <strong>couleur officielle confirm&eacute;e par EDF</strong>.
             Les jours futurs en italique montrent nos <strong>pr&eacute;visions</strong>, avec une fiabilit&eacute; qui
             diminue au-del&agrave; de 5 jours. Pour &ecirc;tre pr&eacute;venu automatiquement la veille d'un jour rouge,
-            <a href="/#subscribe"><strong>inscrivez-vous aux alertes WhatsApp gratuites</strong></a>.
+            <a href="/alertes"><strong>inscrivez-vous aux alertes WhatsApp gratuites</strong></a>.
         </p>
         <p>
             Vous pouvez aussi consulter notre <a href="/">page d'accueil</a> pour voir la couleur du jour et de demain,
@@ -256,6 +256,8 @@
     </section>
 
 </main>
+
+{% include '_subscribe_modal.html' %}
 
 <footer role="contentinfo">
     <div class="container">
