@@ -572,6 +572,221 @@ def predict_day(target_date: date, weather: dict | None = None,
                    remaining, sub_scores)
 
 
+# ================================================================
+# POST-PREDICTION COHERENCE CHECK
+# ================================================================
+
+def _apply_thermal_coherence(predictions: list[dict],
+                              forecasts: list[dict]) -> list[dict]:
+    """Post-check de coherence thermique : corrige les inversions ROUGE/BLANC.
+
+    Quand la pression budgetaire sequentielle cause une incoherence —
+    un jour plus froid predit BLANC tandis qu'un jour plus chaud predit ROUGE —
+    on echange les couleurs pour retablir la coherence physique (froid → ROUGE).
+
+    Conditions de swap :
+    - Ni l'un ni l'autre n'est confirme par EDF
+    - Les deux jours sont en saison ROUGE (nov-mars)
+    - Le jour BLANC est plus froid d'au moins 0.5°C
+    - Le jour BLANC peut devenir ROUGE (R2 : pas weekend/ferie)
+    - Le jour ROUGE peut devenir BLANC (R3 : pas dimanche)
+    - Le swap ne cree pas 5+ jours ROUGE consecutifs (R4)
+    """
+    if len(predictions) < 2:
+        return predictions
+
+    # Build temp_moy lookup from forecasts
+    temp_by_date: dict[str, float] = {}
+    for f in forecasts:
+        t = f.get("temp_moy")
+        if t is not None:
+            temp_by_date[f["date"]] = t
+
+    MIN_DELTA = 0.5   # Ecart minimum (°C) pour declencher un swap
+    MAX_SWAPS = 5      # Limite de securite par passe
+    swaps_done = 0
+    tried_pairs: set[tuple[int, int]] = set()
+    changed = True
+
+    while changed and swaps_done < MAX_SWAPS:
+        changed = False
+
+        # Collecte des ROUGE et BLANC non confirmes en saison rouge
+        rouge_indices: list[int] = []
+        blanc_indices: list[int] = []
+        for i, pred in enumerate(predictions):
+            if pred.get("confirmed"):
+                continue
+            d = date.fromisoformat(pred["date"])
+            if not (d.month >= 11 or d.month <= 3):
+                continue
+            if pred["couleur_predite"] == "ROUGE":
+                rouge_indices.append(i)
+            elif pred["couleur_predite"] == "BLANC":
+                blanc_indices.append(i)
+
+        # Trouver la pire inversion (plus grand ecart de temperature)
+        best_swap: tuple[int, int] | None = None
+        best_delta = 0.0
+
+        for bi in blanc_indices:
+            blanc_date = predictions[bi]["date"]
+            blanc_temp = temp_by_date.get(blanc_date)
+            if blanc_temp is None:
+                continue
+            d_blanc = date.fromisoformat(blanc_date)
+
+            # R2 : BLANC → ROUGE seulement si jour ouvre et pas ferie
+            if d_blanc.weekday() >= 5 or is_french_holiday(d_blanc):
+                continue
+
+            for ri in rouge_indices:
+                if (bi, ri) in tried_pairs:
+                    continue
+
+                rouge_date = predictions[ri]["date"]
+                rouge_temp = temp_by_date.get(rouge_date)
+                if rouge_temp is None:
+                    continue
+                d_rouge = date.fromisoformat(rouge_date)
+
+                delta = rouge_temp - blanc_temp
+                if delta < MIN_DELTA:
+                    continue
+
+                # R3 : ROUGE → BLANC seulement si pas dimanche
+                if d_rouge.weekday() == 6:
+                    continue
+
+                if delta > best_delta:
+                    best_swap = (bi, ri)
+                    best_delta = delta
+
+        if not best_swap:
+            break
+
+        bi, ri = best_swap
+        tried_pairs.add((bi, ri))
+
+        # Effectuer le swap
+        predictions[bi]["couleur_predite"] = "ROUGE"
+        predictions[ri]["couleur_predite"] = "BLANC"
+
+        # Verifier R4 pour la nouvelle position ROUGE
+        if _count_consecutive_rouge(predictions, bi) >= 5:
+            # Annuler — violation R4
+            predictions[bi]["couleur_predite"] = "BLANC"
+            predictions[ri]["couleur_predite"] = "ROUGE"
+            continue
+
+        # Echanger les probabilites rouge/blanc
+        for key in ("probabilite_rouge", "probabilite_blanc"):
+            predictions[bi][key], predictions[ri][key] = \
+                predictions[ri][key], predictions[bi][key]
+
+        # Garantir la coherence couleur/probabilite
+        _ensure_prob_coherence(predictions[bi])
+        _ensure_prob_coherence(predictions[ri])
+
+        # Annoter la raison
+        delta_str = f"{best_delta:.1f}"
+        predictions[bi]["raison"] += (
+            f" \u00b7 Coh\u00e9rence thermique "
+            f"(\u2194 {predictions[ri]['date']}, \u0394{delta_str}\u00b0C)"
+        )
+        predictions[ri]["raison"] += (
+            f" \u00b7 Coh\u00e9rence thermique "
+            f"(\u2194 {predictions[bi]['date']}, \u0394{delta_str}\u00b0C)"
+        )
+
+        bi_temp = temp_by_date.get(predictions[bi]["date"], 0)
+        ri_temp = temp_by_date.get(predictions[ri]["date"], 0)
+        logger.info(
+            f"[Coherence] Swap {predictions[bi]['date']} BLANC\u2192ROUGE "
+            f"({bi_temp:.1f}\u00b0C) \u2194 {predictions[ri]['date']} ROUGE\u2192BLANC "
+            f"({ri_temp:.1f}\u00b0C), delta={best_delta:.1f}\u00b0C"
+        )
+
+        swaps_done += 1
+        changed = True
+
+    if swaps_done > 0:
+        logger.info(
+            f"[Coherence] {swaps_done} swap(s) thermique(s) appliqu\u00e9(s)"
+        )
+
+    return predictions
+
+
+def _count_consecutive_rouge(predictions: list[dict], target_idx: int) -> int:
+    """Compte les jours ROUGE consecutifs autour de target_idx (inclus)."""
+    if predictions[target_idx]["couleur_predite"] != "ROUGE":
+        return 0
+
+    target_d = date.fromisoformat(predictions[target_idx]["date"])
+    count = 1
+
+    # Compter en arriere
+    prev_d = target_d
+    for j in range(target_idx - 1, -1, -1):
+        d_j = date.fromisoformat(predictions[j]["date"])
+        if (prev_d - d_j).days != 1:
+            break
+        if predictions[j]["couleur_predite"] == "ROUGE":
+            count += 1
+            prev_d = d_j
+        else:
+            break
+
+    # Compter en avant
+    next_d = target_d
+    for j in range(target_idx + 1, len(predictions)):
+        d_j = date.fromisoformat(predictions[j]["date"])
+        if (d_j - next_d).days != 1:
+            break
+        if predictions[j]["couleur_predite"] == "ROUGE":
+            count += 1
+            next_d = d_j
+        else:
+            break
+
+    return count
+
+
+def _ensure_prob_coherence(pred: dict) -> None:
+    """Garantit que la couleur predite a la probabilite la plus haute."""
+    couleur = pred["couleur_predite"]
+    p_map = {
+        "ROUGE": "probabilite_rouge",
+        "BLANC": "probabilite_blanc",
+        "BLEU": "probabilite_bleu",
+    }
+
+    key_chosen = p_map[couleur]
+    p_chosen = pred[key_chosen]
+    p_max = max(pred[p] for p in p_map.values())
+
+    if p_chosen >= p_max:
+        return
+
+    target = min(p_max + 0.05, 0.95)
+    boost = target - p_chosen
+
+    other_keys = [v for k, v in p_map.items() if k != couleur]
+    other_total = sum(pred[k] for k in other_keys)
+    if other_total > 0:
+        for k in other_keys:
+            pred[k] -= (pred[k] / other_total) * boost
+            pred[k] = max(0.0, pred[k])
+
+    pred[key_chosen] = target
+
+    total = sum(pred[p] for p in p_map.values())
+    if total > 0:
+        for p in p_map.values():
+            pred[p] = round(pred[p] / total, 3)
+
+
 def predict_range(forecasts: list[dict],
                   rte_score: dict | None = None,
                   vigilance: dict | None = None) -> list[dict]:
@@ -656,6 +871,10 @@ def predict_range(forecasts: list[dict],
             sim_remaining["ROUGE"] -= 1
         elif couleur == "BLANC" and sim_remaining["BLANC"] > 0:
             sim_remaining["BLANC"] -= 1
+
+    # Post-check de coherence thermique : corrige les inversions
+    # ROUGE/BLANC causees par la pression budgetaire sequentielle
+    predictions = _apply_thermal_coherence(predictions, forecasts)
 
     return predictions
 

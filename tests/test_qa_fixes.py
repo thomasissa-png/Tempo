@@ -1268,3 +1268,233 @@ class TestBlogArticleDateModified:
             content = f.read()
         assert "updated_date" in content
         assert "Mis" in content  # "Mis à jour le"
+
+
+# ================================================================
+# Thermal coherence post-check
+# ================================================================
+
+class TestThermalCoherence:
+    """Post-prediction coherence: colder days should get ROUGE over warmer days."""
+
+    def _make_pred(self, date_str, couleur, p_rouge=0.3, p_blanc=0.4, p_bleu=0.3,
+                   score=50.0, confirmed=False):
+        return {
+            "date": date_str,
+            "couleur_predite": couleur,
+            "probabilite_rouge": p_rouge,
+            "probabilite_blanc": p_blanc,
+            "probabilite_bleu": p_bleu,
+            "score_risque": score,
+            "raison": "Test",
+            "confirmed": confirmed,
+        }
+
+    def test_swap_colder_blanc_warmer_rouge(self):
+        """A colder BLANC day is swapped to ROUGE when a warmer day is ROUGE."""
+        from predictor import _apply_thermal_coherence
+        predictions = [
+            self._make_pred("2026-03-02", "BLANC", p_blanc=0.50, p_rouge=0.25, p_bleu=0.25),
+            self._make_pred("2026-03-03", "ROUGE", p_rouge=0.55, p_blanc=0.25, p_bleu=0.20),
+        ]
+        forecasts = [
+            {"date": "2026-03-02", "temp_moy": 3.0},
+            {"date": "2026-03-03", "temp_moy": 6.0},
+        ]
+        result = _apply_thermal_coherence(predictions, forecasts)
+        assert result[0]["couleur_predite"] == "ROUGE"
+        assert result[1]["couleur_predite"] == "BLANC"
+        assert "thermique" in result[0]["raison"]
+        assert "thermique" in result[1]["raison"]
+
+    def test_no_swap_when_already_coherent(self):
+        """No swap when ROUGE day is already colder than BLANC day."""
+        from predictor import _apply_thermal_coherence
+        predictions = [
+            self._make_pred("2026-03-02", "ROUGE", p_rouge=0.60, p_blanc=0.25, p_bleu=0.15),
+            self._make_pred("2026-03-03", "BLANC", p_blanc=0.50, p_rouge=0.20, p_bleu=0.30),
+        ]
+        forecasts = [
+            {"date": "2026-03-02", "temp_moy": 3.0},
+            {"date": "2026-03-03", "temp_moy": 6.0},
+        ]
+        result = _apply_thermal_coherence(predictions, forecasts)
+        assert result[0]["couleur_predite"] == "ROUGE"
+        assert result[1]["couleur_predite"] == "BLANC"
+
+    def test_no_swap_confirmed_days(self):
+        """Confirmed days are never swapped."""
+        from predictor import _apply_thermal_coherence
+        predictions = [
+            self._make_pred("2026-03-02", "BLANC", confirmed=True),
+            self._make_pred("2026-03-03", "ROUGE", confirmed=False),
+        ]
+        forecasts = [
+            {"date": "2026-03-02", "temp_moy": 1.0},
+            {"date": "2026-03-03", "temp_moy": 8.0},
+        ]
+        result = _apply_thermal_coherence(predictions, forecasts)
+        assert result[0]["couleur_predite"] == "BLANC"
+        assert result[1]["couleur_predite"] == "ROUGE"
+
+    def test_no_swap_weekend_to_rouge(self):
+        """A Saturday BLANC can't become ROUGE (R2)."""
+        from predictor import _apply_thermal_coherence
+        # 2026-02-28 is Saturday
+        predictions = [
+            self._make_pred("2026-02-28", "BLANC"),
+            self._make_pred("2026-03-02", "ROUGE"),  # Monday
+        ]
+        forecasts = [
+            {"date": "2026-02-28", "temp_moy": 1.0},
+            {"date": "2026-03-02", "temp_moy": 8.0},
+        ]
+        result = _apply_thermal_coherence(predictions, forecasts)
+        assert result[0]["couleur_predite"] == "BLANC"
+        assert result[1]["couleur_predite"] == "ROUGE"
+
+    def test_no_swap_sunday_rouge_to_blanc(self):
+        """A Sunday ROUGE can't become BLANC (R3)."""
+        from predictor import _apply_thermal_coherence
+        # 2026-03-01 is Sunday
+        predictions = [
+            self._make_pred("2026-02-27", "BLANC"),   # Friday
+            self._make_pred("2026-03-01", "ROUGE"),   # Sunday
+        ]
+        forecasts = [
+            {"date": "2026-02-27", "temp_moy": 1.0},
+            {"date": "2026-03-01", "temp_moy": 8.0},
+        ]
+        result = _apply_thermal_coherence(predictions, forecasts)
+        # Sunday can't become BLANC, so no swap
+        assert result[0]["couleur_predite"] == "BLANC"
+        assert result[1]["couleur_predite"] == "ROUGE"
+
+    def test_no_swap_small_delta(self):
+        """No swap when temperature difference < 0.5C."""
+        from predictor import _apply_thermal_coherence
+        predictions = [
+            self._make_pred("2026-03-02", "BLANC"),
+            self._make_pred("2026-03-03", "ROUGE"),
+        ]
+        forecasts = [
+            {"date": "2026-03-02", "temp_moy": 5.0},
+            {"date": "2026-03-03", "temp_moy": 5.3},  # Delta = 0.3 < 0.5
+        ]
+        result = _apply_thermal_coherence(predictions, forecasts)
+        assert result[0]["couleur_predite"] == "BLANC"
+        assert result[1]["couleur_predite"] == "ROUGE"
+
+    def test_swap_non_adjacent_days(self):
+        """Swap works even for non-adjacent days (e.g. day 1 and day 3)."""
+        from predictor import _apply_thermal_coherence
+        predictions = [
+            self._make_pred("2026-03-02", "BLANC"),  # Monday, cold
+            self._make_pred("2026-03-03", "BLEU"),   # Tuesday, mild (no swap)
+            self._make_pred("2026-03-04", "ROUGE"),  # Wednesday, warm
+        ]
+        forecasts = [
+            {"date": "2026-03-02", "temp_moy": 2.0},
+            {"date": "2026-03-03", "temp_moy": 10.0},
+            {"date": "2026-03-04", "temp_moy": 7.0},
+        ]
+        result = _apply_thermal_coherence(predictions, forecasts)
+        assert result[0]["couleur_predite"] == "ROUGE"
+        assert result[2]["couleur_predite"] == "BLANC"
+
+    def test_r4_prevents_swap(self):
+        """Swap is blocked if it would create 5+ consecutive ROUGE (R4)."""
+        from predictor import _apply_thermal_coherence
+        # 4 consecutive ROUGE days then a BLANC that's colder
+        predictions = [
+            self._make_pred("2026-03-02", "ROUGE"),  # Mon
+            self._make_pred("2026-03-03", "ROUGE"),  # Tue
+            self._make_pred("2026-03-04", "ROUGE"),  # Wed
+            self._make_pred("2026-03-05", "ROUGE"),  # Thu
+            self._make_pred("2026-03-06", "BLANC"),  # Fri — colder but next to 4 ROUGE
+            self._make_pred("2026-03-09", "ROUGE"),  # Mon (gap: weekend) — warmer
+        ]
+        forecasts = [
+            {"date": "2026-03-02", "temp_moy": 1.0},
+            {"date": "2026-03-03", "temp_moy": 1.0},
+            {"date": "2026-03-04", "temp_moy": 1.0},
+            {"date": "2026-03-05", "temp_moy": 1.0},
+            {"date": "2026-03-06", "temp_moy": 0.5},  # Coldest
+            {"date": "2026-03-09", "temp_moy": 5.0},  # Warmest ROUGE
+        ]
+        result = _apply_thermal_coherence(predictions, forecasts)
+        # Swapping idx 4 (BLANC→ROUGE) would create 5 consecutive ROUGE (Mar 2-6)
+        assert result[4]["couleur_predite"] == "BLANC"
+        assert result[5]["couleur_predite"] == "ROUGE"
+
+    def test_prob_coherence_after_swap(self):
+        """After swap, predicted color always has the highest probability."""
+        from predictor import _apply_thermal_coherence
+        predictions = [
+            self._make_pred("2026-03-02", "BLANC", p_blanc=0.60, p_rouge=0.15, p_bleu=0.25),
+            self._make_pred("2026-03-03", "ROUGE", p_rouge=0.65, p_blanc=0.20, p_bleu=0.15),
+        ]
+        forecasts = [
+            {"date": "2026-03-02", "temp_moy": 2.0},
+            {"date": "2026-03-03", "temp_moy": 7.0},
+        ]
+        result = _apply_thermal_coherence(predictions, forecasts)
+        # Day 0 is now ROUGE — its prob_rouge must be the highest
+        assert result[0]["probabilite_rouge"] >= result[0]["probabilite_blanc"]
+        assert result[0]["probabilite_rouge"] >= result[0]["probabilite_bleu"]
+        # Day 1 is now BLANC — its prob_blanc must be the highest
+        assert result[1]["probabilite_blanc"] >= result[1]["probabilite_rouge"]
+        assert result[1]["probabilite_blanc"] >= result[1]["probabilite_bleu"]
+
+    def test_out_of_season_not_swapped(self):
+        """Days outside RED season (Apr-Oct) are never swapped."""
+        from predictor import _apply_thermal_coherence
+        predictions = [
+            self._make_pred("2026-04-06", "BLANC"),  # April — out of RED season
+            self._make_pred("2026-04-07", "ROUGE"),
+        ]
+        forecasts = [
+            {"date": "2026-04-06", "temp_moy": 2.0},
+            {"date": "2026-04-07", "temp_moy": 8.0},
+        ]
+        result = _apply_thermal_coherence(predictions, forecasts)
+        assert result[0]["couleur_predite"] == "BLANC"
+        assert result[1]["couleur_predite"] == "ROUGE"
+
+    def test_holiday_blanc_not_swapped_to_rouge(self):
+        """A holiday BLANC can't become ROUGE (R2)."""
+        from predictor import _apply_thermal_coherence
+        # 2026-01-01 is a Thursday and a holiday (Jour de l'an)
+        predictions = [
+            self._make_pred("2026-01-01", "BLANC"),
+            self._make_pred("2026-01-02", "ROUGE"),  # Friday
+        ]
+        forecasts = [
+            {"date": "2026-01-01", "temp_moy": 0.0},
+            {"date": "2026-01-02", "temp_moy": 5.0},
+        ]
+        result = _apply_thermal_coherence(predictions, forecasts)
+        assert result[0]["couleur_predite"] == "BLANC"
+        assert result[1]["couleur_predite"] == "ROUGE"
+
+    def test_multiple_swaps(self):
+        """Multiple inversions are corrected in a single pass."""
+        from predictor import _apply_thermal_coherence
+        predictions = [
+            self._make_pred("2026-03-02", "BLANC"),  # Mon, 2C
+            self._make_pred("2026-03-03", "ROUGE"),  # Tue, 7C
+            self._make_pred("2026-03-04", "BLANC"),  # Wed, 1C
+            self._make_pred("2026-03-05", "ROUGE"),  # Thu, 8C
+        ]
+        forecasts = [
+            {"date": "2026-03-02", "temp_moy": 2.0},
+            {"date": "2026-03-03", "temp_moy": 7.0},
+            {"date": "2026-03-04", "temp_moy": 1.0},
+            {"date": "2026-03-05", "temp_moy": 8.0},
+        ]
+        result = _apply_thermal_coherence(predictions, forecasts)
+        # The two coldest days should be ROUGE, the two warmest BLANC
+        rouge_dates = [p["date"] for p in result if p["couleur_predite"] == "ROUGE"]
+        blanc_dates = [p["date"] for p in result if p["couleur_predite"] == "BLANC"]
+        assert "2026-03-02" in rouge_dates or "2026-03-04" in rouge_dates
+        assert "2026-03-03" in blanc_dates or "2026-03-05" in blanc_dates
