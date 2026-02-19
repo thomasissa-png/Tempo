@@ -83,8 +83,17 @@ def start_scheduler():
         replace_existing=True,
     )
 
+    # Mardi 9h00 — Agent SEO autonome (publication blog hebdomadaire)
+    scheduler.add_job(
+        task_seo_agent,
+        CronTrigger(day_of_week="tue", hour=9, minute=0, timezone="Europe/Paris"),
+        id="seo_agent_weekly",
+        name="Agent SEO blog hebdomadaire (mardi 9h)",
+        replace_existing=True,
+    )
+
     scheduler.start()
-    logger.info("[Scheduler] Démarré avec 6 tâches planifiées")
+    logger.info("[Scheduler] Démarré avec 7 tâches planifiées")
 
 
 def stop_scheduler():
@@ -738,6 +747,48 @@ async def task_daily_validation():
 
 
 # ================================================================
+# TÂCHE 6 : Agent SEO blog (mardi 9h00)
+# ================================================================
+
+async def task_seo_agent():
+    """Mardi 9h — Exécute l'agent SEO pour publier un article de blog.
+
+    L'agent utilise l'API Claude pour :
+    1. Faire une veille SEO
+    2. Mettre à jour le calendrier éditorial
+    3. Rédiger et publier un article optimisé
+    4. Créer des liens rétroactifs vers le nouvel article
+
+    Nécessite ANTHROPIC_API_KEY dans les variables d'environnement.
+    Si la clé n'est pas configurée, la tâche est silencieusement ignorée.
+    """
+    import os
+    if not os.getenv("ANTHROPIC_API_KEY"):
+        logger.debug("[Agent SEO] ANTHROPIC_API_KEY non configurée, tâche ignorée")
+        return
+
+    try:
+        from seo_agent import run_seo_agent
+
+        logger.info("[Agent SEO] Démarrage de la publication hebdomadaire")
+
+        # L'agent est CPU/IO bound (appels API), on l'exécute dans un thread
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, run_seo_agent)
+
+        if result["success"]:
+            logger.info(
+                f"[Agent SEO] Terminé en {result['turns']} tours. "
+                f"Rapport : {result['report'][:500]}"
+            )
+        else:
+            logger.error(f"[Agent SEO] Échec : {result['error']}")
+
+    except Exception as e:
+        logger.error(f"[Agent SEO] Erreur inattendue : {e}")
+
+
+# ================================================================
 # EXÉCUTION MANUELLE (pour tests / API admin)
 # ================================================================
 
@@ -765,6 +816,7 @@ async def run_task_now(task_name: str) -> str:
         "weights": task_monthly_weights,
         "recap": task_weekly_recap,
         "validation": task_daily_validation,
+        "seo_agent": task_seo_agent,
     }
     if task_name not in tasks:
         available = list(tasks.keys()) + ["backfill", "analyze"]

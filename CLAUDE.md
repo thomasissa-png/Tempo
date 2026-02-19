@@ -98,6 +98,7 @@
 - `weekly_recap` (Sunday 20h): sends weekly summary
 - `edf_polling` (6h-11h15, every 15min): polls EDF for J+1 color
 - `post_startup` (deferred 90s): backfill + ML evaluation + predictions
+- `seo_agent_weekly` (Tuesday 9h): autonomous SEO blog agent (requires ANTHROPIC_API_KEY)
 
 ## Common Pitfalls
 - **Data leakage**: Never use same-day RTE consumption for predictions (only lag features D-1+)
@@ -155,10 +156,14 @@
 - **Umami**: Cloud-hosted analytics (`cloud.umami.is`) on all public templates (dashboard, blog_index, blog_article, legal, manage, alertes). Script loaded with `defer`. Website ID: `1d187359-b4a6-4ba8-ba41-c449b356832f`.
 
 ### SEO Agent v2 (autonomous weekly publication)
+- **Runner**: `seo_agent.py` — autonomous agent using Anthropic API with tool use (read/write/edit files, glob, grep, web search, bash)
 - **Prompt**: `.claude/seo-agent-prompt.md` — complete 8-step workflow for autonomous blog publication
 - **Editorial calendar**: `articles/_calendrier_editorial.yaml` (YAML format for reliable machine parsing) — tracks 10+ weeks ahead, updated each Tuesday
 - **Publication log**: `articles/_publication_log.md` — persistent log of every publication action
-- **Schedule**: Every Tuesday, the agent runs the full cycle: SEO monitoring → inventory → calendar → writing → review → bidirectional linking → publication → logging
+- **Scheduler**: `task_seo_agent` in scheduler.py — CronTrigger every Tuesday at 9h00 Paris time. Silently skipped if `ANTHROPIC_API_KEY` not set.
+- **API key**: Requires `ANTHROPIC_API_KEY` in environment variables (Replit Secrets). One-time setup. Uses Claude Sonnet for cost efficiency.
+- **Manual trigger**: Available via admin panel `/admin` → task `seo_agent`, or `run_task_now("seo_agent")`
+- **Schedule**: Every Tuesday 9h, the agent runs the full cycle: SEO monitoring → inventory → calendar → writing → review → bidirectional linking → publication → logging
 - **8 steps**: (0) SEO monitoring + self-update, (1) Inventory + competitive analysis + PAA, (2) Calendar update + anti-cannibalization, (3) Writing with 5-title brainstorming + FAQ + featured snippets, (4) SEO review + word count verification, (5) Bidirectional retroactive linking, (6) Publication + error handling + verification, (7) Publication log, (8) Execution report
 - **Topic clusters**: 5 clusters (tempo-guide, jours-rouges, calendrier, equipements, preparation). Each has a pillar article + satellites. Satellites must link to pillar, pillar must link to satellites.
 - **Anti-cannibalization**: Agent checks search intent (not just keywords) before creating new articles. Prefers refreshing existing articles over creating duplicates.
