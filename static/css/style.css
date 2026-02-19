@@ -191,14 +191,6 @@ nav a.nav-cta:hover {
     color: var(--accent-hover);
 }
 
-/* === Séparateur tricolore — signature identitaire === */
-header[role="banner"]::after {
-    content: '';
-    display: block;
-    height: 3px;
-    background: linear-gradient(to right, var(--bleu) 33.33%, #D1D5DB 33.33%, #D1D5DB 66.66%, var(--rouge) 66.66%);
-}
-
 /* === Badge fiabilité === */
 /* Fix #13 : badge cliquable (balise <a>) */
 .badge-fiabilite {
@@ -1278,18 +1270,6 @@ footer {
     font-size: 0.85rem;
     border-top: none;
     margin-top: 48px;
-    position: relative;
-}
-
-footer::before {
-    content: '';
-    display: block;
-    height: 3px;
-    background: linear-gradient(to right, var(--bleu) 33.33%, #D1D5DB 33.33%, #D1D5DB 66.66%, var(--rouge) 66.66%);
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
 }
 
 .footer-inner {
