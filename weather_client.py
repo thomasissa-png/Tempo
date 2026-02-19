@@ -293,10 +293,12 @@ def _fetch_all_cities_sync(arome_auth: dict[str, str],
         logger.warning("[Meteo] Aucune ville n'a repondu via meteole — fallback Open-Meteo")
         return {}
 
-    if len(city_forecasts) < 3:
+    # Fix P2-10 audit : seuil minimum de 5 villes pour une moyenne fiable
+    if len(city_forecasts) < 5:
         logger.warning(
             f"[Meteo] Seulement {len(city_forecasts)} ville(s) sur "
-            f"{len(Config.WEATHER_CITIES)} — moyenne peu representative"
+            f"{len(Config.WEATHER_CITIES)} — moyenne peu representative "
+            f"(minimum recommande: 5)"
         )
 
     logger.info(
@@ -483,7 +485,9 @@ def _merge_models_to_daily(arome_results: dict[int, dict],
     Les step_index sont des indices horaires depuis le run du modele.
     On les convertit en dates avec l'heure UTC courante comme reference.
     """
-    now = datetime.utcnow().replace(minute=0, second=0, microsecond=0)
+    # Fix P0-1 audit : timezone-aware UTC au lieu de utcnow() deprecie
+    from zoneinfo import ZoneInfo
+    now = datetime.now(tz=ZoneInfo("UTC")).replace(minute=0, second=0, microsecond=0)
 
     # Convertir les step_index en timestamps et grouper par date
     # AROME : pas horaire, indices 0 a ~51
@@ -530,30 +534,48 @@ def _merge_models_to_daily(arome_results: dict[int, dict],
         if not temps:
             continue
 
-        # Conversion des unites Meteo France :
-        # - Temperature : Kelvin -> Celsius (si > 100, c'est du Kelvin)
-        # - Pression : Pa -> hPa (si > 10000, c'est du Pa)
-        # - Vent rafales : m/s -> km/h
-        is_kelvin = any(t > 100 for t in temps)
+        # Fix P2-9 audit : detection d'unites plus robuste avec seuils explicites
+        # Temperature : Kelvin (200-350) vs Celsius (-50 a +60)
+        median_t = sorted(temps)[len(temps) // 2]
+        is_kelvin = median_t > 100  # Median plus robuste que any()
         k_offset = 273.15 if is_kelvin else 0
+        if is_kelvin:
+            logger.debug(f"[Meteo] {day_str}: temperature en Kelvin (median={median_t:.0f}K)")
 
         temp_min = round(min(temps) - k_offset, 1)
         temp_max = round(max(temps) - k_offset, 1)
         temp_moy = round(sum(temps) / len(temps) - k_offset, 1)
 
+        # Validation plausibilite temperature
+        if temp_moy < -40 or temp_moy > 50:
+            logger.warning(f"[Meteo] {day_str}: temp_moy={temp_moy}°C hors plage [-40, 50]")
+
         humidity = round(sum(humidities) / len(humidities), 1) if humidities else 50.0
 
-        # Vent : max des rafales, conversion m/s -> km/h
+        # Vent : max des rafales
+        # m/s (0-100 typique) vs km/h (0-300+)
         if winds:
-            max_wind_ms = max(winds)
-            wind_speed = round(max_wind_ms * 3.6, 1) if max_wind_ms < 200 else round(max_wind_ms, 1)
+            max_wind = max(winds)
+            # Si max < 80, probablement m/s → convertir en km/h
+            # Si max >= 80, probablement deja en km/h
+            if max_wind < 80:
+                wind_speed = round(max_wind * 3.6, 1)
+            else:
+                wind_speed = round(max_wind, 1)
+                logger.debug(f"[Meteo] {day_str}: vent deja en km/h ({max_wind:.0f})")
         else:
             wind_speed = 10.0
 
-        # Pression : moyenne, conversion Pa -> hPa si necessaire
+        # Pression : Pa (>50000) vs hPa (800-1100 typique)
         if pressures:
             avg_p = sum(pressures) / len(pressures)
-            pressure = round(avg_p / 100, 1) if avg_p > 10000 else round(avg_p, 1)
+            if avg_p > 50000:
+                pressure = round(avg_p / 100, 1)
+            else:
+                pressure = round(avg_p, 1)
+            # Validation plausibilite
+            if pressure < 850 or pressure > 1100:
+                logger.warning(f"[Meteo] {day_str}: pression={pressure} hPa hors plage")
         else:
             pressure = None
 

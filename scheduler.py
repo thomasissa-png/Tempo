@@ -306,24 +306,20 @@ async def _store_rte_daily(rte_score: dict | None) -> None:
         tomorrow = (date.today() + timedelta(days=1)).isoformat()
         conn = get_db()
         try:
+            # Fix P0-2 audit : ne pas melanger prevision et realise via COALESCE
+            # La prevision J+1 ne doit ecrire QUE prevision_j1_peak_mw,
+            # en preservant les donnees realisees si elles existent deja
             conn.execute(
-                """INSERT OR REPLACE INTO rte_daily
-                   (date, prevision_j1_peak_mw, conso_peak_mw, conso_mean_mw,
-                    nucleaire_mean_mw)
-                   VALUES (?,
-                           COALESCE(?, (SELECT prevision_j1_peak_mw FROM rte_daily WHERE date=?)),
-                           COALESCE((SELECT conso_peak_mw FROM rte_daily WHERE date=?), ?),
-                           COALESCE((SELECT conso_mean_mw FROM rte_daily WHERE date=?), ?),
-                           COALESCE((SELECT nucleaire_mean_mw FROM rte_daily WHERE date=?), ?))""",
-                (tomorrow,
-                 rte_score.get("peak_mw"), tomorrow,
-                 tomorrow, rte_score.get("peak_mw"),
-                 tomorrow, rte_score.get("mean_mw"),
-                 tomorrow, rte_score.get("nuke_mw")),
+                """INSERT INTO rte_daily (date, prevision_j1_peak_mw)
+                   VALUES (?, ?)
+                   ON CONFLICT(date) DO UPDATE SET
+                       prevision_j1_peak_mw = excluded.prevision_j1_peak_mw""",
+                (tomorrow, rte_score.get("peak_mw")),
             )
             conn.commit()
         except Exception as e:
-            logger.debug(f"[RTE Daily] Erreur stockage prevision: {e}")
+            # Fix P3-14 audit : erreur de stockage = WARNING, pas DEBUG
+            logger.warning(f"[RTE Daily] Erreur stockage prevision: {e}")
         finally:
             conn.close()
 

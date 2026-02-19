@@ -1284,14 +1284,19 @@ def _analyze_factor_contributions(rows: list[dict]) -> list[dict]:
             continue
         short = factor_short[fname]
 
+        # Fix P1-5 audit : ne pas empiler over+under pour le meme facteur
+        # On prend la direction dominante (celle avec le plus d'echantillons)
+        over_correction = None
+        under_correction = None
+
         # Sur-prédiction : le facteur donnait des scores trop élevés
         if stats["over_n"] >= 3:
             avg_over = stats["over_sum"] / stats["over_n"]
-            if avg_over > 55:  # Sub-score moyen élevé quand on sur-prédit
+            if avg_over > 55:
                 magnitude = min(1.0, (avg_over - 50) / 50)
                 correction = -magnitude * 6.0 * min(1.0, stats["over_n"] / 20)
                 confidence = min(1.0, stats["over_n"] / 20)
-                patterns.append({
+                over_correction = {
                     "type": "factor", "key": f"{short}:over",
                     "observation": f"{fname} moyen={avg_over:.0f} lors de {stats['over_n']} "
                                    f"sur-prédictions",
@@ -1299,16 +1304,16 @@ def _analyze_factor_contributions(rows: list[dict]) -> list[dict]:
                     "bias_direction": "over", "bias_magnitude": round(magnitude, 3),
                     "sample_size": stats["over_n"],
                     "correction": round(correction, 2), "confidence": round(confidence, 2),
-                })
+                }
 
         # Sous-prédiction : le facteur donnait des scores trop bas
         if stats["under_n"] >= 3:
             avg_under = stats["under_sum"] / stats["under_n"]
-            if avg_under < 45:  # Sub-score moyen bas quand on sous-prédit
+            if avg_under < 45:
                 magnitude = min(1.0, (50 - avg_under) / 50)
                 correction = magnitude * 6.0 * min(1.0, stats["under_n"] / 20)
                 confidence = min(1.0, stats["under_n"] / 20)
-                patterns.append({
+                under_correction = {
                     "type": "factor", "key": f"{short}:under",
                     "observation": f"{fname} moyen={avg_under:.0f} lors de {stats['under_n']} "
                                    f"sous-prédictions",
@@ -1316,7 +1321,18 @@ def _analyze_factor_contributions(rows: list[dict]) -> list[dict]:
                     "bias_direction": "under", "bias_magnitude": round(magnitude, 3),
                     "sample_size": stats["under_n"],
                     "correction": round(correction, 2), "confidence": round(confidence, 2),
-                })
+                }
+
+        # Prendre uniquement la direction dominante
+        if over_correction and under_correction:
+            if stats["over_n"] >= stats["under_n"]:
+                patterns.append(over_correction)
+            else:
+                patterns.append(under_correction)
+        elif over_correction:
+            patterns.append(over_correction)
+        elif under_correction:
+            patterns.append(under_correction)
 
     return patterns
 
@@ -1571,7 +1587,8 @@ def killswitch_harmful_corrections() -> list[dict]:
 
         accuracy = perf["correct"] / perf["total"]
 
-        if accuracy < 0.50:
+        # Fix P2-7 audit : seuil releve de 50% a 55% (kill-switch plus reactif)
+        if accuracy < 0.55:
             strongest = conn.execute(
                 """SELECT id, pattern_type, pattern_key, correction_score
                    FROM learning_journal

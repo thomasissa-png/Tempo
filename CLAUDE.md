@@ -1,5 +1,8 @@
 # TempoForecast - Project Memory
 
+## ABSOLUTE RULES
+- **NEVER invent or generate synthetic data** (weather, RTE, temperatures, etc.) for backtesting or any analysis. EDF Tempo colors are directly caused by real weather conditions — synthetic data has zero correlation with actual colors and produces meaningless results. If data is missing, identify what's missing and ask the user to provide it (e.g. via Replit with internet access).
+
 ## Success Criteria (CRITICAL)
 
 ### Primary Success Metric: J+2 to J+5 Predictions
