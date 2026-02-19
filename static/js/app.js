@@ -514,11 +514,11 @@ function createForecastCard(pred) {
         tipHtml = '<div class="fc-tip">Reportez vos machines !</div>';
     }
 
-    // Confiance en langage humain
+    // Confiance en langage humain (% visible dans la barre de proba en dessous)
     const confidenceLabel = confidenceToLabel(confidence);
     const confidenceText = pred.confirmed
         ? ''
-        : `${escapeHtml(confidenceLabel)} (${confidence}%)`;
+        : escapeHtml(confidenceLabel);
 
     // Barre tricolore de probabilités (masquée si confirmé)
     let probaBarHtml = '';

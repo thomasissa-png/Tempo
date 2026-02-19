@@ -28,7 +28,7 @@
     --text: #1F2937;
     --text-secondary: #4B5563;
     --border: #E5E7EB;
-    --footer-bg: #1F2937;
+    --footer-bg: #0F2137;
     --footer-text: #D1D5DB;
     --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
     --shadow-lg: 0 4px 16px rgba(0,0,0,0.1);
@@ -93,6 +93,15 @@ header[role="banner"] {
 .header-brand {
     text-decoration: none;
     color: white;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.header-logo {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
 }
 
 header[role="banner"] h1,
@@ -170,16 +179,24 @@ nav a:hover, nav a.active {
 
 /* CTA accent dans la nav (Alertes gratuites) — poussé à droite */
 nav a.nav-cta {
-    background: var(--accent);
-    color: white;
+    background: rgba(255,255,255,0.95);
+    color: var(--accent);
     font-weight: 700;
     border-radius: 50px;
     padding: 10px 20px;
     margin-left: auto;
 }
 nav a.nav-cta:hover {
-    background: var(--accent-hover);
-    color: white;
+    background: white;
+    color: var(--accent-hover);
+}
+
+/* === Séparateur tricolore — signature identitaire === */
+header[role="banner"]::after {
+    content: '';
+    display: block;
+    height: 3px;
+    background: linear-gradient(to right, var(--bleu) 33.33%, #D1D5DB 33.33%, #D1D5DB 66.66%, var(--rouge) 66.66%);
 }
 
 /* === Badge fiabilité === */
@@ -444,11 +461,11 @@ nav a.nav-cta:hover {
 
 /* === Calendrier prévisions === */
 .section-title {
-    font-size: 1.2rem;
+    font-size: 1.15rem;
     font-weight: 700;
     margin: 32px 0 16px;
-    padding-bottom: 8px;
-    border-bottom: 2px solid var(--border);
+    padding-bottom: 0;
+    letter-spacing: -0.3px;
 }
 
 /* Résumé hebdomadaire */
@@ -479,11 +496,11 @@ nav a.nav-cta:hover {
 }
 
 .week-summary-title {
-    font-size: 1.2rem;
+    font-size: 1.15rem;
     font-weight: 700;
     margin: 0 0 12px;
-    padding-bottom: 8px;
-    border-bottom: 2px solid var(--border);
+    padding-bottom: 0;
+    letter-spacing: -0.3px;
 }
 
 .week-summary-text {
@@ -520,13 +537,13 @@ nav a.nav-cta:hover {
 }
 
 .week-dot-circle {
-    width: 32px;
-    height: 32px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.75rem;
+    font-size: 0.85rem;
     font-weight: 700;
     color: white;
 }
@@ -787,14 +804,15 @@ nav a.nav-cta:hover {
 
 .alert-close:hover { opacity: 1; }
 
-/* === Bandeau d'accueil (masquable par l'utilisateur) === */
+/* === Bandeau d'accueil (compact one-liner) === */
 .welcome-banner {
-    background: var(--surface);
-    border-radius: var(--radius);
-    padding: 24px 28px;
-    margin: 20px 0;
-    box-shadow: var(--shadow);
-    border-left: 5px solid var(--bleu);
+    background: transparent;
+    border-radius: 0;
+    padding: 14px 0;
+    margin: 16px 0 8px;
+    box-shadow: none;
+    border-left: none;
+    text-align: center;
     position: relative;
 }
 
@@ -889,7 +907,8 @@ nav a.nav-cta:hover {
     padding: 16px 20px;
     background: var(--surface);
     border-radius: var(--radius-sm);
-    box-shadow: var(--shadow);
+    box-shadow: none;
+    border: 1px solid var(--border);
 }
 
 .legend-item {
@@ -931,11 +950,11 @@ nav a.nav-cta:hover {
 }
 
 .how-it-works h2 {
-    font-size: 1.2rem;
+    font-size: 1.15rem;
     font-weight: 700;
     margin-bottom: 20px;
-    padding-bottom: 8px;
-    border-bottom: 2px solid var(--border);
+    padding-bottom: 0;
+    letter-spacing: -0.3px;
 }
 
 .steps-grid {
@@ -948,7 +967,8 @@ nav a.nav-cta:hover {
     background: var(--surface);
     border-radius: var(--radius);
     padding: 24px;
-    box-shadow: var(--shadow);
+    box-shadow: none;
+    border: 1px solid var(--border);
     text-align: center;
 }
 
@@ -956,7 +976,7 @@ nav a.nav-cta:hover {
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #2563EB, #1D4ED8);
+    background: var(--accent);
     color: white;
     font-weight: 700;
     font-size: 1.1rem;
@@ -991,10 +1011,11 @@ nav a.nav-cta:hover {
 }
 
 .faq-item {
-    background: var(--surface);
-    border-radius: var(--radius-sm);
-    box-shadow: var(--shadow);
+    background: transparent;
+    border-radius: 0;
+    box-shadow: none;
     overflow: hidden;
+    border-bottom: 1px solid var(--border);
 }
 
 .faq-item summary {
@@ -1112,14 +1133,14 @@ nav a.nav-cta:hover {
     align-items: center;
     gap: 8px;
     padding: 12px 28px;
-    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+    background: var(--accent);
     color: white;
     border: none;
     border-radius: 50px;
     font-size: 0.95rem;
     font-weight: 700;
     cursor: pointer;
-    transition: transform 0.15s, box-shadow 0.2s, opacity 0.2s;
+    transition: transform 0.15s, box-shadow 0.2s, background 0.2s;
     margin-top: 16px;
     min-height: 48px;
 }
@@ -1127,7 +1148,7 @@ nav a.nav-cta:hover {
 .btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px var(--accent-shadow);
-    background: linear-gradient(135deg, var(--accent-hover) 0%, #1E40AF 100%);
+    background: var(--accent-hover);
 }
 
 .btn:active { transform: translateY(0); }
@@ -1257,6 +1278,18 @@ footer {
     font-size: 0.85rem;
     border-top: none;
     margin-top: 48px;
+    position: relative;
+}
+
+footer::before {
+    content: '';
+    display: block;
+    height: 3px;
+    background: linear-gradient(to right, var(--bleu) 33.33%, #D1D5DB 33.33%, #D1D5DB 66.66%, var(--rouge) 66.66%);
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
 }
 
 .footer-inner {
@@ -1319,7 +1352,7 @@ footer a {
     width: 48px;
     height: 48px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+    background: var(--accent);
     color: white;
     border: none;
     cursor: pointer;
@@ -1426,8 +1459,8 @@ footer a {
     }
 
     #main-nav a.nav-cta {
-        background: var(--accent);
-        color: white;
+        background: rgba(255,255,255,0.95);
+        color: var(--accent);
         border-radius: 8px;
         margin-top: 4px;
         text-align: center;
@@ -1648,7 +1681,7 @@ footer a {
     display: inline-flex;
     align-items: center;
     padding: 8px 20px;
-    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+    background: var(--accent);
     color: white;
     text-decoration: none;
     border-radius: 20px;
@@ -1996,10 +2029,8 @@ footer a {
     .sms-bubble { max-width: 100%; }
 
     /* UX audit #1/#28: compact above-the-fold on mobile */
-    .welcome-banner { padding: 14px 18px; margin: 12px 0; }
-    .welcome-banner h2 { font-size: 1.05rem; margin-bottom: 6px; }
-    .welcome-banner p { font-size: 0.85rem; margin-bottom: 4px; }
-    .btn-cta-welcome { margin-top: 8px; padding: 8px 20px; font-size: 0.9rem; }
+    .welcome-banner { padding: 10px 0; margin: 8px 0; }
+    .welcome-banner p { font-size: 0.85rem; margin-bottom: 0; }
 
     /* UX audit #1: compact week-summary dots on mobile */
     .week-summary-top { margin: 8px 0 12px; }
@@ -2008,7 +2039,7 @@ footer a {
     .week-summary-text { font-size: 0.85rem; }
     .week-summary-dots { gap: 4px; grid-template-columns: repeat(5, 1fr); }
     .week-dot { min-width: auto; }
-    .week-dot-circle { width: 28px; height: 28px; font-size: 0.7rem; }
+    .week-dot-circle { width: 34px; height: 34px; font-size: 0.75rem; }
 }
 
 @media (max-width: 480px) {
@@ -2018,8 +2049,7 @@ footer a {
     .hors-saison-banner { flex-direction: column; text-align: center; }
 
     /* UX audit #28: further compact welcome banner on very small screens */
-    .welcome-banner { padding: 12px 14px; margin: 8px 0; }
-    .welcome-banner h2 { font-size: 1rem; }
+    .welcome-banner { padding: 8px 0; margin: 8px 0; }
 }
 
 /* === Fix audit v6 : Accessibilité === */
@@ -2132,17 +2162,18 @@ select:focus-visible {
 .blog-cta {
     margin: 48px 0 24px;
     padding: 32px;
-    background: linear-gradient(135deg, var(--cta-dark) 0%, var(--cta-dark-lighter) 100%);
+    background: var(--bleu-bg);
+    border: 1px solid var(--bleu);
     border-radius: var(--radius);
     text-align: center;
 }
 .blog-cta h2 {
     font-size: 1.3rem;
     margin-bottom: 8px;
-    color: white;
+    color: var(--text);
 }
 .blog-cta p {
-    color: #94A3B8;
+    color: var(--text-secondary);
     margin-bottom: 16px;
 }
 
@@ -2236,19 +2267,19 @@ select:focus-visible {
 .blog-cta-inline {
     margin: 36px 0;
     padding: 24px;
-    background: linear-gradient(135deg, var(--cta-dark) 0%, var(--cta-dark-lighter) 100%);
+    background: var(--bleu-bg);
+    border: 1px solid var(--bleu);
     border-radius: var(--radius);
     text-align: center;
-    border: none;
 }
 .blog-cta-inline strong {
     display: block;
     font-size: 1.1rem;
     margin-bottom: 8px;
-    color: white;
+    color: var(--text);
 }
 .blog-cta-inline p {
-    color: #94A3B8;
+    color: var(--text-secondary);
     margin-bottom: 12px;
 }
 
@@ -2332,7 +2363,7 @@ select:focus-visible {
     display: inline-flex;
     align-items: center;
     padding: 14px 28px;
-    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
+    background: var(--accent);
     color: white;
     border: none;
     border-radius: 50px;
@@ -2340,7 +2371,7 @@ select:focus-visible {
     font-weight: 700;
     cursor: pointer;
     white-space: nowrap;
-    transition: transform 0.15s, box-shadow 0.2s;
+    transition: transform 0.15s, box-shadow 0.2s, background 0.2s;
     flex-shrink: 0;
 }
 
