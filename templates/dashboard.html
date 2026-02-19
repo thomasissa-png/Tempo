@@ -227,12 +227,12 @@
         </div>
     </section>
 
-    <!-- Couleur aujourd'hui / demain — SEO keywords + dernière mise à jour -->
+    <!-- Couleur aujourd'hui / demain — SEO keywords (texte caché, visible pour Google) -->
     {% if ssr.today_color or ssr.tomorrow_color %}
-    <div class="today-tomorrow-bar" role="region" aria-label="Couleur Tempo du jour">
-        {% if ssr.today_color %}<span><strong>Aujourd'hui :</strong> <span class="color-tag {{ ssr.today_color|lower }}">{{ ssr.today_color }}</span></span>{% endif %}
-        {% if ssr.tomorrow_color %}<span><strong>Demain :</strong> <span class="color-tag {{ ssr.tomorrow_color|lower }}">{{ ssr.tomorrow_color }}</span> <small>(confirm&eacute; EDF)</small></span>{% endif %}
-    </div>
+    <p class="sr-only">
+        {% if ssr.today_color %}Couleur Tempo aujourd'hui : {{ ssr.today_color }}.{% endif %}
+        {% if ssr.tomorrow_color %}Couleur Tempo demain : {{ ssr.tomorrow_color }} (confirm&eacute; EDF).{% endif %}
+    </p>
     {% endif %}
     <div class="last-update-bar" id="last-update-bar" role="status" aria-live="polite" {% if not ssr.last_update %}style="display:none"{% endif %}>
         <span id="last-update-text">{% if ssr.last_update %}Derni&egrave;re mise &agrave; jour : {{ ssr.last_update }}{% endif %}</span>
@@ -356,95 +356,29 @@
         {% endif %}
     </div>
 
-    <!-- Inscription alertes WhatsApp — remonté avant "Comment ça marche" -->
-    <section class="subscribe-section" id="subscribe">
-        <h2>Recevez un WhatsApp avant chaque jour cher</h2>
-        <p class="sub-desc">
-            Soyez pr&eacute;venu la veille (ou jusqu'&agrave; 3 jours avant) d'un jour rouge ou blanc.
-            <strong>100% gratuit, sans engagement, 1 message par jour maximum.</strong>
-        </p>
-
-        <!-- P-09 : Aperçu du message WhatsApp reçu -->
-        <div class="sms-preview">
-            <div class="sms-preview-label">&#128172; Exemple de message WhatsApp que vous recevrez :</div>
-            <div class="sms-bubble">
-                ⚠️ <strong>Calendrier Tempo EDF</strong><br><br>
-                <strong>Jour ROUGE</strong> pr&eacute;vu mardi 18 f&eacute;vrier (87% confiance).<br>
-                Temp min: 2°C.<br><br>
-                👉 Reportez lessive, s&egrave;che-linge, four et recharge VE.<br>
-                Limitez votre conso entre 6h-22h !<br><br>
-                📋 G&eacute;rer mes alertes : calendrier-tempo.fr/manage/...
+    <!-- CTA alertes WhatsApp — compact, ouvre la modal -->
+    <section class="subscribe-cta-section" id="subscribe">
+        <div class="subscribe-cta-card">
+            <div class="subscribe-cta-icon" aria-hidden="true">&#128172;</div>
+            <div class="subscribe-cta-content">
+                <h2>Recevez un WhatsApp avant chaque jour cher</h2>
+                <p>Soyez pr&eacute;venu la veille d'un jour rouge ou blanc.
+                    <strong>Gratuit, sans engagement, 30 secondes.</strong></p>
+                <p class="social-proof-inline">D&eacute;j&agrave; plus de 2&nbsp;500 foyers Tempo alert&eacute;s.</p>
             </div>
+            <button type="button" class="btn btn-subscribe-cta" onclick="openSubscribeModal()">
+                S'inscrire gratuitement
+            </button>
         </div>
-
-        <form id="subscribe-form">
-            <!-- P-10 : Formulaire simplifié — uniquement le numéro visible -->
-            <div class="form-simple">
-                <div class="form-group">
-                    <label for="phone">Votre num&eacute;ro de mobile</label>
-                    <input type="tel" id="phone" name="phone" placeholder="06 12 34 56 78" required autocomplete="tel" inputmode="tel">
-                    <span class="form-hint">Tapez votre num&eacute;ro au format habituel (06 ou 07)</span>
-                    <span class="phone-feedback" id="phone-feedback" aria-live="polite"></span>
-                </div>
+        <!-- Désinscription — lien discret -->
+        <p class="unsub-link-text">D&eacute;j&agrave; inscrit ? <button type="button" class="link-btn" id="show-unsubscribe">G&eacute;rer ou se d&eacute;sinscrire</button></p>
+        <form id="unsubscribe-form" class="unsub-form hidden">
+            <div class="form-group form-inline">
+                <input type="tel" id="unsub-phone" name="phone" placeholder="06 12 34 56 78" required autocomplete="tel" inputmode="tel">
+                <button type="submit" class="btn btn-unsub" id="unsub-btn">Me d&eacute;sinscrire</button>
             </div>
-
-            <!-- P-10 : Options avancées masquées par défaut (progressive disclosure) -->
-            <details class="form-advanced" id="form-advanced">
-                <summary class="form-advanced-toggle">Options avanc&eacute;es (facultatif)</summary>
-                <div class="form-grid" style="margin-top:16px">
-                    <div class="form-group">
-                        <label for="seuil_rouge">Quand vous pr&eacute;venir ?</label>
-                        <select id="seuil_rouge" name="seuil_rouge">
-                            <option value="70">Prudent &mdash; d&egrave;s qu'un jour rouge est probable</option>
-                            <option value="80" selected>Recommand&eacute; &mdash; bon &eacute;quilibre</option>
-                            <option value="90">S&ucirc;r &mdash; alertes rares, quasi certaines</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="delai">Combien de temps avant ?</label>
-                        <select id="delai" name="delai">
-                            <option value="1">La veille &mdash; le plus fiable</option>
-                            <option value="2">2 jours avant</option>
-                            <option value="3">3 jours avant &mdash; pour mieux planifier</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label>Options</label>
-                        <div class="form-checkbox">
-                            <input type="checkbox" id="alerte_blanc" name="alerte_blanc" value="true">
-                            <label for="alerte_blanc">Pr&eacute;venir aussi pour les jours blancs</label>
-                        </div>
-                        <div class="form-checkbox" style="margin-top:8px">
-                            <input type="checkbox" id="recap_hebdo" name="recap_hebdo" value="true">
-                            <label for="recap_hebdo">R&eacute;cap hebdomadaire chaque dimanche</label>
-                        </div>
-                    </div>
-                </div>
-            </details>
-
-            <button type="submit" class="btn btn-subscribe" id="subscribe-btn">Recevoir mon alerte WhatsApp gratuite</button>
-            <!-- P-04 + P-17 : social proof + note rassurante -->
-            <p class="form-legal">
-                <strong class="social-proof">D&eacute;j&agrave; plus de 2&nbsp;500 foyers Tempo alert&eacute;s dans toute la France.</strong><br>
-                Votre num&eacute;ro est prot&eacute;g&eacute; et ne sera jamais partag&eacute;.
-                D&eacute;sinscription en 1 clic &agrave; tout moment (WhatsApp STOP ou lien dans chaque message).
-                <a href="/mentions-legales">Politique de confidentialit&eacute;</a>
-            </p>
+            <div id="unsub-result" class="form-result"></div>
         </form>
-
-        <div id="form-result" class="form-result"></div>
-
-        <!-- Désinscription (BUG-02 QA : formulaire manquant) -->
-        <div class="unsubscribe-block" id="unsubscribe-block">
-            <p class="unsub-toggle">D&eacute;j&agrave; inscrit ? <button type="button" class="link-btn" id="show-unsubscribe">Se d&eacute;sinscrire</button></p>
-            <form id="unsubscribe-form" class="unsub-form hidden">
-                <div class="form-group form-inline">
-                    <input type="tel" id="unsub-phone" name="phone" placeholder="06 12 34 56 78" required autocomplete="tel" inputmode="tel">
-                    <button type="submit" class="btn btn-unsub" id="unsub-btn">Me d&eacute;sinscrire</button>
-                </div>
-                <div id="unsub-result" class="form-result"></div>
-            </form>
-        </div>
     </section>
 
 

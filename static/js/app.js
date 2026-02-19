@@ -31,10 +31,8 @@ function fetchWithTimeout(url, options = {}, timeoutMs = 10000) {
 document.addEventListener('DOMContentLoaded', () => {
     // Charger toutes les données en parallèle (au lieu de séquentiellement)
     loadAllData();
-    setupSubscribeForm();
     setupHamburger();
     setupBackToTop();
-    setupPhoneValidation();
     setupUnsubscribeForm();
     setupWelcomeBanner();
     checkHorsSaison();
@@ -336,22 +334,37 @@ function renderWeekSummary(preds) {
         summaryText = parts.join(' et ') + ' en vue. <strong>Planifiez vos machines les jours bleus.</strong>';
     }
 
-    // Dots visuels avec info Confirmé / probabilité / hésitation
+    // Dots visuels avec info Confirmé / probabilité
+    // Les 2 premiers dots sont labellisés "Auj." et "Dem." pour éviter la redondance
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
     let dotsHtml = '<div class="week-summary-dots">';
-    weekPreds.forEach(p => {
+    weekPreds.forEach((p, idx) => {
         const d = parseLocalDate(p.date);
         const dayLabel = JOURS[d.getDay()];
         const dayNum = d.getDate();
-        const month = MOIS[d.getMonth()];
         const couleur = p.couleur_predite;
         const bg = couleur === 'ROUGE' ? 'var(--rouge)' : couleur === 'BLANC' ? 'var(--blanc)' : 'var(--bleu)';
 
-        // Info sous le dot : Confirmé ou probabilité + éventuelle hésitation
+        // Contextual label: "Auj." for today, "Dem." for tomorrow, day name otherwise
+        const dTime = d.getTime();
+        let displayLabel;
+        if (dTime === today.getTime()) {
+            displayLabel = `<strong>Auj.</strong> ${dayNum}`;
+        } else if (dTime === tomorrow.getTime()) {
+            displayLabel = `<strong>Dem.</strong> ${dayNum}`;
+        } else {
+            displayLabel = `${escapeHtml(dayLabel)} ${dayNum}`;
+        }
+
+        // Info sous le dot : Confirmé ou probabilité
         let infoHtml = '';
         if (p.confirmed) {
             infoHtml = '<span class="week-dot-confirmed">Confirm\u00e9</span>';
         } else {
-            // Probabilité de la couleur prédite
             const probKey = `probabilite_${couleur.toLowerCase()}`;
             const confidence = Math.round((p[probKey] || 0) * 100);
             infoHtml = `<span class="week-dot-proba">${confidence}%</span>`;
@@ -362,9 +375,9 @@ function renderWeekSummary(preds) {
         const confirmedClass = p.confirmed ? ' confirmed-dot' : '';
 
         dotsHtml += `
-            <div class="week-dot">
+            <div class="week-dot${dTime === today.getTime() || dTime === tomorrow.getTime() ? ' week-dot-highlight' : ''}">
                 <div class="week-dot-circle${shapeClass}${confirmedClass}" style="background:${bg}">${couleur[0]}</div>
-                <span class="week-dot-label">${escapeHtml(dayLabel)} ${dayNum}</span>
+                <span class="week-dot-label">${displayLabel}</span>
                 <div class="week-dot-info">${infoHtml}</div>
             </div>`;
     });
@@ -629,66 +642,6 @@ function normalizePhone(input) {
     return null; // Format non reconnu
 }
 
-function setupSubscribeForm() {
-    const form = document.getElementById('subscribe-form');
-    if (!form) return;
-
-    let submitting = false;
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        if (submitting) return;  // Fix #32 : anti-double-clic
-        submitting = true;
-        const resultEl = document.getElementById('form-result');
-        const btn = document.getElementById('subscribe-btn');
-        resultEl.className = 'form-result';
-        resultEl.style.display = 'none';
-
-        const rawPhone = form.elements.phone.value;
-        const phone = normalizePhone(rawPhone);
-
-        if (!phone) {
-            showFormResult(resultEl, 'error',
-                'Numéro non reconnu. Tapez votre numéro au format 06 12 34 56 78 ou +33612345678');
-            return;
-        }
-
-        // Remplacer la valeur du champ par le format normalisé pour l'envoi
-        const formData = new FormData(form);
-        formData.set('phone', phone);
-
-        // Désactiver le bouton + spinner
-        const originalText = btn.textContent;
-        btn.disabled = true;
-        btn.innerHTML = '<span class="btn-spinner"></span> Inscription en cours...';
-
-        try {
-            const resp = await fetchWithTimeout('/api/subscribe', {
-                method: 'POST',
-                body: formData,
-            });
-            const data = await resp.json();
-
-            if (resp.ok) {
-                // P-14 : message post-inscription plus précis et rassurant
-                let successMsg = data.message || 'C\'est fait ! Vous recevrez un WhatsApp la veille de chaque jour rouge.';
-                if (data.manage_url) {
-                    successMsg += ' Vous pourrez modifier vos préférences via le lien inclus dans chaque message.';
-                }
-                showFormResult(resultEl, 'success', successMsg);
-                form.reset();
-            } else {
-                showFormResult(resultEl, 'error', data.detail || "Erreur lors de l'inscription");
-            }
-        } catch {
-            showFormResult(resultEl, 'error', 'Erreur de connexion au serveur');
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = originalText;
-            submitting = false;
-        }
-    });
-}
-
 function showFormResult(el, type, message) {
     el.className = `form-result ${type}`;
     el.textContent = message;
@@ -813,60 +766,6 @@ function setupBackToTop() {
 
     btn.addEventListener('click', () => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-}
-
-// ================================================================
-// VALIDATION TÉLÉPHONE (temps réel, format FR)
-// ================================================================
-
-function setupPhoneValidation() {
-    const phoneInput = document.getElementById('phone');
-    const feedback = document.getElementById('phone-feedback');
-    if (!phoneInput || !feedback) return;
-
-    phoneInput.addEventListener('input', () => {
-        const val = phoneInput.value.replace(/[\s.\-()]/g, '');
-
-        if (!val || val.length < 2) {
-            feedback.textContent = '';
-            feedback.className = 'phone-feedback';
-            return;
-        }
-
-        // Format FR : 06/07
-        if (/^0[67]/.test(val)) {
-            if (/^0[67]\d{8}$/.test(val)) {
-                feedback.textContent = 'Numéro valide';
-                feedback.className = 'phone-feedback valid';
-            } else if (val.length < 10) {
-                feedback.textContent = `Encore ${10 - val.length} chiffre(s)`;
-                feedback.className = 'phone-feedback';
-            } else if (val.length > 10) {
-                feedback.textContent = 'Trop de chiffres';
-                feedback.className = 'phone-feedback invalid';
-            }
-            return;
-        }
-
-        // Format international +33
-        if (/^\+?33/.test(val)) {
-            const digits = val.replace(/^\+?33/, '');
-            if (/^[67]\d{8}$/.test(digits)) {
-                feedback.textContent = 'Numéro valide';
-                feedback.className = 'phone-feedback valid';
-            } else if (digits.length < 9) {
-                feedback.textContent = `Encore ${9 - digits.length} chiffre(s)`;
-                feedback.className = 'phone-feedback';
-            } else {
-                feedback.textContent = 'Vérifiez le numéro';
-                feedback.className = 'phone-feedback invalid';
-            }
-            return;
-        }
-
-        feedback.textContent = 'Tapez un numéro en 06 ou 07';
-        feedback.className = 'phone-feedback invalid';
     });
 }
 
@@ -1110,19 +1009,5 @@ document.addEventListener('DOMContentLoaded', () => {
                 modalSubmitting = false;
             }
         });
-    }
-});
-
-// Also update the static SMS preview date in the inline form (reco 6)
-document.addEventListener('DOMContentLoaded', () => {
-    const smsBubble = document.querySelector('#subscribe .sms-bubble');
-    if (smsBubble) {
-        // Replace static date with dynamic one
-        const now = new Date();
-        let next = new Date(now);
-        next.setDate(next.getDate() + 2);
-        while (next.getDay() === 0 || next.getDay() === 6) next.setDate(next.getDate() + 1);
-        const dynamicDate = JOURS_FULL[next.getDay()].toLowerCase() + ' ' + next.getDate() + ' ' + MOIS_FULL[next.getMonth()];
-        smsBubble.innerHTML = smsBubble.innerHTML.replace(/mardi 18 f.vrier/, dynamicDate);
     }
 });

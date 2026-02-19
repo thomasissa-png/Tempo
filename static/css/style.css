@@ -523,6 +523,16 @@ nav a:hover, nav a.active {
     max-width: 60px;
 }
 
+/* Dots "Auj." et "Dem." visuellement distincts */
+.week-dot-highlight .week-dot-label {
+    font-weight: 700;
+    color: var(--text);
+}
+
+.week-dot-highlight .week-dot-circle {
+    box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--text-secondary);
+}
+
 .week-dot-confirmed {
     font-size: 0.7rem;
     font-weight: 700;
@@ -2197,25 +2207,92 @@ select:focus-visible {
     .blog-cta, .blog-cta-inline { padding: 20px; }
 }
 
-/* === Today/Tomorrow bar (SEO keywords) === */
-.today-tomorrow-bar {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 24px;
-    padding: 10px 16px;
-    background: var(--surface);
-    border-radius: var(--radius-sm);
-    box-shadow: var(--shadow);
-    margin-bottom: 12px;
-    font-size: 0.95rem;
-    flex-wrap: wrap;
+/* === Subscribe CTA compact (ouvre la modal) === */
+.subscribe-cta-section {
+    margin: 32px 0;
 }
 
-.today-tomorrow-bar small {
-    color: var(--text-secondary);
-    font-size: 0.8rem;
+.subscribe-cta-card {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
+    border: 2px solid var(--bleu);
+    border-radius: var(--radius);
+    padding: 24px 28px;
+    box-shadow: var(--shadow);
 }
+
+.subscribe-cta-icon {
+    font-size: 2.5rem;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.subscribe-cta-content {
+    flex: 1;
+}
+
+.subscribe-cta-content h2 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+    color: #0D47A1;
+}
+
+.subscribe-cta-content p {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.5;
+}
+
+.social-proof-inline {
+    font-size: 0.85rem !important;
+    color: #2E7D32 !important;
+    font-weight: 600;
+    margin-top: 4px !important;
+}
+
+.btn-subscribe-cta {
+    display: inline-flex;
+    align-items: center;
+    padding: 14px 28px;
+    background: linear-gradient(135deg, #1565C0 0%, #0D47A1 100%);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: transform 0.15s, box-shadow 0.2s;
+    flex-shrink: 0;
+}
+
+.btn-subscribe-cta:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(13, 71, 161, 0.35);
+}
+
+.unsub-link-text {
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin-top: 12px;
+}
+
+@media (max-width: 768px) {
+    .subscribe-cta-card {
+        flex-direction: column;
+        text-align: center;
+        padding: 20px;
+        gap: 12px;
+    }
+    .subscribe-cta-icon { font-size: 2rem; }
+    .btn-subscribe-cta { width: 100%; justify-content: center; }
+}
+
 
 /* === Subscribe modal === */
 .subscribe-modal-overlay {
@@ -2331,7 +2408,6 @@ select:focus-visible {
 
 @media (max-width: 480px) {
     .subscribe-modal { padding: 20px 16px; max-height: 95vh; }
-    .today-tomorrow-bar { gap: 12px; font-size: 0.9rem; }
 }
 
 /* Respecter prefers-reduced-motion */
