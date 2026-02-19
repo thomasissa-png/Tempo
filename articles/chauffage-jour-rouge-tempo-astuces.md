@@ -4,7 +4,7 @@ description: 10 astuces concrètes pour chauffer votre logement sans exploser la
 publish_date: 2026-03-24
 keywords: chauffage jour rouge tempo, économie chauffage tempo, réduire consommation jour rouge, astuces tempo edf chauffage
 ---
-Le chauffage représente le premier poste de dépense électrique des foyers français en hiver. Avec l'offre Tempo EDF, les 22 jours rouges de la saison transforment ce poste en véritable gouffre financier : **0,7060 euros/kWh en heures pleines**, soit plus de quatre fois le tarif d'un jour bleu. Pour un logement de 80 m2 chauffé à l'électricité, une journée rouge non anticipée peut coûter plus de 16 euros rien qu'en chauffage. Sur l'ensemble de la saison, la différence entre un foyer qui subit les jours rouges et un foyer qui les anticipe peut dépasser **300 euros**.
+Le chauffage représente le premier poste de dépense électrique des foyers français en hiver. Avec l'offre Tempo EDF, les 22 jours rouges de la saison transforment ce poste en véritable gouffre financier : **0,7060 euros/kWh en heures pleines**, soit plus de quatre fois le tarif d'un jour bleu. Pour un logement de 80 m2 chauffé à l'électricité, une journée rouge non anticipée peut coûter plus de 16 euros rien qu'en chauffage. Sur l'ensemble de la saison, la différence entre un foyer qui subit les jours rouges et un foyer qui les anticipe peut dépasser **300 euros**. Pour comprendre quand et pourquoi EDF déclenche ces journées, consultez notre [guide complet des jours rouges Tempo](/blog/jours-rouges-tempo-guide).
 
 La bonne nouvelle, c'est qu'il existe des solutions concrètes pour maintenir un confort thermique acceptable tout en réduisant drastiquement votre consommation les jours rouges. Voici 10 astuces testées et chiffrées, classées par difficulté de mise en oeuvre.
 
@@ -169,7 +169,7 @@ Une amélioration de l'isolation de 15 % sur un logement consommant 8 000 kWh/an
 | 9. Mijoteuse jour bleu | 2 - 3 euros | 44 - 66 euros | Facile | 25 - 50 euros |
 | 10. Isolation | 3 euros | 80 - 120 euros | Variable | 200 - 500 euros |
 
-En combinant les astuces 1, 2, 5, 6 et 7 (les plus accessibles), un foyer tout-électrique peut économiser entre **180 à 300 euros par saison** sur les seuls jours rouges, sans investissement majeur.
+En combinant les astuces 1, 2, 5, 6 et 7 (les plus accessibles), un foyer tout-électrique peut économiser entre **180 à 300 euros par saison** sur les seuls jours rouges, sans investissement majeur. Pour découvrir d'autres leviers d'économie au-delà du chauffage, retrouvez notre guide complet pour [économiser avec Tempo EDF](/blog/economiser-tempo-edf).
 
 ## FAQ : chauffage et jours rouges Tempo
 

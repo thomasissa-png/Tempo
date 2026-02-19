@@ -765,7 +765,7 @@ async def manifest_json():
 # Fix #S7 : robots.txt et sitemap.xml pour le SEO
 @app.get("/robots.txt", response_class=PlainTextResponse)
 async def robots_txt():
-    """Robots.txt pour les moteurs de recherche."""
+    """Robots.txt pour les moteurs de recherche et crawlers IA."""
     return (
         "User-agent: *\n"
         "Allow: /\n"
@@ -774,6 +774,47 @@ async def robots_txt():
         "Allow: /blog/\n"
         "Disallow: /admin\n"
         "Disallow: /api/\n"
+        "Disallow: /manage/\n"
+        "\n"
+        "# AI crawlers — autoriser l'accès aux prédictions publiques\n"
+        "User-agent: GPTBot\n"
+        "Allow: /\n"
+        "Allow: /api/today\n"
+        "Allow: /api/tomorrow\n"
+        "Allow: /api/predictions\n"
+        "Disallow: /admin\n"
+        "Disallow: /manage/\n"
+        "\n"
+        "User-agent: ChatGPT-User\n"
+        "Allow: /\n"
+        "Allow: /api/today\n"
+        "Allow: /api/tomorrow\n"
+        "Allow: /api/predictions\n"
+        "Disallow: /admin\n"
+        "Disallow: /manage/\n"
+        "\n"
+        "User-agent: ClaudeBot\n"
+        "Allow: /\n"
+        "Allow: /api/today\n"
+        "Allow: /api/tomorrow\n"
+        "Allow: /api/predictions\n"
+        "Disallow: /admin\n"
+        "Disallow: /manage/\n"
+        "\n"
+        "User-agent: PerplexityBot\n"
+        "Allow: /\n"
+        "Allow: /api/today\n"
+        "Allow: /api/tomorrow\n"
+        "Allow: /api/predictions\n"
+        "Disallow: /admin\n"
+        "Disallow: /manage/\n"
+        "\n"
+        "User-agent: Google-Extended\n"
+        "Allow: /\n"
+        "Allow: /api/today\n"
+        "Allow: /api/tomorrow\n"
+        "Allow: /api/predictions\n"
+        "Disallow: /admin\n"
         "Disallow: /manage/\n"
         "\n"
         "Sitemap: https://www.calendrier-tempo.fr/sitemap.xml\n"
@@ -838,6 +879,71 @@ async def sitemap_xml():
         "</urlset>\n"
     )
     return PlainTextResponse(content=xml, media_type="application/xml")
+
+
+@app.get("/llms.txt", response_class=PlainTextResponse)
+async def llms_txt():
+    """LLMs.txt — emerging standard for AI crawler discovery."""
+    return PlainTextResponse(
+        content=(
+            "# Calendrier Tempo EDF\n"
+            "> Service gratuit de prévision des jours Tempo EDF.\n"
+            "> Anticipe les jours rouges, blancs et bleus jusqu'à 15 jours à l'avance.\n"
+            "\n"
+            "## Pages principales\n"
+            "- [Accueil](https://www.calendrier-tempo.fr/): Couleur Tempo aujourd'hui, demain et prévisions 15 jours\n"
+            "- [Calendrier](https://www.calendrier-tempo.fr/calendrier): Calendrier mensuel complet de la saison Tempo\n"
+            "- [Blog](https://www.calendrier-tempo.fr/blog/): Guides et conseils pour économiser avec Tempo EDF\n"
+            "- [Alertes](https://www.calendrier-tempo.fr/alertes): Inscription aux alertes gratuites avant chaque jour rouge\n"
+            "\n"
+            "## API publiques (JSON)\n"
+            "- [Couleur aujourd'hui](https://www.calendrier-tempo.fr/api/today): couleur Tempo du jour\n"
+            "- [Couleur demain](https://www.calendrier-tempo.fr/api/tomorrow): couleur Tempo de demain\n"
+            "- [Prévisions 15 jours](https://www.calendrier-tempo.fr/api/predictions): prédictions J+1 à J+15\n"
+            "\n"
+            "## Informations clés\n"
+            "- 22 jours rouges par saison (1er nov — 31 mars), jamais le week-end ni jours fériés\n"
+            "- 43 jours blancs par saison, jamais le dimanche\n"
+            "- 300 jours bleus par saison\n"
+            "- Tarifs HP: Bleu 0,13€, Blanc 0,19€, Rouge 0,76€/kWh\n"
+            "- Saison Tempo: 1er septembre → 31 août\n"
+        ),
+        media_type="text/plain",
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
+
+
+@app.get("/feed.xml")
+async def rss_feed():
+    """Flux RSS des articles du blog."""
+    from blog import get_published_articles
+    articles = get_published_articles()
+    items = []
+    for a in articles[:20]:
+        items.append(
+            "    <item>\n"
+            f"      <title>{a.title}</title>\n"
+            f"      <link>https://www.calendrier-tempo.fr/blog/{a.slug}</link>\n"
+            f"      <description>{a.description}</description>\n"
+            f"      <pubDate>{a.publish_date.strftime('%a, %d %b %Y 00:00:00 +0100')}</pubDate>\n"
+            f"      <guid>https://www.calendrier-tempo.fr/blog/{a.slug}</guid>\n"
+            "    </item>"
+        )
+    xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">\n'
+        "  <channel>\n"
+        "    <title>Blog Calendrier Tempo EDF</title>\n"
+        "    <link>https://www.calendrier-tempo.fr/blog/</link>\n"
+        "    <description>Guides et conseils pour économiser avec l'offre Tempo EDF.</description>\n"
+        "    <language>fr</language>\n"
+        '    <atom:link href="https://www.calendrier-tempo.fr/feed.xml" rel="self" type="application/rss+xml"/>\n'
+        + "\n".join(items) + "\n"
+        "  </channel>\n"
+        "</rss>\n"
+    )
+    return PlainTextResponse(content=xml, media_type="application/rss+xml",
+                             headers={"Cache-Control": "public, max-age=3600"})
 
 
 # ================================================================

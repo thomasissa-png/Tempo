@@ -49,7 +49,7 @@ C'est durant cette fenêtre de cinq mois que se concentrent tous les jours rouge
 | Février | 3 à 5 | 6 à 8 |
 | Mars | 1 à 3 | 4 à 6 |
 
-**Janvier est historiquement le mois le plus chargé en jours rouges.** Les vagues de froid hivernales, combinées à une consommation électrique maximale pour le chauffage, poussent EDF à activer ses jours les plus chers durant cette période. La saison 2025-2026 ne déroge pas à cette tendance, avec une concentration notable de jours rouges autour des épisodes de températures négatives de janvier 2026.
+**Janvier est historiquement le mois le plus chargé en jours rouges.** Les vagues de froid hivernales, combinées à une consommation électrique maximale pour le chauffage, poussent EDF à activer ses jours les plus chers durant cette période. La saison 2025-2026 ne déroge pas à cette tendance, avec une concentration notable de jours rouges autour des épisodes de températures négatives de janvier 2026. Pour comparer avec les saisons précédentes, retrouvez l'[historique complet des saisons Tempo](/blog/calendrier-tempo-historique-saisons).
 
 ### Avril à août 2026 : la fin de saison sereine
 
@@ -97,7 +97,7 @@ EDF annonce la couleur du lendemain (J+1) chaque jour vers 17h. Mais pour antici
 
 ### Activez les alertes
 
-Ne laissez pas un jour rouge vous surprendre. Vous pouvez [recevoir les alertes](/#subscribe) directement par notification pour être prévenu dès que nos modèles détectent une forte probabilité de jour rouge dans les jours à venir. Une alerte la veille vous donne le temps de réduire votre consommation aux heures pleines.
+Ne laissez pas un jour rouge vous surprendre. Vous pouvez [recevoir les alertes](/#subscribe) directement par notification pour être prévenu dès que nos modèles détectent une forte probabilité de jour rouge dans les jours à venir. Pour en savoir plus sur le fonctionnement de nos [alertes jour rouge Tempo](/blog/alerte-jour-rouge-tempo), découvrez notre article dédié. Une alerte la veille vous donne le temps de réduire votre consommation aux heures pleines.
 
 ### Concentrez vos efforts sur les heures pleines rouges
 

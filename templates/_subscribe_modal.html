@@ -76,6 +76,7 @@
     window.openSubscribeModal = function() {
         var modal = document.getElementById('subscribe-modal');
         if (!modal) return;
+        _previouslyFocused = document.activeElement;
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
         updateSmsDate();
@@ -83,11 +84,14 @@
         if (phoneInput) setTimeout(function() { phoneInput.focus(); }, 100);
     };
 
+    var _previouslyFocused = null;
+
     window.closeSubscribeModal = function() {
         var modal = document.getElementById('subscribe-modal');
         if (!modal) return;
         modal.style.display = 'none';
         document.body.style.overflow = '';
+        if (_previouslyFocused) { _previouslyFocused.focus(); _previouslyFocused = null; }
     };
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -98,7 +102,19 @@
         var modal = document.getElementById('subscribe-modal');
         if (modal) modal.addEventListener('click', function(e) { if (e.target === modal) closeSubscribeModal(); });
 
-        document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeSubscribeModal(); });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeSubscribeModal();
+            // Focus trap: keep Tab cycling within modal
+            if (e.key === 'Tab') {
+                var m = document.getElementById('subscribe-modal');
+                if (!m || m.style.display === 'none') return;
+                var focusable = m.querySelectorAll('button, input, a, [tabindex]:not([tabindex="-1"])');
+                if (!focusable.length) return;
+                var first = focusable[0], last = focusable[focusable.length - 1];
+                if (e.shiftKey) { if (document.activeElement === first) { e.preventDefault(); last.focus(); } }
+                else { if (document.activeElement === last) { e.preventDefault(); first.focus(); } }
+            }
+        });
 
         // Phone validation
         var phone = document.getElementById('modal-phone');

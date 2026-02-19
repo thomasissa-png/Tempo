@@ -20,6 +20,11 @@
     <meta property="og:locale" content="fr_FR">
     <meta property="og:site_name" content="Calendrier Tempo EDF">
     <meta property="og:image" content="https://www.calendrier-tempo.fr/static/og-image.png">
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Alertes Tempo gratuites — Calendrier Tempo EDF">
+    <meta name="twitter:description" content="Recevez une alerte la veille de chaque jour rouge Tempo EDF. Gratuit, sans engagement.">
+    <meta name="twitter:image" content="https://www.calendrier-tempo.fr/static/og-image.png">
     <!-- JSON-LD BreadcrumbList -->
     <script type="application/ld+json">
     {
@@ -27,12 +32,15 @@
         "@type": "BreadcrumbList",
         "itemListElement": [
             {"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://www.calendrier-tempo.fr/"},
-            {"@type": "ListItem", "position": 2, "name": "Alertes Tempo gratuites"}
+            {"@type": "ListItem", "position": 2, "name": "Alertes Tempo gratuites", "item": "https://www.calendrier-tempo.fr/alertes"}
         ]
     }
     </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://cloud.umami.is" crossorigin>
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="/static/css/style.min.css">
     <script defer src="https://cloud.umami.is/script.js" data-website-id="1d187359-b4a6-4ba8-ba41-c449b356832f"></script>
     <style>
         .alertes-hero { text-align: center; padding: 32px 0 24px; }
@@ -65,7 +73,7 @@
     <div class="container header-row">
         <a href="/" class="header-brand">
             <svg class="header-logo" viewBox="0 0 100 100" width="32" height="32" aria-hidden="true"><circle cx="50" cy="50" r="45" fill="#fff"/><circle cx="50" cy="50" r="40" fill="#2563EB"/><path d="M50 10A40 40 0 0 1 90 50H10A40 40 0 0 1 50 10z" fill="#DC2626"/><circle cx="50" cy="50" r="16" fill="#fff"/></svg>
-            <h1>Calendrier Tempo EDF</h1>
+            <span class="header-title">Calendrier Tempo EDF</span>
         </a>
         <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu de navigation" aria-expanded="false" aria-controls="main-nav">
             <span class="bar"></span>
@@ -162,7 +170,7 @@
                 <input type="tel" id="unsub-phone" name="phone" placeholder="06 12 34 56 78" required autocomplete="tel" inputmode="tel">
             </div>
             <button type="submit" class="btn-unsub">Se d&eacute;sinscrire</button>
-            <div id="unsub-result" class="form-result" style="display:none"></div>
+            <div id="unsub-result" class="form-result" style="display:none" role="status" aria-live="polite"></div>
         </form>
     </section>
 

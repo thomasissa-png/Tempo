@@ -14,7 +14,7 @@ Le principe de l'offre Tempo EDF est simple : 300 jours bleus à prix avantageux
 
 Prenons un exemple concret. Un foyer qui consomme 25 kWh en heures pleines un jour rouge paiera **17,65 €** pour cette seule journée. La même consommation un jour bleu ne coûte que 4,03 €. La différence ? Plus de **13 € perdus** parce que vous ne saviez pas que c'était un jour rouge.
 
-Multipliez cette erreur par ne serait-ce que 5 jours rouges ratés dans la saison, et ce sont **65 à 80 € d'économies envolées**. L'alerte Tempo n'est pas un confort : c'est une nécessité financière pour tout abonné Tempo.
+Multipliez cette erreur par ne serait-ce que 5 jours rouges ratés dans la saison, et ce sont **65 à 80 € d'économies envolées**. L'alerte Tempo n'est pas un confort : c'est une nécessité financière pour tout abonné Tempo. Pour mieux comprendre le fonctionnement et les règles de ces journées critiques, consultez notre [guide complet des jours rouges Tempo](/blog/jours-rouges-tempo-guide).
 
 ### Le problème : EDF ne prévient que la veille vers 17h
 
@@ -108,7 +108,7 @@ Ce récapitulatif vous permet de planifier votre semaine entière : programmer l
 
 La principale différence réside dans le canal de communication. Les notifications push sont facilement ignorées ou bloquées par les paramètres du téléphone. Un message WhatsApp a un taux d'ouverture supérieur à 90 %, ce qui en fait le canal le plus fiable pour une alerte que vous ne pouvez pas vous permettre de manquer.
 
-De plus, notre service de prévision anticipe les jours rouges **jusqu'à 5 jours à l'avance**, bien avant la confirmation officielle d'EDF. Cette anticipation vous donne un temps précieux pour vous organiser. Consultez nos [prévisions en temps réel](/) pour voir les couleurs attendues sur les prochains jours.
+De plus, notre service de prévision anticipe les jours rouges **jusqu'à 5 jours à l'avance**, bien avant la confirmation officielle d'EDF. Cette anticipation vous donne un temps précieux pour vous organiser. Consultez nos [prévisions en temps réel](/) pour voir les couleurs attendues sur les prochains jours, ou retrouvez le [calendrier complet de la saison 2025-2026](/blog/calendrier-tempo-2025-2026-dates) pour une vue d'ensemble des dates et couleurs.
 
 ## FAQ : vos questions sur les alertes Tempo
 

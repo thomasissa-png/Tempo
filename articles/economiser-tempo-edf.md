@@ -58,7 +58,7 @@ La même consommation en heure creuse d'un jour bleu :
 
 25 kWh x 0,1325 € = **3,31 €**
 
-Soit une différence de **14,34 € sur une seule journée**. Multipliez par 22 jours rouges et vous comprenez pourquoi les jours rouges méritent toute votre attention.
+Soit une différence de **14,34 € sur une seule journée**. Multipliez par 22 jours rouges et vous comprenez pourquoi les jours rouges méritent toute votre attention. Pour tout savoir sur ces journées critiques, consultez notre [guide complet des jours rouges Tempo](/blog/jours-rouges-tempo-guide).
 
 ## Astuces concrètes pour réduire sa facture Tempo EDF
 
@@ -111,7 +111,7 @@ En revanche, si vous chauffez exclusivement à l'électricité sans alternative 
 
 Le tarif réglementé de vente (TRV) se situe autour de 0,1927 €/kWh en 2026. Le tarif Tempo bleu en heures creuses est à 0,1325 €/kWh, soit **31 % moins cher**. Même les heures pleines blanches (0,1871 €/kWh) restent inférieures au TRV.
 
-Le seul tarif qui dépasse le TRV est le rouge HP à 0,7060 €/kWh, soit plus de 3,5 fois le prix réglementé. Mais avec seulement 22 jours rouges par an et la possibilité de réduire votre consommation ces jours-là, le bilan annuel reste largement favorable pour les foyers disciplinés.
+Le seul tarif qui dépasse le TRV est le rouge HP à 0,7060 €/kWh, soit plus de 3,5 fois le prix réglementé. Mais avec seulement 22 jours rouges par an et la possibilité de réduire votre consommation ces jours-là, le bilan annuel reste largement favorable pour les foyers disciplinés. Pour une analyse détaillée des différences, consultez notre [comparatif Tempo vs Heures Creuses](/blog/tempo-vs-heures-creuses-edf-bleu).
 
 ## FAQ : vos questions sur les économies Tempo EDF
 

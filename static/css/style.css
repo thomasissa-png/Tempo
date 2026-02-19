@@ -3,7 +3,7 @@
    Cible : 35-65 ans — confiance, clarté, économie
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+/* Google Fonts loaded via <link> in HTML for performance (no render-blocking @import) */
 
 :root {
     --bleu: #2563EB;
@@ -440,6 +440,31 @@ nav a.nav-cta:hover {
     margin-bottom: 12px;
     text-align: right;
 }
+
+/* === Couleur aujourd'hui / demain (SEO block) === */
+.today-tomorrow-row {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+.today-tomorrow-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 18px;
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    font-size: 0.95rem;
+}
+.tt-label { color: var(--text-secondary); font-weight: 500; }
+.tt-color { font-weight: 800; text-transform: uppercase; }
+.tt-color small { font-weight: 400; font-size: 0.8rem; color: var(--text-secondary); text-transform: none; }
+.tt-rouge { color: var(--rouge); }
+.tt-blanc { color: #555; }
+.tt-bleu { color: var(--bleu); }
 
 .last-update-bar {
     text-align: center;

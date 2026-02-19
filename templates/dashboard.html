@@ -34,6 +34,17 @@
     <meta name="twitter:title" content="Calendrier Tempo EDF — Couleur du jour et prévisions 15 jours">
     <meta name="twitter:description" content="Anticipez les jours rouges Tempo EDF. Alertes gratuites pour les abonn&eacute;s.">
     <meta name="twitter:image" content="https://www.calendrier-tempo.fr/static/og-image.png">
+    <!-- JSON-LD WebSite -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Calendrier Tempo EDF",
+        "url": "https://www.calendrier-tempo.fr/",
+        "description": "Pr\u00e9vision des jours rouges, blancs et bleus Tempo EDF jusqu'\u00e0 15 jours \u00e0 l'avance.",
+        "inLanguage": "fr"
+    }
+    </script>
     <!-- JSON-LD SoftwareApplication -->
     <script type="application/ld+json">
     {
@@ -142,6 +153,22 @@
             },
             {
                 "@type": "Question",
+                "name": "Quelle couleur Tempo aujourd'hui et demain ?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "La couleur Tempo du jour et de demain est affichée en temps réel en haut de notre page d'accueil. EDF annonce la couleur du lendemain chaque jour entre 6h et 11h. En attendant la confirmation, nous affichons notre prévision basée sur la météo et la consommation nationale."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Qu'est-ce qu'un jour Tempo rouge ?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Un jour Tempo rouge est l'un des 22 jours les plus chers de la saison Tempo EDF. Le prix du kWh en heures pleines atteint 0,76€, soit près de 6 fois le tarif d'un jour bleu. Les jours Tempo rouge tombent uniquement entre le 1er novembre et le 31 mars, jamais le week-end ni les jours fériés."
+                }
+            },
+            {
+                "@type": "Question",
                 "name": "Est-ce que le Calendrier Tempo EDF est un service officiel EDF ?",
                 "acceptedAnswer": {
                     "@type": "Answer",
@@ -172,10 +199,13 @@
     }
     </script>
     {% endif %}
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://cloud.umami.is" crossorigin>
-    <link rel="preload" href="/static/css/style.css" as="style">
-    <link rel="preload" href="/static/js/app.js" as="script">
-    <link rel="stylesheet" href="/static/css/style.css">
+    <link rel="preload" href="/static/css/style.min.css" as="style">
+    <link rel="preload" href="/static/js/app.min.js" as="script">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="/static/css/style.min.css">
     <script defer src="https://cloud.umami.is/script.js" data-website-id="1d187359-b4a6-4ba8-ba41-c449b356832f"></script>
 </head>
 <body>
@@ -220,13 +250,25 @@
         </p>
     </section>
 
-    <!-- Couleur aujourd'hui / demain — SEO keywords (texte caché, visible pour Google) -->
-    {% if ssr.today_color or ssr.tomorrow_color %}
-    <p class="sr-only">
-        {% if ssr.today_color %}Couleur Tempo aujourd'hui : {{ ssr.today_color }}.{% endif %}
-        {% if ssr.tomorrow_color %}Couleur Tempo demain : {{ ssr.tomorrow_color }} (confirm&eacute; EDF).{% endif %}
-    </p>
-    {% endif %}
+    <!-- Couleur aujourd'hui / demain — visible pour SEO "couleur tempo demain" + "quelle couleur tempo" -->
+    <div class="tempo-today-tomorrow" id="tempo-today-tomorrow">
+        {% if ssr.today_color or ssr.tomorrow_color %}
+        <div class="today-tomorrow-row">
+            {% if ssr.today_color %}
+            <div class="today-tomorrow-card">
+                <span class="tt-label">Couleur Tempo aujourd'hui</span>
+                <span class="tt-color tt-{{ ssr.today_color|lower }}">{{ ssr.today_color }}</span>
+            </div>
+            {% endif %}
+            {% if ssr.tomorrow_color %}
+            <div class="today-tomorrow-card">
+                <span class="tt-label">Couleur Tempo demain</span>
+                <span class="tt-color tt-{{ ssr.tomorrow_color|lower }}">{{ ssr.tomorrow_color }} <small>(confirm&eacute; EDF)</small></span>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
     <div class="last-update-bar" id="last-update-bar" role="status" aria-live="polite" {% if not ssr.last_update %}style="display:none"{% endif %}>
         <span id="last-update-text">{% if ssr.last_update %}Derni&egrave;re mise &agrave; jour : {{ ssr.last_update }}{% endif %}</span>
     </div>
@@ -398,6 +440,29 @@
                     Les jours blancs, eux, peuvent tomber n'importe quand.</p>
                 </div>
             </details>
+            <details class="faq-item">
+                <summary>Quelle couleur Tempo aujourd'hui et demain ?</summary>
+                <div class="faq-content">
+                <p>La <strong>couleur Tempo</strong> du jour et de demain est affich&eacute;e en haut de cette page, mise &agrave; jour en temps r&eacute;el.
+                    EDF annonce la couleur du lendemain chaque jour entre 6h et 11h.
+                    D&egrave;s que la couleur officielle est publi&eacute;e, notre site la refl&egrave;te imm&eacute;diatement.
+                    En attendant la confirmation EDF, nous affichons notre <strong>pr&eacute;vision</strong> bas&eacute;e
+                    sur la m&eacute;t&eacute;o et la consommation nationale. Pour conna&icirc;tre la couleur Tempo des
+                    prochains jours, consultez le r&eacute;sum&eacute; des 10 jours ci-dessus ou notre
+                    <a href="/calendrier">calendrier complet</a>.</p>
+                </div>
+            </details>
+            <details class="faq-item">
+                <summary>Qu'est-ce qu'un jour Tempo rouge ?</summary>
+                <div class="faq-content">
+                <p>Un <strong>jour Tempo rouge</strong> est l'un des 22 jours les plus chers de la saison Tempo EDF.
+                    Le prix du kWh en heures pleines atteint <strong>0,76&nbsp;&euro;</strong>, soit pr&egrave;s de 6 fois
+                    le tarif d'un jour bleu (0,13&nbsp;&euro;). Les jours <strong>Tempo rouge</strong> tombent uniquement
+                    entre le 1<sup>er</sup> novembre et le 31 mars, jamais le week-end ni les jours f&eacute;ri&eacute;s.
+                    EDF les d&eacute;clenche lors des pics de consommation (vagues de froid).
+                    Pour &eacute;viter la facture sal&eacute;e, reportez vos usages gourmands au jour bleu suivant.</p>
+                </div>
+            </details>
             <details class="faq-item" id="faq-fiabilite">
                 <summary>Vos pr&eacute;visions sont-elles fiables ?</summary>
                 <div class="faq-content">
@@ -435,6 +500,6 @@
 
 <button class="back-to-top" id="back-to-top" aria-label="Retour en haut de page">&#8593;</button>
 
-<script src="/static/js/app.js"></script>
+<script src="/static/js/app.min.js"></script>
 </body>
 </html>

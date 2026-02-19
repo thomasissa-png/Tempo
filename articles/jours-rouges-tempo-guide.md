@@ -36,7 +36,7 @@ Les dimanches sont systématiquement des jours bleus. La règle R3 interdit les 
 
 ### Règle R4 : maximum 5 jours rouges consécutifs
 
-Même lors d'une vague de froid intense, EDF ne peut pas enchaîner plus de **5 jours rouges d'affilée**. Cette limite protège les consommateurs d'une série trop longue de jours au tarif maximal. En pratique, les séquences de 4 ou 5 jours rouges consécutifs restent rares et ne se produisent que lors des épisodes de froid les plus sévères.
+Même lors d'une vague de froid intense, EDF ne peut pas enchaîner plus de **5 jours rouges d'affilée**. Cette limite protège les consommateurs d'une série trop longue de jours au tarif maximal. En pratique, les séquences de 4 ou 5 jours rouges consécutifs restent rares et ne se produisent que lors des épisodes de froid les plus sévères. Pour voir comment ces séquences se sont réparties au fil des années, retrouvez l'[historique des saisons Tempo](/blog/calendrier-tempo-historique-saisons).
 
 ## Combien coûte réellement un jour rouge ?
 
@@ -108,7 +108,7 @@ Ne laissez plus un jour rouge vous surprendre. Inscrivez-vous à nos [alertes Wh
 ## Nos conseils pour survivre aux jours rouges
 
 1. **Programmez vos appareils en heures creuses** : lave-linge, sèche-linge, lave-vaisselle, chauffe-eau -- tout ce qui peut fonctionner entre 22h et 6h doit être décalé.
-2. **Baissez le chauffage** : réduisez la consigne de 2 à 3°C les jours rouges. Utilisez des couvertures, des vêtements chauds et préchauffez votre logement la veille en fin de journée.
+2. **Baissez le chauffage** : réduisez la consigne de 2 à 3°C les jours rouges. Utilisez des couvertures, des vêtements chauds et préchauffez votre logement la veille en fin de journée. Pour aller plus loin, découvrez nos [10 astuces chauffage pour les jours rouges](/blog/chauffage-jour-rouge-tempo-astuces).
 3. **Coupez les appareils en veille** : les veilles représentent 10 à 15 % de la consommation d'un foyer. Les jours rouges, chaque watt compte.
 4. **Cuisinez malin** : privilégiez le micro-ondes (rapide, peu gourmand) au four électrique. Préparez vos repas la veille si possible.
 5. **Surveillez les prévisions** : consultez régulièrement [nos prévisions](/) pour anticiper les jours rouges 2 à 5 jours à l'avance.

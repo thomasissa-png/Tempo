@@ -39,7 +39,7 @@ Les jours rouges obéissent à des **règles strictes** fixées par EDF :
 4. **Maximum 5 consécutifs** : pas plus de 5 jours rouges d'affilée
 5. **Budget fixe** : exactement 22 par saison (du 1er septembre au 31 août)
 
-En pratique, les jours rouges tombent lors des **vagues de froid hivernales**, quand la consommation nationale d'électricité est la plus forte. C'est pourquoi ils sont difficiles à prévoir : tout dépend de la météo.
+En pratique, les jours rouges tombent lors des **vagues de froid hivernales**, quand la consommation nationale d'électricité est la plus forte. C'est pourquoi ils sont difficiles à prévoir : tout dépend de la météo. Pour tout comprendre sur ces journées et savoir comment les anticiper, consultez notre [guide complet des jours rouges Tempo](/blog/jours-rouges-tempo-guide).
 
 ## Pour qui Tempo est-il intéressant ?
 
@@ -84,7 +84,7 @@ Pour un foyer type avec chauffage électrique (consommation ~8000 kWh/an) :
 - **Sans adaptation** les jours rouges : surcoût de 50 à 150 € par jour rouge
 - **Avec adaptation** (machines reportées, chauffage baissé) : économie de **300 à 500 € par an** par rapport au tarif réglementé
 
-Le montant exact dépend de votre profil de consommation et de votre capacité à vous adapter. Notre outil [Calendrier Tempo EDF](/) vous aide à anticiper les jours rouges jusqu'à 15 jours à l'avance.
+Le montant exact dépend de votre profil de consommation et de votre capacité à vous adapter. Notre outil [Calendrier Tempo EDF](/) vous aide à anticiper les jours rouges jusqu'à 15 jours à l'avance. Pour comprendre les tendances de placement des jours rouges au fil des années, retrouvez l'[historique des saisons Tempo](/blog/calendrier-tempo-historique-saisons).
 
 ## Comment être prévenu des jours rouges ?
 
