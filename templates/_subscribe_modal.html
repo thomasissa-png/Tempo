@@ -2,18 +2,21 @@
 <div class="subscribe-modal-overlay" id="subscribe-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" style="display:none">
     <div class="subscribe-modal">
         <button class="modal-close" id="modal-close" aria-label="Fermer">&times;</button>
-        <h2 id="modal-title">Recevez une alerte avant chaque jour cher</h2>
+        <h2 id="modal-title">Anticipez les 5 prochains jours Tempo</h2>
         <p class="sub-desc">
             100% gratuit, sans engagement, 1 message par jour maximum.
         </p>
         <div class="sms-preview" id="modal-sms-preview">
             <div class="sms-preview-label">&#128172; Exemple de message que vous recevrez :</div>
             <div class="sms-bubble" id="modal-sms-bubble">
-                &#9888;&#65039; <strong>Calendrier Tempo EDF</strong><br><br>
-                <strong>Jour ROUGE</strong> pr&eacute;vu <span id="modal-sms-date">mardi prochain</span> (87% confiance).<br>
-                Temp min: 2&deg;C.<br><br>
-                &#128073; Reportez lessive, s&egrave;che-linge, four et recharge VE.<br>
-                Limitez votre conso entre 6h-22h !
+                &#128200; <strong>Calendrier Tempo EDF &mdash; Semaine &agrave; venir</strong><br><br>
+                &#128308; <span id="modal-sms-day1">lun. 23 f&eacute;v.</span><br>
+                &#128308; <span id="modal-sms-day2">mar. 24 f&eacute;v.</span><br>
+                &#9898; <span id="modal-sms-day3">mer. 25 f&eacute;v.</span><br>
+                &#128309; <span id="modal-sms-day4">jeu. 26 f&eacute;v.</span><br>
+                &#128309; <span id="modal-sms-day5">ven. 27 f&eacute;v.</span><br><br>
+                &#9888;&#65039; 2 jours rouges pr&eacute;vus cette semaine.<br>
+                &#128073; Anticipez vos machines et chauffage !
             </div>
         </div>
         <form id="modal-subscribe-form">
@@ -56,21 +59,24 @@
         el.style.display = 'block';
     }
 
-    function updateSmsDate() {
-        var el = document.getElementById('modal-sms-date');
-        if (!el) return;
-        // Try to find next RED day from dashboard forecast (if on homepage)
-        var container = document.getElementById('forecast-container');
-        if (container) {
-            var redCard = container.querySelector('.forecast-card.color-ROUGE .fc-date');
-            if (redCard && redCard.textContent) { el.textContent = redCard.textContent; return; }
-        }
-        // Fallback: next weekday in 2 days
+    function updateSmsDays() {
+        var JOURS_COURT = ['dim.','lun.','mar.','mer.','jeu.','ven.','sam.'];
+        var MOIS_COURT = ['jan.','f\u00e9v.','mars','avr.','mai','juin','juil.','ao\u00fbt','sept.','oct.','nov.','d\u00e9c.'];
+        // Generate 5 upcoming weekdays starting from tomorrow+1 (J+2)
         var now = new Date();
-        var next = new Date(now);
-        next.setDate(next.getDate() + 2);
-        while (next.getDay() === 0 || next.getDay() === 6) next.setDate(next.getDate() + 1);
-        el.textContent = JOURS[next.getDay()] + ' ' + next.getDate() + ' ' + MOIS[next.getMonth()];
+        var days = [];
+        var d = new Date(now);
+        d.setDate(d.getDate() + 2); // start at J+2
+        while (days.length < 5) {
+            if (d.getDay() !== 0 && d.getDay() !== 6) {
+                days.push(new Date(d));
+            }
+            d.setDate(d.getDate() + 1);
+        }
+        for (var i = 0; i < 5; i++) {
+            var el = document.getElementById('modal-sms-day' + (i + 1));
+            if (el) el.textContent = JOURS_COURT[days[i].getDay()] + ' ' + days[i].getDate() + ' ' + MOIS_COURT[days[i].getMonth()];
+        }
     }
 
     window.openSubscribeModal = function() {
@@ -79,7 +85,7 @@
         _previouslyFocused = document.activeElement;
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
-        updateSmsDate();
+        updateSmsDays();
         var phoneInput = document.getElementById('modal-phone');
         if (phoneInput) setTimeout(function() { phoneInput.focus(); }, 100);
     };
@@ -176,7 +182,7 @@
                         if (result.ok) {
                             resultEl.className = 'form-result success';
                             resultEl.innerHTML = '<span class="success-check">\u2713</span> ' +
-                                (result.data.message || "C'est fait\u00a0! Vous recevrez une alerte la veille de chaque jour rouge.");
+                                (result.data.message || "C'est fait\u00a0! Vous recevrez les pr\u00e9visions Tempo des 5 prochains jours.");
                             resultEl.style.display = 'block';
                             form.reset();
                             setTimeout(function() { closeSubscribeModal(); }, 3000);

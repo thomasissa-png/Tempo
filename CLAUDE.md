@@ -126,13 +126,30 @@
 - **Cold start UX**: During FastAPI startup, ASGI proxy serves real `dashboard.html` + CSS + JS (not a loading placeholder). JS detects 503 responses and retries with exponential backoff (2-4s) via `loadAllData()`
 
 ### SEO & Server-Side Rendering
-- **SSR on homepage**: `_get_ssr_data()` pre-loads today/tomorrow colors, remaining counters, and first 7 predictions from DB. Jinja2 renders real content instead of JS placeholders ("—", "Chargement..."). JS takes over on client-side. Best-effort: if DB not ready, falls back to empty placeholders.
+- **SSR on homepage**: `_get_ssr_data()` pre-loads today/tomorrow colors, remaining counters, first 10 predictions, and last update timestamp from DB. Jinja2 renders real content instead of JS placeholders. JS takes over on client-side. Best-effort: if DB not ready, falls back to empty placeholders.
+- **SSR last update**: Uses `MAX(timestamp_prediction)` from predictions table (NOT `created_at` which doesn't exist). Displayed as "Dernière mise à jour" banner above the 10-day summary.
+- **Visible today/tomorrow block**: `.tempo-today-tomorrow` section on homepage shows current day and tomorrow's Tempo color with SSR data. Targets "couleur tempo demain" keyword.
 - **Dedicated `/calendrier` page**: Monthly grid of Tempo colors (past = EDF official from `actuals`, future = predictions). Server-side rendered via `page_calendrier()`. Navigation with `#cal` anchor to avoid scroll-to-top on mobile. Targets "calendrier tempo" / "calendrier tempo edf" keywords.
-- **Structured Data (JSON-LD)**: Homepage has `SoftwareApplication` with `AggregateRating`, `Organization`, `BreadcrumbList`, `HowTo` (3 steps), `FAQPage` (5 questions). Calendar page has `Dataset`, `BreadcrumbList`, `FAQPage` (3 questions).
-- **Sitemap**: Dynamic `/sitemap.xml` includes `/` (priority 1.0), `/calendrier` (priority 0.9), `/blog/` (0.7), individual articles (0.6), `/mentions-legales` (0.3).
-- **Robots.txt**: Explicit `Allow: /calendrier`, `Allow: /blog/`. Disallows `/admin`, `/api/`, `/manage/`.
-- **Internal linking**: "Calendrier" in nav across all templates. Footer links to Calendrier, Blog, Mentions légales on every page. Blog articles cross-link to `/calendrier` and `/#subscribe`.
-- **Blog SEO articles**: 8 articles total — 6 original + "Tempo EDF 2026 guide complet" (targets "tempo edf") + "Historique calendrier Tempo" (targets "calendrier tempo").
+- **Structured Data (JSON-LD)**: Homepage has `SoftwareApplication`, `AggregateRating`, `Organization`, `BreadcrumbList`, `HowTo` (3 steps), `FAQPage` (7 questions), `WebSite`. Calendar page has `Dataset`, `BreadcrumbList`, `FAQPage` (6 questions). Blog articles have `Article` + `BreadcrumbList`. All breadcrumbs include `item` URL on last element.
+- **Sitemap**: Dynamic `/sitemap.xml` includes `/` (priority 1.0), `/calendrier` (priority 0.9), `/blog/` (0.7), individual articles (0.6), `/alertes` (0.8), `/mentions-legales` (0.3).
+- **Robots.txt**: Explicit `Allow: /calendrier`, `Allow: /blog/`. Disallows `/admin`, `/api/`, `/manage/`. AI bot rules: GPTBot, ChatGPT-User, ClaudeBot, PerplexityBot, Google-Extended allowed on `/`, `/calendrier`, `/blog/`, `/api/today`, `/api/tomorrow`, `/api/predictions`, `/llms.txt`, `/feed.xml`.
+- **AI discovery**: `/llms.txt` endpoint for AI crawlers. `/feed.xml` RSS 2.0 feed for blog articles.
+- **Internal linking**: "Calendrier" in nav across all templates. Footer links to Calendrier, Blog, Alertes, Mentions légales on every page. Blog articles cross-link to each other (17+ internal links across 7 articles) and to `/calendrier` and `/#subscribe`.
+- **Blog SEO articles**: 8 articles total — 6 original + "Tempo EDF 2026 guide complet" (targets "tempo edf") + "Historique calendrier Tempo" (targets "calendrier tempo", expanded to 1655 words).
+- **Heading hierarchy**: Only homepage has `<h1>` in header. All other pages use `<span class="header-title">` in header to avoid duplicate H1 (each page has its own content `<h1>`).
+- **Google Fonts**: Loaded via `<link rel="preconnect">` + `<link rel="stylesheet">` in HTML (not CSS `@import`).
+- **Minified assets**: `style.min.css` (37KB, -31%) and `app.min.js` (18KB, -47%). All templates reference minified versions.
+
+### Alert UX
+- **WhatsApp alert framing**: Alerts emphasize **5-day forecast** (J+2 to J+5), not "demain" predictions. EDF confirms J+1 directly, so our value is anticipation.
+- **SMS mockup**: All mockups (alertes.html, _subscribe_modal.html) show a weekly forecast with 5 days of colored dots (🔴🔴⚪🔵🔵 format), not a single "jour rouge demain" message.
+- **Modal dynamic dates**: `updateSmsDays()` generates 5 upcoming weekdays starting from J+2 and displays them in the modal SMS preview.
+- **Subscription CTA**: All CTAs across templates use "Anticipez les 5 prochains jours Tempo" framing instead of "alerte la veille".
+
+### Accessibility
+- **Focus trap**: Subscribe modal traps Tab/Shift+Tab focus cycling within modal elements. Focus restored to triggering element on close via `_previouslyFocused`.
+- **ARIA**: `aria-live="polite"` on form result elements. Skip link on all pages. Proper `role="banner"`, `role="main"`, `role="contentinfo"` landmarks.
+- **Twitter Cards**: Open Graph + Twitter Card meta tags on `/alertes` page.
 
 ### Analytics
-- **Umami**: Cloud-hosted analytics (`cloud.umami.is`) on all public templates (dashboard, blog_index, blog_article, legal, manage). Script loaded with `defer`. Website ID: `1d187359-b4a6-4ba8-ba41-c449b356832f`.
+- **Umami**: Cloud-hosted analytics (`cloud.umami.is`) on all public templates (dashboard, blog_index, blog_article, legal, manage, alertes). Script loaded with `defer`. Website ID: `1d187359-b4a6-4ba8-ba41-c449b356832f`.

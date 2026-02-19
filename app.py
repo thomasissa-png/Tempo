@@ -523,7 +523,7 @@ def _get_ssr_data() -> dict:
             # SSR: dernière mise à jour (reco 21)
             try:
                 row = conn.execute(
-                    "SELECT MAX(created_at) as last_update FROM predictions WHERE date >= ?",
+                    "SELECT MAX(timestamp_prediction) as last_update FROM predictions WHERE date >= ?",
                     (today_str,)
                 ).fetchone()
                 if row and row["last_update"]:

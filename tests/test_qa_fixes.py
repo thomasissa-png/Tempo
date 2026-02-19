@@ -878,3 +878,226 @@ class TestOriginCheck:
             "host": "www.calendrier-tempo.fr",
         }
         assert _check_origin(request) is True
+
+
+# ================================================================
+# SEO audit v2 : heading hierarchy, structured data, AI discovery
+# ================================================================
+
+class TestHeadingHierarchy:
+    """Only homepage should have H1 in header. Others use span."""
+
+    _NON_HOMEPAGE_TEMPLATES = [
+        "calendrier.html", "alertes.html", "blog_index.html",
+        "blog_article.html", "legal.html", "manage.html",
+    ]
+
+    def test_no_h1_in_header_non_homepage(self):
+        """Non-homepage templates use span.header-title, not h1, in header."""
+        templates_dir = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "templates"
+        )
+        for tpl in self._NON_HOMEPAGE_TEMPLATES:
+            filepath = os.path.join(templates_dir, tpl)
+            with open(filepath) as f:
+                content = f.read()
+            # Should NOT have <h1 in the header section (before </header>)
+            header_section = content.split("</header>")[0] if "</header>" in content else ""
+            assert '<h1' not in header_section, f"{tpl} has <h1> in header (duplicate H1 risk)"
+
+    def test_homepage_has_h1_in_header(self):
+        """Homepage (dashboard.html) keeps H1 in header."""
+        filepath = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "templates", "dashboard.html"
+        )
+        with open(filepath) as f:
+            content = f.read()
+        header_section = content.split("</header>")[0]
+        assert '<h1' in header_section
+
+
+class TestSSRLastUpdate:
+    """SSR last_update uses timestamp_prediction (not created_at)."""
+
+    def test_ssr_query_uses_timestamp_prediction(self):
+        """The SSR query in app.py uses timestamp_prediction column."""
+        app_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "app.py")
+        with open(app_path) as f:
+            content = f.read()
+        assert "MAX(timestamp_prediction)" in content
+        # Ensure the old buggy column name is NOT used
+        assert "MAX(created_at)" not in content
+
+    def test_ssr_last_update_with_predictions(self):
+        """SSR last_update is populated when predictions exist."""
+        from app import _get_ssr_data, _db_ready
+        from database import get_db
+        _db_ready.set()
+
+        today_str = date.today().isoformat()
+        now_str = datetime.now().isoformat()
+        conn = get_db()
+        conn.execute(
+            "INSERT OR REPLACE INTO predictions "
+            "(date, couleur_predite, probabilite_bleu, probabilite_blanc, probabilite_rouge, "
+            "score_risque, horizon, timestamp_prediction) "
+            "VALUES (?, 'BLEU', 0.8, 0.1, 0.1, 30, 'J-1', ?)",
+            (today_str, now_str)
+        )
+        conn.commit()
+        conn.close()
+
+        ssr = _get_ssr_data()
+        assert ssr["last_update"] is not None
+
+
+class TestWebSiteSchema:
+    """Homepage has WebSite JSON-LD schema."""
+
+    def test_dashboard_has_website_schema(self):
+        filepath = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "templates", "dashboard.html"
+        )
+        with open(filepath) as f:
+            content = f.read()
+        assert '"WebSite"' in content
+
+
+class TestAIDiscovery:
+    """AI bot discovery endpoints exist."""
+
+    def test_llms_txt_endpoint_exists(self):
+        """app.py has /llms.txt route."""
+        app_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "app.py")
+        with open(app_path) as f:
+            content = f.read()
+        assert "/llms.txt" in content
+
+    def test_feed_xml_endpoint_exists(self):
+        """app.py has /feed.xml route."""
+        app_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "app.py")
+        with open(app_path) as f:
+            content = f.read()
+        assert "/feed.xml" in content
+
+    def test_robots_has_ai_bot_rules(self):
+        """robots.txt includes rules for AI bots."""
+        app_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "app.py")
+        with open(app_path) as f:
+            content = f.read()
+        assert "GPTBot" in content
+        assert "ClaudeBot" in content
+
+
+class TestAlertUXFraming:
+    """Alert mockups show 5-day forecast, not 'demain' with percentage."""
+
+    def test_alertes_page_no_demain_mockup(self):
+        """Alertes SMS mockup shows weekly forecast, not 'prévu demain'."""
+        filepath = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "templates", "alertes.html"
+        )
+        with open(filepath) as f:
+            content = f.read()
+        # Should NOT have the old "prévu demain (87% confiance)" in the SMS bubble
+        assert "87% confiance" not in content
+        # Should have the weekly forecast format
+        assert "Semaine" in content
+
+    def test_modal_no_demain_mockup(self):
+        """Subscribe modal shows weekly forecast, not 'prévu demain'."""
+        filepath = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "templates", "_subscribe_modal.html"
+        )
+        with open(filepath) as f:
+            content = f.read()
+        assert "87% confiance" not in content
+        assert "Semaine" in content
+
+    def test_modal_has_5_day_slots(self):
+        """Subscribe modal has 5 day slots for dynamic dates."""
+        filepath = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "templates", "_subscribe_modal.html"
+        )
+        with open(filepath) as f:
+            content = f.read()
+        for i in range(1, 6):
+            assert f"modal-sms-day{i}" in content, f"Missing day slot {i}"
+
+
+class TestMinifiedAssets:
+    """Minified CSS and JS files exist."""
+
+    def test_minified_css_exists(self):
+        filepath = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "static", "css", "style.min.css"
+        )
+        assert os.path.exists(filepath), "style.min.css not found"
+        size = os.path.getsize(filepath)
+        assert size > 1000, f"style.min.css too small ({size} bytes)"
+
+    def test_minified_js_exists(self):
+        filepath = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "static", "js", "app.min.js"
+        )
+        assert os.path.exists(filepath), "app.min.js not found"
+        size = os.path.getsize(filepath)
+        assert size > 1000, f"app.min.js too small ({size} bytes)"
+
+
+class TestGoogleFontsOptimization:
+    """Google Fonts loaded via preconnect, not CSS @import."""
+
+    def test_css_no_import(self):
+        """style.css does not use @import for Google Fonts."""
+        filepath = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "static", "css", "style.css"
+        )
+        with open(filepath) as f:
+            content = f.read()
+        # Should NOT have active @import (may have a comment about it)
+        lines = [l for l in content.split('\n') if l.strip().startswith('@import')]
+        assert len(lines) == 0, f"Active @import found in style.css: {lines}"
+
+    def test_templates_have_preconnect(self):
+        """Key templates use preconnect for Google Fonts."""
+        templates_dir = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)), "templates"
+        )
+        for tpl in ["dashboard.html", "calendrier.html", "alertes.html"]:
+            filepath = os.path.join(templates_dir, tpl)
+            with open(filepath) as f:
+                content = f.read()
+            assert 'rel="preconnect" href="https://fonts.googleapis.com"' in content, (
+                f"Missing preconnect in {tpl}"
+            )
+
+
+class TestBreadcrumbsComplete:
+    """All breadcrumb JSON-LD includes item URL on last element."""
+
+    def test_calendrier_breadcrumb_has_item(self):
+        filepath = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "templates", "calendrier.html"
+        )
+        with open(filepath) as f:
+            content = f.read()
+        assert "calendrier-tempo.fr/calendrier" in content
+
+    def test_alertes_breadcrumb_has_item(self):
+        filepath = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "templates", "alertes.html"
+        )
+        with open(filepath) as f:
+            content = f.read()
+        assert "calendrier-tempo.fr/alertes" in content
