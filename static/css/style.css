@@ -1,24 +1,31 @@
 /* ============================================================
-   TempoForecast — Design System v2
+   Calendrier Tempo EDF — Design System v3
+   Cible : 35-65 ans — confiance, clarté, économie
    ============================================================ */
 
-:root {
-    --bleu: #2196F3;
-    --bleu-bg: #E3F2FD;
-    --blanc: #757575;  /* H-08 QA : contrast ratio 4.6:1 vs white (WCAG AA) */
-    --blanc-bg: #F5F5F5;
-    --rouge: #F44336;
-    --rouge-bg: #FFEBEE;
-    --incertain: #BDBDBD;
-    --incertain-bg: #EEEEEE;
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-    --bg: #FAFAFA;
+:root {
+    --bleu: #2563EB;
+    --bleu-bg: #EFF6FF;
+    --blanc: #6B7280;
+    --blanc-bg: #F9FAFB;
+    --rouge: #DC2626;
+    --rouge-bg: #FEF2F2;
+    --vert: #16A34A;
+    --vert-bg: #F0FDF4;
+    --incertain: #9CA3AF;
+    --incertain-bg: #F3F4F6;
+
+    --bg: #F8FAFC;
     --surface: #FFFFFF;
-    --text: #212121;
-    --text-secondary: #616161;  /* UX audit: meilleur contraste 5.9:1 vs white (WCAG AA) */
-    --border: #E0E0E0;
-    --shadow: 0 2px 8px rgba(0,0,0,0.08);
-    --shadow-lg: 0 4px 20px rgba(0,0,0,0.12);
+    --text: #1F2937;
+    --text-secondary: #4B5563;
+    --border: #E5E7EB;
+    --footer-bg: #1F2937;
+    --footer-text: #D1D5DB;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    --shadow-lg: 0 4px 16px rgba(0,0,0,0.1);
     --radius: 12px;
     --radius-sm: 8px;
 }
@@ -26,10 +33,11 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: var(--bg);
     color: var(--text);
-    line-height: 1.6;
+    line-height: 1.7;
+    font-size: 16px;
 }
 
 /* === Layout === */
@@ -44,7 +52,7 @@ body {
     position: absolute;
     top: -100%;
     left: 16px;
-    background: #0D47A1;
+    background: #1D4ED8;
     color: white;
     padding: 12px 24px;
     border-radius: 0 0 var(--radius-sm) var(--radius-sm);
@@ -60,10 +68,10 @@ body {
 
 /* === Header compact avec nav inline === */
 header[role="banner"] {
-    background: linear-gradient(135deg, #1565C0 0%, #0D47A1 100%);
+    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
     color: white;
-    padding: 10px 0;
-    box-shadow: var(--shadow-lg);
+    padding: 12px 0;
+    box-shadow: 0 2px 8px rgba(37,99,235,0.25);
     position: sticky;
     top: 0;
     z-index: 100;
@@ -83,8 +91,8 @@ header[role="banner"] {
 
 header[role="banner"] h1,
 .header-title {
-    font-size: 1.3rem;
-    font-weight: 700;
+    font-size: 1.4rem;
+    font-weight: 800;
     letter-spacing: -0.5px;
     margin: 0;
     color: white;
@@ -345,8 +353,8 @@ nav a:hover, nav a.active {
 /* Conseil jour rouge inline */
 .fc-tip {
     font-size: 0.8rem;
-    color: #C62828;
-    background: #FFEBEE;
+    color: #B91C1C;
+    background: var(--rouge-bg);
     padding: 4px 8px;
     border-radius: 6px;
     margin-top: 6px;
@@ -364,8 +372,8 @@ nav a:hover, nav a.active {
 }
 
 .today-tip.tip-rouge {
-    background: #FFEBEE;
-    color: #C62828;
+    background: var(--rouge-bg);
+    color: #B91C1C;
     font-weight: 600;
 }
 
@@ -376,7 +384,7 @@ nav a:hover, nav a.active {
 
 .today-tip.tip-bleu {
     background: #E3F2FD;
-    color: #1565C0;
+    color: #2563EB;
 }
 
 /* Prix dans les today-cards */
@@ -917,7 +925,7 @@ nav a:hover, nav a.active {
     width: 40px;
     height: 40px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #1565C0, #0D47A1);
+    background: linear-gradient(135deg, #2563EB, #1D4ED8);
     color: white;
     font-weight: 700;
     font-size: 1.1rem;
@@ -1008,6 +1016,7 @@ nav a:hover, nav a.active {
     padding: 32px;
     margin: 32px 0;
     box-shadow: var(--shadow);
+    border-top: 4px solid var(--vert);
 }
 
 .subscribe-section h2 {
@@ -1072,7 +1081,7 @@ nav a:hover, nav a.active {
     align-items: center;
     gap: 8px;
     padding: 12px 28px;
-    background: linear-gradient(135deg, #1565C0 0%, #0D47A1 100%);
+    background: linear-gradient(135deg, var(--vert) 0%, #15803D 100%);
     color: white;
     border: none;
     border-radius: var(--radius-sm);
@@ -1081,11 +1090,13 @@ nav a:hover, nav a.active {
     cursor: pointer;
     transition: transform 0.1s, box-shadow 0.2s, opacity 0.2s;
     margin-top: 16px;
+    min-height: 48px;
 }
 
 .btn:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(13,71,161,0.3);
+    box-shadow: 0 4px 12px rgba(22,163,74,0.3);
+    background: linear-gradient(135deg, #15803D 0%, #166534 100%);
 }
 
 .btn:active { transform: translateY(0); }
@@ -1124,8 +1135,8 @@ nav a:hover, nav a.active {
 
 .form-result.error {
     display: block;
-    background: #FFEBEE;
-    color: #C62828;
+    background: var(--rouge-bg);
+    color: #B91C1C;
     border: 1px solid #EF9A9A;
 }
 
@@ -1211,9 +1222,10 @@ nav a:hover, nav a.active {
 footer {
     text-align: center;
     padding: 32px 20px;
-    color: var(--text-secondary);
+    background: var(--footer-bg);
+    color: var(--footer-text);
     font-size: 0.85rem;
-    border-top: 1px solid var(--border);
+    border-top: none;
     margin-top: 48px;
 }
 
@@ -1234,7 +1246,7 @@ footer a {
     width: 48px;
     height: 48px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #1565C0 0%, #0D47A1 100%);
+    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
     color: white;
     border: none;
     cursor: pointer;
@@ -1271,7 +1283,7 @@ footer a {
 }
 
 .phone-feedback.invalid {
-    color: #C62828;
+    color: #B91C1C;
 }
 
 /* === Retry button for errors === */
@@ -1325,7 +1337,7 @@ footer a {
         top: 100%;
         left: 0;
         right: 0;
-        background: linear-gradient(135deg, #1565C0 0%, #0D47A1 100%);
+        background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
         padding: 8px 20px 16px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         gap: 0;
@@ -1537,7 +1549,7 @@ footer a {
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
+    background: linear-gradient(135deg, var(--bleu-bg) 0%, #DBEAFE 100%);
     border: 1px solid var(--bleu);
     border-radius: var(--radius-sm);
     padding: 12px 20px;
@@ -1547,14 +1559,14 @@ footer a {
 .cta-banner-text {
     font-size: 0.95rem;
     font-weight: 600;
-    color: #0D47A1;
+    color: #1D4ED8;
 }
 
 .cta-banner-btn {
     display: inline-flex;
     align-items: center;
     padding: 8px 20px;
-    background: linear-gradient(135deg, #1565C0 0%, #0D47A1 100%);
+    background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
     color: white;
     text-decoration: none;
     border-radius: 20px;
@@ -1646,7 +1658,7 @@ footer a {
 }
 
 .savings-bad {
-    background: #FFEBEE;
+    background: var(--rouge-bg);
     border: 1px solid var(--rouge);
 }
 
@@ -1763,7 +1775,7 @@ footer a {
 
 .label-prediction {
     background: #E3F2FD;
-    color: #1565C0;
+    color: #2563EB;
 }
 
 /* P-11 : Note fréquence MAJ */
@@ -1815,7 +1827,7 @@ footer a {
     align-items: center;
     margin-top: 12px;
     padding: 10px 24px;
-    background: var(--rouge);
+    background: var(--vert);
     color: white;
     border: none;
     border-radius: var(--radius-sm);
@@ -1827,7 +1839,8 @@ footer a {
 
 .btn-cta-welcome:hover {
     transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(244,67,54,0.3);
+    box-shadow: 0 4px 12px rgba(22,163,74,0.3);
+    background: #15803D;
 }
 
 /* P-21 : Barres de progression des compteurs */
@@ -2037,7 +2050,7 @@ select:focus-visible {
 .blog-cta {
     margin: 48px 0 24px;
     padding: 32px;
-    background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
+    background: linear-gradient(135deg, var(--bleu-bg) 0%, #DBEAFE 100%);
     border-radius: var(--radius);
     text-align: center;
 }
@@ -2140,7 +2153,7 @@ select:focus-visible {
 .blog-cta-inline {
     margin: 36px 0;
     padding: 24px;
-    background: linear-gradient(135deg, #FFEBEE 0%, #FFCDD2 100%);
+    background: linear-gradient(135deg, var(--rouge-bg) 0%, #FCA5A5 100%);
     border-radius: var(--radius);
     text-align: center;
     border: 1px solid #EF9A9A;
