@@ -1,18 +1,16 @@
-"""Algorithme de prediction Tempo v3.0 — Meteo France.
+"""Algorithme de prediction Tempo v3.1 — Meteo France + C_nette proxy.
 
-Audit ML fev 2026 : recalibrage complet des poids et seuils.
-- Poids temperature 27% → 40% (seul signal discriminant, ecart 53pts BLEU→ROUGE)
-- Poids budget 20% → 12% (causait 210 faux BLANC sur 711 evaluations)
-- Seuil ROUGE dynamique : abaisse a 55 si temp < 7C et budget >= 50 (capture
-  les 22 rouges reels qui avaient un score 45-65)
-- Budget scoring abaisse pour reduire la sur-prediction en debut de saison
-- Boost urgence budgetaire releve a 80 (etait 70, trop agressif)
-
-Resultats backtest (597 evaluations avec sub-scores) :
-  Accuracy : 54.6% → 64.5% (+9.9pts)
-  ROUGE recall : 59.6% → 82.7% (+23pts)
-  ROUGE F1 : 37.3% → 53.4% (+16pts)
-  BLANC precision : 29.0% → 34.7% (+5.7pts)
+v3.1 (fev 2026) : 3 améliorations inspirées de l'algorithme RTE officiel.
+- P0 : Proxy C_nette (consommation nette estimée depuis météo : temp + vent + solaire)
+       Remplace le score RTE atténué pour J+2+ par une estimation directe du stress
+       réseau. Signal clé : un jour froid+venteux est MOINS stressant qu'un jour
+       froid+calme grâce à la production éolienne.
+- P1 : Forward clustering — les prédictions J+2→J+15 propagent les couleurs
+       prédites aux jours suivants (la veille prédite ROUGE augmente le clustering
+       du lendemain, comme dans l'algo RTE séquentiel).
+- P2 : Seuil ROUGE modulé par jour_tempo (progression saisonnière, RTE-inspired).
+       Le seuil diminue légèrement au fil de la saison pour éviter l'accumulation
+       de jours ROUGE en fin de période.
 
 Facteurs de scoring (sur 100, poids ajustables) :
   1. Temperature nationale ponderee (9 villes, poids 40%)
@@ -20,7 +18,7 @@ Facteurs de scoring (sur 100, poids ajustables) :
   3. Jour de la semaine + jours feries (10%)
   4. Gradient thermique (chute de temperature J/J-1) (8%)
   5. Clustering : continuite des jours rouges consecutifs (12%)
-  6. Consommation RTE eco2mix (prevision pointe + nucleaire) (10%)
+  6. Stress réseau : RTE J+1 réel ou C_nette proxy J+2+ (10%)
   7. Pression atmospherique (anticyclone hivernal = risque accru) (8%)
 """
 
@@ -176,6 +174,114 @@ _PRESSURE_SCORE_POINTS = [
     (1035, 95),   # Anticyclone exceptionnel — quasi certain rouge si froid
 ]
 
+# ================================================================
+# PROXY C_NETTE (estimation consommation nette depuis météo)
+# ================================================================
+#
+# Inspiré de l'algorithme RTE officiel (document indice 2, 07/01/2025) :
+#   C_nette = Consommation - Éolien - Solaire
+#
+# EDF ne regarde pas la consommation brute mais la C_nette (ce que le parc
+# thermique + nucléaire doit couvrir). Un jour froid + venteux a une C_nette
+# plus basse (éolien produit) qu'un jour froid + calme (tout sur le thermique).
+#
+# Cette estimation remplace le score RTE atténué pour J+2+ (qui revenait
+# à 50/neutre au-delà de J+3) par un signal direct par jour.
+
+# Points de calibration : C_nette (GW) → score 0-100
+# Calibré de façon conservative pour que le signal C_nette n'apporte une
+# contribution significative que pour les jours FROIDS. À 8°C / vent faible
+# (C_nette ~57 GW), le score est proche de 50 (neutre) — la valeur ajoutée
+# de C_nette par rapport à la température seule est le VENT, pas le froid.
+# À 2°C / vent faible (C_nette ~70 GW), le score monte fortement (>90).
+# À 7°C / vent fort (C_nette ~52 GW), le score baisse (<50) — le vent réduit
+# le stress réseau et c'est l'information que la température seule ne capte pas.
+_C_NETTE_SCORE_POINTS = [
+    (35, 5),     # 35 GW : très faible stress (inter-saison / été)
+    (42, 15),    # 42 GW : faible (automne doux)
+    (48, 30),    # 48 GW : modéré
+    (53, 45),    # 53 GW : zone neutre basse
+    (57, 55),    # 57 GW : zone neutre haute (~8°C sans vent)
+    (61, 70),    # 61 GW : élevé (~6°C sans vent)
+    (66, 85),    # 66 GW : très élevé (~3°C sans vent)
+    (72, 95),    # 72 GW : extrême (vague de froid)
+]
+
+
+def _estimate_wind_capacity_factor(wind_speed_kmh: float) -> float:
+    """Estime le facteur de charge éolien national depuis la vitesse du vent.
+
+    Modèle simplifié : courbe de puissance cubique avec cut-in/cut-out.
+    Calibré pour CF moyen ~25% à 8 m/s (moyenne nationale France).
+    Le vent fourni est le max des rafales — on applique un ratio gust→mean.
+    """
+    mean_wind_kmh = wind_speed_kmh * Config.C_NETTE_GUST_TO_MEAN
+    wind_ms = mean_wind_kmh / 3.6
+
+    if wind_ms < 3.0:   # cut-in speed
+        return 0.0
+    if wind_ms > 25.0:  # cut-out (tempête)
+        return 0.05     # quelques turbines tournent encore
+
+    cf = min(Config.C_NETTE_WIND_CF_MAX,
+             Config.C_NETTE_WIND_COEFF * wind_ms ** 3)
+    return cf
+
+
+def _estimate_c_nette_gw(temp_moy: float, wind_speed_kmh: float,
+                          month: int) -> float:
+    """Estime la consommation nette nationale (GW) depuis les données météo.
+
+    C_nette = Conso_estimée - Production_éolienne - Production_solaire
+
+    Paramètres (Config) :
+    - Conso = base_load + thermal_sensitivity × max(0, 18 - temp)
+    - Éolien = capacity_factor(wind) × installed_wind_capacity
+    - Solaire = monthly_cf × installed_solar_capacity
+    """
+    # Consommation estimée (chauffage dominant en France)
+    heating_demand = max(0.0, Config.C_NETTE_HEATING_THRESHOLD - temp_moy)
+    conso_gw = Config.C_NETTE_BASE_LOAD_GW + Config.C_NETTE_THERMAL_SENSITIVITY * heating_demand
+
+    # Production éolienne estimée
+    wind_cf = _estimate_wind_capacity_factor(wind_speed_kmh)
+    wind_gw = wind_cf * Config.C_NETTE_INSTALLED_WIND_GW
+
+    # Production solaire estimée (profil mensuel)
+    solar_cf = Config.C_NETTE_SOLAR_MONTHLY_CF.get(month, 0.10)
+    solar_gw = solar_cf * Config.C_NETTE_INSTALLED_SOLAR_GW
+
+    return conso_gw - wind_gw - solar_gw
+
+
+def _score_c_nette(temp_moy: float, wind_speed_kmh: float,
+                    month: int) -> float:
+    """Score 0-100 de stress réseau estimé depuis les données météo.
+
+    Proxy C_nette calibré sur l'algorithme RTE officiel.
+    Signal clé : froid + calme = stress élevé, froid + venteux = stress réduit.
+    """
+    c_nette = _estimate_c_nette_gw(temp_moy, wind_speed_kmh, month)
+    return round(_piecewise_linear(c_nette, _C_NETTE_SCORE_POINTS), 1)
+
+
+# ================================================================
+# JOUR TEMPO (numéro du jour dans la saison, inspiré RTE)
+# ================================================================
+
+def _jour_tempo_number(d: date) -> int:
+    """Numéro du jour dans l'année Tempo (0 = 1er septembre).
+
+    Utilisé pour la modulation saisonnière du seuil ROUGE (P2).
+    Même formule que dans l'algorithme RTE officiel.
+    """
+    if d.month >= 9:
+        season_start = date(d.year, 9, 1)
+    else:
+        season_start = date(d.year - 1, 9, 1)
+    return (d - season_start).days
+
+
 # Facteur de confiance par source meteo (attenuation pour modeles basse resolution)
 _SOURCE_CONFIDENCE = {
     "arome": 1.0,    # Haute resolution 1.3 km — confiance maximale
@@ -195,7 +301,8 @@ def predict_day(target_date: date, weather: dict | None = None,
                 rte_score: dict | None = None,
                 _actuals_cache: dict | None = None,
                 _learnings: dict | None = None,
-                vigilance: dict | None = None) -> dict:
+                vigilance: dict | None = None,
+                _predicted_colors: dict | None = None) -> dict:
     """Predit la couleur Tempo pour une date donnee (algorithme v2.2)."""
     # Hors saison = toujours BLEU
     if not is_in_season(target_date):
@@ -246,13 +353,23 @@ def predict_day(target_date: date, weather: dict | None = None,
     gradient_score = _score_gradient(forecasts or [], target_idx)
 
     # === 5. Score clustering (jours rouges consecutifs) ===
+    # P1 v3.1 : forward clustering — on passe les couleurs déjà prédites
+    # pour que J+3 bénéficie de la prédiction ROUGE de J+2.
     cluster_score = _score_clustering(
-        target_date, forecasts or [], target_idx, _actuals_cache)
+        target_date, forecasts or [], target_idx, _actuals_cache,
+        _predicted_colors)
 
-    # === 6. Score consommation RTE ===
-    rte_s = 50  # neutre par defaut si pas de donnees RTE
+    # === 6. Score stress réseau (RTE réel ou C_nette proxy) ===
+    # P0 v3.1 : si données RTE disponibles (J+1), les utiliser.
+    # Sinon, estimer la C_nette depuis la météo (temp + vent + solaire).
+    # L'ancien comportement (50/neutre pour J+2+) ignorait le signal vent
+    # qui est le principal différenciateur entre la C_nette et la temperature.
+    rte_s = 50  # neutre par defaut si aucune donnee
     if rte_score and rte_score.get("available"):
         rte_s = rte_score["score"]
+    elif weather:
+        # Proxy C_nette : estimation du stress réseau depuis la météo
+        rte_s = _score_c_nette(temp_moy, wind_speed, target_date.month)
 
     # === 7. Score pression atmospherique (Phase 2 Meteo France) ===
     # Anticyclone hivernal (haute pression + froid) = risque accru
@@ -360,6 +477,22 @@ def predict_day(target_date: date, weather: dict | None = None,
     elif (temp_moy < Config.SEUIL_ROUGE_TEMP_TRIGGER
             and budget_score >= Config.SEUIL_ROUGE_BUDGET_MIN):
         seuil_rouge_effectif = Config.SEUIL_ROUGE_FROID
+
+    # P2 v3.1 : modulation saisonnière inspirée de l'algorithme RTE.
+    # Le coefficient B = -0.010 de RTE abaisse le seuil au fil de la saison,
+    # encourageant EDF à placer les jours ROUGE tôt plutôt qu'en fin de période.
+    # Conditions d'activation :
+    #   - Saison ROUGE (nov-mars)
+    #   - Budget tendu (budget_score >= 40) — pas en début de saison confortable
+    #   - Température froide (< 7°C) — pas pour les jours doux (8°C+) où le
+    #     score température est déjà bas et qui ne méritent pas un seuil réduit
+    if ((target_date.month >= 11 or target_date.month <= 3)
+            and budget_score >= 40
+            and temp_moy < Config.SEUIL_ROUGE_TEMP_TRIGGER):
+        jt = _jour_tempo_number(target_date)
+        # Réduction progressive : ~2 pts mi-nov, ~4 pts fin jan, ~6 pts fin mars
+        season_reduction = min(6.0, jt * Config.SEUIL_ROUGE_SEASON_COEFF)
+        seuil_rouge_effectif -= season_reduction
 
     # Decision scoring classique
     if score_risque >= seuil_rouge_effectif and remaining["ROUGE"] > 0:
@@ -817,6 +950,10 @@ def predict_range(forecasts: list[dict],
     # Fix #2 : copier remaining pour decrementation simulee
     sim_remaining = dict(remaining)
 
+    # P1 v3.1 : forward clustering — accumule les couleurs prédites pour que
+    # les jours suivants bénéficient du signal "la veille est prédite ROUGE".
+    predicted_colors: dict[str, str] = {}
+
     predictions = []
     for i, weather in enumerate(forecasts):
         target = date.fromisoformat(weather["date"])
@@ -836,22 +973,21 @@ def predict_range(forecasts: list[dict],
                 sim_remaining["ROUGE"] -= 1
             elif couleur_officielle == "BLANC" and sim_remaining["BLANC"] > 0:
                 sim_remaining["BLANC"] -= 1
+            # P1 : propager la couleur confirmée pour le forward clustering
+            predicted_colors[target_str] = couleur_officielle
             continue
 
-        # Fix #5 audit v4 : RTE fiable J+1, degrade progressivement J+2→J+6
-        # Fix audit v7 : courbe plus douce — signal RTE pertinent jusqu'à J+5-6
-        # (les tendances de consommation restent valides sur une semaine)
+        # P0 v3.1 : RTE réel pour J+0/J+1, C_nette proxy pour J+2+.
+        # L'ancienne logique atténuait le score RTE J+1 exponentiellement
+        # (→ 50/neutre à J+4). La C_nette proxy fournit un signal direct
+        # par jour basé sur la météo prévue (temp + vent + solaire).
         day_rte = rte_score
-        if rte_score and rte_score.get("available") and delta > 1:
-            if delta > 6:
-                day_rte = None  # Au-delà de J+6, RTE non pertinent
-            else:
-                # Atténuation exponentielle douce : 1.0 à J+1, ~0.37 à J+4, ~0.14 à J+6
-                blend = max(0.0, math.exp(-(delta - 1) / 3.0))
-                day_rte = {
-                    **rte_score,
-                    "score": round(rte_score["score"] * blend + 50 * (1 - blend)),
-                }
+        if delta > 1:
+            # Au-delà de J+1 : le proxy C_nette sera calculé dans predict_day()
+            # à partir des données météo du jour (rte_s = _score_c_nette(...))
+            # Passer None pour que predict_day utilise le fallback C_nette.
+            day_rte = None
+        # Pour J+0 et J+1, garder le RTE réel tel quel
 
         pred = predict_day(target, weather=weather,
                            forecasts=forecasts, target_idx=i,
@@ -859,7 +995,8 @@ def predict_range(forecasts: list[dict],
                            rte_score=day_rte,
                            _actuals_cache=actuals_cache,
                            _learnings=learnings,
-                           vigilance=vigilance)
+                           vigilance=vigilance,
+                           _predicted_colors=predicted_colors)
         pred["horizon"] = f"J-{delta}" if delta > 0 else ("J0" if delta == 0 else f"J+{-delta}")
         pred["confirmed"] = False
         pred["simulated"] = False
@@ -871,6 +1008,9 @@ def predict_range(forecasts: list[dict],
             sim_remaining["ROUGE"] -= 1
         elif couleur == "BLANC" and sim_remaining["BLANC"] > 0:
             sim_remaining["BLANC"] -= 1
+
+        # P1 v3.1 : propager la couleur prédite pour le forward clustering
+        predicted_colors[target_str] = couleur
 
     # Post-check de coherence thermique : corrige les inversions
     # ROUGE/BLANC causees par la pression budgetaire sequentielle
@@ -1119,13 +1259,16 @@ def _score_gradient(forecasts: list[dict], target_idx: int) -> float:
 
 def _score_clustering(target_date: date, forecasts: list[dict],
                       target_idx: int,
-                      actuals_cache: dict | None = None) -> float:
+                      actuals_cache: dict | None = None,
+                      predicted_colors: dict | None = None) -> float:
     """Score 0-100 base sur la continuite des jours rouges.
 
     Correction #5 : si la veille est rouge/prevue rouge et que le froid
     continue, forte probabilite de jour rouge consecutif.
     Fix #11 : utilise actuals_cache au lieu d'ouvrir une connexion DB.
     ML-7 : saturation hebdomadaire (EDF place rarement 4+ rouges/semaine).
+    P1 v3.1 : forward clustering — vérifie aussi les couleurs prédites
+    des jours précédents dans la boucle predict_range().
     """
     yesterday = target_date - timedelta(days=1)
     yesterday_str = yesterday.isoformat()
@@ -1134,7 +1277,14 @@ def _score_clustering(target_date: date, forecasts: list[dict],
     yesterday_was_red = False
     if actuals_cache is not None:
         yesterday_was_red = actuals_cache.get(yesterday_str) == "ROUGE"
-    else:
+
+    # P1 v3.1 : forward clustering — si hier a été PRÉDIT rouge dans la
+    # boucle predict_range(), le signal clustering s'active.
+    # Priorité : actuals (réel) > predicted (simulation).
+    if not yesterday_was_red and predicted_colors:
+        yesterday_was_red = predicted_colors.get(yesterday_str) == "ROUGE"
+
+    if not yesterday_was_red and actuals_cache is None and predicted_colors is None:
         # Fallback : seul J+0 ou J+1 ont une chance d'avoir un actual
         delta = (target_date - date.today()).days
         if delta <= 1:

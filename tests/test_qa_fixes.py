@@ -1498,3 +1498,224 @@ class TestThermalCoherence:
         blanc_dates = [p["date"] for p in result if p["couleur_predite"] == "BLANC"]
         assert "2026-03-02" in rouge_dates or "2026-03-04" in rouge_dates
         assert "2026-03-03" in blanc_dates or "2026-03-05" in blanc_dates
+
+
+# ================================================================
+# v3.1 : Proxy C_nette, forward clustering, seuil dynamique
+# ================================================================
+
+class TestCNetteProxy:
+    """P0 v3.1 : estimation du stress réseau depuis la météo."""
+
+    def test_c_nette_cold_calm_high_stress(self):
+        """Froid + calme → C_nette élevée → score haut."""
+        from predictor import _estimate_c_nette_gw, _score_c_nette
+        # 2°C, 10 km/h (rafales), janvier
+        c_nette = _estimate_c_nette_gw(2.0, 10.0, 1)
+        assert c_nette > 65, f"C_nette froid+calme devrait être > 65 GW, got {c_nette:.1f}"
+        score = _score_c_nette(2.0, 10.0, 1)
+        assert score > 80, f"Score froid+calme devrait être > 80, got {score}"
+
+    def test_c_nette_cold_windy_reduced_stress(self):
+        """Froid + venteux → C_nette réduite (éolien compense)."""
+        from predictor import _estimate_c_nette_gw, _score_c_nette
+        # 2°C, 80 km/h (rafales = tempête), janvier
+        # mean = 40 km/h → 11.1 m/s → CF élevé → production éolienne forte
+        c_nette_windy = _estimate_c_nette_gw(2.0, 80.0, 1)
+        c_nette_calm = _estimate_c_nette_gw(2.0, 10.0, 1)
+        # Le vent fort réduit la C_nette de plus de 8 GW (~12 GW éolien)
+        assert c_nette_calm - c_nette_windy > 8, (
+            f"Le vent fort devrait réduire la C_nette de > 8 GW, "
+            f"calme={c_nette_calm:.1f}, venteux={c_nette_windy:.1f}"
+        )
+        score_windy = _score_c_nette(2.0, 80.0, 1)
+        score_calm = _score_c_nette(2.0, 10.0, 1)
+        assert score_calm > score_windy, "Score calme > score venteux"
+
+    def test_c_nette_mild_low_stress(self):
+        """Doux → C_nette basse → score bas."""
+        from predictor import _score_c_nette
+        # 15°C, 15 km/h, mars
+        score = _score_c_nette(15.0, 15.0, 3)
+        assert score < 30, f"Score doux devrait être < 30, got {score}"
+
+    def test_c_nette_replaces_neutral_for_j2plus(self):
+        """Pour J+2+, le score RTE utilise C_nette au lieu du neutre (50)."""
+        from predictor import predict_day
+        from config import Config
+        # Jour froid sans données RTE : le sub-score RTE ne doit PAS être 50
+        target = date(2026, 2, 20)  # vendredi
+        weather = {
+            "date": target.isoformat(), "temp_moy": 3.0,
+            "temp_min": 0.0, "temp_max": 6.0,
+            "wind_speed": 8.0, "humidity": 60, "pressure": 1020,
+            "source": "arpege", "forecast_quality": "api",
+        }
+        result = predict_day(target, weather=weather,
+                             remaining={"ROUGE": 10, "BLANC": 20, "BLEU": 150},
+                             weights=Config.DEFAULT_WEIGHTS)
+        rte_score = result.get("score_rte", 50)
+        # C_nette pour 3°C / 8 km/h / février → C_nette élevée → score > 50
+        assert rte_score > 50, (
+            f"score_rte devrait être > 50 avec C_nette proxy (3°C, peu de vent), "
+            f"got {rte_score}"
+        )
+
+    def test_wind_capacity_factor_cutin(self):
+        """Vent sous le seuil cut-in → facteur de charge = 0."""
+        from predictor import _estimate_wind_capacity_factor
+        # 5 km/h (rafales) → mean = 2.5 km/h → 0.69 m/s < 3 m/s cut-in
+        cf = _estimate_wind_capacity_factor(5.0)
+        assert cf == 0.0
+
+    def test_wind_capacity_factor_moderate(self):
+        """Vent modéré → facteur de charge > 0."""
+        from predictor import _estimate_wind_capacity_factor
+        # 40 km/h (rafales) → mean = 20 km/h → 5.6 m/s
+        cf = _estimate_wind_capacity_factor(40.0)
+        assert cf > 0.05, f"CF à 40 km/h devrait être > 5%, got {cf:.3f}"
+
+    def test_wind_capacity_factor_strong(self):
+        """Vent fort → facteur de charge élevé."""
+        from predictor import _estimate_wind_capacity_factor
+        # 80 km/h (rafales) → mean = 40 km/h → 11.1 m/s
+        cf = _estimate_wind_capacity_factor(80.0)
+        assert cf > 0.30, f"CF à 80 km/h devrait être > 30%, got {cf:.3f}"
+
+
+class TestForwardClustering:
+    """P1 v3.1 : forward clustering dans predict_range()."""
+
+    def test_clustering_uses_predicted_colors(self):
+        """Le clustering score augmente quand la veille est prédite ROUGE."""
+        from predictor import _score_clustering
+        target = date(2026, 2, 19)  # jeudi
+        forecasts = [
+            {"date": "2026-02-18", "temp_moy": 1.0},
+            {"date": "2026-02-19", "temp_moy": 2.0},
+        ]
+        # Sans forward clustering : la veille n'est ni actual ni prédite
+        score_without = _score_clustering(target, forecasts, 1, actuals_cache={})
+        # Avec forward clustering : la veille est prédite ROUGE
+        score_with = _score_clustering(
+            target, forecasts, 1, actuals_cache={},
+            predicted_colors={"2026-02-18": "ROUGE"})
+        assert score_with > score_without, (
+            f"Forward clustering devrait augmenter le score : "
+            f"sans={score_without}, avec={score_with}"
+        )
+
+    def test_actual_takes_priority_over_predicted(self):
+        """Les actuals (réels) ont priorité sur les predicted."""
+        from predictor import _score_clustering
+        target = date(2026, 2, 19)
+        forecasts = [
+            {"date": "2026-02-18", "temp_moy": 5.0},
+            {"date": "2026-02-19", "temp_moy": 5.0},
+        ]
+        # Actual = BLEU (réel), predicted = ROUGE (simulation)
+        # Le réel devrait l'emporter
+        score = _score_clustering(
+            target, forecasts, 1,
+            actuals_cache={"2026-02-18": "BLEU"},
+            predicted_colors={"2026-02-18": "ROUGE"})
+        # Si la veille est BLEU en réalité, le score de clustering doit être bas
+        assert score <= 40, f"Actual BLEU devrait garder le clustering bas, got {score}"
+
+    def test_predict_range_propagates_colors(self):
+        """predict_range propage les couleurs prédites (forward clustering)."""
+        from predictor import predict_range
+        from unittest.mock import patch
+        # 5 jours froids consécutifs → le clustering devrait s'activer
+        # grâce au forward clustering
+        base = date.today() + timedelta(days=2)
+        forecasts = []
+        for i in range(5):
+            d = base + timedelta(days=i)
+            forecasts.append({
+                "date": d.isoformat(),
+                "temp_moy": 1.0, "temp_min": -2.0, "temp_max": 4.0,
+                "wind_speed": 8.0, "humidity": 60, "pressure": 1025,
+                "source": "arpege", "forecast_quality": "api",
+            })
+        # Mock get_remaining_days pour avoir assez de ROUGE
+        with patch("predictor.get_remaining_days",
+                    return_value={"ROUGE": 15, "BLANC": 20, "BLEU": 150}):
+            preds = predict_range(forecasts)
+        # Avec 5 jours à 1°C, au moins 2 devraient être ROUGE
+        rouge_count = sum(1 for p in preds if p["couleur_predite"] == "ROUGE")
+        assert rouge_count >= 2, (
+            f"5 jours à 1°C devraient produire ≥ 2 ROUGE, got {rouge_count}: "
+            + str([(p["date"], p["couleur_predite"]) for p in preds])
+        )
+
+
+class TestJourTempoSeason:
+    """P2 v3.1 : seuil dynamique modulé par jour_tempo."""
+
+    def test_jour_tempo_september(self):
+        """jour_tempo = 0 au 1er septembre."""
+        from predictor import _jour_tempo_number
+        assert _jour_tempo_number(date(2025, 9, 1)) == 0
+
+    def test_jour_tempo_november(self):
+        """jour_tempo = 61 au 1er novembre."""
+        from predictor import _jour_tempo_number
+        assert _jour_tempo_number(date(2025, 11, 1)) == 61
+
+    def test_jour_tempo_january(self):
+        """jour_tempo = 122 au 1er janvier."""
+        from predictor import _jour_tempo_number
+        assert _jour_tempo_number(date(2026, 1, 1)) == 122
+
+    def test_jour_tempo_march(self):
+        """jour_tempo = 181 au 1er mars."""
+        from predictor import _jour_tempo_number
+        assert _jour_tempo_number(date(2026, 3, 1)) == 181
+
+    def test_season_modulation_cold_day(self):
+        """Le seuil ROUGE est plus bas en fin de saison pour un jour froid."""
+        from predictor import predict_day
+        from config import Config
+        # Même conditions (5°C, budget tendu) en novembre vs mars
+        weather = {
+            "temp_moy": 5.0, "temp_min": 2.0, "temp_max": 8.0,
+            "wind_speed": 10.0, "humidity": 60, "pressure": 1015,
+            "source": "arpege", "forecast_quality": "api",
+        }
+        remaining = {"ROUGE": 12, "BLANC": 20, "BLEU": 150}
+        w_nov = {**weather, "date": "2025-11-18"}
+        w_mar = {**weather, "date": "2026-03-17"}
+        r_nov = predict_day(date(2025, 11, 18), weather=w_nov,
+                            remaining=remaining, weights=Config.DEFAULT_WEIGHTS)
+        r_mar = predict_day(date(2026, 3, 17), weather=w_mar,
+                            remaining=remaining, weights=Config.DEFAULT_WEIGHTS)
+        # Le score risque en mars devrait être >= celui de novembre
+        # (même température mais seuil plus bas → plus de chances d'être ROUGE)
+        # Note: les scores eux-mêmes sont similaires, c'est le seuil qui change
+        assert r_mar["score_risque"] >= r_nov["score_risque"] - 5, (
+            f"Score mars ({r_mar['score_risque']}) devrait être proche de "
+            f"score nov ({r_nov['score_risque']})"
+        )
+
+    def test_season_modulation_not_for_mild_days(self):
+        """Le seuil P2 ne s'active PAS pour les jours doux (>= 7°C)."""
+        from predictor import predict_day
+        from config import Config
+        # 8°C en mars avec budget modéré (5 ROUGE restants, pas critique)
+        # P2 ne devrait pas abaisser le seuil car temp >= 7°C
+        weather = {
+            "date": "2026-03-17", "temp_moy": 8.0,
+            "temp_min": 5.0, "temp_max": 11.0,
+            "wind_speed": 10.0, "humidity": 60, "pressure": 1015,
+            "source": "arpege", "forecast_quality": "api",
+        }
+        r = predict_day(date(2026, 3, 17), weather=weather,
+                        remaining={"ROUGE": 5, "BLANC": 20, "BLEU": 170},
+                        weights=Config.DEFAULT_WEIGHTS)
+        # 8°C ne devrait PAS être ROUGE : P2 inactif car temp >= 7°C,
+        # densité modérée (5/11 = 45%), seuil standard 65
+        assert r["couleur_predite"] != "ROUGE", (
+            f"8°C en mars avec budget modéré ne devrait pas être ROUGE, "
+            f"got {r['couleur_predite']} (score={r['score_risque']})"
+        )

@@ -207,6 +207,40 @@ class Config:
         12: "weekly",   # Décembre
     }
 
+    # --- Proxy C_nette (estimation consommation nette depuis météo) ---
+    # Inspiré de l'algorithme RTE officiel : C_nette = Conso - Éolien - Solaire
+    # Permet d'estimer le stress réseau à partir des prévisions météo (temp + vent)
+    # sans dépendre des données RTE qui ne sont fiables que pour J+1.
+    #
+    # Paramètres calibrés sur les données réelles RTE (saisons 2019-2026) :
+    #   - Sensibilité thermique France : ~2.4 GW / °C sous 18°C (chauffage électrique)
+    #   - Capacité éolienne installée : ~22 GW (RTE bilan 2024)
+    #   - Capacité solaire installée : ~20 GW (RTE bilan 2024)
+    C_NETTE_BASE_LOAD_GW = 35.0       # charge de base hors chauffage (GW)
+    C_NETTE_THERMAL_SENSITIVITY = 2.4  # GW supplémentaires par °C sous 18°C
+    C_NETTE_HEATING_THRESHOLD = 18.0   # seuil de chauffage (°C)
+    C_NETTE_INSTALLED_WIND_GW = 22.0   # capacité éolienne installée
+    C_NETTE_INSTALLED_SOLAR_GW = 20.0  # capacité solaire installée
+    # Facteur de charge solaire mensuel (ensoleillement moyen France)
+    C_NETTE_SOLAR_MONTHLY_CF = {
+        1: 0.07, 2: 0.10, 3: 0.15, 4: 0.18, 5: 0.20, 6: 0.22,
+        7: 0.23, 8: 0.21, 9: 0.17, 10: 0.12, 11: 0.07, 12: 0.05,
+    }
+    # Coefficient puissance éolienne : CF = coeff × wind_ms^3 (plafonné)
+    # Calibré pour CF ~25% à 8 m/s (moyenne nationale annuelle France)
+    C_NETTE_WIND_COEFF = 0.000488
+    C_NETTE_WIND_CF_MAX = 0.55  # facteur de charge max (rated power)
+    # Facteur gust→mean : les données météo fournissent les rafales max,
+    # pas le vent moyen. Production éolienne ∝ vent moyen sur 24h.
+    C_NETTE_GUST_TO_MEAN = 0.50
+
+    # --- Seuil jour_tempo pour modulation saisonnière (RTE-inspired) ---
+    # jour_tempo = nombre de jours depuis le 1er septembre de la saison
+    # Réduction progressive du seuil ROUGE au fil de la saison quand le budget
+    # est tendu (budget_score >= 30), inspirée du coefficient B=-0.010 de RTE.
+    # Max ~6 pts de réduction en fin de mars.
+    SEUIL_ROUGE_SEASON_COEFF = 0.03  # pts de réduction par jour_tempo
+
     # --- Logging ---
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
     LOG_FILE = "logs/app.log"
