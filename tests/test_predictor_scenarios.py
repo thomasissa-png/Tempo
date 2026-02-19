@@ -935,12 +935,26 @@ class TestDensiteProgressiveOverride:
             f"got {r['couleur_predite']} (score={r['score_risque']})"
         )
 
-    def test_densite_44pct_8c_pas_rouge(self):
-        """Densité 44% + 8°C → PAS ROUGE (seuil standard 65, trop doux)."""
+    def test_densite_44pct_8c_rouge_v32(self):
+        """Densité 44% + 8°C → ROUGE en v3.2 (courbe continue + densité agressive).
+
+        v3.2 : la courbe temp→seuil donne ~62 à 8°C (vs 65 avant),
+        et la densité agressive (-12 pts à 44%) abaisse le seuil à ~50.
+        Score ~55 à 8°C → ROUGE légitime quand la densité l'exige.
+        """
         r = predict(date(2026, 2, 17), temp_moy=8.0,
                     remaining={"ROUGE": 14, "BLANC": 13, "BLEU": 170})
+        assert r["couleur_predite"] == "ROUGE", (
+            f"Densité 44% + 8°C devrait être ROUGE en v3.2, "
+            f"got {r['couleur_predite']} (score={r['score_risque']})"
+        )
+
+    def test_densite_44pct_11c_pas_rouge(self):
+        """Densité 44% + 11°C → PAS ROUGE (score trop bas même avec densité)."""
+        r = predict(date(2026, 2, 17), temp_moy=11.0,
+                    remaining={"ROUGE": 14, "BLANC": 13, "BLEU": 170})
         assert r["couleur_predite"] != "ROUGE", (
-            f"Densité 44% + 8°C = trop doux même avec densité, "
+            f"Densité 44% + 11°C = trop doux même avec densité v3.2, "
             f"got {r['couleur_predite']} (score={r['score_risque']})"
         )
 

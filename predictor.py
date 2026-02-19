@@ -1,4 +1,11 @@
-"""Algorithme de prediction Tempo v3.1 — Meteo France + C_nette proxy.
+"""Algorithme de prediction Tempo v3.2 — Meteo France + C_nette proxy.
+
+v3.2 (fev 2026) : calibration backtest 2365 jours (A1-A5).
+- A1 : Seuil ROUGE continu par température (piecewise-linear, bande 3-5°C)
+- A2 : Renforcement détection BLANC (densité progressive + filtre ML assoupli)
+- A3 : Correction biais C_nette +1.6 GW (base_load 35→33.4)
+- A4 : Densité progressive ROUGE plus agressive (25%→3, 40%→10, 55%→18)
+- A5 : Modulation saisonnière étendue temp < 10°C avec atténuation
 
 v3.1 (fev 2026) : 3 améliorations inspirées de l'algorithme RTE officiel.
 - P0 : Proxy C_nette (consommation nette estimée depuis météo : temp + vent + solaire)
@@ -469,29 +476,26 @@ def predict_day(target_date: date, weather: dict | None = None,
         pass  # ML indisponible = on utilise le scoring seul
 
     # === Determiner la couleur predite (ensemble scoring + ML) ===
-    # Seuil ROUGE dynamique (audit ML fev 2026)
-    seuil_rouge_effectif = Config.SEUIL_ROUGE
-    if (temp_moy < Config.SEUIL_ROUGE_TEMP_TRES_FROID
-            and budget_score >= Config.SEUIL_ROUGE_BUDGET_MIN):
-        seuil_rouge_effectif = Config.SEUIL_ROUGE_TRES_FROID
-    elif (temp_moy < Config.SEUIL_ROUGE_TEMP_TRIGGER
-            and budget_score >= Config.SEUIL_ROUGE_BUDGET_MIN):
-        seuil_rouge_effectif = Config.SEUIL_ROUGE_FROID
+    # Seuil ROUGE dynamique v3.2 — courbe continue température → seuil
+    # Remplace les step-functions (55/50) par une interpolation piecewise-linear
+    # calibrée sur le backtest 2365 jours. La bande 3-5°C capte maintenant les
+    # ROUGE manqués (71% des FN dans cette zone avec l'ancien seuil fixe).
+    _in_red_season = (target_date.month >= 11 or target_date.month <= 3)
+    if _in_red_season and budget_score >= Config.SEUIL_ROUGE_BUDGET_MIN:
+        seuil_rouge_effectif = round(_piecewise_linear(
+            temp_moy, Config.SEUIL_ROUGE_TEMP_CURVE), 1)
+    else:
+        seuil_rouge_effectif = Config.SEUIL_ROUGE
 
-    # P2 v3.1 : modulation saisonnière inspirée de l'algorithme RTE.
-    # Le coefficient B = -0.010 de RTE abaisse le seuil au fil de la saison,
+    # P2 v3.2 : modulation saisonnière étendue (temp < 10°C avec atténuation).
+    # Le coefficient de RTE abaisse le seuil au fil de la saison,
     # encourageant EDF à placer les jours ROUGE tôt plutôt qu'en fin de période.
-    # Conditions d'activation :
-    #   - Saison ROUGE (nov-mars)
-    #   - Budget tendu (budget_score >= 40) — pas en début de saison confortable
-    #   - Température froide (< 7°C) — pas pour les jours doux (8°C+) où le
-    #     score température est déjà bas et qui ne méritent pas un seuil réduit
-    if ((target_date.month >= 11 or target_date.month <= 3)
-            and budget_score >= 40
-            and temp_moy < Config.SEUIL_ROUGE_TEMP_TRIGGER):
+    # v3.2 : étendu de < 7°C à < 10°C avec facteur d'atténuation thermique.
+    # Plus la temp est proche de 10°C, plus la réduction est faible.
+    if _in_red_season and budget_score >= 40 and temp_moy < 10:
         jt = _jour_tempo_number(target_date)
-        # Réduction progressive : ~2 pts mi-nov, ~4 pts fin jan, ~6 pts fin mars
-        season_reduction = min(6.0, jt * Config.SEUIL_ROUGE_SEASON_COEFF)
+        temp_factor = max(0.3, min(1.0, (10 - temp_moy) / 7))
+        season_reduction = min(6.0, jt * Config.SEUIL_ROUGE_SEASON_COEFF * temp_factor)
         seuil_rouge_effectif -= season_reduction
 
     # Decision scoring classique
@@ -537,12 +541,11 @@ def predict_day(target_date: date, weather: dict | None = None,
         # 3. Filtre faux BLANC : ML dit BLEU + scoring dit BLANC + ML P(rouge)<5%
         #    Reduit les faux BLANC du scoring quand le ML est tres confiant BLEU
         #    Fix budget : ne PAS filtrer si la pression budgetaire est forte
-        #    (budget_score >= 50 = quotas tendus, les BLANC sont necessaires).
-        #    Sans cette garde, le ML convertit TOUS les BLANC en BLEU en fin
-        #    de saison, ignorant la pression budgetaire reelle.
+        #    v3.2 : seuil abaissé de 50 à 35 — le backtest montre 220 FN BLANC,
+        #    le ML filtrait trop de BLANC légitimes avec budget_score 35-50.
         elif (couleur == "BLANC" and ml_pred == "BLEU" and ml_rouge < 5
               and score_risque < Config.SEUIL_ROUGE
-              and budget_score < 50):
+              and budget_score < 35):
             couleur = "BLEU"
             raison_ml = " · ML:BLEU"
 
@@ -588,8 +591,11 @@ def predict_day(target_date: date, weather: dict | None = None,
         elif _red_eligible > 0 and (target_date.month >= 11 or target_date.month <= 3):
             # Densité progressive : abaissement du seuil RED proportionnel
             _red_density = remaining["ROUGE"] / _red_eligible
+            # v3.2 : courbe plus agressive — le backtest montre que les ROUGE
+            # manqués 3-7°C ont besoin d'une réduction plus forte en densité
+            # modérée (35-55%). Ancien: 35%→3, 50%→10. Nouveau: 25%→3, 40%→10.
             _density_reduction = _piecewise_linear(_red_density, [
-                (0.20, 0), (0.35, 3), (0.50, 10), (0.70, 22),
+                (0.15, 0), (0.25, 3), (0.40, 10), (0.55, 18), (0.70, 25),
             ])
             if _density_reduction > 0:
                 _effective_threshold = seuil_rouge_effectif - _density_reduction
@@ -609,6 +615,18 @@ def predict_day(target_date: date, weather: dict | None = None,
         if _wh_slack <= 1:
             couleur = "BLANC"
             raison_ml += " · Densité critique BLANC"
+        elif _wh_eligible > 0:
+            # v3.2 : densité progressive BLANC — abaisse le seuil BLANC quand
+            # la densité des BLANC restants est élevée (évite 220 FN BLANC)
+            _wh_density = remaining["BLANC"] / _wh_eligible
+            _wh_reduction = _piecewise_linear(_wh_density, [
+                (0.15, 0), (0.25, 2), (0.40, 6), (0.60, 12),
+            ])
+            if _wh_reduction > 0:
+                _eff_blanc = Config.SEUIL_BLANC - _wh_reduction
+                if score_risque >= _eff_blanc:
+                    couleur = "BLANC"
+                    raison_ml += f" · Pression densité BLANC ({_wh_density:.0%})"
 
     # === Fix #29 : contraintes dures EDF (non outrepassables par le scoring) ===
     # Regles officielles EDF appliquees APRES le scoring pour garantir la conformite.

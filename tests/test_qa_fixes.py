@@ -1699,23 +1699,24 @@ class TestJourTempoSeason:
         )
 
     def test_season_modulation_not_for_mild_days(self):
-        """Le seuil P2 ne s'active PAS pour les jours doux (>= 7°C)."""
+        """Le seuil P2 ne s'active PAS pour les jours doux (>= 12°C)."""
         from predictor import predict_day
         from config import Config
-        # 8°C en mars avec budget modéré (5 ROUGE restants, pas critique)
-        # P2 ne devrait pas abaisser le seuil car temp >= 7°C
+        # 12°C en mars avec budget modéré (5 ROUGE restants, pas critique)
+        # v3.2 : P2 étendu à < 10°C mais atténué. À 12°C, ni la courbe
+        # temp→seuil ni P2 ne réduisent le seuil (seuil standard 65).
         weather = {
-            "date": "2026-03-17", "temp_moy": 8.0,
-            "temp_min": 5.0, "temp_max": 11.0,
+            "date": "2026-03-17", "temp_moy": 12.0,
+            "temp_min": 9.0, "temp_max": 15.0,
             "wind_speed": 10.0, "humidity": 60, "pressure": 1015,
             "source": "arpege", "forecast_quality": "api",
         }
         r = predict_day(date(2026, 3, 17), weather=weather,
                         remaining={"ROUGE": 5, "BLANC": 20, "BLEU": 170},
                         weights=Config.DEFAULT_WEIGHTS)
-        # 8°C ne devrait PAS être ROUGE : P2 inactif car temp >= 7°C,
-        # densité modérée (5/11 = 45%), seuil standard 65
+        # 12°C ne devrait PAS être ROUGE : score temp trop bas (~40),
+        # seuil standard 65, densité modérée pas suffisante
         assert r["couleur_predite"] != "ROUGE", (
-            f"8°C en mars avec budget modéré ne devrait pas être ROUGE, "
+            f"12°C en mars avec budget modéré ne devrait pas être ROUGE, "
             f"got {r['couleur_predite']} (score={r['score_risque']})"
         )

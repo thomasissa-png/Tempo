@@ -149,16 +149,29 @@ class Config:
     SEUIL_ROUGE = 65   # seuil standard (abaisse dynamiquement si froid — voir predictor)
     SEUIL_BLANC = 35   # abaisse de 40 a 35
 
-    # --- Seuil ROUGE dynamique (audit ML fev 2026) ---
-    # 22 rouges reels avaient un score entre 45-65 (sous SEUIL_ROUGE).
-    # Le seuil est abaisse conditionnellement quand la temperature est basse
-    # ET que le budget montre une pression. Cela ameliore le recall ROUGE
-    # sans augmenter les faux positifs en periodes douces.
-    SEUIL_ROUGE_FROID = 55       # seuil quand temp < SEUIL_ROUGE_TEMP_TRIGGER
-    SEUIL_ROUGE_TRES_FROID = 50  # seuil quand temp < SEUIL_ROUGE_TEMP_TRES_FROID
-    SEUIL_ROUGE_TEMP_TRIGGER = 7     # degres C : active le seuil abaisse
-    SEUIL_ROUGE_TEMP_TRES_FROID = 4  # degres C : active le seuil tres bas
-    SEUIL_ROUGE_BUDGET_MIN = 50      # budget_score minimum pour activer le seuil abaisse
+    # --- Seuil ROUGE dynamique v3.2 (calibré sur backtest 2365 jours) ---
+    # Le backtest montre 71% de ROUGE manqués dans la bande 3-5°C (scores 59-64).
+    # Les seuils step-functions (55/50) ne capturaient que les jours très froids.
+    #
+    # v3.2 : courbe continue température → seuil (piecewise-linear).
+    # Plus la température est basse, plus le seuil est bas.
+    # Activée quand budget_score >= SEUIL_ROUGE_BUDGET_MIN et en saison ROUGE.
+    # Fallback : SEUIL_ROUGE (65) si budget faible ou hors saison.
+    SEUIL_ROUGE_TEMP_CURVE = [
+        (-5, 42),   # grand froid → seuil très bas
+        (0, 48),    # froid intense
+        (3, 53),    # froid modéré (zone critique des ROUGE manqués)
+        (5, 57),    # frais — zone 3-5°C : seuil abaissé de 65→57 (-8 pts)
+        (7, 61),    # frais-doux — léger abaissement
+        (10, 65),   # doux → seuil standard (pas de réduction)
+    ]
+    # Budget minimum pour activer la courbe (évite les faux positifs en début de saison)
+    SEUIL_ROUGE_BUDGET_MIN = 40  # abaissé de 50 à 40 (backtest : manques avec budget 40-50)
+    # Legacy (gardés pour compatibilité des tests existants)
+    SEUIL_ROUGE_FROID = 55
+    SEUIL_ROUGE_TRES_FROID = 50
+    SEUIL_ROUGE_TEMP_TRIGGER = 7
+    SEUIL_ROUGE_TEMP_TRES_FROID = 4
 
     # --- Probabilites softmax (centres et steepness) ---
     # Fix audit ML #4 : parametres extraits pour calibration future
@@ -216,7 +229,7 @@ class Config:
     #   - Sensibilité thermique France : ~2.4 GW / °C sous 18°C (chauffage électrique)
     #   - Capacité éolienne installée : ~22 GW (RTE bilan 2024)
     #   - Capacité solaire installée : ~20 GW (RTE bilan 2024)
-    C_NETTE_BASE_LOAD_GW = 35.0       # charge de base hors chauffage (GW)
+    C_NETTE_BASE_LOAD_GW = 33.4       # charge de base hors chauffage (GW) — calibré backtest (-1.6 GW biais)
     C_NETTE_THERMAL_SENSITIVITY = 2.4  # GW supplémentaires par °C sous 18°C
     C_NETTE_HEATING_THRESHOLD = 18.0   # seuil de chauffage (°C)
     C_NETTE_INSTALLED_WIND_GW = 22.0   # capacité éolienne installée
