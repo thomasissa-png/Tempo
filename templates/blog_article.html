@@ -22,6 +22,7 @@
     <meta property="og:site_name" content="Calendrier Tempo EDF">
     <meta property="og:image" content="https://www.calendrier-tempo.fr/static/og-image.png">
     <meta property="article:published_time" content="{{ article.publish_date.isoformat() }}">
+    <meta property="article:modified_time" content="{{ (article.updated_date or article.publish_date).isoformat() }}">
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="{{ article.title }}">
@@ -35,7 +36,7 @@
         "headline": "{{ article.title }}",
         "description": "{{ article.description }}",
         "datePublished": "{{ article.publish_date.isoformat() }}",
-        "dateModified": "{{ article.publish_date.isoformat() }}",
+        "dateModified": "{{ (article.updated_date or article.publish_date).isoformat() }}",
         "author": {
             "@type": "Organization",
             "name": "Calendrier Tempo EDF",
@@ -109,6 +110,11 @@
                 <time datetime="{{ article.publish_date.isoformat() }}" itemprop="datePublished">
                     Publi&eacute; le {{ article.publish_date.strftime('%d/%m/%Y') }}
                 </time>
+                {% if article.updated_date and article.updated_date != article.publish_date %}
+                <time datetime="{{ article.updated_date.isoformat() }}" itemprop="dateModified">
+                    &mdash; Mis &agrave; jour le {{ article.updated_date.strftime('%d/%m/%Y') }}
+                </time>
+                {% endif %}
                 <span class="blog-reading-time">{{ article.reading_time }} min de lecture</span>
             </div>
         </header>
@@ -119,8 +125,8 @@
 
         <!-- CTA mid-article -->
         <aside class="blog-cta-inline">
-            <strong>Ne ratez plus aucun jour rouge Tempo</strong>
-            <p>Recevez une alerte gratuite la veille. Inscription en 30 secondes.</p>
+            <strong>Anticipez les 5 prochains jours Tempo</strong>
+            <p>Recevez gratuitement par WhatsApp les pr&eacute;visions rouge, blanc et bleu. Inscription en 30 secondes.</p>
             <button type="button" class="btn btn-primary" onclick="openSubscribeModal()">S'inscrire gratuitement</button>
         </aside>
     </article>

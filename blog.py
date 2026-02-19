@@ -34,6 +34,8 @@ class Article:
     keywords: str
     content_html: str
     reading_time: int  # minutes
+    updated_date: date | None = None  # date de dernière mise à jour (si différente de publish_date)
+    cluster: str = ""  # topic cluster (pilier ou satellite)
 
 
 def _parse_frontmatter(raw: str) -> tuple[dict[str, str], str]:
@@ -69,6 +71,13 @@ def _load_article(filepath: Path) -> Article | None:
         pub_date = date.fromisoformat(meta["publish_date"])
     except ValueError:
         return None
+    # Parse optional updated_date
+    updated = None
+    if meta.get("updated_date"):
+        try:
+            updated = date.fromisoformat(meta["updated_date"])
+        except ValueError:
+            pass
     md = markdown.Markdown(extensions=_MD_EXTENSIONS)
     content_html = md.convert(body)
     return Article(
@@ -79,6 +88,8 @@ def _load_article(filepath: Path) -> Article | None:
         keywords=meta.get("keywords", ""),
         content_html=content_html,
         reading_time=_estimate_reading_time(body),
+        updated_date=updated,
+        cluster=meta.get("cluster", ""),
     )
 
 

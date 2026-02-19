@@ -1101,3 +1101,170 @@ class TestBreadcrumbsComplete:
         with open(filepath) as f:
             content = f.read()
         assert "calendrier-tempo.fr/alertes" in content
+
+
+# ================================================================
+# SEO Agent v2 : blog.py new fields, agent files, dateModified
+# ================================================================
+
+class TestBlogArticleFields:
+    """blog.py Article dataclass supports updated_date and cluster."""
+
+    def test_article_has_updated_date_field(self):
+        """Article dataclass has updated_date field (default None)."""
+        from blog import Article
+        art = Article(
+            slug="test", title="Test", description="Test desc",
+            publish_date=date(2026, 1, 1), keywords="test",
+            content_html="<p>Test</p>", reading_time=3
+        )
+        assert art.updated_date is None
+
+    def test_article_has_cluster_field(self):
+        """Article dataclass has cluster field (default empty string)."""
+        from blog import Article
+        art = Article(
+            slug="test", title="Test", description="Test desc",
+            publish_date=date(2026, 1, 1), keywords="test",
+            content_html="<p>Test</p>", reading_time=3
+        )
+        assert art.cluster == ""
+
+    def test_article_with_updated_date_and_cluster(self):
+        """Article accepts updated_date and cluster values."""
+        from blog import Article
+        art = Article(
+            slug="test", title="Test", description="Test desc",
+            publish_date=date(2026, 1, 1), keywords="test",
+            content_html="<p>Test</p>", reading_time=3,
+            updated_date=date(2026, 2, 15), cluster="tempo-guide"
+        )
+        assert art.updated_date == date(2026, 2, 15)
+        assert art.cluster == "tempo-guide"
+
+    def test_load_article_parses_cluster(self):
+        """_load_article parses cluster from frontmatter."""
+        from blog import _load_article
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False, dir='/tmp') as f:
+            f.write("---\ntitle: Test Article\npublish_date: 2025-01-01\ncluster: jours-rouges\n---\nContent here.\n")
+            f.flush()
+            from pathlib import Path
+            art = _load_article(Path(f.name))
+        assert art is not None
+        assert art.cluster == "jours-rouges"
+        os.unlink(f.name)
+
+    def test_load_article_parses_updated_date(self):
+        """_load_article parses updated_date from frontmatter."""
+        from blog import _load_article
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False, dir='/tmp') as f:
+            f.write("---\ntitle: Test Article\npublish_date: 2025-01-01\nupdated_date: 2025-06-15\n---\nContent.\n")
+            f.flush()
+            from pathlib import Path
+            art = _load_article(Path(f.name))
+        assert art is not None
+        assert art.updated_date == date(2025, 6, 15)
+        os.unlink(f.name)
+
+
+class TestSEOAgentFiles:
+    """SEO agent supporting files exist and are valid."""
+
+    def test_seo_agent_prompt_exists(self):
+        """SEO agent prompt file exists."""
+        filepath = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            ".claude", "seo-agent-prompt.md"
+        )
+        assert os.path.exists(filepath), "seo-agent-prompt.md not found"
+
+    def test_seo_agent_prompt_has_8_steps(self):
+        """SEO agent prompt v2 has 8 steps."""
+        filepath = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            ".claude", "seo-agent-prompt.md"
+        )
+        with open(filepath) as f:
+            content = f.read()
+        for step in range(9):  # ÉTAPE 0 through ÉTAPE 8
+            assert f"ÉTAPE {step}" in content, f"Missing ÉTAPE {step}"
+
+    def test_seo_agent_prompt_has_topic_clusters(self):
+        """SEO agent prompt defines topic clusters."""
+        filepath = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            ".claude", "seo-agent-prompt.md"
+        )
+        with open(filepath) as f:
+            content = f.read()
+        assert "tempo-guide" in content
+        assert "jours-rouges" in content
+        assert "equipements" in content
+
+    def test_editorial_calendar_yaml_exists(self):
+        """Editorial calendar YAML file exists."""
+        filepath = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "articles", "_calendrier_editorial.yaml"
+        )
+        assert os.path.exists(filepath), "_calendrier_editorial.yaml not found"
+
+    def test_editorial_calendar_yaml_valid(self):
+        """Editorial calendar YAML is parseable."""
+        import yaml
+        filepath = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "articles", "_calendrier_editorial.yaml"
+        )
+        with open(filepath) as f:
+            data = yaml.safe_load(f)
+        assert "articles_publies" in data
+        assert "prochaines_semaines" in data
+        assert len(data["articles_publies"]) >= 8
+        assert len(data["prochaines_semaines"]) >= 10
+
+    def test_publication_log_exists(self):
+        """Publication log file exists."""
+        filepath = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "articles", "_publication_log.md"
+        )
+        assert os.path.exists(filepath), "_publication_log.md not found"
+
+
+class TestBlogArticleDateModified:
+    """Blog article template supports dateModified."""
+
+    def test_template_has_date_modified(self):
+        """blog_article.html uses updated_date for dateModified."""
+        filepath = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "templates", "blog_article.html"
+        )
+        with open(filepath) as f:
+            content = f.read()
+        assert "article.updated_date" in content
+        assert "dateModified" in content
+
+    def test_template_has_article_modified_time(self):
+        """blog_article.html has article:modified_time meta tag."""
+        filepath = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "templates", "blog_article.html"
+        )
+        with open(filepath) as f:
+            content = f.read()
+        assert "article:modified_time" in content
+
+    def test_template_shows_updated_date_conditionally(self):
+        """blog_article.html shows 'Mis à jour le' when updated_date differs."""
+        filepath = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "templates", "blog_article.html"
+        )
+        with open(filepath) as f:
+            content = f.read()
+        assert "updated_date" in content
+        assert "Mis" in content  # "Mis à jour le"

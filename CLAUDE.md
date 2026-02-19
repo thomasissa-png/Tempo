@@ -154,12 +154,19 @@
 ### Analytics
 - **Umami**: Cloud-hosted analytics (`cloud.umami.is`) on all public templates (dashboard, blog_index, blog_article, legal, manage, alertes). Script loaded with `defer`. Website ID: `1d187359-b4a6-4ba8-ba41-c449b356832f`.
 
-### SEO Agent (autonomous weekly publication)
-- **Prompt**: `.claude/seo-agent-prompt.md` — complete 6-step workflow for autonomous blog publication
-- **Editorial calendar**: `articles/_calendrier_editorial.md` — tracks 10+ weeks ahead, updated each Tuesday
-- **Schedule**: Every Tuesday, the agent runs the full cycle: SEO monitoring, calendar update, article writing, SEO review, publication
-- **Self-updating**: Step 0 of the agent checks for Google algorithm updates and AI search engine changes, updating the SEO rules section in its own prompt file
+### SEO Agent v2 (autonomous weekly publication)
+- **Prompt**: `.claude/seo-agent-prompt.md` — complete 8-step workflow for autonomous blog publication
+- **Editorial calendar**: `articles/_calendrier_editorial.yaml` (YAML format for reliable machine parsing) — tracks 10+ weeks ahead, updated each Tuesday
+- **Publication log**: `articles/_publication_log.md` — persistent log of every publication action
+- **Schedule**: Every Tuesday, the agent runs the full cycle: SEO monitoring → inventory → calendar → writing → review → bidirectional linking → publication → logging
+- **8 steps**: (0) SEO monitoring + self-update, (1) Inventory + competitive analysis + PAA, (2) Calendar update + anti-cannibalization, (3) Writing with 5-title brainstorming + FAQ + featured snippets, (4) SEO review + word count verification, (5) Bidirectional retroactive linking, (6) Publication + error handling + verification, (7) Publication log, (8) Execution report
+- **Topic clusters**: 5 clusters (tempo-guide, jours-rouges, calendrier, equipements, preparation). Each has a pillar article + satellites. Satellites must link to pillar, pillar must link to satellites.
+- **Anti-cannibalization**: Agent checks search intent (not just keywords) before creating new articles. Prefers refreshing existing articles over creating duplicates.
+- **Refresh cycle**: 3 new articles + 1 refresh per 4-week cycle. Refreshes update `updated_date` frontmatter for Google freshness signal.
+- **Bidirectional linking**: Step 5 adds links FROM existing articles TO the new one (retroactive mesh). Max 5 articles modified per week.
+- **Self-updating**: Step 0 checks for Google algorithm updates and AI search changes. SEO rules split into PERMANENT (E-E-A-T, no keyword stuffing) vs MODIFIABLE (structured data formats, Core Web Vitals thresholds). Guard-fous prevent modifying fundamental principles.
+- **Blog article fields**: `updated_date` (optional, for refreshed articles) and `cluster` (topic cluster name) in frontmatter. `blog.py` Article dataclass supports both.
 - **Publishing**: Articles auto-appear on `/blog/`, `/sitemap.xml`, `/feed.xml` when `publish_date <= today`
 - **Style**: Vouvoiement, expert accessible tone, 1200-2000 words per article
-- **SEO requirements**: Min 3 internal blog links + /calendrier + /#subscribe per article, keyword in title/description/H1/intro
+- **SEO requirements**: Min 5 internal links per article (3 blog + /calendrier + /#subscribe + pillar). Keyword in title/description/H1/intro. FAQ section (2-3 PAA questions). 1+ featured snippet element per H2.
 - **Existing coverage**: 8 articles through March 24, 2026. Calendar planned through June 2, 2026.
