@@ -504,6 +504,8 @@ def _get_ssr_data() -> dict:
                 if len(ssr["week_summary"]) < 10:
                     try:
                         d = date.fromisoformat(r["date"])
+                        today_d = date.today()
+                        tomorrow_d = today_d + timedelta(days=1)
                         prob_key = f"probabilite_{couleur.lower()}"
                         confidence = round((r[prob_key] or 0) * 100)
                         ssr["week_summary"].append({
@@ -512,6 +514,8 @@ def _get_ssr_data() -> dict:
                             "couleur": couleur,
                             "confirmed": is_confirmed,
                             "confidence": confidence,
+                            "is_today": d == today_d,
+                            "is_tomorrow": d == tomorrow_d,
                         })
                     except Exception:
                         pass

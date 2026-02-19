@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mentions légales et RGPD — Calendrier Tempo EDF</title>
     <!-- Fix #S6 : meta description pour la page légale -->
-    <meta name="description" content="Mentions légales, politique de confidentialité et RGPD du Calendrier Tempo EDF. Découvrez comment vos données sont protégées et comment vous désinscrire des alertes WhatsApp.">
+    <meta name="description" content="Mentions l&eacute;gales, politique de confidentialit&eacute; et RGPD du Calendrier Tempo EDF. D&eacute;couvrez comment vos donn&eacute;es sont prot&eacute;g&eacute;es et comment vous d&eacute;sinscrire des alertes.">
     <link rel="canonical" href="https://www.calendrier-tempo.fr/mentions-legales">
     <link rel="alternate" hreflang="fr" href="https://www.calendrier-tempo.fr/mentions-legales">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%232196F3'/><path d='M50 5A45 45 0 0 1 95 50H5A45 45 0 0 1 50 5z' fill='%23F44336'/><circle cx='50' cy='50' r='20' fill='white'/></svg>" type="image/svg+xml">
@@ -34,9 +34,8 @@
         <nav id="main-nav" aria-label="Navigation principale">
             <a href="/">Accueil</a>
             <a href="/calendrier">Calendrier</a>
-            <a href="/alertes" class="nav-cta">Alertes gratuites</a>
             <a href="/blog/">Blog</a>
-            <a href="/mentions-legales" class="active" aria-current="page">Mentions l&eacute;gales</a>
+            <a href="/alertes" class="nav-cta">Alertes gratuites</a>
         </nav>
     </div>
 </header>
@@ -63,14 +62,14 @@
             un hash SHA-256 (irréversible, pour la déduplication) et un chiffrement Fernet AES-128
             (réversible, pour l'envoi des messages). Les 4 derniers chiffres sont conservés en clair
             pour le support.<br><br>
-            <strong>Finalité :</strong> Envoi d'alertes WhatsApp sur les jours Tempo uniquement.<br><br>
+            <strong>Finalité :</strong> Envoi d'alertes sur les jours Tempo uniquement.<br><br>
             <strong>Durée de conservation :</strong> Les données sont conservées tant que l'abonnement
             est actif. Les comptes inactifs depuis plus de 6 mois sont automatiquement supprimés.<br><br>
             <strong>Pas de revente :</strong> Vos données ne sont jamais vendues, partagées ou
             transmises à des tiers, à l'exception du prestataire d'envoi de messages (Twilio).<br><br>
             <strong>Vos droits :</strong> Conformément au RGPD, vous disposez d'un droit d'accès,
             de rectification et de suppression de vos données. Vous pouvez exercer ces droits
-            en répondant STOP sur WhatsApp ou en utilisant le lien de gestion dans chaque message.
+            en répondant STOP au message ou en utilisant le lien de gestion dans chaque message.
         </p>
     </div>
 
@@ -79,10 +78,9 @@
         <p class="legal-text">
             <strong>Fréquence :</strong> Maximum 1 alerte par jour. Le récapitulatif hebdomadaire
             (optionnel) est envoyé le dimanche soir.<br><br>
-            <strong>Opt-out :</strong> Répondez STOP à n'importe quel message WhatsApp pour vous désinscrire
+            <strong>Opt-out :</strong> Répondez STOP à n'importe quel message pour vous désinscrire
             immédiatement. Vous pouvez aussi utiliser le lien de gestion inclus dans chaque message.<br><br>
-            <strong>Coût :</strong> Le service est entièrement gratuit. Les messages WhatsApp ne sont pas
-            facturés (seule une connexion internet est nécessaire).
+            <strong>Coût :</strong> Le service est entièrement gratuit.
         </p>
     </div>
 
@@ -114,7 +112,7 @@
     <div class="legal-section">
         <h3>6. Désinscription</h3>
         <p class="legal-text">
-            Pour vous désinscrire des alertes WhatsApp :
+            Pour vous désinscrire des alertes :
         </p>
         <form id="unsubscribe-form" class="unsub-form">
             <label for="unsub-phone" class="sr-only">Numéro de téléphone</label>
@@ -175,14 +173,19 @@ document.getElementById('unsubscribe-form').addEventListener('submit', async (e)
 </main>
 
 <footer role="contentinfo">
-    <div class="container">
-        <p><strong>Calendrier Tempo EDF</strong> &mdash; Cr&eacute;&eacute; en 2025 pour aider les 900&nbsp;000 abonn&eacute;s Tempo &agrave; &eacute;conomiser. Service ind&eacute;pendant et gratuit.</p>
-        <p style="margin-top:4px">
-            <a href="/">Accueil</a> &middot;
-            <a href="/calendrier">Calendrier Tempo</a> &middot;
-            <a href="/blog/">Blog</a> &middot;
-            <a href="/mentions-legales">Mentions l&eacute;gales & RGPD</a>
-        </p>
+    <div class="footer-inner">
+        <div class="footer-brand">Calendrier Tempo EDF</div>
+        <div class="footer-tagline">Service ind&eacute;pendant et gratuit pour anticiper les jours Tempo.</div>
+        <div class="footer-links">
+            <a href="/">Accueil</a>
+            <a href="/calendrier">Calendrier</a>
+            <a href="/alertes">Alertes</a>
+            <a href="/blog/">Blog</a>
+            <a href="/mentions-legales">Mentions l&eacute;gales</a>
+        </div>
+        <div class="footer-legal">
+            Seule la couleur officielle annonc&eacute;e par EDF fait foi. Nos pr&eacute;visions sont indicatives.
+        </div>
     </div>
 </footer>
 

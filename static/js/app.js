@@ -349,13 +349,13 @@ function renderWeekSummary(preds) {
         const couleur = p.couleur_predite;
         const bg = couleur === 'ROUGE' ? 'var(--rouge)' : couleur === 'BLANC' ? 'var(--blanc)' : 'var(--bleu)';
 
-        // Contextual label: "Auj." for today, "Dem." for tomorrow, day name otherwise
+        // Contextual label: "Aujourd'hui" for today, "Demain" for tomorrow, day name + num otherwise
         const dTime = d.getTime();
         let displayLabel;
         if (dTime === today.getTime()) {
-            displayLabel = `<strong>Auj.</strong> ${dayNum}`;
+            displayLabel = `<strong>Aujourd'hui</strong>`;
         } else if (dTime === tomorrow.getTime()) {
-            displayLabel = `<strong>Dem.</strong> ${dayNum}`;
+            displayLabel = `<strong>Demain</strong>`;
         } else {
             displayLabel = `${escapeHtml(dayLabel)} ${dayNum}`;
         }

@@ -1,8 +1,8 @@
-<!-- Modal inscription WhatsApp — partial inclus dans toutes les pages -->
+<!-- Modal inscription alertes — partial inclus dans toutes les pages -->
 <div class="subscribe-modal-overlay" id="subscribe-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" style="display:none">
     <div class="subscribe-modal">
         <button class="modal-close" id="modal-close" aria-label="Fermer">&times;</button>
-        <h2 id="modal-title">Recevez un WhatsApp avant chaque jour cher</h2>
+        <h2 id="modal-title">Recevez une alerte avant chaque jour cher</h2>
         <p class="sub-desc">
             100% gratuit, sans engagement, 1 message par jour maximum.
         </p>
@@ -25,7 +25,7 @@
                     <span class="phone-feedback" id="modal-phone-feedback" aria-live="polite"></span>
                 </div>
             </div>
-            <button type="submit" class="btn btn-subscribe" id="modal-subscribe-btn">Recevoir mon alerte WhatsApp gratuite</button>
+            <button type="submit" class="btn btn-subscribe" id="modal-subscribe-btn">Recevoir mon alerte gratuite</button>
             <p class="form-legal">
                 <strong class="social-proof">D&eacute;j&agrave; plus de 2&nbsp;500 foyers Tempo alert&eacute;s dans toute la France.</strong><br>
                 Votre num&eacute;ro est prot&eacute;g&eacute; et ne sera jamais partag&eacute;.
@@ -160,7 +160,7 @@
                         if (result.ok) {
                             resultEl.className = 'form-result success';
                             resultEl.innerHTML = '<span class="success-check">\u2713</span> ' +
-                                (result.data.message || "C'est fait\u00a0! Vous recevrez un WhatsApp la veille de chaque jour rouge.");
+                                (result.data.message || "C'est fait\u00a0! Vous recevrez une alerte la veille de chaque jour rouge.");
                             resultEl.style.display = 'block';
                             form.reset();
                             setTimeout(function() { closeSubscribeModal(); }, 3000);

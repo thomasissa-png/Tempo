@@ -17,9 +17,9 @@
     --incertain: #9CA3AF;
     --incertain-bg: #F3F4F6;
 
-    --accent: #F59E0B;
-    --accent-hover: #D97706;
-    --accent-shadow: rgba(245, 158, 11, 0.35);
+    --accent: #2563EB;
+    --accent-hover: #1D4ED8;
+    --accent-shadow: rgba(37, 99, 235, 0.35);
     --cta-dark: #0F172A;
     --cta-dark-lighter: #1E293B;
 
@@ -168,17 +168,18 @@ nav a:hover, nav a.active {
     color: white;
 }
 
-/* CTA accent dans la nav (Alertes gratuites) */
+/* CTA accent dans la nav (Alertes gratuites) — poussé à droite */
 nav a.nav-cta {
     background: var(--accent);
-    color: #1F2937;
+    color: white;
     font-weight: 700;
     border-radius: 50px;
     padding: 10px 20px;
+    margin-left: auto;
 }
 nav a.nav-cta:hover {
     background: var(--accent-hover);
-    color: #1F2937;
+    color: white;
 }
 
 /* === Badge fiabilité === */
@@ -1112,7 +1113,7 @@ nav a.nav-cta:hover {
     gap: 8px;
     padding: 12px 28px;
     background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
-    color: #1F2937;
+    color: white;
     border: none;
     border-radius: 50px;
     font-size: 0.95rem;
@@ -1126,7 +1127,7 @@ nav a.nav-cta:hover {
 .btn:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 12px var(--accent-shadow);
-    background: linear-gradient(135deg, var(--accent-hover) 0%, #B45309 100%);
+    background: linear-gradient(135deg, var(--accent-hover) 0%, #1E40AF 100%);
 }
 
 .btn:active { transform: translateY(0); }
@@ -1250,8 +1251,7 @@ nav a.nav-cta:hover {
 
 /* === Footer === */
 footer {
-    text-align: center;
-    padding: 32px 20px;
+    padding: 40px 20px 24px;
     background: var(--footer-bg);
     color: var(--footer-text);
     font-size: 0.85rem;
@@ -1259,13 +1259,56 @@ footer {
     margin-top: 48px;
 }
 
-footer a {
-    color: var(--bleu);
+.footer-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+.footer-brand {
+    font-size: 1rem;
+    font-weight: 700;
+    color: white;
+}
+
+.footer-tagline {
+    font-size: 0.85rem;
+    color: var(--footer-text);
+    margin-top: 4px;
+}
+
+.footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 20px;
+    margin-top: 16px;
+}
+
+.footer-links a {
+    color: var(--footer-text);
     text-decoration: none;
-    padding: 8px 4px;
+    padding: 6px 0;
     display: inline-block;
     min-height: 44px;
-    line-height: 28px;
+    line-height: 32px;
+    transition: color 0.2s;
+}
+
+.footer-links a:hover {
+    color: white;
+}
+
+.footer-legal {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+    font-size: 0.8rem;
+    color: #9CA3AF;
+    line-height: 1.6;
+}
+
+footer a {
+    color: var(--footer-text);
+    text-decoration: none;
 }
 
 /* === Back-to-top button === */
@@ -1384,7 +1427,7 @@ footer a {
 
     #main-nav a.nav-cta {
         background: var(--accent);
-        color: #1F2937;
+        color: white;
         border-radius: 8px;
         margin-top: 4px;
         text-align: center;
@@ -1867,7 +1910,7 @@ footer a {
     margin-top: 12px;
     padding: 10px 24px;
     background: var(--accent);
-    color: #1F2937;
+    color: white;
     border: none;
     border-radius: 50px;
     font-size: 0.95rem;
@@ -2246,11 +2289,12 @@ select:focus-visible {
     display: flex;
     align-items: center;
     gap: 20px;
-    background: linear-gradient(135deg, var(--cta-dark) 0%, var(--cta-dark-lighter) 100%);
-    border: none;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 5px solid var(--bleu);
     border-radius: var(--radius);
     padding: 24px 28px;
-    box-shadow: var(--shadow-lg);
+    box-shadow: var(--shadow);
 }
 
 .subscribe-cta-icon {
@@ -2267,19 +2311,19 @@ select:focus-visible {
     font-size: 1.1rem;
     font-weight: 700;
     margin-bottom: 4px;
-    color: white;
+    color: var(--text);
 }
 
 .subscribe-cta-content p {
     font-size: 0.9rem;
-    color: #94A3B8;
+    color: var(--text-secondary);
     margin: 0;
     line-height: 1.5;
 }
 
 .social-proof-inline {
     font-size: 0.85rem !important;
-    color: var(--accent) !important;
+    color: var(--bleu) !important;
     font-weight: 600;
     margin-top: 4px !important;
 }
@@ -2289,7 +2333,7 @@ select:focus-visible {
     align-items: center;
     padding: 14px 28px;
     background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
-    color: #1F2937;
+    color: white;
     border: none;
     border-radius: 50px;
     font-size: 1rem;
