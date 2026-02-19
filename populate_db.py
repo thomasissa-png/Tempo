@@ -1,0 +1,611 @@
+#!/usr/bin/env python3
+"""Peuple tempo.db avec toutes les données historiques réelles.
+
+À lancer sur Replit (accès internet requis pour Open-Meteo et ODRE).
+
+Sources :
+  1. Couleurs EDF  → fichiers ICS locaux (2023-2026) + XLSX (2021-2022)
+  2. RTE eco2mix   → fichiers TSV locaux (2019-2024) + API ODRE (2025-2026)
+  3. Météo          → API Open-Meteo Archive (9 villes, données horaires)
+
+Usage :
+    python populate_db.py
+
+Durée estimée : ~5 minutes (Open-Meteo horaire pour 4+ saisons × 9 villes).
+"""
+
+import os
+import sys
+import re
+import csv
+import glob
+import time
+import logging
+import asyncio
+from datetime import date, datetime, timedelta
+from collections import defaultdict
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from config import Config
+from database import get_db, init_db
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%H:%M:%S",
+)
+logger = logging.getLogger(__name__)
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Villes pondérées (identiques à config.py)
+CITIES = Config.WEATHER_CITIES
+
+# Open-Meteo Archive API
+ARCHIVE_API_URL = "https://archive-api.open-meteo.com/v1/archive"
+HOURLY_VARS = "temperature_2m,relative_humidity_2m,pressure_msl,wind_speed_10m"
+
+# ODRE (Open Data Réseaux Énergies) — consommation nationale RTE
+ODRE_API_URL = "https://odre.opendatasoft.com/api/explore/v2.1/catalog/datasets"
+ODRE_DATASET = "eco2mix-national-cons-def"
+
+
+# ================================================================
+# ÉTAPE 1 : Couleurs EDF (local)
+# ================================================================
+
+ICS_FILES = [
+    "Jours Tempo période 2023-2024.ics",
+    "Jours Tempo période 2024-2025.ics",
+    "Jours Tempo période 2025-2026 en cours.ics",
+]
+
+
+def load_all_colors() -> dict[str, str]:
+    """Charge les couleurs EDF depuis ICS (2023-2026) et XLSX (2021-2022)."""
+    colors = {}
+
+    # ICS
+    color_map = {"bleu": "BLEU", "blanc": "BLANC", "rouge": "ROUGE"}
+    for filename in ICS_FILES:
+        filepath = os.path.join(BASE_DIR, filename)
+        if not os.path.exists(filepath):
+            logger.warning(f"  ICS introuvable : {filename}")
+            continue
+        with open(filepath, "r", encoding="utf-8") as f:
+            content = f.read()
+        count = 0
+        for event in content.split("BEGIN:VEVENT")[1:]:
+            sm = re.search(r"SUMMARY:Tempo\s*:\s*(\w+)", event)
+            dm = re.search(r"DTSTART[^:]*:(\d{8})", event)
+            if sm and dm:
+                color = color_map.get(sm.group(1).lower().strip())
+                ds = dm.group(1)
+                if color:
+                    colors[f"{ds[:4]}-{ds[4:6]}-{ds[6:8]}"] = color
+                    count += 1
+        logger.info(f"  {filename}: {count} jours")
+
+    # XLSX 2021-2022
+    xlsx_path = os.path.join(BASE_DIR, "Tempo_2021-2022.xlsx")
+    if os.path.exists(xlsx_path):
+        try:
+            import openpyxl
+            wb = openpyxl.load_workbook(xlsx_path, read_only=True)
+            ws = wb.active
+            count = 0
+            valid = {"BLEU", "BLANC", "ROUGE"}
+            for row in ws.iter_rows(values_only=True):
+                if row[0] and isinstance(row[0], datetime) and row[1] in valid:
+                    colors[row[0].date().isoformat()] = row[1]
+                    count += 1
+            wb.close()
+            logger.info(f"  Tempo_2021-2022.xlsx: {count} jours")
+        except Exception as e:
+            logger.warning(f"  XLSX erreur: {e}")
+
+    return colors
+
+
+def store_colors(colors: dict[str, str]) -> int:
+    """Insère les couleurs dans la table actuals."""
+    conn = get_db()
+    try:
+        inserted = 0
+        now = datetime.now().isoformat()
+        for d_str, couleur in sorted(colors.items()):
+            cursor = conn.execute(
+                """INSERT OR IGNORE INTO actuals
+                   (date, couleur_reelle, synthetic, timestamp_confirmation)
+                   VALUES (?, ?, 0, ?)""",
+                (d_str, couleur, now),
+            )
+            if cursor.rowcount > 0:
+                inserted += 1
+        conn.commit()
+        return inserted
+    finally:
+        conn.close()
+
+
+# ================================================================
+# ÉTAPE 2 : RTE eco2mix (local TSV + API ODRE pour 2025+)
+# ================================================================
+
+def load_local_rte() -> dict[str, dict]:
+    """Parse les fichiers eco2mix TSV locaux.
+
+    Retourne {date: {conso_peak, conso_mean, nucleaire, eolien, solaire,
+                     gaz, hydraulique, taux_co2}}.
+    """
+    daily = {}
+    for filepath in sorted(glob.glob(os.path.join(BASE_DIR, "eCO2mix_RTE_Annuel*.xls")) +
+                           glob.glob(os.path.join(BASE_DIR, "eCO2mix_RTE_En*.xls"))):
+        try:
+            with open(filepath, "r", encoding="latin-1") as f:
+                reader = csv.reader(f, delimiter="\t")
+                header = next(reader)
+
+                # Trouver les indices des colonnes utiles
+                idx = {}
+                col_names = {
+                    "Date": "date", "Consommation": "conso",
+                    "Nucl": "nucleaire", "Eolien": "eolien",
+                    "Solaire": "solaire", "Gaz": "gaz",
+                    "Hydraulique": "hydraulique", "Taux de Co2": "co2",
+                }
+                for i, h in enumerate(header):
+                    for pattern, name in col_names.items():
+                        if pattern in h and name not in idx:
+                            idx[name] = i
+
+                if "date" not in idx or "conso" not in idx:
+                    continue
+
+                for row in reader:
+                    if len(row) <= max(idx.values()):
+                        continue
+                    d = row[idx["date"]].strip()
+                    if not d:
+                        continue
+
+                    def _val(name):
+                        if name in idx:
+                            v = row[idx[name]].strip()
+                            if v:
+                                try:
+                                    return float(v)
+                                except ValueError:
+                                    pass
+                        return None
+
+                    conso = _val("conso")
+                    if conso is None:
+                        continue
+
+                    if d not in daily:
+                        daily[d] = {"conso_vals": [], "nuc": [], "eol": [],
+                                    "sol": [], "gaz": [], "hyd": [], "co2": []}
+
+                    daily[d]["conso_vals"].append(conso)
+                    for key, name in [("nuc", "nucleaire"), ("eol", "eolien"),
+                                      ("sol", "solaire"), ("gaz", "gaz"),
+                                      ("hyd", "hydraulique"), ("co2", "co2")]:
+                        v = _val(name)
+                        if v is not None:
+                            daily[d][key].append(v)
+
+            logger.info(f"  {os.path.basename(filepath)}: OK")
+        except Exception as e:
+            logger.warning(f"  {os.path.basename(filepath)}: {e}")
+
+    # Agréger en peak/mean par jour
+    result = {}
+    for d, vals in daily.items():
+        cv = vals["conso_vals"]
+        result[d] = {
+            "conso_peak_mw": max(cv),
+            "conso_mean_mw": round(sum(cv) / len(cv)),
+            "nucleaire_mean_mw": round(sum(vals["nuc"]) / len(vals["nuc"])) if vals["nuc"] else None,
+            "eolien_mean_mw": round(sum(vals["eol"]) / len(vals["eol"])) if vals["eol"] else None,
+            "solaire_mean_mw": round(sum(vals["sol"]) / len(vals["sol"])) if vals["sol"] else None,
+            "gaz_mean_mw": round(sum(vals["gaz"]) / len(vals["gaz"])) if vals["gaz"] else None,
+            "hydraulique_mean_mw": round(sum(vals["hyd"]) / len(vals["hyd"])) if vals["hyd"] else None,
+            "taux_co2_mean": round(sum(vals["co2"]) / len(vals["co2"]), 1) if vals["co2"] else None,
+        }
+
+    return result
+
+
+async def fetch_odre_rte(start_date: date, end_date: date) -> dict[str, dict]:
+    """Récupère la consommation RTE depuis l'API ODRE (gratuite, sans auth).
+
+    Pour la période non couverte par les fichiers locaux (2025+).
+    """
+    import httpx
+
+    daily = {}
+    chunk_start = start_date
+
+    while chunk_start <= end_date:
+        chunk_end = min(chunk_start + timedelta(days=90), end_date)
+        offset = 0
+        chunk_raw = {}
+
+        while True:
+            params = {
+                "where": (
+                    f"date_heure >= '{chunk_start.isoformat()}' "
+                    f"AND date_heure <= '{chunk_end.isoformat()}T23:59:59'"
+                ),
+                "select": "date_heure, consommation",
+                "order_by": "date_heure",
+                "limit": 100,
+                "offset": offset,
+            }
+
+            try:
+                async with httpx.AsyncClient(timeout=30) as client:
+                    url = f"{ODRE_API_URL}/{ODRE_DATASET}/records"
+                    resp = await client.get(url, params=params)
+                    resp.raise_for_status()
+                    data = resp.json()
+                    records = data.get("results", [])
+                    if not records:
+                        break
+
+                    for rec in records:
+                        dt_str = rec.get("date_heure", "")
+                        conso = rec.get("consommation")
+                        if not dt_str or conso is None:
+                            continue
+                        day = dt_str[:10]
+                        if day not in chunk_raw:
+                            chunk_raw[day] = []
+                        chunk_raw[day].append(conso)
+
+                    if len(records) < 100:
+                        break
+                    offset += 100
+
+            except Exception as e:
+                logger.warning(f"  ODRE erreur (offset={offset}): {e}")
+                break
+
+        # Agréger
+        for d, vals in chunk_raw.items():
+            daily[d] = {
+                "conso_peak_mw": max(vals),
+                "conso_mean_mw": round(sum(vals) / len(vals)),
+            }
+
+        logger.info(f"  ODRE {chunk_start} → {chunk_end}: {len(chunk_raw)} jours")
+        chunk_start = chunk_end + timedelta(days=1)
+        await asyncio.sleep(0.5)
+
+    return daily
+
+
+def store_rte(rte_data: dict[str, dict]) -> int:
+    """Stocke les données RTE dans rte_daily."""
+    conn = get_db()
+    try:
+        inserted = 0
+        for d_str, vals in sorted(rte_data.items()):
+            cursor = conn.execute(
+                """INSERT OR IGNORE INTO rte_daily
+                   (date, conso_peak_mw, conso_mean_mw, nucleaire_mean_mw,
+                    eolien_mean_mw, solaire_mean_mw, gaz_mean_mw,
+                    hydraulique_mean_mw, taux_co2_mean)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (d_str,
+                 vals.get("conso_peak_mw"),
+                 vals.get("conso_mean_mw"),
+                 vals.get("nucleaire_mean_mw"),
+                 vals.get("eolien_mean_mw"),
+                 vals.get("solaire_mean_mw"),
+                 vals.get("gaz_mean_mw"),
+                 vals.get("hydraulique_mean_mw"),
+                 vals.get("taux_co2_mean")),
+            )
+            if cursor.rowcount > 0:
+                inserted += 1
+        conn.commit()
+        return inserted
+    finally:
+        conn.close()
+
+
+# ================================================================
+# ÉTAPE 3 : Météo historique (Open-Meteo Archive API)
+# ================================================================
+
+def _aggregate_hourly_to_daily(hourly: dict) -> dict[str, dict]:
+    """Agrège les données horaires Open-Meteo en statistiques journalières."""
+    times = hourly.get("time", [])
+    temps = hourly.get("temperature_2m", [])
+    humidities = hourly.get("relative_humidity_2m", [])
+    pressures = hourly.get("pressure_msl", [])
+    winds = hourly.get("wind_speed_10m", [])
+
+    days = defaultdict(lambda: {"temps": [], "humids": [], "pressures": [], "winds": []})
+
+    for i, ts in enumerate(times):
+        day_str = ts[:10]
+        if i < len(temps) and temps[i] is not None:
+            days[day_str]["temps"].append(temps[i])
+        if i < len(humidities) and humidities[i] is not None:
+            days[day_str]["humids"].append(humidities[i])
+        if i < len(pressures) and pressures[i] is not None:
+            days[day_str]["pressures"].append(pressures[i])
+        if i < len(winds) and winds[i] is not None:
+            days[day_str]["winds"].append(winds[i])
+
+    result = {}
+    for day_str, data in days.items():
+        if not data["temps"]:
+            continue
+        result[day_str] = {
+            "temp_min": round(min(data["temps"]), 1),
+            "temp_max": round(max(data["temps"]), 1),
+            "temp_moy": round(sum(data["temps"]) / len(data["temps"]), 1),
+            "wind_speed": round(max(data["winds"]), 1) if data["winds"] else 10.0,
+            "humidity": round(sum(data["humids"]) / len(data["humids"]), 1) if data["humids"] else 70.0,
+            "pressure": round(sum(data["pressures"]) / len(data["pressures"]), 1) if data["pressures"] else None,
+        }
+    return result
+
+
+def _merge_cities(city_data: dict) -> dict[str, dict]:
+    """Fusionne les données de toutes les villes en moyennes pondérées nationales."""
+    all_dates = set()
+    for info in city_data.values():
+        all_dates.update(info["daily"].keys())
+
+    result = {}
+    for day_str in sorted(all_dates):
+        tw = {"min": 0, "max": 0, "moy": 0, "wind": 0, "hum": 0, "press": 0}
+        total_w = 0.0
+        press_w = 0.0
+
+        for city_name, info in city_data.items():
+            daily = info["daily"]
+            if day_str not in daily:
+                continue
+            d = daily[day_str]
+            w = info["weight"]
+            total_w += w
+            tw["min"] += d["temp_min"] * w
+            tw["max"] += d["temp_max"] * w
+            tw["moy"] += d["temp_moy"] * w
+            tw["wind"] += d["wind_speed"] * w
+            tw["hum"] += d["humidity"] * w
+            if d["pressure"] is not None:
+                tw["press"] += d["pressure"] * w
+                press_w += w
+
+        if total_w == 0:
+            continue
+
+        result[day_str] = {
+            "temp_min": round(tw["min"] / total_w, 1),
+            "temp_max": round(tw["max"] / total_w, 1),
+            "temp_moy": round(tw["moy"] / total_w, 1),
+            "wind_speed": round(tw["wind"] / total_w, 1),
+            "humidity": round(tw["hum"] / total_w, 1),
+            "pressure": round(tw["press"] / press_w, 1) if press_w > 0 else None,
+        }
+    return result
+
+
+async def fetch_weather_period(start_date: date, end_date: date, label: str) -> dict[str, dict]:
+    """Récupère la météo pour une période via Open-Meteo Archive (9 villes)."""
+    import httpx
+
+    # Ne pas demander de dates futures
+    yesterday = date.today() - timedelta(days=1)
+    if end_date > yesterday:
+        end_date = yesterday
+    if start_date > end_date:
+        logger.info(f"  {label}: période dans le futur, ignorée")
+        return {}
+
+    city_data = {}
+    for city in CITIES:
+        params = {
+            "latitude": city["lat"],
+            "longitude": city["lon"],
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+            "hourly": HOURLY_VARS,
+            "timezone": "Europe/Paris",
+        }
+
+        for attempt in range(3):
+            try:
+                async with httpx.AsyncClient(timeout=60) as client:
+                    resp = await client.get(ARCHIVE_API_URL, params=params)
+                    resp.raise_for_status()
+                    data = resp.json()
+                    daily = _aggregate_hourly_to_daily(data.get("hourly", {}))
+                    city_data[city["name"]] = {"weight": city["weight"], "daily": daily}
+                    logger.info(f"    {city['name']}: {len(daily)} jours")
+                    break
+            except Exception as e:
+                if attempt < 2:
+                    wait = 2 ** (attempt + 1)
+                    logger.warning(f"    {city['name']} erreur (retry {wait}s): {e}")
+                    await asyncio.sleep(wait)
+                else:
+                    logger.error(f"    {city['name']} ÉCHEC: {e}")
+
+        await asyncio.sleep(0.3)
+
+    if not city_data:
+        logger.error(f"  {label}: aucune ville n'a répondu !")
+        return {}
+
+    merged = _merge_cities(city_data)
+    logger.info(f"  {label}: {len(merged)} jours de météo (moyenne {len(city_data)} villes)")
+    return merged
+
+
+def store_weather(weather_data: dict[str, dict]) -> int:
+    """Stocke la météo dans weather_cache."""
+    conn = get_db()
+    try:
+        inserted = 0
+        now = datetime.now().isoformat()
+        for d_str, w in sorted(weather_data.items()):
+            cursor = conn.execute(
+                """INSERT OR IGNORE INTO weather_cache
+                   (date, temp_min, temp_max, temp_moy, pressure,
+                    humidity, wind_speed, description, fetched_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (d_str, w["temp_min"], w["temp_max"], w["temp_moy"],
+                 w.get("pressure"), w.get("humidity", 70),
+                 w["wind_speed"], "Open-Meteo Archive (horaire agrégé)", now),
+            )
+            if cursor.rowcount > 0:
+                inserted += 1
+        conn.commit()
+        return inserted
+    finally:
+        conn.close()
+
+
+# ================================================================
+# ORCHESTRATION
+# ================================================================
+
+async def main():
+    start_time = time.time()
+
+    logger.info("=" * 60)
+    logger.info("POPULATE DB — Données historiques réelles")
+    logger.info("=" * 60)
+
+    init_db()
+
+    # --- Étape 1 : Couleurs EDF (local) ---
+    logger.info("\n[1/4] Couleurs EDF (ICS + XLSX locaux)...")
+    colors = load_all_colors()
+    inserted = store_colors(colors)
+    logger.info(f"  → {len(colors)} jours chargés, {inserted} insérés en DB")
+
+    # --- Étape 2 : RTE eco2mix (local + ODRE) ---
+    logger.info("\n[2/4] RTE eco2mix (fichiers locaux)...")
+    rte_local = load_local_rte()
+    rte_inserted = store_rte(rte_local)
+    logger.info(f"  → {len(rte_local)} jours locaux, {rte_inserted} insérés")
+
+    # Compléter avec ODRE pour la période manquante (2025+)
+    local_rte_dates = set(rte_local.keys())
+    color_dates = set(colors.keys())
+    missing_rte_dates = sorted(color_dates - local_rte_dates)
+
+    if missing_rte_dates:
+        miss_start = date.fromisoformat(missing_rte_dates[0])
+        miss_end = date.fromisoformat(missing_rte_dates[-1])
+        logger.info(f"\n[2b/4] RTE manquant via ODRE ({miss_start} → {miss_end})...")
+        try:
+            rte_odre = await fetch_odre_rte(miss_start, miss_end)
+            if rte_odre:
+                odre_inserted = store_rte(rte_odre)
+                logger.info(f"  → {len(rte_odre)} jours ODRE, {odre_inserted} insérés")
+            else:
+                logger.warning("  → Aucune donnée ODRE récupérée")
+        except Exception as e:
+            logger.warning(f"  → ODRE erreur: {e}")
+    else:
+        logger.info("  → Pas de période RTE manquante")
+
+    # --- Étape 3 : Météo historique (Open-Meteo Archive) ---
+    logger.info("\n[3/4] Météo historique (Open-Meteo Archive, 9 villes)...")
+
+    # Découper par saison pour lisibilité et robustesse
+    all_dates = sorted(colors.keys())
+    first = date.fromisoformat(all_dates[0])
+    last = date.fromisoformat(all_dates[-1])
+
+    # Construire les périodes par saison
+    periods = []
+    if first.month >= 9:
+        y = first.year
+    else:
+        y = first.year - 1
+
+    while True:
+        s_start = date(y, 9, 1)
+        s_end = date(y + 1, 8, 31)
+        # Couper aux bornes réelles
+        p_start = max(s_start, first)
+        p_end = min(s_end, last)
+        if p_start <= p_end:
+            periods.append((p_start, p_end, f"{y}/{y+1}"))
+        y += 1
+        if s_start > last:
+            break
+
+    all_weather = {}
+    for p_start, p_end, label in periods:
+        logger.info(f"  Saison {label} ({p_start} → {p_end})...")
+        weather = await fetch_weather_period(p_start, p_end, label)
+        all_weather.update(weather)
+        await asyncio.sleep(1)
+
+    weather_inserted = store_weather(all_weather)
+    logger.info(f"  → {len(all_weather)} jours de météo total, {weather_inserted} insérés")
+
+    # --- Étape 4 : Vérification ---
+    logger.info("\n[4/4] Vérification de la base...")
+    conn = get_db()
+    try:
+        n_actuals = conn.execute("SELECT COUNT(*) FROM actuals").fetchone()[0]
+        n_weather = conn.execute("SELECT COUNT(*) FROM weather_cache").fetchone()[0]
+        n_rte = conn.execute("SELECT COUNT(*) FROM rte_daily").fetchone()[0]
+
+        # Couverture
+        dates_with_all = conn.execute(
+            """SELECT COUNT(DISTINCT a.date) FROM actuals a
+               JOIN weather_cache w ON a.date = w.date"""
+        ).fetchone()[0]
+
+        dates_with_rte = conn.execute(
+            """SELECT COUNT(DISTINCT a.date) FROM actuals a
+               JOIN rte_daily r ON a.date = r.date"""
+        ).fetchone()[0]
+
+        dates_full = conn.execute(
+            """SELECT COUNT(DISTINCT a.date) FROM actuals a
+               JOIN weather_cache w ON a.date = w.date
+               JOIN rte_daily r ON a.date = r.date"""
+        ).fetchone()[0]
+    finally:
+        conn.close()
+
+    elapsed = round(time.time() - start_time, 1)
+
+    logger.info(f"\n{'=' * 60}")
+    logger.info(f"BASE PEUPLÉE EN {elapsed}s")
+    logger.info(f"{'=' * 60}")
+    logger.info(f"  Actuals (couleurs EDF) : {n_actuals}")
+    logger.info(f"  Weather (météo)        : {n_weather}")
+    logger.info(f"  RTE (consommation)     : {n_rte}")
+    logger.info(f"")
+    logger.info(f"  Couverture :")
+    logger.info(f"    Couleur + Météo      : {dates_with_all}/{n_actuals}")
+    logger.info(f"    Couleur + RTE        : {dates_with_rte}/{n_actuals}")
+    logger.info(f"    Couleur + Météo + RTE: {dates_full}/{n_actuals} (complet)")
+    logger.info(f"{'=' * 60}")
+
+    if dates_with_all < n_actuals * 0.9:
+        logger.warning(
+            f"  ⚠ Moins de 90% de couverture météo ({dates_with_all}/{n_actuals}). "
+            f"Vérifiez les logs ci-dessus pour les erreurs API."
+        )
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
