@@ -153,3 +153,13 @@
 
 ### Analytics
 - **Umami**: Cloud-hosted analytics (`cloud.umami.is`) on all public templates (dashboard, blog_index, blog_article, legal, manage, alertes). Script loaded with `defer`. Website ID: `1d187359-b4a6-4ba8-ba41-c449b356832f`.
+
+### SEO Agent (autonomous weekly publication)
+- **Prompt**: `.claude/seo-agent-prompt.md` — complete 6-step workflow for autonomous blog publication
+- **Editorial calendar**: `articles/_calendrier_editorial.md` — tracks 10+ weeks ahead, updated each Tuesday
+- **Schedule**: Every Tuesday, the agent runs the full cycle: SEO monitoring, calendar update, article writing, SEO review, publication
+- **Self-updating**: Step 0 of the agent checks for Google algorithm updates and AI search engine changes, updating the SEO rules section in its own prompt file
+- **Publishing**: Articles auto-appear on `/blog/`, `/sitemap.xml`, `/feed.xml` when `publish_date <= today`
+- **Style**: Vouvoiement, expert accessible tone, 1200-2000 words per article
+- **SEO requirements**: Min 3 internal blog links + /calendrier + /#subscribe per article, keyword in title/description/H1/intro
+- **Existing coverage**: 8 articles through March 24, 2026. Calendar planned through June 2, 2026.
