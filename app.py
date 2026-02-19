@@ -132,12 +132,12 @@ def purge_old_data() -> None:
 
     conn = get_db()
     try:
-        cutoff_cache = (date.today() - timedelta(days=30)).isoformat()
+        # Fix : ne PAS purger weather_cache — les données météo historiques sont
+        # essentielles pour le ML (features température), le backtest, et
+        # la normalisation RTE (C_nette). Le volume est faible (~1 ligne/jour,
+        # ~2000 lignes pour 6 saisons) donc aucun risque de croissance.
+        deleted_cache = 0
         cutoff_preds = (date.today() - timedelta(days=90)).isoformat()
-
-        deleted_cache = conn.execute(
-            "DELETE FROM weather_cache WHERE date < ?", (cutoff_cache,)
-        ).rowcount
         # Fix audit ML #38 : préserver les predictions backtest (essentielles pour ML)
         # Seules les prédictions live > 90 jours sont purgées.
         deleted_preds = conn.execute(
