@@ -29,10 +29,8 @@ logger = logging.getLogger(__name__)
 _PROJECT_ROOT = Path(__file__).parent
 _PROMPT_PATH = _PROJECT_ROOT / ".claude" / "seo-agent-prompt.md"
 
-# Modèle à utiliser — Sonnet pour un bon rapport qualité/coût
-_MODEL = "claude-sonnet-4-5-20250929"
+# Valeurs par défaut (surchargées par Config si disponible)
 _MAX_TOKENS = 16384
-_MAX_TURNS = 40  # max de boucles outil avant d'arrêter
 
 
 # ================================================================
@@ -270,7 +268,11 @@ def run_seo_agent() -> dict:
     Returns:
         dict avec clés: success (bool), report (str), turns (int), error (str|None)
     """
-    api_key = os.getenv("ANTHROPIC_API_KEY", "")
+    try:
+        from config import Config as _Cfg
+        api_key = _Cfg.ANTHROPIC_API_KEY
+    except Exception:
+        api_key = os.getenv("ANTHROPIC_API_KEY", "")
     if not api_key:
         msg = (
             "[Agent SEO] ANTHROPIC_API_KEY non configurée. "
@@ -317,12 +319,20 @@ def run_seo_agent() -> dict:
     turns = 0
     final_report = ""
 
-    while turns < _MAX_TURNS:
+    try:
+        from config import Config
+        max_turns = Config.SEO_AGENT_MAX_TURNS
+        model = Config.SEO_AGENT_MODEL
+    except Exception:
+        max_turns = 40
+        model = "claude-sonnet-4-5-20250929"
+
+    while turns < max_turns:
         turns += 1
 
         try:
             response = client.messages.create(
-                model=_MODEL,
+                model=model,
                 max_tokens=_MAX_TOKENS,
                 system=system_prompt,
                 tools=_TOOLS,
@@ -365,8 +375,8 @@ def run_seo_agent() -> dict:
             # Pas d'outil mais stop_reason != end_turn → forcer fin
             break
 
-    if turns >= _MAX_TURNS:
-        logger.warning(f"[Agent SEO] Limite de {_MAX_TURNS} tours atteinte")
+    if turns >= max_turns:
+        logger.warning(f"[Agent SEO] Limite de {max_turns} tours atteinte")
 
     return {
         "success": True,

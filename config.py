@@ -176,6 +176,16 @@ class Config:
     SUBSCRIBE_RATE_LIMIT = 5
     SUBSCRIBE_RATE_WINDOW = 3600
 
+    # --- Agent SEO autonome (publication blog hebdomadaire) ---
+    # Clé API Anthropic pour l'agent Claude qui rédige les articles.
+    # À configurer dans Replit Secrets (une seule fois).
+    # Si vide, la tâche hebdomadaire est silencieusement ignorée.
+    ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+    # Modèle Claude à utiliser (Sonnet = bon rapport qualité/coût)
+    SEO_AGENT_MODEL = os.getenv("SEO_AGENT_MODEL", "claude-sonnet-4-5-20250929")
+    # Nombre max de tours d'interaction agent (sécurité anti-boucle infinie)
+    SEO_AGENT_MAX_TURNS = int(os.getenv("SEO_AGENT_MAX_TURNS", "40"))
+
     # --- Logging ---
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
     LOG_FILE = "logs/app.log"

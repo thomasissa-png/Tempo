@@ -10,3 +10,6 @@ scikit-learn~=1.8.0
 numpy==2.2.1
 cryptography==44.0.0
 meteole>=0.2.5
+anthropic>=0.80.0
+markdown>=3.5
+pyyaml>=6.0
