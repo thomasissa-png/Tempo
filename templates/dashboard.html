@@ -250,25 +250,6 @@
         </p>
     </section>
 
-    <!-- Couleur aujourd'hui / demain — visible pour SEO "couleur tempo demain" + "quelle couleur tempo" -->
-    <div class="tempo-today-tomorrow" id="tempo-today-tomorrow">
-        {% if ssr.today_color or ssr.tomorrow_color %}
-        <div class="today-tomorrow-row">
-            {% if ssr.today_color %}
-            <div class="today-tomorrow-card">
-                <span class="tt-label">Couleur Tempo aujourd'hui</span>
-                <span class="tt-color tt-{{ ssr.today_color|lower }}">{{ ssr.today_color }}</span>
-            </div>
-            {% endif %}
-            {% if ssr.tomorrow_color %}
-            <div class="today-tomorrow-card">
-                <span class="tt-label">Couleur Tempo demain</span>
-                <span class="tt-color tt-{{ ssr.tomorrow_color|lower }}">{{ ssr.tomorrow_color }} <small>(confirm&eacute; EDF)</small></span>
-            </div>
-            {% endif %}
-        </div>
-        {% endif %}
-    </div>
     <div class="last-update-bar" id="last-update-bar" role="status" aria-live="polite" {% if not ssr.last_update %}style="display:none"{% endif %}>
         <span id="last-update-text">{% if ssr.last_update %}Derni&egrave;re mise &agrave; jour : {{ ssr.last_update }}{% endif %}</span>
     </div>
