@@ -83,12 +83,13 @@ def start_scheduler():
         replace_existing=True,
     )
 
-    # Mardi 9h00 — Agent SEO autonome (publication blog hebdomadaire)
+    # Mardi 9h00 — Agent SEO autonome (publication blog saisonnière)
+    # Tourne chaque mardi, la logique saisonnière est dans task_seo_agent()
     scheduler.add_job(
         task_seo_agent,
         CronTrigger(day_of_week="tue", hour=9, minute=0, timezone="Europe/Paris"),
-        id="seo_agent_weekly",
-        name="Agent SEO blog hebdomadaire (mardi 9h)",
+        id="seo_agent_seasonal",
+        name="Agent SEO blog saisonnier (mardi 9h)",
         replace_existing=True,
     )
 
@@ -747,17 +748,52 @@ async def task_daily_validation():
 
 
 # ================================================================
-# TÂCHE 6 : Agent SEO blog (mardi 9h00)
+# TÂCHE 6 : Agent SEO blog (mardi 9h00, fréquence saisonnière)
 # ================================================================
 
-async def task_seo_agent():
-    """Mardi 9h — Exécute l'agent SEO pour publier un article de blog.
 
-    L'agent utilise l'API Claude pour :
-    1. Faire une veille SEO
-    2. Mettre à jour le calendrier éditorial
-    3. Rédiger et publier un article optimisé
-    4. Créer des liens rétroactifs vers le nouvel article
+def _should_publish_today(today_override: date | None = None) -> bool:
+    """Détermine si l'agent SEO doit publier aujourd'hui selon le calendrier saisonnier.
+
+    Fréquences (Config.SEO_SEASON_SCHEDULE) :
+    - "weekly"    : chaque mardi
+    - "bimonthly" : 1er et 3e mardi du mois
+    - "monthly"   : 1er mardi du mois uniquement
+    - "off"       : aucune publication
+
+    Args:
+        today_override: date à utiliser (pour les tests). Si None, utilise date.today().
+    """
+    from config import Config
+
+    today = today_override or date.today()
+    month = today.month
+    schedule = Config.SEO_SEASON_SCHEDULE.get(month, "off")
+
+    if schedule == "off":
+        return False
+    if schedule == "weekly":
+        return True
+
+    # Numéro du mardi dans le mois (1er mardi = 1, 2e = 2, etc.)
+    week_of_month = (today.day - 1) // 7 + 1
+
+    if schedule == "bimonthly":
+        return week_of_month in (1, 3)
+    if schedule == "monthly":
+        return week_of_month == 1
+
+    return False
+
+
+async def task_seo_agent():
+    """Mardi 9h — Exécute l'agent SEO selon le calendrier saisonnier.
+
+    Fréquence adaptée au trafic Tempo :
+    - Nov-Mar (saison active)  : hebdomadaire
+    - Sep-Oct (pré-saison)     : bimensuel (1er et 3e mardi)
+    - Avr-Mai (post-saison)    : mensuel (1er mardi)
+    - Juin-Août (morte-saison) : pause complète
 
     Nécessite ANTHROPIC_API_KEY dans les variables d'environnement.
     Si la clé n'est pas configurée, la tâche est silencieusement ignorée.
@@ -767,10 +803,21 @@ async def task_seo_agent():
         logger.debug("[Agent SEO] ANTHROPIC_API_KEY non configurée, tâche ignorée")
         return
 
+    if not _should_publish_today():
+        from datetime import date
+        from config import Config
+        month = date.today().month
+        schedule = Config.SEO_SEASON_SCHEDULE.get(month, "off")
+        logger.info(
+            f"[Agent SEO] Pas de publication aujourd'hui "
+            f"(mois={month}, fréquence={schedule})"
+        )
+        return
+
     try:
         from seo_agent import run_seo_agent
 
-        logger.info("[Agent SEO] Démarrage de la publication hebdomadaire")
+        logger.info("[Agent SEO] Démarrage de la publication saisonnière")
 
         # L'agent est CPU/IO bound (appels API), on l'exécute dans un thread
         loop = asyncio.get_running_loop()

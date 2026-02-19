@@ -176,15 +176,36 @@ class Config:
     SUBSCRIBE_RATE_LIMIT = 5
     SUBSCRIBE_RATE_WINDOW = 3600
 
-    # --- Agent SEO autonome (publication blog hebdomadaire) ---
+    # --- Agent SEO autonome (publication blog saisonnière) ---
     # Clé API Anthropic pour l'agent Claude qui rédige les articles.
     # À configurer dans Replit Secrets (une seule fois).
-    # Si vide, la tâche hebdomadaire est silencieusement ignorée.
+    # Si vide, la tâche est silencieusement ignorée.
     ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
     # Modèle Claude à utiliser (Sonnet = bon rapport qualité/coût)
     SEO_AGENT_MODEL = os.getenv("SEO_AGENT_MODEL", "claude-sonnet-4-5-20250929")
     # Nombre max de tours d'interaction agent (sécurité anti-boucle infinie)
     SEO_AGENT_MAX_TURNS = int(os.getenv("SEO_AGENT_MAX_TURNS", "40"))
+
+    # Calendrier de publication saisonnier :
+    #   Nov-Mar (saison active)  → chaque mardi (hebdo)
+    #   Sep-Oct (pré-saison)     → 1er et 3e mardi du mois (bimensuel)
+    #   Avr-Mai (post-saison)    → 1er mardi du mois uniquement
+    #   Juin-Août (morte-saison) → pause complète
+    # Valeur = semaines du mois où publier (1=1ère semaine, 2=2ème, etc.)
+    SEO_SEASON_SCHEDULE = {
+        1: "weekly",    # Janvier — saison active
+        2: "weekly",    # Février
+        3: "weekly",    # Mars
+        4: "monthly",   # Avril — post-saison
+        5: "monthly",   # Mai
+        6: "off",       # Juin — morte-saison
+        7: "off",       # Juillet
+        8: "off",       # Août
+        9: "bimonthly", # Septembre — pré-saison
+        10: "bimonthly",# Octobre
+        11: "weekly",   # Novembre — saison active
+        12: "weekly",   # Décembre
+    }
 
     # --- Logging ---
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")

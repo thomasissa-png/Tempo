@@ -6,12 +6,14 @@ Covers:
 - Bash blocklist enforcement
 - Graceful failure without API key
 - Config wiring
+- Seasonal publishing gate
 """
 
 from __future__ import annotations
 
 import os
 import textwrap
+from datetime import date
 from pathlib import Path
 from unittest.mock import patch
 
@@ -267,3 +269,120 @@ class TestConfigIntegration:
         assert hasattr(Config, "SEO_AGENT_MAX_TURNS")
         assert isinstance(Config.SEO_AGENT_MAX_TURNS, int)
         assert Config.SEO_AGENT_MAX_TURNS > 0
+
+    def test_config_has_season_schedule(self):
+        from config import Config
+        assert hasattr(Config, "SEO_SEASON_SCHEDULE")
+        schedule = Config.SEO_SEASON_SCHEDULE
+        # Must cover all 12 months
+        assert set(schedule.keys()) == set(range(1, 13))
+        # All values must be valid
+        valid = {"weekly", "bimonthly", "monthly", "off"}
+        for month, freq in schedule.items():
+            assert freq in valid, f"Month {month} has invalid frequency: {freq}"
+
+    def test_season_schedule_logic(self):
+        """Verify the seasonal logic matches business requirements."""
+        from config import Config
+        s = Config.SEO_SEASON_SCHEDULE
+        # Saison active (Nov-Mar) = weekly
+        for m in [11, 12, 1, 2, 3]:
+            assert s[m] == "weekly", f"Month {m} should be weekly"
+        # Morte-saison (Jun-Aug) = off
+        for m in [6, 7, 8]:
+            assert s[m] == "off", f"Month {m} should be off"
+        # Pré-saison (Sep-Oct) = bimonthly
+        for m in [9, 10]:
+            assert s[m] == "bimonthly", f"Month {m} should be bimonthly"
+        # Post-saison (Apr-May) = monthly
+        for m in [4, 5]:
+            assert s[m] == "monthly", f"Month {m} should be monthly"
+
+
+# ================================================================
+# Seasonal publishing gate (_should_publish_today)
+# ================================================================
+
+def _should_publish_today_testable(today: date) -> bool:
+    """Mirror of scheduler._should_publish_today() for testing without apscheduler.
+
+    Uses Config.SEO_SEASON_SCHEDULE directly — same logic as scheduler.py.
+    """
+    from config import Config
+    month = today.month
+    schedule = Config.SEO_SEASON_SCHEDULE.get(month, "off")
+    if schedule == "off":
+        return False
+    if schedule == "weekly":
+        return True
+    week_of_month = (today.day - 1) // 7 + 1
+    if schedule == "bimonthly":
+        return week_of_month in (1, 3)
+    if schedule == "monthly":
+        return week_of_month == 1
+    return False
+
+
+class TestShouldPublishToday:
+    """Tests for seasonal gate logic (same as scheduler._should_publish_today)."""
+
+    def should_publish(self, d: date) -> bool:
+        return _should_publish_today_testable(d)
+
+    # --- weekly (Nov-Mar) ---
+    def test_weekly_first_tuesday(self):
+        assert self.should_publish(date(2025, 11, 4)) is True
+
+    def test_weekly_fourth_tuesday(self):
+        assert self.should_publish(date(2025, 1, 28)) is True
+
+    def test_weekly_dec(self):
+        assert self.should_publish(date(2025, 12, 2)) is True
+
+    # --- off (Jun-Aug) ---
+    def test_off_july(self):
+        assert self.should_publish(date(2025, 7, 1)) is False
+
+    def test_off_august(self):
+        assert self.should_publish(date(2025, 8, 5)) is False
+
+    def test_off_june(self):
+        assert self.should_publish(date(2025, 6, 3)) is False
+
+    # --- bimonthly (Sep-Oct) ---
+    def test_bimonthly_first_tuesday(self):
+        # Sep 2 2025 = 1st Tue (day 2, week 1)
+        assert self.should_publish(date(2025, 9, 2)) is True
+
+    def test_bimonthly_second_tuesday_skipped(self):
+        # Sep 9 2025 = 2nd Tue (day 9, week 2)
+        assert self.should_publish(date(2025, 9, 9)) is False
+
+    def test_bimonthly_third_tuesday(self):
+        # Sep 16 2025 = 3rd Tue (day 16, week 3)
+        assert self.should_publish(date(2025, 9, 16)) is True
+
+    def test_bimonthly_fourth_tuesday_skipped(self):
+        # Sep 23 2025 = 4th Tue (day 23, week 4)
+        assert self.should_publish(date(2025, 9, 23)) is False
+
+    def test_bimonthly_october(self):
+        # Oct 7 2025 = 1st Tue
+        assert self.should_publish(date(2025, 10, 7)) is True
+
+    # --- monthly (Apr-May) ---
+    def test_monthly_first_tuesday(self):
+        # Apr 1 2025 = 1st Tue
+        assert self.should_publish(date(2025, 4, 1)) is True
+
+    def test_monthly_second_tuesday_skipped(self):
+        # Apr 8 2025 = 2nd Tue
+        assert self.should_publish(date(2025, 4, 8)) is False
+
+    def test_monthly_third_tuesday_skipped(self):
+        # Apr 15 2025 = 3rd Tue
+        assert self.should_publish(date(2025, 4, 15)) is False
+
+    def test_monthly_may(self):
+        # May 6 2025 = 1st Tue
+        assert self.should_publish(date(2025, 5, 6)) is True
