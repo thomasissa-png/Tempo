@@ -306,47 +306,11 @@
     <!-- P-06 : contexte humain des compteurs -->
     <p class="counter-context" id="counter-context"></p>
 
-    <h2 class="section-title">Pr&eacute;visions des 15 prochains jours</h2>
-    <!-- P-13 : label source clarifié -->
-    <p class="section-desc">
-        <span class="source-label label-prediction">Nos pr&eacute;visions</span>
-        Plus le jour est proche, plus la pr&eacute;vision est fiable.
-        Les cartes <strong style="color:var(--rouge)">rouges</strong> signalent les jours o&ugrave; votre &eacute;lectricit&eacute; sera la plus ch&egrave;re.
-        <br><em class="update-freq">Actualis&eacute;es automatiquement d&egrave;s la publication EDF et plusieurs fois par jour.</em>
-    </p>
-
-    <!-- Légende couleurs AVANT les cartes pour que Paul comprenne immédiatement -->
-    <div class="legend">
-        <div class="legend-item">
-            <span class="legend-dot" style="background:var(--bleu)" aria-hidden="true"></span>
-            <div><strong>BLEU</strong> <span class="legend-price">(HP 0,13&nbsp;&euro;)</span><br class="legend-br"><span class="legend-desc">Consommez librement, c'est le meilleur tarif</span></div>
-        </div>
-        <div class="legend-item">
-            <span class="legend-dot" style="background:var(--blanc)" aria-hidden="true"></span>
-            <div><strong>BLANC</strong> <span class="legend-price">(HP 0,19&nbsp;&euro;)</span><br class="legend-br"><span class="legend-desc">Tarif moyen, pas de pr&eacute;caution particuli&egrave;re</span></div>
-        </div>
-        <div class="legend-item">
-            <span class="legend-dot" style="background:var(--rouge)" aria-hidden="true"></span>
-            <div><strong>ROUGE</strong> <span class="legend-price">(HP 0,76&nbsp;&euro;)</span><br class="legend-br"><span class="legend-desc"><strong>Reportez lessive, s&egrave;che-linge, four, recharge VE</strong></span></div>
-        </div>
-        <div class="legend-note">Tarifs heures pleines indicatifs, f&eacute;vrier 2026.</div>
-    </div>
-
-    <div id="forecast-container" role="region" aria-label="Prévisions Tempo 15 jours" aria-live="polite">
-        {% if ssr.predictions %}
-        <div class="forecast-grid" id="ssr-forecast">
-            {% for p in ssr.predictions %}
-            <div class="forecast-card {{ p.couleur|lower }}{% if p.confirmed %} confirmed{% endif %}">
-                <div class="forecast-date">{{ p.date }}</div>
-                <div class="forecast-color">{{ p.couleur }}</div>
-                {% if p.temp_min is not none %}<div class="forecast-temp">{{ p.temp_min|round(1) }}&deg;C</div>{% endif %}
-                {% if p.confirmed %}<div class="forecast-source">EDF officiel</div>{% else %}<div class="forecast-source">Pr&eacute;vision</div>{% endif %}
-            </div>
-            {% endfor %}
-        </div>
-        {% else %}
-        <div class="loading-state"><div class="loader" aria-label="Chargement"></div><p>Chargement des pr&eacute;visions...</p></div>
-        {% endif %}
+    <!-- Lien vers les prévisions détaillées sur /calendrier -->
+    <div style="text-align:center;margin:24px 0">
+        <a href="/calendrier" class="btn" style="text-decoration:none;margin-top:0">
+            Voir les pr&eacute;visions d&eacute;taill&eacute;es des 15 prochains jours &rarr;
+        </a>
     </div>
 
     <!-- CTA alertes — compact, ouvre la modal -->

@@ -214,6 +214,35 @@
         {% endfor %}
     </div>
 
+    <!-- Prévisions détaillées des 15 prochains jours (cartes) -->
+    <h2 class="section-title" style="margin-top:40px">Pr&eacute;visions d&eacute;taill&eacute;es des 15 prochains jours</h2>
+    <p class="section-desc">
+        <span class="source-label label-prediction">Nos pr&eacute;visions</span>
+        Plus le jour est proche, plus la pr&eacute;vision est fiable.
+        Les cartes <strong style="color:var(--rouge)">rouges</strong> signalent les jours o&ugrave; votre &eacute;lectricit&eacute; sera la plus ch&egrave;re.
+        <br><em class="update-freq">Actualis&eacute;es automatiquement d&egrave;s la publication EDF et plusieurs fois par jour.</em>
+    </p>
+
+    <div class="legend">
+        <div class="legend-item">
+            <span class="legend-dot" style="background:var(--bleu)" aria-hidden="true"></span>
+            <div><strong>BLEU</strong> <span class="legend-price">(HP 0,13&nbsp;&euro;)</span><br class="legend-br"><span class="legend-desc">Consommez librement, c'est le meilleur tarif</span></div>
+        </div>
+        <div class="legend-item">
+            <span class="legend-dot" style="background:var(--blanc)" aria-hidden="true"></span>
+            <div><strong>BLANC</strong> <span class="legend-price">(HP 0,19&nbsp;&euro;)</span><br class="legend-br"><span class="legend-desc">Tarif moyen, pas de pr&eacute;caution particuli&egrave;re</span></div>
+        </div>
+        <div class="legend-item">
+            <span class="legend-dot" style="background:var(--rouge)" aria-hidden="true"></span>
+            <div><strong>ROUGE</strong> <span class="legend-price">(HP 0,76&nbsp;&euro;)</span><br class="legend-br"><span class="legend-desc"><strong>Reportez lessive, s&egrave;che-linge, four, recharge VE</strong></span></div>
+        </div>
+        <div class="legend-note">Tarifs heures pleines indicatifs, f&eacute;vrier 2026.</div>
+    </div>
+
+    <div id="forecast-container" role="region" aria-label="Prévisions Tempo 15 jours" aria-live="polite">
+        <div class="loading-state"><div class="loader" aria-label="Chargement"></div><p>Chargement des pr&eacute;visions...</p></div>
+    </div>
+
     <!-- CTA -->
     <section class="blog-cta" style="margin: 32px 0">
         <h2>Recevez une alerte avant chaque jour rouge</h2>
@@ -275,28 +304,16 @@
     </div>
 </footer>
 
+<script src="/static/js/app.js"></script>
 <script>
-(function() {
-    const btn = document.getElementById('hamburger-btn');
-    const nav = document.getElementById('main-nav');
-    if (!btn || !nav) return;
-    btn.addEventListener('click', () => {
-        const open = nav.classList.toggle('open');
-        btn.setAttribute('aria-expanded', open);
-    });
-})();
-
 /* Calendar month navigation: maintain exact scroll position */
 (function() {
     var calNav = document.getElementById('cal');
     if (!calNav) return;
 
-    /* On page load: restore saved position instead of using #cal anchor */
     var saved = sessionStorage.getItem('cal_scroll_top');
     if (saved !== null && location.hash === '#cal') {
-        /* Remove hash to prevent browser default scroll */
         history.replaceState(null, '', location.pathname + location.search);
-        /* Scroll to the cal-nav element's offset for consistency */
         var navTop = calNav.getBoundingClientRect().top + window.pageYOffset;
         var headerH = document.querySelector('header[role="banner"]');
         var offset = headerH ? headerH.offsetHeight + 8 : 0;
@@ -304,7 +321,6 @@
         sessionStorage.removeItem('cal_scroll_top');
     }
 
-    /* On click: save position before navigating */
     calNav.querySelectorAll('a').forEach(function(link) {
         link.addEventListener('click', function() {
             sessionStorage.setItem('cal_scroll_top', '1');
