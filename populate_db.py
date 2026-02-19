@@ -221,88 +221,173 @@ def load_local_rte() -> dict[str, dict]:
 async def fetch_odre_rte(start_date: date, end_date: date) -> dict[str, dict]:
     """Récupère les données RTE depuis l'API ODRE (gratuite, sans auth).
 
-    Récupère consommation + éolien + solaire + nucléaire pour calculer C_nette.
-    Pour la période non couverte par les fichiers locaux (2025+).
+    Optimisation : agrégation côté serveur (GROUP BY jour via ODSQL) pour
+    réduire le nombre d'appels API de ~43 à ~1 par chunk de 90 jours.
+    eco2mix a ~48 enregistrements/jour (demi-horaires) ; l'agrégation renvoie
+    1 ligne/jour directement, éliminant la pagination lente par 100 records.
+
+    Fallback sur pagination record par record si l'agrégation échoue.
     """
     import httpx
 
-    FIELDS = "date_heure,consommation,eolien,solaire,nucleaire,gaz,hydraulique,prevision_j1"
     daily = {}
     chunk_start = start_date
 
-    while chunk_start <= end_date:
-        chunk_end = min(chunk_start + timedelta(days=90), end_date)
-        offset = 0
-        chunk_raw = {}
+    async with httpx.AsyncClient(timeout=60) as client:
+        while chunk_start <= end_date:
+            chunk_end = min(chunk_start + timedelta(days=90), end_date)
 
-        while True:
-            params = {
-                "where": (
-                    f"date_heure >= '{chunk_start.isoformat()}' "
-                    f"AND date_heure <= '{chunk_end.isoformat()}T23:59:59'"
-                ),
-                "select": FIELDS,
-                "order_by": "date_heure",
-                "limit": 100,
-                "offset": offset,
-            }
+            # Tenter l'agrégation serveur (1 requête = 90 jours)
+            chunk_data = await _fetch_odre_chunk_aggregated(client, chunk_start, chunk_end)
 
-            try:
-                async with httpx.AsyncClient(timeout=30) as client:
-                    url = f"{ODRE_API_URL}/{ODRE_DATASET}/records"
-                    resp = await client.get(url, params=params)
-                    resp.raise_for_status()
-                    data = resp.json()
-                    records = data.get("results", [])
-                    if not records:
-                        break
+            if chunk_data is None:
+                # Fallback : pagination classique avec réutilisation du client
+                chunk_data = await _fetch_odre_chunk_paginated(client, chunk_start, chunk_end)
 
-                    for rec in records:
-                        dt_str = rec.get("date_heure", "")
-                        conso = rec.get("consommation")
-                        if not dt_str or conso is None:
-                            continue
-                        day = dt_str[:10]
-                        if day not in chunk_raw:
-                            chunk_raw[day] = {"conso": [], "eol": [], "sol": [],
-                                              "nuc": [], "gaz": [], "hyd": [],
-                                              "prev_j1": []}
-                        chunk_raw[day]["conso"].append(conso)
-                        for field, key in [("eolien", "eol"), ("solaire", "sol"),
-                                           ("nucleaire", "nuc"), ("gaz", "gaz"),
-                                           ("hydraulique", "hyd"),
-                                           ("prevision_j1", "prev_j1")]:
-                            v = rec.get(field)
-                            if v is not None:
-                                chunk_raw[day][key].append(v)
-
-                    if len(records) < 100:
-                        break
-                    offset += 100
-
-            except Exception as e:
-                logger.warning(f"  ODRE erreur (offset={offset}): {e}")
-                break
-
-        # Agréger par jour
-        for d, vals in chunk_raw.items():
-            cv = vals["conso"]
-            daily[d] = {
-                "conso_peak_mw": max(cv),
-                "conso_mean_mw": round(sum(cv) / len(cv)),
-                "prevision_j1_peak_mw": max(vals["prev_j1"]) if vals["prev_j1"] else None,
-                "nucleaire_mean_mw": round(sum(vals["nuc"]) / len(vals["nuc"])) if vals["nuc"] else None,
-                "eolien_mean_mw": round(sum(vals["eol"]) / len(vals["eol"])) if vals["eol"] else None,
-                "solaire_mean_mw": round(sum(vals["sol"]) / len(vals["sol"])) if vals["sol"] else None,
-                "gaz_mean_mw": round(sum(vals["gaz"]) / len(vals["gaz"])) if vals["gaz"] else None,
-                "hydraulique_mean_mw": round(sum(vals["hyd"]) / len(vals["hyd"])) if vals["hyd"] else None,
-            }
-
-        logger.info(f"  ODRE {chunk_start} → {chunk_end}: {len(chunk_raw)} jours")
-        chunk_start = chunk_end + timedelta(days=1)
-        await asyncio.sleep(0.5)
+            daily.update(chunk_data)
+            logger.info(f"  ODRE {chunk_start} → {chunk_end}: {len(chunk_data)} jours")
+            chunk_start = chunk_end + timedelta(days=1)
+            await asyncio.sleep(0.5)
 
     return daily
+
+
+async def _fetch_odre_chunk_aggregated(client, chunk_start: date, chunk_end: date) -> dict | None:
+    """Agrégation côté serveur : MAX/AVG par jour en une seule requête ODSQL.
+
+    Réduit ~4320 records (90j × 48 demi-heures) à ~90 lignes agrégées.
+    Retourne None si l'API ne supporte pas l'agrégation (fallback pagination).
+    """
+    select = (
+        "date_format(date_heure, 'YYYY-MM-dd') as day, "
+        "max(consommation) as conso_peak, "
+        "avg(consommation) as conso_mean, "
+        "max(prevision_j1) as prev_j1_peak, "
+        "avg(nucleaire) as nuc_mean, "
+        "avg(eolien) as eol_mean, "
+        "avg(solaire) as sol_mean, "
+        "avg(gaz) as gaz_mean, "
+        "avg(hydraulique) as hyd_mean"
+    )
+    group_by = "date_format(date_heure, 'YYYY-MM-dd') as day"
+
+    params = {
+        "where": (
+            f"date_heure >= '{chunk_start.isoformat()}' "
+            f"AND date_heure <= '{chunk_end.isoformat()}T23:59:59'"
+        ),
+        "select": select,
+        "group_by": group_by,
+        "order_by": "day",
+        "limit": 100,
+    }
+
+    try:
+        url = f"{ODRE_API_URL}/{ODRE_DATASET}/records"
+        resp = await client.get(url, params=params)
+        resp.raise_for_status()
+        data = resp.json()
+        records = data.get("results", [])
+        if not records:
+            return None
+
+        result = {}
+        for rec in records:
+            day = rec.get("day")
+            conso_peak = rec.get("conso_peak")
+            if not day or conso_peak is None:
+                continue
+            conso_mean = rec.get("conso_mean")
+            result[day] = {
+                "conso_peak_mw": round(conso_peak),
+                "conso_mean_mw": round(conso_mean) if conso_mean else round(conso_peak),
+                "prevision_j1_peak_mw": round(rec["prev_j1_peak"]) if rec.get("prev_j1_peak") else None,
+                "nucleaire_mean_mw": round(rec["nuc_mean"]) if rec.get("nuc_mean") else None,
+                "eolien_mean_mw": round(rec["eol_mean"]) if rec.get("eol_mean") else None,
+                "solaire_mean_mw": round(rec["sol_mean"]) if rec.get("sol_mean") else None,
+                "gaz_mean_mw": round(rec["gaz_mean"]) if rec.get("gaz_mean") else None,
+                "hydraulique_mean_mw": round(rec["hyd_mean"]) if rec.get("hyd_mean") else None,
+            }
+        return result
+
+    except Exception as e:
+        logger.warning(f"  ODRE agrégation échouée, fallback pagination: {e}")
+        return None
+
+
+async def _fetch_odre_chunk_paginated(client, chunk_start: date, chunk_end: date) -> dict:
+    """Fallback : pagination classique record par record (limit=100).
+
+    Utilisé uniquement si l'agrégation ODSQL échoue. Le client httpx est
+    réutilisé (pas de nouvelle connexion TCP+TLS par page).
+    """
+    FIELDS = "date_heure,consommation,eolien,solaire,nucleaire,gaz,hydraulique,prevision_j1"
+    offset = 0
+    chunk_raw = {}
+
+    while True:
+        params = {
+            "where": (
+                f"date_heure >= '{chunk_start.isoformat()}' "
+                f"AND date_heure <= '{chunk_end.isoformat()}T23:59:59'"
+            ),
+            "select": FIELDS,
+            "order_by": "date_heure",
+            "limit": 100,
+            "offset": offset,
+        }
+
+        try:
+            url = f"{ODRE_API_URL}/{ODRE_DATASET}/records"
+            resp = await client.get(url, params=params)
+            resp.raise_for_status()
+            data = resp.json()
+            records = data.get("results", [])
+            if not records:
+                break
+
+            for rec in records:
+                dt_str = rec.get("date_heure", "")
+                conso = rec.get("consommation")
+                if not dt_str or conso is None:
+                    continue
+                day = dt_str[:10]
+                if day not in chunk_raw:
+                    chunk_raw[day] = {"conso": [], "eol": [], "sol": [],
+                                      "nuc": [], "gaz": [], "hyd": [],
+                                      "prev_j1": []}
+                chunk_raw[day]["conso"].append(conso)
+                for field, key in [("eolien", "eol"), ("solaire", "sol"),
+                                   ("nucleaire", "nuc"), ("gaz", "gaz"),
+                                   ("hydraulique", "hyd"),
+                                   ("prevision_j1", "prev_j1")]:
+                    v = rec.get(field)
+                    if v is not None:
+                        chunk_raw[day][key].append(v)
+
+            if len(records) < 100:
+                break
+            offset += 100
+
+        except Exception as e:
+            logger.warning(f"  ODRE erreur (offset={offset}): {e}")
+            break
+
+    # Agréger par jour
+    result = {}
+    for d, vals in chunk_raw.items():
+        cv = vals["conso"]
+        result[d] = {
+            "conso_peak_mw": max(cv),
+            "conso_mean_mw": round(sum(cv) / len(cv)),
+            "prevision_j1_peak_mw": max(vals["prev_j1"]) if vals["prev_j1"] else None,
+            "nucleaire_mean_mw": round(sum(vals["nuc"]) / len(vals["nuc"])) if vals["nuc"] else None,
+            "eolien_mean_mw": round(sum(vals["eol"]) / len(vals["eol"])) if vals["eol"] else None,
+            "solaire_mean_mw": round(sum(vals["sol"]) / len(vals["sol"])) if vals["sol"] else None,
+            "gaz_mean_mw": round(sum(vals["gaz"]) / len(vals["gaz"])) if vals["gaz"] else None,
+            "hydraulique_mean_mw": round(sum(vals["hyd"]) / len(vals["hyd"])) if vals["hyd"] else None,
+        }
+    return result
 
 
 def store_rte(rte_data: dict[str, dict]) -> int:
