@@ -1805,3 +1805,68 @@ async def admin_sms_logs(request: Request, authorization: str | None = Header(No
         return {"status": "ok", "logs": [dict(r) for r in rows]}
     finally:
         conn.close()
+
+
+@app.get("/admin/agent-reports")
+async def admin_agent_reports(request: Request, authorization: str | None = Header(None)):
+    """Rapports des agents SEO et Backlinks."""
+    verify_admin(authorization, request.client.host if request.client else "unknown")
+    import pathlib
+
+    base = pathlib.Path(__file__).parent
+    reports = {}
+
+    # Agent SEO — journal de publication
+    seo_log = base / "articles" / "_publication_log.md"
+    reports["seo_log"] = seo_log.read_text(encoding="utf-8") if seo_log.exists() else None
+
+    # Agent SEO — calendrier éditorial
+    cal_path = base / "articles" / "_calendrier_editorial.yaml"
+    reports["seo_calendar"] = cal_path.read_text(encoding="utf-8") if cal_path.exists() else None
+
+    # Agent Backlinks — journal hebdomadaire
+    bl_log = base / "backlinks" / "_backlinks_log.md"
+    reports["backlinks_log"] = bl_log.read_text(encoding="utf-8") if bl_log.exists() else None
+
+    # Agent Backlinks — prospects
+    bl_prospects = base / "backlinks" / "_prospects.md"
+    reports["backlinks_prospects"] = bl_prospects.read_text(encoding="utf-8") if bl_prospects.exists() else None
+
+    # Agent Backlinks — drafts disponibles
+    drafts_dir = base / "backlinks" / "drafts"
+    drafts = []
+    if drafts_dir.exists():
+        for f in sorted(drafts_dir.glob("*.md"), key=lambda p: p.stat().st_mtime, reverse=True):
+            drafts.append({
+                "filename": f.name,
+                "content": f.read_text(encoding="utf-8")[:2000],  # tronqué à 2000 car
+            })
+    reports["backlinks_drafts"] = drafts
+
+    return {"status": "ok", **reports}
+
+
+@app.get("/admin/subscribers")
+async def admin_subscribers(request: Request, authorization: str | None = Header(None)):
+    """Liste des abonnés WhatsApp (4 derniers chiffres uniquement)."""
+    verify_admin(authorization, request.client.host if request.client else "unknown")
+    from database import get_db
+
+    conn = get_db()
+    try:
+        rows = conn.execute(
+            """SELECT id, phone_last4, seuil_alerte_rouge, delai_alerte,
+                      alerte_blanc, recap_hebdo, actif, created_at, updated_at
+               FROM users ORDER BY created_at DESC"""
+        ).fetchall()
+        users = [dict(r) for r in rows]
+        total = len(users)
+        actifs = sum(1 for u in users if u["actif"])
+        return {
+            "status": "ok",
+            "total": total,
+            "actifs": actifs,
+            "users": users,
+        }
+    finally:
+        conn.close()

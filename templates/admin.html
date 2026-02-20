@@ -126,16 +126,65 @@
             <button class="task-btn" onclick="runTask('weights')">Recalcul poids</button>
             <button class="task-btn" onclick="runTask('recap')">Récap hebdo</button>
             <button class="task-btn" onclick="runTask('backfill')">Backfill saison</button>
+            <button class="task-btn" onclick="runTask('seo_agent')" style="background:#7B1FA2;color:#fff">Agent SEO</button>
+            <button class="task-btn" onclick="runTask('backlinks_agent')" style="background:#00695C;color:#fff">Agent Backlinks</button>
             <div id="task-result" style="margin-top:12px;font-size:0.9rem;color:var(--text-secondary)"></div>
         </div>
 
-        <!-- Stats utilisateurs -->
+        <!-- Abonnés WhatsApp (liste détaillée) -->
         <div class="admin-card" style="margin-bottom:24px">
-            <h3>Utilisateurs WhatsApp</h3>
-            <div id="user-stats">Chargement...</div>
+            <h3>Abonnés WhatsApp</h3>
+            <div id="subscribers-summary" style="margin-bottom:12px">Chargement...</div>
+            <div style="overflow-x:auto">
+                <table id="subscribers-table" class="confusion-table" style="display:none;width:100%;font-size:0.85rem">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Téléphone</th>
+                            <th>Seuil rouge</th>
+                            <th>Délai</th>
+                            <th>Alerte blanc</th>
+                            <th>Récap hebdo</th>
+                            <th>Statut</th>
+                            <th>Inscrit le</th>
+                        </tr>
+                    </thead>
+                    <tbody id="subscribers-body"></tbody>
+                </table>
+            </div>
         </div>
 
-        <!-- Fix #11 : Export CSV avec tous les 12 mois -->
+        <!-- Rapports Agent SEO -->
+        <div class="admin-card" style="margin-bottom:24px">
+            <h3 style="cursor:pointer" onclick="toggleSection('seo-report')">
+                Agent SEO — Rapport <span id="seo-report-toggle" style="font-size:0.8em">&#9654;</span>
+            </h3>
+            <div id="seo-report" style="display:none">
+                <h4 style="margin:12px 0 8px;font-size:0.95rem">Journal de publication</h4>
+                <pre id="seo-log" style="background:var(--bg-secondary);padding:12px;border-radius:8px;overflow-x:auto;max-height:400px;overflow-y:auto;font-size:0.8rem;white-space:pre-wrap">Chargement...</pre>
+                <h4 style="margin:16px 0 8px;font-size:0.95rem">Calendrier éditorial</h4>
+                <pre id="seo-calendar" style="background:var(--bg-secondary);padding:12px;border-radius:8px;overflow-x:auto;max-height:400px;overflow-y:auto;font-size:0.8rem;white-space:pre-wrap">Chargement...</pre>
+            </div>
+        </div>
+
+        <!-- Rapports Agent Backlinks -->
+        <div class="admin-card" style="margin-bottom:24px">
+            <h3 style="cursor:pointer" onclick="toggleSection('backlinks-report')">
+                Agent Backlinks — Rapport <span id="backlinks-report-toggle" style="font-size:0.8em">&#9654;</span>
+            </h3>
+            <div id="backlinks-report" style="display:none">
+                <h4 style="margin:12px 0 8px;font-size:0.95rem">Journal hebdomadaire</h4>
+                <pre id="backlinks-log" style="background:var(--bg-secondary);padding:12px;border-radius:8px;overflow-x:auto;max-height:400px;overflow-y:auto;font-size:0.8rem;white-space:pre-wrap">Chargement...</pre>
+                <h4 style="margin:16px 0 8px;font-size:0.95rem">Prospects netlinking</h4>
+                <pre id="backlinks-prospects" style="background:var(--bg-secondary);padding:12px;border-radius:8px;overflow-x:auto;max-height:400px;overflow-y:auto;font-size:0.8rem;white-space:pre-wrap">Chargement...</pre>
+                <div id="backlinks-drafts-section" style="display:none">
+                    <h4 style="margin:16px 0 8px;font-size:0.95rem">Drafts prêts à poster</h4>
+                    <div id="backlinks-drafts"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Export CSV -->
         <div class="admin-card" style="margin-bottom:24px">
             <h3>Export CSV des performances</h3>
             <div style="display:flex;gap:8px;align-items:center">
@@ -258,8 +307,9 @@ async function loadAdminData() {
         renderHorizonChart(data.by_horizon);
         renderWeightsChart(weights);
 
-        // Stats users
-        loadUserStats();
+        // Stats users + agents + subscribers
+        loadSubscribers();
+        loadAgentReports();
 
     } catch (e) {
         alert('Erreur: ' + e.message);
@@ -353,21 +403,81 @@ async function runTask(taskName) {
     }
 }
 
-async function loadUserStats() {
+async function loadSubscribers() {
     try {
-        const resp = await fetch('/api/users/stats', {
+        const resp = await fetch('/admin/subscribers', {
             headers: { 'Authorization': `Bearer ${adminPassword}` }
         });
         const data = await resp.json();
-        const el = document.getElementById('user-stats');
-        if (data.status === 'ok') {
-            el.innerHTML = `
-                <div class="metric-row"><span>Total inscrits</span><span class="metric-value">${escapeHtml(String(data.total))}</span></div>
-                <div class="metric-row"><span>Actifs</span><span class="metric-value">${escapeHtml(String(data.actifs))}</span></div>
-            `;
+        if (data.status !== 'ok') return;
+
+        const sumEl = document.getElementById('subscribers-summary');
+        sumEl.innerHTML = `
+            <div class="metric-row"><span>Total inscrits</span><span class="metric-value">${escapeHtml(String(data.total))}</span></div>
+            <div class="metric-row"><span>Actifs</span><span class="metric-value" style="color:#2E7D32">${escapeHtml(String(data.actifs))}</span></div>
+            <div class="metric-row"><span>Désinscrits</span><span class="metric-value" style="color:#C62828">${escapeHtml(String(data.total - data.actifs))}</span></div>
+        `;
+
+        if (data.users.length > 0) {
+            const tbody = document.getElementById('subscribers-body');
+            tbody.innerHTML = data.users.map(u => `<tr style="${u.actif ? '' : 'opacity:0.5'}">
+                <td>${escapeHtml(String(u.id))}</td>
+                <td>***${escapeHtml(u.phone_last4)}</td>
+                <td>${escapeHtml(String(u.seuil_alerte_rouge))}%</td>
+                <td>J-${escapeHtml(String(u.delai_alerte))}</td>
+                <td>${u.alerte_blanc ? 'Oui' : 'Non'}</td>
+                <td>${u.recap_hebdo ? 'Oui' : 'Non'}</td>
+                <td>${u.actif ? '<span style="color:#2E7D32">Actif</span>' : '<span style="color:#C62828">Inactif</span>'}</td>
+                <td>${escapeHtml(u.created_at?.substring(0, 10) || '—')}</td>
+            </tr>`).join('');
+            document.getElementById('subscribers-table').style.display = 'table';
         }
     } catch {
         // silently fail
+    }
+}
+
+async function loadAgentReports() {
+    try {
+        const resp = await fetch('/admin/agent-reports', {
+            headers: { 'Authorization': `Bearer ${adminPassword}` }
+        });
+        const data = await resp.json();
+        if (data.status !== 'ok') return;
+
+        // SEO
+        document.getElementById('seo-log').textContent = data.seo_log || 'Aucun rapport disponible.';
+        document.getElementById('seo-calendar').textContent = data.seo_calendar || 'Aucun calendrier disponible.';
+
+        // Backlinks
+        document.getElementById('backlinks-log').textContent = data.backlinks_log || 'Aucun rapport disponible. L\'agent s\'exécutera mercredi prochain.';
+        document.getElementById('backlinks-prospects').textContent = data.backlinks_prospects || 'Aucun prospect identifié.';
+
+        // Drafts
+        if (data.backlinks_drafts && data.backlinks_drafts.length > 0) {
+            const draftsEl = document.getElementById('backlinks-drafts');
+            draftsEl.innerHTML = data.backlinks_drafts.map(d => `
+                <details style="margin-bottom:8px">
+                    <summary style="cursor:pointer;font-weight:600;font-size:0.85rem;padding:6px 0">${escapeHtml(d.filename)}</summary>
+                    <pre style="background:var(--bg-secondary);padding:12px;border-radius:8px;font-size:0.8rem;white-space:pre-wrap;max-height:300px;overflow-y:auto">${escapeHtml(d.content)}</pre>
+                </details>
+            `).join('');
+            document.getElementById('backlinks-drafts-section').style.display = 'block';
+        }
+    } catch {
+        // silently fail
+    }
+}
+
+function toggleSection(id) {
+    const el = document.getElementById(id);
+    const toggle = document.getElementById(id + '-toggle');
+    if (el.style.display === 'none') {
+        el.style.display = 'block';
+        toggle.innerHTML = '&#9660;';
+    } else {
+        el.style.display = 'none';
+        toggle.innerHTML = '&#9654;';
     }
 }
 
