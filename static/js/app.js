@@ -343,6 +343,11 @@ function renderWeekSummary(preds) {
 
     let dotsHtml = '<div class="week-summary-dots">';
     weekPreds.forEach((p, idx) => {
+        // Séparateur entre les 2 lignes de 5 jours
+        if (idx === 5) {
+            dotsHtml += '<div class="week-dots-separator" aria-hidden="true"></div>';
+        }
+
         const d = parseLocalDate(p.date);
         const dayLabel = JOURS[d.getDay()];
         const dayNum = d.getDate();
