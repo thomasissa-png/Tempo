@@ -229,6 +229,10 @@ class Config:
     # Nombre max de tours d'interaction agent (sécurité anti-boucle infinie)
     SEO_AGENT_MAX_TURNS = int(os.getenv("SEO_AGENT_MAX_TURNS", "40"))
 
+    # --- Agent Backlinks autonome (prospection netlinking hebdomadaire) ---
+    # Même clé API que l'agent SEO. Même modèle par défaut.
+    BACKLINKS_AGENT_MAX_TURNS = int(os.getenv("BACKLINKS_AGENT_MAX_TURNS", "35"))
+
     # Calendrier de publication saisonnier :
     #   Nov-Mar (saison active)  → chaque mardi (hebdo)
     #   Sep-Oct (pré-saison)     → 1er et 3e mardi du mois (bimensuel)

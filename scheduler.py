@@ -93,8 +93,18 @@ def start_scheduler():
         replace_existing=True,
     )
 
+    # Mercredi 10h00 — Agent Backlinks autonome (prospection netlinking)
+    # Tourne chaque mercredi en saison active, même gate saisonnière que l'agent SEO
+    scheduler.add_job(
+        task_backlinks_agent,
+        CronTrigger(day_of_week="wed", hour=10, minute=0, timezone="Europe/Paris"),
+        id="backlinks_agent_weekly",
+        name="Agent Backlinks netlinking (mercredi 10h)",
+        replace_existing=True,
+    )
+
     scheduler.start()
-    logger.info("[Scheduler] Démarré avec 7 tâches planifiées")
+    logger.info("[Scheduler] Démarré avec 9 tâches planifiées")
 
 
 def stop_scheduler():
@@ -882,6 +892,54 @@ async def task_seo_agent():
         logger.error(f"[Agent SEO] Erreur inattendue : {e}")
 
 
+async def task_backlinks_agent():
+    """Mercredi 10h — Exécute l'agent Backlinks pour la prospection netlinking.
+
+    Fréquence adaptée au trafic Tempo (même gate saisonnière que l'agent SEO) :
+    - Nov-Mar (saison active)  : hebdomadaire
+    - Sep-Oct (pré-saison)     : bimensuel
+    - Avr-Mai (post-saison)    : mensuel
+    - Juin-Août (morte-saison) : pause complète
+
+    Nécessite ANTHROPIC_API_KEY dans les variables d'environnement.
+    Si la clé n'est pas configurée, la tâche est silencieusement ignorée.
+    """
+    import os
+    if not os.getenv("ANTHROPIC_API_KEY"):
+        logger.debug("[Agent Backlinks] ANTHROPIC_API_KEY non configurée, tâche ignorée")
+        return
+
+    if not _should_publish_today():
+        from datetime import date
+        from config import Config
+        month = date.today().month
+        schedule = Config.SEO_SEASON_SCHEDULE.get(month, "off")
+        logger.info(
+            f"[Agent Backlinks] Pas de prospection aujourd'hui "
+            f"(mois={month}, fréquence={schedule})"
+        )
+        return
+
+    try:
+        from backlinks_agent import run_backlinks_agent
+
+        logger.info("[Agent Backlinks] Démarrage de la prospection hebdomadaire")
+
+        loop = asyncio.get_running_loop()
+        result = await loop.run_in_executor(None, run_backlinks_agent)
+
+        if result["success"]:
+            logger.info(
+                f"[Agent Backlinks] Terminé en {result['turns']} tours. "
+                f"Rapport : {result['report'][:500]}"
+            )
+        else:
+            logger.error(f"[Agent Backlinks] Échec : {result['error']}")
+
+    except Exception as e:
+        logger.error(f"[Agent Backlinks] Erreur inattendue : {e}")
+
+
 # ================================================================
 # EXÉCUTION MANUELLE (pour tests / API admin)
 # ================================================================
@@ -911,6 +969,7 @@ async def run_task_now(task_name: str) -> str:
         "recap": task_weekly_recap,
         "validation": task_daily_validation,
         "seo_agent": task_seo_agent,
+        "backlinks_agent": task_backlinks_agent,
     }
     if task_name not in tasks:
         available = list(tasks.keys()) + ["backfill", "analyze"]
