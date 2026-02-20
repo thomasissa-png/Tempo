@@ -3,6 +3,7 @@ title: Alerte jour rouge Tempo : comment être prévenu à temps
 description: Découvrez comment recevoir une alerte WhatsApp gratuite avant chaque jour rouge ou blanc Tempo EDF. Inscription en 30 secondes, sans application à installer.
 publish_date: 2026-03-17
 keywords: alerte tempo, notification jour rouge tempo, alerte whatsapp tempo edf, prévenir jour rouge
+cluster: preparation
 ---
 Avec l'offre Tempo EDF, rater un jour rouge peut coûter très cher. Pendant les heures pleines d'un jour rouge, le tarif grimpe à **0,7060 €/kWh**, soit plus de quatre fois le prix d'un jour bleu. Sur une seule journée, un foyer qui ne s'adapte pas peut voir sa facture exploser de 13 € ou plus. La solution ? Recevoir une **alerte jour rouge Tempo** avant qu'il ne soit trop tard. Dans cet article, nous détaillons pourquoi ces alertes sont indispensables et comment s'y inscrire gratuitement en 30 secondes sur calendrier-tempo.fr.
 

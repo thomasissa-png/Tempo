@@ -3,6 +3,7 @@ title: Calendrier Tempo 2025-2026 : toutes les dates et couleurs
 description: Consultez le calendrier complet de la saison Tempo EDF 2025-2026. Historique des jours rouges, blancs et bleus avec les prévisions à 15 jours mises à jour quotidiennement.
 publish_date: 2026-03-10
 keywords: calendrier tempo 2025 2026, dates jours rouges tempo, historique tempo edf, saison tempo 2026
+cluster: calendrier
 ---
 L'option tarifaire Tempo d'EDF reste l'un des contrats d'électricité les plus avantageux pour les consommateurs avertis. Avec ses jours bleus facturés à prix réduit et ses jours rouges où le kilowattheure atteint 0,7060 euros en heures pleines, connaître à l'avance la couleur du jour est devenu un enjeu financier majeur. Ce guide complet du **calendrier Tempo 2025-2026** vous donne toutes les clés pour suivre la saison en cours, comprendre la répartition des jours et anticiper les prochaines dates.
 

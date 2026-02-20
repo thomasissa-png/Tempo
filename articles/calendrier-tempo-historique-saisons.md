@@ -3,6 +3,7 @@ title: Historique du calendrier Tempo EDF : toutes les saisons depuis 2020
 description: Retrouvez l'historique complet des jours rouges, blancs et bleus Tempo EDF depuis la saison 2020-2021. Statistiques, tendances et analyse des patterns pour mieux anticiper les prochains jours rouges.
 publish_date: 2026-02-17
 keywords: calendrier tempo, historique tempo edf, jours rouges tempo historique, calendrier tempo edf saisons, tempo edf dates
+cluster: calendrier
 ---
 
 Vous vous demandez comment se répartissent les jours rouges Tempo d'une saison à l'autre ? Ce guide compile **l'historique complet du calendrier Tempo EDF** depuis 2020 avec des statistiques clés pour comprendre les tendances et mieux anticiper.

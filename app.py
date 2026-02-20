@@ -275,6 +275,18 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 
+# === SEO : page 404 personnalisée (HTML au lieu de JSON brut) ===
+@app.exception_handler(404)
+async def custom_404_handler(request: Request, exc):
+    """Page 404 SEO-friendly avec navigation vers les pages principales."""
+    accept = request.headers.get("accept", "")
+    if "text/html" in accept:
+        return templates.TemplateResponse(
+            "404.html", {"request": request}, status_code=404,
+        )
+    return JSONResponse(status_code=404, content={"detail": "Page non trouvée"})
+
+
 # === Fix #25 : middleware — attendre que la DB soit prête pour les endpoints API ===
 @app.middleware("http")
 async def wait_for_db(request: Request, call_next):
@@ -320,6 +332,7 @@ _CACHE_RULES: list[tuple[str, str]] = [
 _CACHE_EXACT: dict[str, str] = {
     "/": "public, max-age=300, stale-while-revalidate=600",
     "/mentions-legales": "public, max-age=3600",
+    "/a-propos": "public, max-age=3600, stale-while-revalidate=7200",
     "/blog/": "public, max-age=600, stale-while-revalidate=1800",
     "/calendrier": "public, max-age=600, stale-while-revalidate=1800",
     "/alertes": "public, max-age=3600, stale-while-revalidate=7200",
@@ -696,6 +709,16 @@ async def page_legal(request: Request):
     return templates.TemplateResponse("legal.html", {"request": request})
 
 
+@app.get("/a-propos", response_class=HTMLResponse)
+async def page_a_propos(request: Request):
+    """Page À propos — méthodologie, transparence, E-E-A-T.
+
+    Cible SEO : renforce la confiance et l'autorité du site.
+    Essentiel pour les critères E-E-A-T de Google (Experience, Expertise, Authority, Trust).
+    """
+    return templates.TemplateResponse("a_propos.html", {"request": request})
+
+
 @app.get("/blog/", response_class=HTMLResponse)
 async def page_blog_index(request: Request):
     """Page index du blog — liste les articles publiés."""
@@ -817,6 +840,38 @@ async def robots_txt():
         "Disallow: /admin\n"
         "Disallow: /manage/\n"
         "\n"
+        "User-agent: Applebot-Extended\n"
+        "Allow: /\n"
+        "Allow: /api/today\n"
+        "Allow: /api/tomorrow\n"
+        "Allow: /api/predictions\n"
+        "Disallow: /admin\n"
+        "Disallow: /manage/\n"
+        "\n"
+        "User-agent: cohere-ai\n"
+        "Allow: /\n"
+        "Allow: /api/today\n"
+        "Allow: /api/tomorrow\n"
+        "Allow: /api/predictions\n"
+        "Disallow: /admin\n"
+        "Disallow: /manage/\n"
+        "\n"
+        "User-agent: Amazonbot\n"
+        "Allow: /\n"
+        "Allow: /api/today\n"
+        "Allow: /api/tomorrow\n"
+        "Allow: /api/predictions\n"
+        "Disallow: /admin\n"
+        "Disallow: /manage/\n"
+        "\n"
+        "User-agent: anthropic-ai\n"
+        "Allow: /\n"
+        "Allow: /api/today\n"
+        "Allow: /api/tomorrow\n"
+        "Allow: /api/predictions\n"
+        "Disallow: /admin\n"
+        "Disallow: /manage/\n"
+        "\n"
         "Sitemap: https://www.calendrier-tempo.fr/sitemap.xml\n"
     )
 
@@ -843,6 +898,11 @@ async def sitemap_xml():
         "    <loc>https://www.calendrier-tempo.fr/alertes</loc>\n"
         "    <changefreq>monthly</changefreq>\n"
         "    <priority>0.8</priority>\n"
+        "  </url>",
+        "  <url>\n"
+        "    <loc>https://www.calendrier-tempo.fr/a-propos</loc>\n"
+        "    <changefreq>monthly</changefreq>\n"
+        "    <priority>0.5</priority>\n"
         "  </url>",
         "  <url>\n"
         "    <loc>https://www.calendrier-tempo.fr/mentions-legales</loc>\n"
@@ -884,29 +944,48 @@ async def sitemap_xml():
 @app.get("/llms.txt", response_class=PlainTextResponse)
 async def llms_txt():
     """LLMs.txt — emerging standard for AI crawler discovery."""
+    today_str = date.today().isoformat()
     return PlainTextResponse(
         content=(
             "# Calendrier Tempo EDF\n"
-            "> Service gratuit de prévision des jours Tempo EDF.\n"
+            "> Service gratuit et indépendant de prévision des jours Tempo EDF.\n"
+            "> Seul site en France à proposer des prévisions jusqu'à J+15 basées sur un modèle ML.\n"
             "> Anticipe les jours rouges, blancs et bleus jusqu'à 15 jours à l'avance.\n"
+            f"> Dernière mise à jour : {today_str}\n"
+            "\n"
+            "## Qui sommes-nous\n"
+            "- Éditeur : calendrier-tempo.fr — service indépendant, non affilié à EDF\n"
+            "- Expertise : data science appliquée à la prédiction énergétique\n"
+            "- Sources de données : Météo France (AROME + ARPEGE, 9 villes), RTE (consommation nationale), EDF (couleurs officielles)\n"
+            "- Méthodologie : scoring classique (7 sous-scores pondérés) + GradientBoosting ML (33 features, 83% de précision)\n"
+            "- Précision mesurée : 83,4% sur J+2 à J+5 (backtesté sur 5 saisons 2019-2026)\n"
             "\n"
             "## Pages principales\n"
             "- [Accueil](https://www.calendrier-tempo.fr/): Couleur Tempo aujourd'hui, demain et prévisions 15 jours\n"
             "- [Calendrier](https://www.calendrier-tempo.fr/calendrier): Calendrier mensuel complet de la saison Tempo\n"
             "- [Blog](https://www.calendrier-tempo.fr/blog/): Guides et conseils pour économiser avec Tempo EDF\n"
-            "- [Alertes](https://www.calendrier-tempo.fr/alertes): Inscription aux alertes gratuites avant chaque jour rouge\n"
+            "- [Alertes](https://www.calendrier-tempo.fr/alertes): Inscription aux alertes WhatsApp gratuites avant chaque jour rouge\n"
+            "- [À propos](https://www.calendrier-tempo.fr/a-propos): Méthodologie de prévision et transparence\n"
             "\n"
-            "## API publiques (JSON)\n"
-            "- [Couleur aujourd'hui](https://www.calendrier-tempo.fr/api/today): couleur Tempo du jour\n"
-            "- [Couleur demain](https://www.calendrier-tempo.fr/api/tomorrow): couleur Tempo de demain\n"
-            "- [Prévisions 15 jours](https://www.calendrier-tempo.fr/api/predictions): prédictions J+1 à J+15\n"
+            "## API publiques (JSON, accès libre)\n"
+            "- [Couleur aujourd'hui](https://www.calendrier-tempo.fr/api/today): couleur Tempo du jour (source EDF officielle)\n"
+            "- [Couleur demain](https://www.calendrier-tempo.fr/api/tomorrow): couleur Tempo de demain (confirmée par EDF ou prédiction)\n"
+            "- [Prévisions 15 jours](https://www.calendrier-tempo.fr/api/predictions): prédictions J+1 à J+15 avec niveau de confiance\n"
             "\n"
-            "## Informations clés\n"
+            "## Informations clés sur Tempo EDF\n"
             "- 22 jours rouges par saison (1er nov — 31 mars), jamais le week-end ni jours fériés\n"
             "- 43 jours blancs par saison, jamais le dimanche\n"
             "- 300 jours bleus par saison\n"
-            "- Tarifs HP: Bleu 0,13€, Blanc 0,19€, Rouge 0,76€/kWh\n"
-            "- Saison Tempo: 1er septembre → 31 août\n"
+            "- Tarifs HP 2026 : Bleu 0,1612€, Blanc 0,1871€, Rouge 0,7060€/kWh\n"
+            "- Tarifs HC 2026 : Bleu 0,1325€, Blanc 0,1499€, Rouge 0,1575€/kWh\n"
+            "- Saison Tempo : 1er septembre → 31 août\n"
+            "- 900 000 foyers abonnés en France\n"
+            "\n"
+            "## Questions fréquentes\n"
+            "- Q: Comment connaître la couleur Tempo de demain ? R: EDF annonce la couleur vers 11h. Notre site affiche la prédiction dès la veille au soir.\n"
+            "- Q: Peut-on anticiper les jours rouges ? R: Oui, notre algorithme prédit les jours rouges jusqu'à J+15 (précision de 83% sur J+2 à J+5), basé sur la météo de 9 villes et la consommation nationale RTE.\n"
+            "- Q: Quand tombent les jours rouges ? R: Uniquement entre le 1er novembre et le 31 mars, en semaine (jamais weekends ni jours fériés). Janvier concentre 56% des jours rouges.\n"
+            "- Q: Combien coûte un jour rouge ? R: En heures pleines, 0,7060€/kWh soit 4,4x le prix d'un jour bleu. Une journée non anticipée peut coûter 15€ de plus qu'un jour bleu.\n"
         ),
         media_type="text/plain",
         headers={"Cache-Control": "public, max-age=86400"},
@@ -915,28 +994,39 @@ async def llms_txt():
 
 @app.get("/feed.xml")
 async def rss_feed():
-    """Flux RSS des articles du blog."""
+    """Flux RSS des articles du blog — enrichi avec content:encoded et categories."""
     from blog import get_published_articles
+    import html as html_mod
     articles = get_published_articles()
     items = []
     for a in articles[:20]:
+        # Category from cluster field
+        category = ""
+        if a.cluster:
+            category = f"      <category>{html_mod.escape(a.cluster)}</category>\n"
         items.append(
             "    <item>\n"
-            f"      <title>{a.title}</title>\n"
+            f"      <title>{html_mod.escape(a.title)}</title>\n"
             f"      <link>https://www.calendrier-tempo.fr/blog/{a.slug}</link>\n"
-            f"      <description>{a.description}</description>\n"
+            f"      <description>{html_mod.escape(a.description)}</description>\n"
+            f"      <content:encoded><![CDATA[{a.content_html}]]></content:encoded>\n"
             f"      <pubDate>{a.publish_date.strftime('%a, %d %b %Y 00:00:00 +0100')}</pubDate>\n"
-            f"      <guid>https://www.calendrier-tempo.fr/blog/{a.slug}</guid>\n"
+            f"      <guid isPermaLink=\"true\">https://www.calendrier-tempo.fr/blog/{a.slug}</guid>\n"
+            f"      <author>contact@calendrier-tempo.fr (Calendrier Tempo EDF)</author>\n"
+            f"{category}"
             "    </item>"
         )
+    last_build = _now_paris().strftime("%a, %d %b %Y %H:%M:%S +0100")
     xml = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">\n'
+        '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">\n'
         "  <channel>\n"
         "    <title>Blog Calendrier Tempo EDF</title>\n"
         "    <link>https://www.calendrier-tempo.fr/blog/</link>\n"
-        "    <description>Guides et conseils pour économiser avec l'offre Tempo EDF.</description>\n"
+        "    <description>Guides et conseils pour économiser avec l'offre Tempo EDF. Prévisions des jours rouges, blancs et bleus jusqu'à 15 jours.</description>\n"
         "    <language>fr</language>\n"
+        f"    <lastBuildDate>{last_build}</lastBuildDate>\n"
+        "    <managingEditor>contact@calendrier-tempo.fr (Calendrier Tempo EDF)</managingEditor>\n"
         '    <atom:link href="https://www.calendrier-tempo.fr/feed.xml" rel="self" type="application/rss+xml"/>\n'
         + "\n".join(items) + "\n"
         "  </channel>\n"
@@ -944,6 +1034,52 @@ async def rss_feed():
     )
     return PlainTextResponse(content=xml, media_type="application/rss+xml",
                              headers={"Cache-Control": "public, max-age=3600"})
+
+
+# === SEO : IndexNow protocol — notification instantanée Bing/Yandex ===
+_INDEXNOW_KEY = os.getenv("INDEXNOW_KEY", "calendrier-tempo-indexnow-key")
+
+
+@app.get(f"/{_INDEXNOW_KEY}.txt", response_class=PlainTextResponse)
+async def indexnow_key_file():
+    """Fichier de vérification IndexNow (requis par le protocole)."""
+    return PlainTextResponse(content=_INDEXNOW_KEY, media_type="text/plain")
+
+
+@app.get("/api/indexnow/ping")
+async def indexnow_ping(url: str = None):
+    """Ping IndexNow pour notifier Bing/Yandex d'une mise à jour.
+
+    Usage admin : GET /api/indexnow/ping?url=https://www.calendrier-tempo.fr/blog/slug
+    Si url absent, notifie les pages principales.
+    """
+    import httpx
+
+    host = "www.calendrier-tempo.fr"
+    if url:
+        urls_to_submit = [url]
+    else:
+        urls_to_submit = [
+            f"https://{host}/",
+            f"https://{host}/calendrier",
+            f"https://{host}/blog/",
+            f"https://{host}/alertes",
+            f"https://{host}/a-propos",
+        ]
+
+    results = []
+    async with httpx.AsyncClient(timeout=10) as client:
+        for u in urls_to_submit:
+            try:
+                resp = await client.get(
+                    "https://api.indexnow.org/indexnow",
+                    params={"url": u, "key": _INDEXNOW_KEY},
+                )
+                results.append({"url": u, "status": resp.status_code})
+            except Exception as e:
+                results.append({"url": u, "error": str(e)})
+
+    return {"submitted": len(results), "results": results}
 
 
 # ================================================================

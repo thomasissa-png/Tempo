@@ -3,6 +3,7 @@ title: Chauffage et jour rouge Tempo : 10 astuces pour réduire la facture
 description: 10 astuces concrètes pour chauffer votre logement sans exploser la facture lors des jours rouges Tempo EDF. Programmation, inertie thermique, alternatives au tout-électrique.
 publish_date: 2026-03-24
 keywords: chauffage jour rouge tempo, économie chauffage tempo, réduire consommation jour rouge, astuces tempo edf chauffage
+cluster: equipements
 ---
 Le chauffage représente le premier poste de dépense électrique des foyers français en hiver. Avec l'offre Tempo EDF, les 22 jours rouges de la saison transforment ce poste en véritable gouffre financier : **0,7060 euros/kWh en heures pleines**, soit plus de quatre fois le tarif d'un jour bleu. Pour un logement de 80 m2 chauffé à l'électricité, une journée rouge non anticipée peut coûter plus de 16 euros rien qu'en chauffage. Sur l'ensemble de la saison, la différence entre un foyer qui subit les jours rouges et un foyer qui les anticipe peut dépasser **300 euros**. Pour comprendre quand et pourquoi EDF déclenche ces journées, consultez notre [guide complet des jours rouges Tempo](/blog/jours-rouges-tempo-guide).
 
