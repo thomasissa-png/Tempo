@@ -211,10 +211,24 @@ async def _refresh_predictions(trigger: str, send_sms: bool = False) -> int:
 
     cycle_id = f"{date.today().isoformat()}_{trigger}_{uuid.uuid4().hex[:8]}"
 
-    # 1. Météo fraîche
+    # 1. Météo fraîche — avec retry en cas d'échec transitoire
+    #    Si les deux sources (MF + Open-Meteo) échouent, on retente 2 fois
+    #    avec un délai exponentiel pour gérer les pannes temporaires.
     forecasts = await fetch_forecast_extended()
     if not forecasts:
-        logger.warning(f"[{trigger}] Pas de données météo, recalcul reporté")
+        for retry in range(1, 3):
+            delay = 30 * retry  # 30s, 60s
+            logger.warning(
+                f"[{trigger}] Pas de données météo (tentative {retry}/2), "
+                f"retry dans {delay}s"
+            )
+            await asyncio.sleep(delay)
+            forecasts = await fetch_forecast_extended()
+            if forecasts:
+                logger.info(f"[{trigger}] Météo récupérée au retry {retry}")
+                break
+    if not forecasts:
+        logger.error(f"[{trigger}] Pas de données météo après 3 tentatives, recalcul reporté")
         return 0
 
     # 2. Score RTE + Vigilance Météo France (en parallèle)

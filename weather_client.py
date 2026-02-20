@@ -122,7 +122,11 @@ async def fetch_forecast() -> list[dict]:
         logger.info(f"[Meteo] Fallback Open-Meteo OK — {len(result)} jours recuperes")
         return result
 
-    logger.error("[Meteo] Aucune source meteo disponible — pas de predictions ce cycle")
+    logger.error(
+        "[Meteo] ALERTE: Aucune source meteo disponible "
+        "(Meteo France ET Open-Meteo en echec) — pas de predictions ce cycle. "
+        "Verifier la connectivite reseau et les cles API."
+    )
     return []
 
 
@@ -279,6 +283,7 @@ def _fetch_all_cities_sync(arome_auth: dict[str, str],
         return {}
 
     city_forecasts = {}
+    city_errors = []
     for city in Config.WEATHER_CITIES:
         try:
             data = _fetch_city_sync(city, arome, arpege)
@@ -286,11 +291,23 @@ def _fetch_all_cities_sync(arome_auth: dict[str, str],
                 city_forecasts[city["name"]] = data
             else:
                 logger.warning(f"[Meteo] Pas de donnees pour {city['name']}")
+                city_errors.append(city["name"])
         except Exception as e:
             logger.warning(f"[Meteo] Erreur {city['name']}: {e}")
+            city_errors.append(city["name"])
 
     if not city_forecasts:
-        logger.warning("[Meteo] Aucune ville n'a repondu via meteole — fallback Open-Meteo")
+        # Toutes les villes ont échoué — erreur structurelle probable
+        # (ex: mise à jour meteole cassée, API Météo France en panne).
+        # Forcer l'ouverture du circuit breaker pour basculer immédiatement
+        # sur Open-Meteo au lieu d'attendre 5 échecs successifs.
+        logger.error(
+            f"[Meteo] AUCUNE ville n'a repondu via meteole "
+            f"({len(city_errors)}/{len(Config.WEATHER_CITIES)} echecs) — "
+            f"circuit breaker force OPEN, fallback Open-Meteo"
+        )
+        _meteo_breaker._failures = _meteo_breaker._threshold
+        _meteo_breaker.record_failure()
         return {}
 
     # Fix P2-10 audit : seuil minimum de 5 villes pour une moyenne fiable
@@ -394,7 +411,7 @@ def _fetch_indicator(client, model_name: str, param_key: str,
             results[step_idx][param_key] = value
 
     except Exception as e:
-        logger.debug(f"[Meteo] {model_name}/{param_key} ({lat},{lon}): {e}")
+        logger.warning(f"[Meteo] {model_name}/{param_key} ({lat},{lon}): {e}")
 
 
 def _extract_values_from_df(df, param_key: str, model_name: str) -> dict[int, float]:
@@ -416,13 +433,36 @@ def _extract_values_from_df(df, param_key: str, model_name: str) -> dict[int, fl
 
     values = {}
 
+    def _safe_float(val) -> float | None:
+        """Convertit une valeur en float de manière sûre.
+
+        Résiste aux Timedelta, Timestamp, NaT et autres types non-numériques
+        que meteole peut injecter selon sa version.
+        """
+        if val is None:
+            return None
+        if not pd.notna(val):
+            return None
+        # Rejeter explicitement les types temporels (Timedelta, Timestamp, NaT)
+        if isinstance(val, (pd.Timedelta, pd.Timestamp)):
+            return None
+        try:
+            f = float(val)
+            if math.isnan(f) or math.isinf(f):
+                return None
+            return f
+        except (ValueError, TypeError):
+            return None
+
     try:
         # Strategie 1 : DataFrame avec index temporel et colonnes spatiales
         # Typique de meteole : lignes = timesteps, colonnes = grid points
         if hasattr(df, 'shape') and len(df.shape) == 2:
-            # Fix meteole v0.2.5 : filtrer les colonnes non-numeriques
-            # (Timestamp, datetime, str) pour eviter float() sur un Timestamp
-            numeric_df = df.select_dtypes(include="number")
+            # Fix meteole v0.2.5+ : filtrer les colonnes non-numeriques
+            # (Timestamp, datetime, str, timedelta) pour eviter float() qui echoue.
+            # Exclure explicitement timedelta64 — pandas le considere "numeric"
+            # mais float(Timedelta) leve TypeError.
+            numeric_df = df.select_dtypes(include="number", exclude=["timedelta", "timedelta64"])
             if numeric_df.empty:
                 logger.debug(
                     f"[Meteo] Aucune colonne numerique pour {model_name}/{param_key}. "
@@ -435,24 +475,23 @@ def _extract_values_from_df(df, param_key: str, model_name: str) -> dict[int, fl
             if ncols == 1:
                 # Une seule colonne (point unique) — ideal pour notre cas
                 for i in range(nrows):
-                    val = numeric_df.iloc[i, 0]
-                    if pd.notna(val):
-                        values[i] = float(val)
+                    f = _safe_float(numeric_df.iloc[i, 0])
+                    if f is not None:
+                        values[i] = f
             elif ncols > 1:
                 # Plusieurs colonnes — prendre la moyenne (petit voisinage)
                 for i in range(nrows):
-                    row_values = [float(v) for v in numeric_df.iloc[i] if pd.notna(v)]
+                    row_values = [f for v in numeric_df.iloc[i]
+                                  if (f := _safe_float(v)) is not None]
                     if row_values:
                         values[i] = sum(row_values) / len(row_values)
 
         # Strategie 2 : Series pandas
         elif hasattr(df, 'values') and not hasattr(df, 'shape'):
             for i, val in enumerate(df.values):
-                if pd.notna(val):
-                    try:
-                        values[i] = float(val)
-                    except (ValueError, TypeError):
-                        continue
+                f = _safe_float(val)
+                if f is not None:
+                    values[i] = f
 
     except Exception as e:
         logger.warning(
