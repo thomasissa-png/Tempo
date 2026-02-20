@@ -374,10 +374,11 @@ class TestBudgetUrgencyBoost:
         """Le boost ne doit pas se déclencher trop tôt (< 70)."""
         with open(os.path.join(ROOT, "predictor.py")) as f:
             source = f.read()
-        # Vérifier que le seuil est >= 70
-        match = re.search(r'budget_score\s*>=\s*(\d+)', source)
+        # Vérifier que le seuil d'urgency_boost est >= 70
+        # On cherche spécifiquement la ligne du boost (urgency_boost)
+        match = re.search(r'(?:urgency|boost).*budget_score\s*>=\s*(\d+)|budget_score\s*>=\s*(\d+).*\n.*urgency_boost', source)
         assert match, "Seuil de déclenchement du boost non trouvé"
-        threshold = int(match.group(1))
+        threshold = int(match.group(1) or match.group(2))
         assert threshold >= 70, (
             f"Seuil de boost = {threshold}, trop bas ! "
             f"Le boost ne devrait se déclencher qu'en urgence réelle (>= 70)."

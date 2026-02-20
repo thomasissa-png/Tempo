@@ -1,4 +1,12 @@
-"""Algorithme de prediction Tempo v3.4 — Meteo France + C_nette proxy.
+"""Algorithme de prediction Tempo v3.5 — Meteo France + C_nette proxy.
+
+v3.5 (fev 2026) : 3 améliorations calibrées sur backtest 2365 jours.
+- A : Seuil BLANC dynamique par température (courbe piecewise 38→50 pts)
+      Réduit les 190 FP BLEU→BLANC concentrés à 5-11°C
+- B : Poids C_nette 14→18%, clustering 6→2% (C_nette gap 9 pts ROUGE vs BLANC
+      dans zone critique 2-7°C, clustering non-discriminant)
+- C : Garde calendaire densité ROUGE Nov-Déc (réduction 60%)
+      Réduit les 35 FP ROUGE de décembre (densité non-informative début saison)
 
 v3.4 (fev 2026) : 7 améliorations audit.
 - T1 : Seuil BLANC 35→40 + garde thermique BLANC (atténuation >12°C, blocage >16°C)
@@ -35,13 +43,13 @@ v3.1 (fev 2026) : 3 améliorations inspirées de l'algorithme RTE officiel.
        de jours ROUGE en fin de période.
 
 Facteurs de scoring (sur 100, poids ajustables) :
-  1. Temperature nationale ponderee (9 villes, poids 40%)
-  2. Pression budgetaire avec profil mensuel (12%)
-  3. Jour de la semaine + jours feries (10%)
-  4. Gradient thermique (chute de temperature J/J-1) (8%)
-  5. Clustering : continuite des jours rouges consecutifs (12%)
-  6. Stress réseau : RTE J+1 réel ou C_nette proxy J+2+ (10%)
-  7. Pression atmospherique (anticyclone hivernal = risque accru) (8%)
+  1. Temperature nationale ponderee (9 villes, poids 38%)
+  2. Pression budgetaire avec profil mensuel (18%)
+  3. Jour de la semaine + jours feries (8%)
+  4. Gradient thermique (chute de temperature J/J-1) (6%)
+  5. Clustering : continuite des jours rouges consecutifs (2%)
+  6. Stress réseau : RTE J+1 réel ou C_nette proxy J+2+ (18%)
+  7. Pression atmospherique (anticyclone hivernal = risque accru) (10%)
 """
 
 import logging
@@ -547,9 +555,12 @@ def predict_day(target_date: date, weather: dict | None = None,
         seuil_rouge_effectif -= season_reduction
 
     # Decision scoring classique
+    # v3.5 A : seuil BLANC dynamique par température (190 FP BLEU→BLANC à 5-11°C)
+    seuil_blanc_effectif = round(_piecewise_linear(
+        temp_moy, Config.SEUIL_BLANC_TEMP_CURVE), 1)
     if score_risque >= seuil_rouge_effectif and remaining["ROUGE"] > 0:
         couleur = "ROUGE"
-    elif score_risque >= Config.SEUIL_BLANC and remaining["BLANC"] > 0:
+    elif score_risque >= seuil_blanc_effectif and remaining["BLANC"] > 0:
         couleur = "BLANC"
     else:
         couleur = "BLEU"
@@ -600,7 +611,7 @@ def predict_day(target_date: date, weather: dict | None = None,
         #     Garde thermique relachee (< 8°C) car le scoring confirme la tendance
         elif (ml_pred == "ROUGE" and couleur != "ROUGE"
                 and remaining["ROUGE"] > 0
-                and score_risque >= Config.SEUIL_BLANC
+                and score_risque >= seuil_blanc_effectif
                 and temp_moy < 8
                 and (target_date.month >= 11 or target_date.month <= 3)):
             couleur = "ROUGE"
@@ -676,6 +687,12 @@ def predict_day(target_date: date, weather: dict | None = None,
                 _density_reduction = 0  # aucune réduction au-dessus de 10°C
             elif temp_moy > 7:
                 _density_reduction *= max(0, (10 - temp_moy) / 3)  # atténuation 7-10°C
+            # v3.5 C : garde calendaire Nov-Déc — la densité progressive est
+            # non-informative en début de saison (22 ROUGE sur ~90 éligibles = 24%
+            # qui trigger la réduction mais les vagues de froid n'ont pas commencé).
+            # Décembre = 35 FP ROUGE sur 83 total. Réduction de 60% en Nov-Déc.
+            if target_date.month in (11, 12):
+                _density_reduction *= 0.4
             if _density_reduction > 0:
                 _effective_threshold = seuil_rouge_effectif - _density_reduction
                 if score_risque >= _effective_threshold:
@@ -709,7 +726,7 @@ def predict_day(target_date: date, weather: dict | None = None,
             elif temp_moy > 12:
                 _wh_reduction *= max(0, (16 - temp_moy) / 4)
             if _wh_reduction > 0:
-                _eff_blanc = Config.SEUIL_BLANC - _wh_reduction
+                _eff_blanc = seuil_blanc_effectif - _wh_reduction
                 if score_risque >= _eff_blanc:
                     couleur = "BLANC"
                     raison_ml += f" · Pression densité BLANC ({_wh_density:.0%})"

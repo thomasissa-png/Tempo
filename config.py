@@ -92,32 +92,35 @@ class Config:
     # Les jours bleus = total saison - rouges - blancs (varie si annee bissextile)
     # Calculé dynamiquement dans tempo_client.get_blue_days_total()
 
-    # --- Poids algorithme v3.4 (avec modulation saisonnière T4) ---
+    # --- Poids algorithme v3.5 (avec modulation saisonnière T4) ---
     # Poids par défaut (Jan-Mar = pic saison). En Nov-Déc, predict_day()
     # applique une modulation saisonnière qui réduit le budget et augmente
     # la température (le budget n'est pas encore discriminant en début de saison).
+    # v3.5 B : C_nette 14→18% (gap 9 pts ROUGE vs BLANC dans zone 2-7°C),
+    #          clustering 6→2% (signal faible, redistribué vers C_nette).
     DEFAULT_WEIGHTS = {
         "temperature": 0.38,
         "jours_restants": 0.18,
         "jour_semaine": 0.08,
         "gradient_thermique": 0.06,
-        "clustering": 0.06,
-        "consommation_rte": 0.14,
+        "clustering": 0.02,
+        "consommation_rte": 0.18,
         "pression": 0.10,
     }
 
-    # T4 v3.4 : modulation saisonnière Nov-Déc.
+    # T4 v3.5 : modulation saisonnière Nov-Déc.
     # En début de saison, le budget est quasi-plein (22 ROUGE sur 22),
     # donc budget_score est toujours bas et non-discriminant.
     # Seul le froid extrême déclenche du ROUGE → on booste la température.
     # La différence est redistribuée de budget (-8%) vers température (+6%) et c_nette (+2%).
+    # v3.5 B : clustering 2% (aligné sur DEFAULT_WEIGHTS), C_nette 20%.
     WEIGHTS_EARLY_SEASON = {
         "temperature": 0.44,        # +6 : seul signal discriminant en Nov-Déc
         "jours_restants": 0.10,     # -8 : non-discriminant début de saison
         "jour_semaine": 0.08,
         "gradient_thermique": 0.06,
-        "clustering": 0.06,
-        "consommation_rte": 0.16,   # +2 : C_nette aide à séparer ROUGE/BLANC
+        "clustering": 0.02,         # v3.5 B : aligné sur DEFAULT_WEIGHTS
+        "consommation_rte": 0.20,   # v3.5 B : +4% C_nette pour discrimination ROUGE/BLANC
         "pression": 0.10,
     }
 
@@ -162,6 +165,19 @@ class Config:
     # --- Seuils de scoring ---
     SEUIL_ROUGE = 65   # seuil standard (abaisse dynamiquement si froid — voir predictor)
     SEUIL_BLANC = 40   # v3.4 : remonté de 35→40 (audit: 316 FP BLANC étaient BLEU)
+
+    # --- Seuil BLANC dynamique v3.5 (calibré sur backtest 2365 jours) ---
+    # Le backtest montre 190 BLEU→BLANC FP, concentrés à 5-11°C (score 40-50).
+    # Un seuil unique ne distingue pas les jours doux (>10°C) des jours frais (<7°C)
+    # où BLANC est légitime. Courbe continue température → seuil BLANC.
+    # Plus la température est haute, plus le seuil est strict.
+    SEUIL_BLANC_TEMP_CURVE = [
+        (0, 38),    # grand froid → seuil bas (BLANC facile à déclencher)
+        (5, 40),    # froid → seuil standard
+        (8, 43),    # frais-doux → seuil rehaussé (+3 pts)
+        (11, 47),   # doux → seuil strict (+7 pts)
+        (14, 50),   # très doux → seuil très strict (+10 pts)
+    ]
 
     # --- Seuil ROUGE dynamique v3.2 (calibré sur backtest 2365 jours) ---
     # Le backtest montre 71% de ROUGE manqués dans la bande 3-5°C (scores 59-64).

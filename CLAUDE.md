@@ -34,7 +34,7 @@
 ### Prediction Pipeline
 1. **Weather data** (`weather_client.py`): 9-city weighted average from Meteo France API
 2. **RTE consumption** (`rte_client.py`): National consumption forecast + nuclear availability from RTE API
-3. **Classical scoring** (`predictor.py`): 7 weighted sub-scores (temperature 40%, budget 12%, weekday 10%, gradient 8%, clustering 12%, RTE 10%, pressure 8%)
+3. **Classical scoring** (`predictor.py`): 7 weighted sub-scores (temperature 38%, budget 18%, weekday 8%, gradient 6%, clustering 2%, C_nette 18%, pressure 10%)
 4. **ML scoring** (`ml_scorer.py`): GradientBoosting with 33 features, probability thresholds
 5. **Ensemble**: Classical + ML combined for final prediction
 
@@ -57,7 +57,9 @@
 
 ### Configuration
 - `config.py`: All thresholds, weights, city definitions, API keys
-- Dynamic RED threshold: 65 normally, 55 if temp<7°C, 50 if temp<4°C (requires budget_score>=50)
+- Dynamic RED threshold: piecewise-linear curve (42@-5°C→65@10°C), requires budget_score>=40
+- Dynamic BLANC threshold: piecewise-linear curve (38@0°C→50@14°C) — stricter when warm to reduce BLEU→BLANC FP
+- Density override ROUGE attenuated 60% in Nov-Dec (non-informative early season)
 
 ### Budget Pressure Mechanics (CRITICAL)
 - `predict_range` iterates J+2 → J+15 chronologically with a `sim_remaining` counter
