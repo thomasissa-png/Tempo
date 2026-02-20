@@ -276,16 +276,21 @@ async def _refresh_predictions(trigger: str, send_sms: bool = False) -> int:
 
 
 def _store_weather_cache(forecasts: list[dict]) -> None:
-    """Stocke les previsions meteo dans weather_cache pour l'analyse ML.
+    """Stocke les previsions meteo dans weather_cache + weather_forecast_log.
 
     Audit ML fev 2026 : le weather_cache n'etait plus alimente apres la
     migration vers Meteo France, privant le learning journal de temperature
     reelle et de pression atmospherique (tout etait 0 ou NULL).
+
+    Migration v18 : alimente aussi weather_forecast_log pour conserver
+    l'historique des previsions par horizon (J+2..J+5). Permet de mesurer
+    la degradation des previsions meteo et de faire des backtests realistes.
     """
     from database import get_db
     conn = get_db()
     try:
         now_iso = datetime.now().isoformat()
+        today_str = date.today().isoformat()
         for f in forecasts:
             d = f.get("date")
             if not d:
@@ -299,6 +304,37 @@ def _store_weather_cache(forecasts: list[dict]) -> None:
                  f.get("pressure"), f.get("humidity"), f.get("wind_speed"),
                  f.get("source", "api"), now_iso),
             )
+
+            # Historique par horizon (J+2..J+5) pour backtests
+            try:
+                target = date.fromisoformat(d)
+                horizon = (target - date.today()).days
+                if 2 <= horizon <= 5:
+                    conn.execute(
+                        """INSERT INTO weather_forecast_log
+                           (target_date, forecast_date, horizon_days,
+                            temp_min, temp_max, temp_moy,
+                            pressure, humidity, wind_speed,
+                            source, fetched_at)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                           ON CONFLICT(target_date, forecast_date) DO UPDATE SET
+                               horizon_days = excluded.horizon_days,
+                               temp_min = excluded.temp_min,
+                               temp_max = excluded.temp_max,
+                               temp_moy = excluded.temp_moy,
+                               pressure = excluded.pressure,
+                               humidity = excluded.humidity,
+                               wind_speed = excluded.wind_speed,
+                               source = excluded.source,
+                               fetched_at = excluded.fetched_at""",
+                        (d, today_str, horizon,
+                         f.get("temp_min"), f.get("temp_max"), f.get("temp_moy"),
+                         f.get("pressure"), f.get("humidity"), f.get("wind_speed"),
+                         f.get("source", "api"), now_iso),
+                    )
+            except (ValueError, TypeError):
+                pass  # date invalide, on skip le log
+
         conn.commit()
     except Exception as e:
         logger.debug(f"[Weather Cache] Erreur stockage: {e}")

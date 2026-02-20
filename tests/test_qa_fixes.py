@@ -347,13 +347,40 @@ class TestMigrationV8:
         finally:
             conn.close()
 
+    def test_db_has_temp_moy_prevue_column(self):
+        """La migration v18 a ajouté temp_moy_prevue dans predictions."""
+        from database import get_db
+        conn = get_db()
+        try:
+            info = conn.execute("PRAGMA table_info(predictions)").fetchall()
+            columns = [row[1] for row in info]
+            assert "temp_moy_prevue" in columns
+        finally:
+            conn.close()
+
+    def test_db_has_weather_forecast_log_table(self):
+        """La migration v18 a créé la table weather_forecast_log."""
+        from database import get_db
+        conn = get_db()
+        try:
+            info = conn.execute(
+                "PRAGMA table_info(weather_forecast_log)"
+            ).fetchall()
+            columns = [row[1] for row in info]
+            assert "target_date" in columns
+            assert "forecast_date" in columns
+            assert "horizon_days" in columns
+            assert "temp_moy" in columns
+        finally:
+            conn.close()
+
     def test_db_version_is_current(self):
         """La version de la DB est à jour après migration."""
         from database import get_db
         conn = get_db()
         try:
             version = conn.execute("PRAGMA user_version").fetchone()[0]
-            assert version == 17
+            assert version == 18
         finally:
             conn.close()
 

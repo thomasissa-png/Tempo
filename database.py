@@ -750,6 +750,47 @@ def init_db():
         conn.commit()
         logger.info("Migration v17 appliquee (index couverture predictions)")
 
+    if version < 18:
+        # Migration v18 — Historique des prévisions météo par horizon
+        # Conserve chaque snapshot météo (J+2..J+5) pour chaque date cible,
+        # permettant de mesurer la dégradation des prévisions par horizon
+        # et de réaliser des backtests réalistes (vs "météo parfaite").
+        conn.execute('''CREATE TABLE IF NOT EXISTS weather_forecast_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            target_date TEXT NOT NULL,
+            forecast_date TEXT NOT NULL,
+            horizon_days INTEGER NOT NULL,
+            temp_min REAL,
+            temp_max REAL,
+            temp_moy REAL,
+            pressure REAL,
+            humidity REAL,
+            wind_speed REAL,
+            source TEXT,
+            fetched_at TEXT NOT NULL
+        )''')
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_wfl_target_forecast "
+            "ON weather_forecast_log(target_date, forecast_date)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_wfl_target "
+            "ON weather_forecast_log(target_date)"
+        )
+
+        # Ajouter temp_moy_prevue à predictions (la feature #1 du scoring,
+        # inexplicablement absente jusqu'ici)
+        try:
+            conn.execute(
+                "ALTER TABLE predictions ADD COLUMN temp_moy_prevue REAL"
+            )
+        except sqlite3.OperationalError:
+            logger.debug("Migration v18: colonne temp_moy_prevue existe deja")
+
+        conn.execute("PRAGMA user_version = 18")
+        conn.commit()
+        logger.info("Migration v18 appliquee (weather_forecast_log + temp_moy_prevue)")
+
     # Poids initiaux si vide
     existing = conn.execute("SELECT COUNT(*) as c FROM weights_history").fetchone()
     if existing["c"] == 0:

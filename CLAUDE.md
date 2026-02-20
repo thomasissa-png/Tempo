@@ -45,8 +45,8 @@
 - `predictor.py` stores multi-horizon predictions (J+1 through J+5)
 
 ### Database
-- SQLite (`tempo.db`), currently at migration version 15
-- Key tables: `predictions`, `actuals`, `weather`, `rte_daily`, `weights`, `subscribers`
+- SQLite (`tempo.db`), currently at migration version 18
+- Key tables: `predictions`, `actuals`, `weather_cache`, `weather_forecast_log`, `rte_daily`, `weights`, `subscribers`
 
 ### ML Model
 - GradientBoosting, 33 features, trained on 1827 samples (seasons 2019-2026)
@@ -71,6 +71,13 @@
 - **Density override progressive** : quand la densité RED (remaining/eligible) est élevée, le seuil ROUGE effectif est abaissé proportionnellement. Calibration : densité 20% → pas de réduction, 35% → -3 pts, 50% → -10 pts, 70% → -22 pts. Cela permet de capturer les jours « moyennement froids » (5-7°C) quand la densité l'exige, sans forcer ROUGE sur les jours doux (≥ 8°C).
 - **Density override critique** (slack <= 1): when eligible - remaining <= 1, temperature is irrelevant — EDF MUST place these days. Override forces ROUGE/BLANC BEFORE EDF rules (which still enforce weekends/holidays/R1-R4). Slack adapts naturally to any eligible count (avoids fixed-threshold bugs where density dips mid-sequence). Uses `_count_eligible_days` for exact slack calculation.
 - **ML budget guard**: ML BLANC→BLEU filter disabled when budget_score >= 50 (prevents ML from overriding budget-driven BLANC predictions)
+
+### Weather Forecast History (v18)
+- **`weather_forecast_log`** table: stores each weather forecast snapshot for J+2..J+5, keyed by (target_date, forecast_date)
+- Allows measuring forecast degradation by horizon (J+5 said 7°C, J+2 corrected to 2°C)
+- Enables realistic backtests using actual J+N weather forecasts instead of "perfect weather"
+- **`temp_moy_prevue`** column added to `predictions` table (v18): stores the 9-city weighted average temperature used for scoring each prediction
+- `weather_cache` continues to store the latest forecast per date (used by current scoring pipeline)
 
 ### Weather Fallback Chain
 - Primary: Meteo France via meteole (AROME + ARPEGE, 9 cities)
