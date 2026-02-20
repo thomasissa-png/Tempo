@@ -935,17 +935,18 @@ class TestDensiteProgressiveOverride:
             f"got {r['couleur_predite']} (score={r['score_risque']})"
         )
 
-    def test_densite_44pct_8c_rouge_v32(self):
-        """Densité 44% + 8°C → ROUGE en v3.2 (courbe continue + densité agressive).
+    def test_densite_44pct_8c_pas_rouge_v34(self):
+        """Densité 44% + 8°C → PAS ROUGE en v3.4 (anti-spirale T3 + garde P4).
 
-        v3.2 : la courbe temp→seuil donne ~62 à 8°C (vs 65 avant),
-        et la densité agressive (-12 pts à 44%) abaisse le seuil à ~50.
-        Score ~55 à 8°C → ROUGE légitime quand la densité l'exige.
+        v3.4 : le cap budget à >8°C (T3) réduit la contribution budget de 50%,
+        et la garde thermique P4 atténue la density_reduction à >7°C.
+        Résultat : 8°C n'est plus forcé ROUGE même avec densité 44% —
+        c'est le comportement voulu (audit: les FP à 7-9°C étaient le 1er problème).
         """
         r = predict(date(2026, 2, 17), temp_moy=8.0,
                     remaining={"ROUGE": 14, "BLANC": 13, "BLEU": 170})
-        assert r["couleur_predite"] == "ROUGE", (
-            f"Densité 44% + 8°C devrait être ROUGE en v3.2, "
+        assert r["couleur_predite"] != "ROUGE", (
+            f"Densité 44% + 8°C ne devrait PAS être ROUGE en v3.4 (anti-spirale), "
             f"got {r['couleur_predite']} (score={r['score_risque']})"
         )
 

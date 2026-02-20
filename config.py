@@ -92,20 +92,33 @@ class Config:
     # Les jours bleus = total saison - rouges - blancs (varie si annee bissextile)
     # Calculé dynamiquement dans tempo_client.get_blue_days_total()
 
-    # --- Poids algorithme v3.3 (recalibrés backtest 2365 jours) ---
-    # Audit backtest v3.2 : le budget_score est le 1er discriminant entre
-    # ROUGE TP (mean=59) et ROUGE FN (mean=39) → écart 20 pts.
-    # Mais à 12% de poids, cet écart ne produit que 2.4 pts sur le score final.
-    # Le clustering (12%) a un écart de 0 pts entre TP et FN → poids mort.
-    # Rééquilibrage : budget 12→18%, clustering 12→6%, c_nette 10→12%.
+    # --- Poids algorithme v3.4 (avec modulation saisonnière T4) ---
+    # Poids par défaut (Jan-Mar = pic saison). En Nov-Déc, predict_day()
+    # applique une modulation saisonnière qui réduit le budget et augmente
+    # la température (le budget n'est pas encore discriminant en début de saison).
     DEFAULT_WEIGHTS = {
-        "temperature": 0.38,        # -2  : signal dominant mais légèrement réduit
-        "jours_restants": 0.18,     # +6  : 1er discriminant FN/TP (écart 20 pts)
-        "jour_semaine": 0.08,       # -2  : signal stable
-        "gradient_thermique": 0.06, # -2  : écart faible entre couleurs
-        "clustering": 0.06,         # -6  : écart 0 en backtest (utile seulement en predict_range)
-        "consommation_rte": 0.14,   # +4  : C_nette proxy discrimine via le vent
-        "pression": 0.10,           # +2  : signal conditionnel (anticyclone+froid)
+        "temperature": 0.38,
+        "jours_restants": 0.18,
+        "jour_semaine": 0.08,
+        "gradient_thermique": 0.06,
+        "clustering": 0.06,
+        "consommation_rte": 0.14,
+        "pression": 0.10,
+    }
+
+    # T4 v3.4 : modulation saisonnière Nov-Déc.
+    # En début de saison, le budget est quasi-plein (22 ROUGE sur 22),
+    # donc budget_score est toujours bas et non-discriminant.
+    # Seul le froid extrême déclenche du ROUGE → on booste la température.
+    # La différence est redistribuée de budget (-8%) vers température (+6%) et c_nette (+2%).
+    WEIGHTS_EARLY_SEASON = {
+        "temperature": 0.44,        # +6 : seul signal discriminant en Nov-Déc
+        "jours_restants": 0.10,     # -8 : non-discriminant début de saison
+        "jour_semaine": 0.08,
+        "gradient_thermique": 0.06,
+        "clustering": 0.06,
+        "consommation_rte": 0.16,   # +2 : C_nette aide à séparer ROUGE/BLANC
+        "pression": 0.10,
     }
 
     # --- Profil mensuel de distribution des jours rouges ---
@@ -148,7 +161,7 @@ class Config:
 
     # --- Seuils de scoring ---
     SEUIL_ROUGE = 65   # seuil standard (abaisse dynamiquement si froid — voir predictor)
-    SEUIL_BLANC = 35   # abaisse de 40 a 35
+    SEUIL_BLANC = 40   # v3.4 : remonté de 35→40 (audit: 316 FP BLANC étaient BLEU)
 
     # --- Seuil ROUGE dynamique v3.2 (calibré sur backtest 2365 jours) ---
     # Le backtest montre 71% de ROUGE manqués dans la bande 3-5°C (scores 59-64).

@@ -1,4 +1,13 @@
-"""Algorithme de prediction Tempo v3.3 — Meteo France + C_nette proxy.
+"""Algorithme de prediction Tempo v3.4 — Meteo France + C_nette proxy.
+
+v3.4 (fev 2026) : 7 améliorations audit.
+- T1 : Seuil BLANC 35→40 + garde thermique BLANC (atténuation >12°C, blocage >16°C)
+- T2 : C_NETTE_SCORE_POINTS recalibrés (+2.4 GW shift après piecewise thermal)
+- T3 : Anti-spirale budget (cap contribution 50% si temp >8°C)
+- T4 : Poids saisonniers Nov-Déc (température +6%, budget -8%)
+- T5 : Micro-ML zone de confusion [50-70] (GradientBoosting binaire ROUGE/non-ROUGE)
+- T6 : LOSOCV + backtest multi-horizon avec bruit gaussien
+- T7 : Infrastructure RTE réel (données D-1 lag dans backtest)
 
 v3.3 (fev 2026) : audit backtest — corrections structurelles.
 - P1+P2 : Rééquilibrage poids (budget 12→18%, clustering 12→6%, c_nette 10→14%)
@@ -209,15 +218,18 @@ _PRESSURE_SCORE_POINTS = [
 # À 2°C / vent faible (C_nette ~70 GW), le score monte fortement (>90).
 # À 7°C / vent fort (C_nette ~52 GW), le score baisse (<50) — le vent réduit
 # le stress réseau et c'est l'information que la température seule ne capte pas.
+# v3.4 T2 : recalibré +2.4 GW après passage base_load 33.4→35.8 (piecewise thermal)
+# Chaque point est décalé de +2.4 GW pour conserver la même correspondance
+# température → score qu'avant le changement de modèle thermique.
 _C_NETTE_SCORE_POINTS = [
-    (35, 5),     # 35 GW : très faible stress (inter-saison / été)
-    (42, 15),    # 42 GW : faible (automne doux)
-    (48, 30),    # 48 GW : modéré
-    (53, 45),    # 53 GW : zone neutre basse
-    (57, 55),    # 57 GW : zone neutre haute (~8°C sans vent)
-    (61, 70),    # 61 GW : élevé (~6°C sans vent)
-    (66, 85),    # 66 GW : très élevé (~3°C sans vent)
-    (72, 95),    # 72 GW : extrême (vague de froid)
+    (37, 5),     # 37 GW : très faible stress (inter-saison / été)
+    (44, 15),    # 44 GW : faible (automne doux)
+    (50, 30),    # 50 GW : modéré
+    (55, 45),    # 55 GW : zone neutre basse
+    (59, 55),    # 59 GW : zone neutre haute (~8°C sans vent)
+    (63, 70),    # 63 GW : élevé (~6°C sans vent)
+    (68, 85),    # 68 GW : très élevé (~3°C sans vent)
+    (74, 95),    # 74 GW : extrême (vague de froid)
 ]
 
 
@@ -344,9 +356,13 @@ def predict_day(target_date: date, weather: dict | None = None,
         return _result(target_date, "BLEU", 0, 1.0, 0.0, 0.0,
                        weather, "Quotas rouge et blanc epuises")
 
-    # Poids courants
+    # Poids courants — T4 v3.4 : modulation saisonnière Nov-Déc
     if weights is None:
         weights = get_current_weights()
+    # En Nov-Déc, utiliser les poids early-season si les poids passés
+    # sont les poids par défaut (pas de poids custom appris)
+    if target_date.month in (11, 12) and weights == Config.DEFAULT_WEIGHTS:
+        weights = Config.WEIGHTS_EARLY_SEASON
     w_temp = weights.get("temperature", 0.27)
     w_budget = weights.get("jours_restants", 0.20)
     w_dow = weights.get("jour_semaine", 0.10)
@@ -440,10 +456,23 @@ def predict_day(target_date: date, weather: dict | None = None,
         cluster_score = _apply_factor_correction(cluster_score, factor_corrections, "clustering")
         rte_s = _apply_factor_correction(rte_s, factor_corrections, "rte")
 
+    # === T3 v3.4 : anti-spirale budget ===
+    # Quand temp > 8°C, le budget ne devrait pas pousser le score vers ROUGE.
+    # En saison douce (2025/2026), la non-consommation de ROUGE crée un budget_score
+    # élevé qui force ROUGE sur des jours doux → 23 FP. Le cap réduit la contribution
+    # du budget à 50% quand temp > 8°C et linéairement entre 6 et 8°C.
+    effective_budget_score = budget_score
+    if temp_moy > 8:
+        effective_budget_score = budget_score * 0.5
+    elif temp_moy > 6:
+        # Transition 6-8°C : de 100% à 50%
+        cap_factor = 1.0 - 0.5 * (temp_moy - 6) / 2
+        effective_budget_score = budget_score * cap_factor
+
     # === Score composite pondere ===
     base_score = (
         temp_score * w_temp
-        + budget_score * w_budget
+        + effective_budget_score * w_budget
         + dow_score * w_dow
         + gradient_score * w_gradient
         + cluster_score * w_cluster
@@ -524,6 +553,30 @@ def predict_day(target_date: date, weather: dict | None = None,
         couleur = "BLANC"
     else:
         couleur = "BLEU"
+
+    # === T5 v3.4 : Micro-ML zone de confusion [50-70] ===
+    # Quand le score_risque est dans la zone ambiguë, le micro-ML arbitre
+    # avec des features d'interaction (temp×vent, ratios budget, mois).
+    _in_confusion_zone = (50 <= score_risque <= 70 and _in_red_season
+                          and remaining["ROUGE"] > 0)
+    if _in_confusion_zone and couleur != "ROUGE":
+        try:
+            from confusion_zone_ml import predict_confusion_zone
+            _cz = predict_confusion_zone(
+                temp_moy=temp_moy, wind_speed=wind_speed,
+                pressure=pressure if pressure else 1015,
+                budget_score=budget_score,
+                c_nette_score=rte_s,
+                month=target_date.month,
+                weekday=target_date.weekday(),
+                remaining_rouge=remaining["ROUGE"],
+                remaining_blanc=remaining["BLANC"],
+            )
+            if _cz and _cz["is_rouge"]:
+                couleur = "ROUGE"
+                raison_ml = f" · CZ-ML:ROUGE(p={_cz['proba_rouge']:.0%})"
+        except Exception:
+            pass  # Modèle absent = on continue avec le scoring seul
 
     # === Ensemble ML : ajustement de la decision ===
     # Le ML utilise des seuils de probabilite optimises pour maximiser le
@@ -642,14 +695,19 @@ def predict_day(target_date: date, weather: dict | None = None,
             couleur = "BLANC"
             raison_ml += " · Densité critique BLANC"
         elif _wh_eligible > 0 and budget_score >= 20:
-            # v3.3 P5 : densité progressive BLANC avec garde budget.
-            # Audit : en début de saison (budget_score ~0), la densité BLANC
-            # s'activait et sur-prédisait BLANC sur des jours BLEU (9 FP en
-            # Nov 2025). La garde budget >= 20 empêche l'activation trop précoce.
+            # v3.4 T1 : densité progressive BLANC avec garde budget + garde thermique.
+            # Audit v3.3 : 316 FP BLANC étaient BLEU, souvent à 12-16°C.
+            # La garde thermique atténue la réduction au-dessus de 12°C
+            # et la bloque au-dessus de 16°C.
             _wh_density = remaining["BLANC"] / _wh_eligible
             _wh_reduction = _piecewise_linear(_wh_density, [
                 (0.15, 0), (0.25, 2), (0.40, 6), (0.60, 12),
             ])
+            # T1 : garde thermique BLANC — pas de forçage sur jours doux
+            if temp_moy > 16:
+                _wh_reduction = 0
+            elif temp_moy > 12:
+                _wh_reduction *= max(0, (16 - temp_moy) / 4)
             if _wh_reduction > 0:
                 _eff_blanc = Config.SEUIL_BLANC - _wh_reduction
                 if score_risque >= _eff_blanc:

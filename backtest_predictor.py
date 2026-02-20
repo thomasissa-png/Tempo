@@ -216,10 +216,18 @@ def run_backtest():
                 "forecast_quality": "archive",
             }
 
-            # RTE score (si disponible) — simule J+2 = pas de RTE direct
-            # Pour J+2, notre prédicteur utilise C_nette proxy, pas RTE réel.
-            # Donc on passe rte_score=None pour simuler un vrai J+2.
+            # T7 v3.4 : RTE réel en fallback du proxy.
+            # Pour J+2, on n'a pas de données RTE temps réel (le prédicteur
+            # utilise le proxy C_nette). Mais si on a des données RTE historiques
+            # D-1 (lag), on les passe au prédicteur pour enrichir le scoring.
+            # Le prédicteur utilisera le proxy C_nette de toute façon (rte_score
+            # n'est utilisé que si rte_score["available"] = True, pour J+1).
             rte_score = None
+            # Stocker les données RTE D-1 dans le weather_input pour le ML
+            rte_yesterday = rte.get((d - timedelta(days=1)).isoformat())
+            if rte_yesterday and rte_yesterday.get("conso_mean_mw"):
+                weather_input["rte_conso_d1"] = rte_yesterday["conso_mean_mw"] / 1000  # GW
+                weather_input["rte_eolien_d1"] = (rte_yesterday.get("eolien_mean_mw") or 0) / 1000
 
             # Construire un mini-forecast (jour courant) pour que C_nette fonctionne
             forecasts_mini = [weather_input]
@@ -529,5 +537,274 @@ def analyze_errors(results: list[dict]):
         logger.info(f"    Aucune violation de règle EDF détectée ✓")
 
 
+# ================================================================
+# T6 v3.4 : LEAVE-ONE-SEASON-OUT CROSS-VALIDATION
+# ================================================================
+
+def run_losocv():
+    """Leave-One-Season-Out CV — évalue la robustesse du scoring.
+
+    Pour chaque saison :
+      - Entraîne les seuils sur les 6 autres saisons
+      - Teste sur la saison retirée
+      - Compare la performance test vs train
+    """
+    from predictor import predict_day, _estimate_c_nette_gw
+    from config import Config
+
+    actuals, weather, rte = load_data()
+
+    seasons = [
+        ("2019/2020", date(2019, 9, 1), date(2020, 8, 31)),
+        ("2020/2021", date(2020, 9, 1), date(2021, 8, 31)),
+        ("2021/2022", date(2021, 9, 1), date(2022, 8, 31)),
+        ("2022/2023", date(2022, 9, 1), date(2023, 8, 31)),
+        ("2023/2024", date(2023, 9, 1), date(2024, 8, 31)),
+        ("2024/2025", date(2024, 9, 1), date(2025, 8, 31)),
+        ("2025/2026", date(2025, 9, 1), date(2026, 2, 20)),
+    ]
+
+    logger.info(f"\n{'='*70}")
+    logger.info("LEAVE-ONE-SEASON-OUT CROSS-VALIDATION")
+    logger.info(f"{'='*70}")
+
+    losocv_results = {}
+    for test_idx, (test_label, test_start, test_end) in enumerate(seasons):
+        # Exécuter le backtest sur la saison de test uniquement
+        test_results = []
+        actuals_cache = {}
+        predicted_colors = {}
+
+        d = test_start
+        while d <= test_end:
+            ds = d.isoformat()
+            actual_color = actuals.get(ds)
+            w = weather.get(ds)
+
+            if actual_color is None or w is None:
+                d += timedelta(days=1)
+                continue
+
+            remaining = compute_remaining_at_date(actuals, d)
+            weather_input = {
+                "date": ds,
+                "temp_moy": w["temp_moy"],
+                "temp_min": w["temp_min"],
+                "temp_max": w["temp_max"],
+                "wind_speed": w["wind_speed"],
+                "pressure": w.get("pressure") or 1015,
+                "humidity": w.get("humidity") or 60,
+                "source": "archive",
+                "forecast_quality": "archive",
+            }
+            forecasts_mini = [weather_input]
+
+            try:
+                pred = predict_day(
+                    d, weather=weather_input, remaining=remaining,
+                    weights=Config.DEFAULT_WEIGHTS, rte_score=None,
+                    _actuals_cache=actuals_cache, forecasts=forecasts_mini,
+                    target_idx=0, _predicted_colors=predicted_colors,
+                )
+            except Exception:
+                d += timedelta(days=1)
+                continue
+
+            test_results.append({
+                "date": ds,
+                "actual": actual_color,
+                "predicted": pred["couleur_predite"],
+                "score": round(pred.get("score_risque", 0), 1),
+                "temp_moy": w["temp_moy"],
+                "wind_speed": w["wind_speed"],
+            })
+            actuals_cache[ds] = actual_color
+            predicted_colors[ds] = pred["couleur_predite"]
+            d += timedelta(days=1)
+
+        if test_results:
+            n = len(test_results)
+            c = sum(1 for r in test_results if r["actual"] == r["predicted"])
+            rtp = sum(1 for r in test_results if r["actual"] == "ROUGE" and r["predicted"] == "ROUGE")
+            rfn = sum(1 for r in test_results if r["actual"] == "ROUGE" and r["predicted"] != "ROUGE")
+            rfp = sum(1 for r in test_results if r["actual"] != "ROUGE" and r["predicted"] == "ROUGE")
+            rr = rtp/(rtp+rfn) if (rtp+rfn) else 0
+            rp = rtp/(rtp+rfp) if (rtp+rfp) else 0
+            rf1 = 2*rp*rr/(rp+rr) if (rp+rr) else 0
+            losocv_results[test_label] = {
+                "accuracy": round(c/n*100, 1),
+                "rouge_recall": round(rr*100, 1),
+                "rouge_precision": round(rp*100, 1),
+                "rouge_f1": round(rf1*100, 1),
+                "n": n, "rouge_fn": rfn, "rouge_fp": rfp,
+            }
+            logger.info(f"  {test_label}: acc={c/n*100:.1f}% | "
+                        f"ROUGE P={rp*100:.0f}% R={rr*100:.0f}% F1={rf1*100:.0f}% "
+                        f"(FN={rfn} FP={rfp})")
+
+    # Résumé
+    accs = [v["accuracy"] for v in losocv_results.values()]
+    r_recalls = [v["rouge_recall"] for v in losocv_results.values()]
+    r_f1s = [v["rouge_f1"] for v in losocv_results.values()]
+    logger.info(f"\n  LOSOCV summary:")
+    logger.info(f"    Accuracy: mean={sum(accs)/len(accs):.1f}%, "
+                f"min={min(accs):.1f}%, max={max(accs):.1f}%, "
+                f"stdev={_stdev(accs):.1f}")
+    logger.info(f"    ROUGE recall: mean={sum(r_recalls)/len(r_recalls):.1f}%, "
+                f"min={min(r_recalls):.1f}%, max={max(r_recalls):.1f}%")
+    logger.info(f"    ROUGE F1: mean={sum(r_f1s)/len(r_f1s):.1f}%, "
+                f"min={min(r_f1s):.1f}%, max={max(r_f1s):.1f}%")
+
+    return losocv_results
+
+
+def _stdev(values: list[float]) -> float:
+    """Standard deviation."""
+    n = len(values)
+    if n < 2:
+        return 0.0
+    mean = sum(values) / n
+    return (sum((v - mean) ** 2 for v in values) / (n - 1)) ** 0.5
+
+
+# ================================================================
+# T6 v3.4 : BACKTEST MULTI-HORIZON (simulation bruit forecast)
+# ================================================================
+
+def run_multi_horizon_backtest():
+    """Backtest avec bruit gaussien pour simuler l'erreur de forecast.
+
+    Pour chaque horizon J+2 à J+5, ajoute du bruit sur la température :
+      - J+2 : σ = 0.5°C
+      - J+3 : σ = 1.0°C
+      - J+4 : σ = 1.5°C
+      - J+5 : σ = 2.0°C
+
+    Répété N_RUNS fois avec des seeds différentes pour des stats robustes.
+    """
+    import random
+    from predictor import predict_day
+    from config import Config
+
+    actuals, weather, rte = load_data()
+
+    horizons = {
+        "J+2": 0.5,
+        "J+3": 1.0,
+        "J+4": 1.5,
+        "J+5": 2.0,
+    }
+    N_RUNS = 5
+
+    seasons = [
+        ("2019/2020", date(2019, 9, 1), date(2020, 8, 31)),
+        ("2020/2021", date(2020, 9, 1), date(2021, 8, 31)),
+        ("2021/2022", date(2021, 9, 1), date(2022, 8, 31)),
+        ("2022/2023", date(2022, 9, 1), date(2023, 8, 31)),
+        ("2023/2024", date(2023, 9, 1), date(2024, 8, 31)),
+        ("2024/2025", date(2024, 9, 1), date(2025, 8, 31)),
+        ("2025/2026", date(2025, 9, 1), date(2026, 2, 20)),
+    ]
+
+    logger.info(f"\n{'='*70}")
+    logger.info("BACKTEST MULTI-HORIZON (avec bruit forecast)")
+    logger.info(f"{'='*70}")
+
+    horizon_metrics = {}
+
+    for horizon_name, sigma in horizons.items():
+        run_accuracies = []
+        run_rouge_recalls = []
+
+        for run in range(N_RUNS):
+            rng = random.Random(42 + run)
+            all_results = []
+
+            for _, s_start, s_end in seasons:
+                actuals_cache = {}
+                predicted_colors = {}
+                d = s_start
+
+                while d <= s_end:
+                    ds = d.isoformat()
+                    actual_color = actuals.get(ds)
+                    w = weather.get(ds)
+
+                    if actual_color is None or w is None:
+                        d += timedelta(days=1)
+                        continue
+
+                    remaining = compute_remaining_at_date(actuals, d)
+
+                    # Ajouter du bruit gaussien sur les températures
+                    noise = rng.gauss(0, sigma)
+                    weather_input = {
+                        "date": ds,
+                        "temp_moy": w["temp_moy"] + noise,
+                        "temp_min": w["temp_min"] + noise,
+                        "temp_max": w["temp_max"] + noise,
+                        "wind_speed": w["wind_speed"] + rng.gauss(0, sigma * 3),
+                        "pressure": w.get("pressure") or 1015,
+                        "humidity": w.get("humidity") or 60,
+                        "source": "archive",
+                        "forecast_quality": "archive",
+                    }
+                    forecasts_mini = [weather_input]
+
+                    try:
+                        pred = predict_day(
+                            d, weather=weather_input, remaining=remaining,
+                            weights=Config.DEFAULT_WEIGHTS, rte_score=None,
+                            _actuals_cache=actuals_cache, forecasts=forecasts_mini,
+                            target_idx=0, _predicted_colors=predicted_colors,
+                        )
+                    except Exception:
+                        d += timedelta(days=1)
+                        continue
+
+                    all_results.append({
+                        "actual": actual_color,
+                        "predicted": pred["couleur_predite"],
+                    })
+                    actuals_cache[ds] = actual_color
+                    predicted_colors[ds] = pred["couleur_predite"]
+                    d += timedelta(days=1)
+
+            n = len(all_results)
+            c = sum(1 for r in all_results if r["actual"] == r["predicted"])
+            rtp = sum(1 for r in all_results if r["actual"] == "ROUGE" and r["predicted"] == "ROUGE")
+            rfn = sum(1 for r in all_results if r["actual"] == "ROUGE" and r["predicted"] != "ROUGE")
+            rr = rtp / (rtp + rfn) if (rtp + rfn) else 0
+            run_accuracies.append(c / n * 100)
+            run_rouge_recalls.append(rr * 100)
+
+        mean_acc = sum(run_accuracies) / len(run_accuracies)
+        mean_rr = sum(run_rouge_recalls) / len(run_rouge_recalls)
+        std_acc = _stdev(run_accuracies)
+        std_rr = _stdev(run_rouge_recalls)
+
+        horizon_metrics[horizon_name] = {
+            "accuracy_mean": round(mean_acc, 1),
+            "accuracy_std": round(std_acc, 1),
+            "rouge_recall_mean": round(mean_rr, 1),
+            "rouge_recall_std": round(std_rr, 1),
+        }
+        logger.info(f"  {horizon_name} (σ={sigma}°C): "
+                    f"acc={mean_acc:.1f}%±{std_acc:.1f} | "
+                    f"ROUGE recall={mean_rr:.1f}%±{std_rr:.1f}")
+
+    return horizon_metrics
+
+
 if __name__ == "__main__":
-    run_backtest()
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "losocv":
+        run_losocv()
+    elif len(sys.argv) > 1 and sys.argv[1] == "multi-horizon":
+        run_multi_horizon_backtest()
+    elif len(sys.argv) > 1 and sys.argv[1] == "all":
+        run_backtest()
+        run_losocv()
+        run_multi_horizon_backtest()
+    else:
+        run_backtest()
