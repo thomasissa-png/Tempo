@@ -92,19 +92,20 @@ class Config:
     # Les jours bleus = total saison - rouges - blancs (varie si annee bissextile)
     # Calculé dynamiquement dans tempo_client.get_blue_days_total()
 
-    # --- Poids initiaux algorithme v3.0 (recalibres audit ML fev 2026) ---
-    # Audit : temperature etait le SEUL signal discriminant (ecart 53pts BLEU→ROUGE)
-    # mais ne pesait que 27%. Budget (20%) sur-predisait massivement BLANC
-    # (210 faux BLANC = 30% des evaluations). Gradient quasi inutile (3pts d'ecart).
-    # RTE inactif (toujours 50) tant que credentials non configurees.
+    # --- Poids algorithme v3.3 (recalibrés backtest 2365 jours) ---
+    # Audit backtest v3.2 : le budget_score est le 1er discriminant entre
+    # ROUGE TP (mean=59) et ROUGE FN (mean=39) → écart 20 pts.
+    # Mais à 12% de poids, cet écart ne produit que 2.4 pts sur le score final.
+    # Le clustering (12%) a un écart de 0 pts entre TP et FN → poids mort.
+    # Rééquilibrage : budget 12→18%, clustering 12→6%, c_nette 10→12%.
     DEFAULT_WEIGHTS = {
-        "temperature": 0.40,        # +13 : signal dominant (seul ecart > 50pts)
-        "jours_restants": 0.12,     # -8  : reduire sur-prediction BLANC
-        "jour_semaine": 0.10,       # =   : discrimine weekends/feries
-        "gradient_thermique": 0.08, # -5  : ecart 3pts entre couleurs = bruit
-        "clustering": 0.12,         # +2  : signal modere (40.6 vs 20.5)
-        "consommation_rte": 0.10,   # -3  : reactiver quand RTE configure
-        "pression": 0.08,           # +1  : signal conditionnel (anticyclone+froid)
+        "temperature": 0.38,        # -2  : signal dominant mais légèrement réduit
+        "jours_restants": 0.18,     # +6  : 1er discriminant FN/TP (écart 20 pts)
+        "jour_semaine": 0.08,       # -2  : signal stable
+        "gradient_thermique": 0.06, # -2  : écart faible entre couleurs
+        "clustering": 0.06,         # -6  : écart 0 en backtest (utile seulement en predict_range)
+        "consommation_rte": 0.14,   # +4  : C_nette proxy discrimine via le vent
+        "pression": 0.10,           # +2  : signal conditionnel (anticyclone+froid)
     }
 
     # --- Profil mensuel de distribution des jours rouges ---
@@ -229,9 +230,17 @@ class Config:
     #   - Sensibilité thermique France : ~2.4 GW / °C sous 18°C (chauffage électrique)
     #   - Capacité éolienne installée : ~22 GW (RTE bilan 2024)
     #   - Capacité solaire installée : ~20 GW (RTE bilan 2024)
-    C_NETTE_BASE_LOAD_GW = 33.4       # charge de base hors chauffage (GW) — calibré backtest (-1.6 GW biais)
-    C_NETTE_THERMAL_SENSITIVITY = 2.4  # GW supplémentaires par °C sous 18°C
+    C_NETTE_BASE_LOAD_GW = 35.8       # charge de base (GW) — recalibré v3.3 (+2.4 pour compenser piecewise)
     C_NETTE_HEATING_THRESHOLD = 18.0   # seuil de chauffage (°C)
+    # v3.3 : sensibilité thermique piecewise (audit P6).
+    # Le proxy surestimait C_nette de +2.7 GW pour les jours BLANC (5-10°C)
+    # car la sensibilité était uniforme à 2.4 GW/°C. En réalité :
+    #   - > 10°C : chauffage partiel (pas tous les bâtiments) → ~1.8 GW/°C
+    #   - < 10°C : chauffage complet → ~2.6 GW/°C
+    # base_load recalibré de 33.4 à 35.8 pour conserver biais global ~0.
+    C_NETTE_THERMAL_SENSITIVITY_LOW = 1.8   # GW/°C pour temp >= 10°C (chauffage partiel)
+    C_NETTE_THERMAL_SENSITIVITY_HIGH = 2.6  # GW/°C pour temp < 10°C (chauffage complet)
+    C_NETTE_THERMAL_BREAKPOINT = 10.0       # seuil de transition (°C)
     C_NETTE_INSTALLED_WIND_GW = 22.0   # capacité éolienne installée
     C_NETTE_INSTALLED_SOLAR_GW = 20.0  # capacité solaire installée
     # Facteur de charge solaire mensuel (ensoleillement moyen France)

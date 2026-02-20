@@ -1,4 +1,10 @@
-"""Algorithme de prediction Tempo v3.2 — Meteo France + C_nette proxy.
+"""Algorithme de prediction Tempo v3.3 — Meteo France + C_nette proxy.
+
+v3.3 (fev 2026) : audit backtest — corrections structurelles.
+- P1+P2 : Rééquilibrage poids (budget 12→18%, clustering 12→6%, c_nette 10→14%)
+- P4 : Garde thermique sur densité progressive ROUGE (atténuation > 7°C, blocage > 10°C)
+- P5 : Garde budget sur densité progressive BLANC (budget_score >= 20)
+- P6 : Sensibilité thermique piecewise (1.8 GW/°C > 10°C, 2.6 GW/°C < 10°C)
 
 v3.2 (fev 2026) : calibration backtest 2365 jours (A1-A5).
 - A1 : Seuil ROUGE continu par température (piecewise-linear, bande 3-5°C)
@@ -247,8 +253,21 @@ def _estimate_c_nette_gw(temp_moy: float, wind_speed_kmh: float,
     - Solaire = monthly_cf × installed_solar_capacity
     """
     # Consommation estimée (chauffage dominant en France)
-    heating_demand = max(0.0, Config.C_NETTE_HEATING_THRESHOLD - temp_moy)
-    conso_gw = Config.C_NETTE_BASE_LOAD_GW + Config.C_NETTE_THERMAL_SENSITIVITY * heating_demand
+    # v3.3 P6 : sensibilité thermique piecewise (partiel > 10°C, complet < 10°C)
+    threshold = Config.C_NETTE_HEATING_THRESHOLD
+    breakpoint = Config.C_NETTE_THERMAL_BREAKPOINT
+    if temp_moy >= threshold:
+        heating_demand = 0.0
+    elif temp_moy >= breakpoint:
+        # Zone chauffage partiel (10-18°C) : sensibilité basse
+        heating_demand = (threshold - temp_moy) * Config.C_NETTE_THERMAL_SENSITIVITY_LOW
+    else:
+        # Zone chauffage complet (< 10°C) : sensibilité haute
+        # = partie partielle (10→18) + partie complète (temp→10)
+        partial = (threshold - breakpoint) * Config.C_NETTE_THERMAL_SENSITIVITY_LOW
+        full = (breakpoint - temp_moy) * Config.C_NETTE_THERMAL_SENSITIVITY_HIGH
+        heating_demand = partial + full
+    conso_gw = Config.C_NETTE_BASE_LOAD_GW + heating_demand
 
     # Production éolienne estimée
     wind_cf = _estimate_wind_capacity_factor(wind_speed_kmh)
@@ -591,12 +610,19 @@ def predict_day(target_date: date, weather: dict | None = None,
         elif _red_eligible > 0 and (target_date.month >= 11 or target_date.month <= 3):
             # Densité progressive : abaissement du seuil RED proportionnel
             _red_density = remaining["ROUGE"] / _red_eligible
-            # v3.2 : courbe plus agressive — le backtest montre que les ROUGE
-            # manqués 3-7°C ont besoin d'une réduction plus forte en densité
-            # modérée (35-55%). Ancien: 35%→3, 50%→10. Nouveau: 25%→3, 40%→10.
+            # v3.3 : courbe agressive mais avec garde thermique.
+            # Audit P4 : les FP ROUGE > 7°C sont causés par la densité qui force
+            # ROUGE sur des jours doux. Garde : atténuation au-dessus de 7°C,
+            # blocage total au-dessus de 10°C (sauf densité critique slack≤1).
             _density_reduction = _piecewise_linear(_red_density, [
                 (0.15, 0), (0.25, 3), (0.40, 10), (0.55, 18), (0.70, 25),
             ])
+            # P4 : atténuation thermique — la densité override ne doit pas
+            # forcer ROUGE sur des jours > 9°C où le score_risque est bas.
+            if temp_moy > 10:
+                _density_reduction = 0  # aucune réduction au-dessus de 10°C
+            elif temp_moy > 7:
+                _density_reduction *= max(0, (10 - temp_moy) / 3)  # atténuation 7-10°C
             if _density_reduction > 0:
                 _effective_threshold = seuil_rouge_effectif - _density_reduction
                 if score_risque >= _effective_threshold:
@@ -615,9 +641,11 @@ def predict_day(target_date: date, weather: dict | None = None,
         if _wh_slack <= 1:
             couleur = "BLANC"
             raison_ml += " · Densité critique BLANC"
-        elif _wh_eligible > 0:
-            # v3.2 : densité progressive BLANC — abaisse le seuil BLANC quand
-            # la densité des BLANC restants est élevée (évite 220 FN BLANC)
+        elif _wh_eligible > 0 and budget_score >= 20:
+            # v3.3 P5 : densité progressive BLANC avec garde budget.
+            # Audit : en début de saison (budget_score ~0), la densité BLANC
+            # s'activait et sur-prédisait BLANC sur des jours BLEU (9 FP en
+            # Nov 2025). La garde budget >= 20 empêche l'activation trop précoce.
             _wh_density = remaining["BLANC"] / _wh_eligible
             _wh_reduction = _piecewise_linear(_wh_density, [
                 (0.15, 0), (0.25, 2), (0.40, 6), (0.60, 12),

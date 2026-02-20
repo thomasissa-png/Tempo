@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
-"""Backtest du prédicteur Tempo v3.1 sur données historiques 2019-2026.
+"""Backtest du prédicteur Tempo v3.3 sur données historiques 2019-2026.
 
-Simule les prédictions J+2 à J+5 pour chaque jour ayant un actual,
+Simule les prédictions J+2 pour chaque jour ayant un actual,
 en utilisant les données météo et RTE historiques réelles.
 
 Pour chaque jour D :
-  1. Calcule les remaining_colors à date (depuis les actuals précédents)
+  1. Calcule les remaining_colors à D-2 (simule J+2 sans actual D-1)
   2. Récupère la météo de D (= forecast parfait, borne supérieure)
-  3. Appelle predict_day() avec ces entrées
+  3. Appelle predict_day() avec forward clustering (predicted_colors propagé)
   4. Compare la prédiction à la couleur EDF réelle
+
+Fix v3.3 :
+  - P7: remaining utilise actuals jusqu'à D-2 (pas D-1) pour simuler J+2
+  - P1: forward clustering activé (predicted_colors propagé entre jours)
 
 Limitation : on utilise la météo RÉELLE du jour D, pas un forecast J+2.
 Le backtest mesure donc la qualité du SCORING et des SEUILS, pas la
@@ -104,8 +108,14 @@ def load_data():
 def compute_remaining_at_date(actuals: dict, target_date: date) -> dict:
     """Calcule les jours restants par couleur à une date donnée.
 
-    Parcourt les actuals AVANT target_date dans la saison courante
-    et déduit les couleurs déjà consommées.
+    Simule les informations disponibles pour une prédiction J+2 :
+    - À 18h le jour T, on prédit pour T+2.
+    - EDF annonce la couleur du jour T le matin (~10h30).
+    - Donc à 18h on connaît les actuals jusqu'à T = target_date - 2.
+    - On utilise d < target_date - 1 pour simuler ce décalage.
+
+    Fix P7 audit v3.3 : supprime le biais optimiste d'1 jour
+    (l'ancien code utilisait d < target_date = actuals jusqu'à D-1).
     """
     # Déterminer la saison
     if target_date.month >= 9:
@@ -118,8 +128,10 @@ def compute_remaining_at_date(actuals: dict, target_date: date) -> dict:
     blanc_used = 0
     bleu_used = 0
 
+    # Simuler J+2 : actuals connus jusqu'à D-2 (= target_date - 2)
+    cutoff = target_date - timedelta(days=1)
     d = season_start
-    while d < target_date:
+    while d < cutoff:
         ds = d.isoformat()
         color = actuals.get(ds)
         if color == "ROUGE":
@@ -131,7 +143,6 @@ def compute_remaining_at_date(actuals: dict, target_date: date) -> dict:
         d += timedelta(days=1)
 
     total_days = (season_end - season_start).days + 1
-    days_elapsed = (target_date - season_start).days
 
     return {
         "ROUGE": max(0, 22 - rouge_used),
@@ -174,6 +185,10 @@ def run_backtest():
         season_results = []
         # Cache des actuals pour la saison (pour clustering)
         actuals_cache = {}
+        # Fix P1 audit v3.3 : propager les couleurs prédites (forward clustering)
+        # En production, predict_range() construit ce dict. En backtest jour-par-jour
+        # on le construit manuellement pour que le clustering ait un signal.
+        predicted_colors = {}
 
         d = s_start
         while d <= s_end:
@@ -206,7 +221,10 @@ def run_backtest():
             # Donc on passe rte_score=None pour simuler un vrai J+2.
             rte_score = None
 
-            # Appeler le prédicteur
+            # Construire un mini-forecast (jour courant) pour que C_nette fonctionne
+            forecasts_mini = [weather_input]
+
+            # Appeler le prédicteur avec forward clustering
             try:
                 pred = predict_day(
                     d,
@@ -215,6 +233,9 @@ def run_backtest():
                     weights=Config.DEFAULT_WEIGHTS,
                     rte_score=rte_score,
                     _actuals_cache=actuals_cache,
+                    forecasts=forecasts_mini,
+                    target_idx=0,
+                    _predicted_colors=predicted_colors,
                 )
             except Exception as e:
                 logger.warning(f"Erreur predict_day({ds}): {e}")
@@ -260,6 +281,8 @@ def run_backtest():
 
             # Mettre à jour le cache actuals pour le clustering
             actuals_cache[ds] = actual_color
+            # Propager la couleur prédite pour le forward clustering
+            predicted_colors[ds] = predicted_color
             d += timedelta(days=1)
 
         # Métriques de la saison
