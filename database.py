@@ -791,6 +791,23 @@ def init_db():
         conn.commit()
         logger.info("Migration v18 appliquee (weather_forecast_log + temp_moy_prevue)")
 
+    if version < 19:
+        # Migration v19 — humidity_prevue + wind_speed_prevue dans predictions
+        # Ces features alimentent le scoring C_nette proxy (vent → refroidissement
+        # éolien, humidité → demande chauffage) mais n'étaient pas persistées.
+        # Nécessaire pour auditer les prédictions a posteriori.
+        for col in ("humidity_prevue", "wind_speed_prevue"):
+            try:
+                conn.execute(
+                    f"ALTER TABLE predictions ADD COLUMN {col} REAL"
+                )
+            except sqlite3.OperationalError:
+                logger.debug(f"Migration v19: colonne {col} existe deja")
+
+        conn.execute("PRAGMA user_version = 19")
+        conn.commit()
+        logger.info("Migration v19 appliquee (humidity_prevue + wind_speed_prevue)")
+
     # Poids initiaux si vide
     existing = conn.execute("SELECT COUNT(*) as c FROM weights_history").fetchone()
     if existing["c"] == 0:

@@ -374,13 +374,25 @@ class TestMigrationV8:
         finally:
             conn.close()
 
+    def test_db_has_humidity_wind_speed_prevue_columns(self):
+        """La migration v19 a ajouté humidity_prevue et wind_speed_prevue."""
+        from database import get_db
+        conn = get_db()
+        try:
+            info = conn.execute("PRAGMA table_info(predictions)").fetchall()
+            columns = [row[1] for row in info]
+            assert "humidity_prevue" in columns
+            assert "wind_speed_prevue" in columns
+        finally:
+            conn.close()
+
     def test_db_version_is_current(self):
         """La version de la DB est à jour après migration."""
         from database import get_db
         conn = get_db()
         try:
             version = conn.execute("PRAGMA user_version").fetchone()[0]
-            assert version == 18
+            assert version == 19
         finally:
             conn.close()
 

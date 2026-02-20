@@ -45,7 +45,7 @@
 - `predictor.py` stores multi-horizon predictions (J+1 through J+5)
 
 ### Database
-- SQLite (`tempo.db`), currently at migration version 18
+- SQLite (`tempo.db`), currently at migration version 19
 - Key tables: `predictions`, `actuals`, `weather_cache`, `weather_forecast_log`, `rte_daily`, `weights`, `subscribers`
 
 ### ML Model
@@ -72,11 +72,13 @@
 - **Density override critique** (slack <= 1): when eligible - remaining <= 1, temperature is irrelevant — EDF MUST place these days. Override forces ROUGE/BLANC BEFORE EDF rules (which still enforce weekends/holidays/R1-R4). Slack adapts naturally to any eligible count (avoids fixed-threshold bugs where density dips mid-sequence). Uses `_count_eligible_days` for exact slack calculation.
 - **ML budget guard**: ML BLANC→BLEU filter disabled when budget_score >= 50 (prevents ML from overriding budget-driven BLANC predictions)
 
-### Weather Forecast History (v18)
-- **`weather_forecast_log`** table: stores each weather forecast snapshot for J+2..J+5, keyed by (target_date, forecast_date)
+### Weather Forecast History (v18-v19)
+- **`weather_forecast_log`** table: stores each weather forecast snapshot for J+0..J+15, keyed by (target_date, forecast_date)
 - Allows measuring forecast degradation by horizon (J+5 said 7°C, J+2 corrected to 2°C)
+- J+0 stored as "quasi-observed" reference to measure convergence of earlier forecasts
 - Enables realistic backtests using actual J+N weather forecasts instead of "perfect weather"
 - **`temp_moy_prevue`** column added to `predictions` table (v18): stores the 9-city weighted average temperature used for scoring each prediction
+- **`humidity_prevue`** + **`wind_speed_prevue`** columns added to `predictions` (v19): stores humidity and wind speed used in C_nette proxy scoring
 - `weather_cache` continues to store the latest forecast per date (used by current scoring pipeline)
 
 ### Weather Fallback Chain

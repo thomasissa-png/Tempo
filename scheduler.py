@@ -310,7 +310,7 @@ def _store_weather_cache(forecasts: list[dict]) -> None:
                 target = date.fromisoformat(d)
                 today = date.fromisoformat(today_str)
                 horizon = (target - today).days
-                if 1 <= horizon <= 15:
+                if 0 <= horizon <= 15:
                     conn.execute(
                         """INSERT INTO weather_forecast_log
                            (target_date, forecast_date, horizon_days,
