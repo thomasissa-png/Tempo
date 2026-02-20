@@ -962,17 +962,45 @@ async def run_task_now(task_name: str) -> str:
         return (f"Analyse terminée : {missed} jours rattrapés, "
                 f"{len(patterns)} patterns détectés sur {history_days}j")
 
+    # Agents SEO/Backlinks : exécution directe (bypass gate saisonnière)
+    # avec remontée du vrai résultat/erreur à l'admin
+    if task_name in ("seo_agent", "backlinks_agent"):
+        import os
+        if not os.getenv("ANTHROPIC_API_KEY"):
+            try:
+                from config import Config as _Cfg
+                api_key = _Cfg.ANTHROPIC_API_KEY
+            except Exception:
+                api_key = ""
+            if not api_key:
+                return (
+                    f"ERREUR : ANTHROPIC_API_KEY non configurée. "
+                    f"Ajoutez-la dans Replit Secrets pour activer l'agent."
+                )
+
+        loop = asyncio.get_running_loop()
+        if task_name == "seo_agent":
+            from seo_agent import run_seo_agent
+            result = await loop.run_in_executor(None, run_seo_agent)
+        else:
+            from backlinks_agent import run_backlinks_agent
+            result = await loop.run_in_executor(None, run_backlinks_agent)
+
+        if result["success"]:
+            summary = result["report"][:300] if result["report"] else "OK"
+            return f"Agent terminé en {result['turns']} tours. {summary}"
+        else:
+            return f"ERREUR agent : {result['error']}"
+
     tasks = {
         "verification": task_daily_verification,
         "predictions": task_daily_predictions,
         "weights": task_monthly_weights,
         "recap": task_weekly_recap,
         "validation": task_daily_validation,
-        "seo_agent": task_seo_agent,
-        "backlinks_agent": task_backlinks_agent,
     }
     if task_name not in tasks:
-        available = list(tasks.keys()) + ["backfill", "analyze"]
+        available = list(tasks.keys()) + ["backfill", "analyze", "seo_agent", "backlinks_agent"]
         return f"Tâche inconnue: {task_name}. Disponibles: {available}"
 
     await tasks[task_name]()
