@@ -587,7 +587,8 @@ def _merge_models_to_daily(arome_results: dict[int, dict],
 
         # Validation plausibilite temperature
         if temp_moy < -40 or temp_moy > 50:
-            logger.warning(f"[Meteo] {day_str}: temp_moy={temp_moy}°C hors plage [-40, 50]")
+            logger.warning(f"[Meteo] {day_str}: temp_moy={temp_moy}°C hors plage [-40, 50], jour ignoré")
+            continue
 
         humidity = round(sum(humidities) / len(humidities), 1) if humidities else 50.0
 

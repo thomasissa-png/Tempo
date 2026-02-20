@@ -593,6 +593,72 @@ class TestStorePredictionV19Columns:
             conn.close()
 
 
+class TestWeatherTemperatureValidation:
+    """Validation de plausibilité des températures dans _merge_models_to_daily."""
+
+    def test_aberrant_temps_skipped(self):
+        """Des températures aberrantes (ex: 131.65K → -141.5°C) doivent être ignorées."""
+        from weather_client import _merge_models_to_daily
+
+        # Simuler des données AROME avec valeurs aberrantes pour un jour
+        # 131.65 > 100 → is_kelvin=True → 131.65 - 273.15 = -141.5°C → hors plage
+        arome = {
+            0: {"temperature": 131.65, "humidity": 80.0, "wind_gust": 10.0, "pressure": 101300},
+            1: {"temperature": 132.0, "humidity": 82.0, "wind_gust": 12.0, "pressure": 101200},
+            2: {"temperature": 130.5, "humidity": 78.0, "wind_gust": 11.0, "pressure": 101400},
+        }
+        # Jour normal (en Celsius)
+        arome_normal = {
+            24: {"temperature": 2.0, "humidity": 75.0, "wind_gust": 8.0, "pressure": 101500},
+            25: {"temperature": 4.0, "humidity": 70.0, "wind_gust": 9.0, "pressure": 101400},
+            26: {"temperature": 3.0, "humidity": 72.0, "wind_gust": 7.0, "pressure": 101300},
+        }
+        arome.update(arome_normal)
+
+        result = _merge_models_to_daily(arome, {})
+
+        # Le jour aberrant doit être exclu, le jour normal conservé
+        temps_moy = [r["temp_moy"] for r in result]
+        assert all(-40 <= t <= 50 for t in temps_moy), (
+            f"Températures aberrantes non filtrées : {temps_moy}"
+        )
+        # Au moins le jour normal doit être présent
+        assert len(result) >= 1
+
+    def test_normal_kelvin_converted_correctly(self):
+        """Des températures Kelvin normales (ex: 275K → 1.85°C) sont converties."""
+        from weather_client import _merge_models_to_daily
+
+        # 275K = 1.85°C, plausible pour l'hiver
+        arome = {
+            0: {"temperature": 273.15, "humidity": 80.0, "wind_gust": 10.0, "pressure": 101300},
+            1: {"temperature": 278.15, "humidity": 75.0, "wind_gust": 9.0, "pressure": 101200},
+            2: {"temperature": 275.65, "humidity": 78.0, "wind_gust": 11.0, "pressure": 101400},
+        }
+        result = _merge_models_to_daily(arome, {})
+        assert len(result) == 1
+        r = result[0]
+        # 273.15K = 0°C, 278.15K = 5°C → moy ~2.5°C, min ~0, max ~5
+        assert -1 <= r["temp_min"] <= 1  # ~0°C
+        assert 4 <= r["temp_max"] <= 6  # ~5°C
+        assert 1 <= r["temp_moy"] <= 4  # ~2.65°C
+
+    def test_normal_celsius_passthrough(self):
+        """Des températures Celsius normales passent sans conversion."""
+        from weather_client import _merge_models_to_daily
+
+        arome = {
+            0: {"temperature": 5.0, "humidity": 80.0, "wind_gust": 10.0, "pressure": 101300},
+            1: {"temperature": 8.0, "humidity": 75.0, "wind_gust": 9.0, "pressure": 101200},
+            2: {"temperature": 3.0, "humidity": 78.0, "wind_gust": 11.0, "pressure": 101400},
+        }
+        result = _merge_models_to_daily(arome, {})
+        assert len(result) == 1
+        r = result[0]
+        assert r["temp_min"] == 3.0
+        assert r["temp_max"] == 8.0
+
+
 # ================================================================
 # Audit v7 : tests des nouvelles corrections
 # ================================================================
