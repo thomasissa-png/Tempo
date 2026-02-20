@@ -365,11 +365,11 @@ async def _store_rte_daily(rte_score: dict | None) -> None:
                 logger.info(f"[RTE Daily] Stocke {yesterday}: "
                             f"peak={realised['conso_peak_mw']}MW, mean={realised['conso_mean_mw']}MW")
             except Exception as e:
-                logger.debug(f"[RTE Daily] Erreur stockage realise: {e}")
+                logger.warning(f"[RTE Daily] Erreur stockage realise: {e}")
             finally:
                 conn.close()
     except Exception as e:
-        logger.debug(f"[RTE Daily] fetch_realised indisponible: {e}")
+        logger.warning(f"[RTE Daily] fetch_realised indisponible: {e}")
 
 
 # ================================================================
