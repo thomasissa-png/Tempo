@@ -305,7 +305,7 @@ def _store_weather_cache(forecasts: list[dict]) -> None:
                  f.get("source", "api"), now_iso),
             )
 
-            # Historique par horizon (J+2..J+5) pour backtests
+            # Historique par horizon (J+0..J+15) pour backtests
             try:
                 target = date.fromisoformat(d)
                 today = date.fromisoformat(today_str)

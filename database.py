@@ -752,7 +752,7 @@ def init_db():
 
     if version < 18:
         # Migration v18 — Historique des prévisions météo par horizon
-        # Conserve chaque snapshot météo (J+2..J+5) pour chaque date cible,
+        # Conserve chaque snapshot météo (J+0..J+15) pour chaque date cible,
         # permettant de mesurer la dégradation des prévisions par horizon
         # et de réaliser des backtests réalistes (vs "météo parfaite").
         conn.execute('''CREATE TABLE IF NOT EXISTS weather_forecast_log (

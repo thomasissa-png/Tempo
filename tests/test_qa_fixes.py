@@ -398,6 +398,202 @@ class TestMigrationV8:
 
 
 # ================================================================
+# Tests v19 : weather_forecast_log J+0, humidity/wind in predictions
+# ================================================================
+
+class TestWeatherForecastLogJ0:
+    """Le weather_forecast_log accepte horizon_days = 0 (J+0)."""
+
+    def test_forecast_log_accepts_horizon_zero(self):
+        """On peut insérer et relire un enregistrement avec horizon_days=0."""
+        from database import get_db
+        conn = get_db()
+        try:
+            target = "2026-02-20"
+            forecast = "2026-02-20"
+            conn.execute(
+                """INSERT OR REPLACE INTO weather_forecast_log
+                   (target_date, forecast_date, horizon_days,
+                    temp_min, temp_max, temp_moy,
+                    pressure, humidity, wind_speed,
+                    source, fetched_at)
+                   VALUES (?, ?, 0, -1.0, 5.0, 2.0, 1020.0, 80.0, 15.0,
+                           'test', '2026-02-20T12:00:00')""",
+                (target, forecast),
+            )
+            conn.commit()
+            row = conn.execute(
+                "SELECT horizon_days, temp_moy FROM weather_forecast_log "
+                "WHERE target_date = ? AND forecast_date = ?",
+                (target, forecast),
+            ).fetchone()
+            assert row is not None
+            assert row[0] == 0  # horizon_days
+            assert row[1] == 2.0  # temp_moy
+        finally:
+            # Nettoyage
+            conn.execute(
+                "DELETE FROM weather_forecast_log "
+                "WHERE target_date = '2026-02-20' AND forecast_date = '2026-02-20'"
+            )
+            conn.commit()
+            conn.close()
+
+    def test_forecast_log_accepts_full_range(self):
+        """horizon_days peut aller de 0 à 15 (J+0 à J+15)."""
+        from database import get_db
+        conn = get_db()
+        try:
+            for h in (0, 1, 5, 10, 15):
+                target = f"2026-03-{10+h:02d}"
+                conn.execute(
+                    """INSERT OR REPLACE INTO weather_forecast_log
+                       (target_date, forecast_date, horizon_days,
+                        temp_min, temp_max, temp_moy,
+                        pressure, humidity, wind_speed,
+                        source, fetched_at)
+                       VALUES (?, '2026-03-10', ?, 0, 5, 2.5,
+                               1015, 70, 10, 'test', '2026-03-10T08:00:00')""",
+                    (target, h),
+                )
+            conn.commit()
+            rows = conn.execute(
+                "SELECT horizon_days FROM weather_forecast_log "
+                "WHERE forecast_date = '2026-03-10' AND source = 'test' "
+                "ORDER BY horizon_days"
+            ).fetchall()
+            horizons = [r[0] for r in rows]
+            assert 0 in horizons
+            assert 15 in horizons
+        finally:
+            conn.execute(
+                "DELETE FROM weather_forecast_log "
+                "WHERE forecast_date = '2026-03-10' AND source = 'test'"
+            )
+            conn.commit()
+            conn.close()
+
+
+class TestResultHumidityWindSpeed:
+    """_result() inclut humidity_prevue et wind_speed_prevue."""
+
+    def test_result_includes_humidity_and_wind_speed(self):
+        """_result() propage humidity et wind_speed depuis weather."""
+        from predictor import _result
+        weather = {
+            "temp_min": -2.0, "temp_max": 5.0, "temp_moy": 1.5,
+            "pressure": 1025.0, "humidity": 82.0, "wind_speed": 18.5,
+        }
+        r = _result(
+            date(2026, 1, 15), "ROUGE", 68.0, 0.05, 0.25, 0.70,
+            weather=weather,
+        )
+        assert r["humidity_prevue"] == 82.0
+        assert r["wind_speed_prevue"] == 18.5
+
+    def test_result_none_when_no_weather(self):
+        """Sans weather, humidity_prevue et wind_speed_prevue sont None."""
+        from predictor import _result
+        r = _result(
+            date(2026, 1, 15), "BLEU", 25.0, 0.80, 0.15, 0.05,
+            weather=None,
+        )
+        assert r["humidity_prevue"] is None
+        assert r["wind_speed_prevue"] is None
+
+    def test_result_none_when_keys_missing(self):
+        """Si weather n'a pas humidity/wind_speed, valeurs None."""
+        from predictor import _result
+        weather = {"temp_min": 3.0, "temp_max": 10.0, "temp_moy": 6.5}
+        r = _result(
+            date(2026, 4, 10), "BLEU", 20.0, 0.85, 0.10, 0.05,
+            weather=weather,
+        )
+        assert r["humidity_prevue"] is None
+        assert r["wind_speed_prevue"] is None
+
+
+class TestStorePredictionV19Columns:
+    """store_prediction persiste humidity_prevue et wind_speed_prevue."""
+
+    def test_store_persists_humidity_wind_speed(self):
+        """Les colonnes humidity_prevue et wind_speed_prevue sont écrites en DB."""
+        from predictor import store_prediction
+        from database import get_db
+
+        target = (date.today() + timedelta(days=6)).isoformat()
+        pred = {
+            "date": target,
+            "couleur_predite": "ROUGE",
+            "probabilite_bleu": 0.05,
+            "probabilite_blanc": 0.25,
+            "probabilite_rouge": 0.70,
+            "score_risque": 72.0,
+            "temp_min_prevue": -3.0,
+            "temp_max_prevue": 4.0,
+            "temp_moy_prevue": 0.5,
+            "pression_prevue": 1030.0,
+            "humidity_prevue": 88.0,
+            "wind_speed_prevue": 22.5,
+            "jours_rouges_restants": 8,
+            "jours_blancs_restants": 15,
+            "raison": "Test v19 columns",
+            "score_temperature": 75,
+            "score_budget": 40,
+            "score_weekday": 30,
+            "score_gradient": 20,
+            "score_clustering": 10,
+            "score_rte": 15,
+        }
+        store_prediction(pred, "J-6", cycle_id="test_v19")
+
+        conn = get_db()
+        try:
+            row = conn.execute(
+                "SELECT humidity_prevue, wind_speed_prevue "
+                "FROM predictions WHERE date = ? ORDER BY id DESC LIMIT 1",
+                (target,),
+            ).fetchone()
+            assert row is not None
+            assert row["humidity_prevue"] == 88.0
+            assert row["wind_speed_prevue"] == 22.5
+        finally:
+            conn.execute("DELETE FROM predictions WHERE date = ?", (target,))
+            conn.commit()
+            conn.close()
+
+    def test_store_prediction_34_columns(self):
+        """L'INSERT dans predictions utilise exactement 34 colonnes."""
+        from database import get_db
+        conn = get_db()
+        try:
+            info = conn.execute("PRAGMA table_info(predictions)").fetchall()
+            columns = [row[1] for row in info]
+            # Les 34 colonnes attendues (hors id auto-increment)
+            expected = {
+                "date", "couleur_predite",
+                "probabilite_bleu", "probabilite_blanc", "probabilite_rouge",
+                "score_risque",
+                "temp_min_prevue", "temp_max_prevue", "temp_moy_prevue",
+                "pression_prevue", "humidity_prevue", "wind_speed_prevue",
+                "jours_rouges_restants", "jours_blancs_restants",
+                "raison", "horizon", "timestamp_prediction",
+                "score_temperature", "score_budget", "score_weekday",
+                "score_gradient", "score_clustering", "score_rte",
+                "score_temperature_raw", "score_budget_raw", "score_weekday_raw",
+                "score_gradient_raw", "score_clustering_raw", "score_rte_raw",
+                "cycle_id", "couleur_precedente", "simulated", "confirmed",
+                "couleur_originale",
+            }
+            actual = {c for c in columns if c != "id"}
+            assert expected.issubset(actual), (
+                f"Colonnes manquantes : {expected - actual}"
+            )
+        finally:
+            conn.close()
+
+
+# ================================================================
 # Audit v7 : tests des nouvelles corrections
 # ================================================================
 
