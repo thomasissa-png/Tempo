@@ -261,6 +261,7 @@
         <div class="week-summary-card{% if ssr.week_summary|selectattr('couleur', 'equalto', 'ROUGE')|list %} has-rouge{% endif %}">
             <div class="week-summary-dots">
                 {% for d in ssr.week_summary %}
+                {% if loop.index == 6 %}<div class="week-dots-separator" aria-hidden="true"></div>{% endif %}
                 <div class="week-dot">
                     <div class="week-dot-circle{% if d.couleur == 'BLANC' %} dot-blanc{% elif d.couleur == 'ROUGE' %} dot-rouge{% endif %}{% if d.confirmed %} confirmed-dot{% endif %}" style="background:var(--{{ d.couleur|lower }})">{{ d.couleur[0] }}</div>
                     <span class="week-dot-label">{% if d.is_today %}<strong>Aujourd'hui</strong>{% elif d.is_tomorrow %}<strong>Demain</strong>{% else %}{{ d.day_label }} {{ d.day_num }}{% endif %}</span>
