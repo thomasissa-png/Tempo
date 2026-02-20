@@ -308,8 +308,9 @@ def _store_weather_cache(forecasts: list[dict]) -> None:
             # Historique par horizon (J+2..J+5) pour backtests
             try:
                 target = date.fromisoformat(d)
-                horizon = (target - date.today()).days
-                if 2 <= horizon <= 5:
+                today = date.fromisoformat(today_str)
+                horizon = (target - today).days
+                if 1 <= horizon <= 15:
                     conn.execute(
                         """INSERT INTO weather_forecast_log
                            (target_date, forecast_date, horizon_days,
