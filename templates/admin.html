@@ -7,11 +7,322 @@
     <title>Calendrier Tempo EDF — Admin / Performance</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%232196F3'/><path d='M50 5A45 45 0 0 1 95 50H5A45 45 0 0 1 50 5z' fill='%23F44336'/><circle cx='50' cy='50' r='20' fill='white'/></svg>" type="image/svg+xml">
     <link rel="stylesheet" href="/static/css/style.min.css">
-    <!-- Fix #S8 : preconnect pour CDN -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"
             integrity="sha384-e1kSEwCaVTZnKiRDkBBbMLR5cMrqYOBNMu90RCMBB4RnXQ+LiY7SAFnFEeYz8dT"
             crossorigin="anonymous"></script>
+    <style>
+        /* ── Admin flat design overrides ── */
+        .admin-login {
+            max-width: 400px;
+            margin: 60px auto;
+            text-align: center;
+        }
+        .admin-login h2 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .admin-login p {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+        }
+        .admin-login .login-row {
+            display: flex;
+            gap: 8px;
+        }
+        .admin-login input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 0.9rem;
+        }
+        .admin-login input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-shadow);
+        }
+
+        /* ── Tabs navigation ── */
+        .admin-tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 2px solid var(--border);
+            margin-bottom: 24px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        .admin-tab {
+            padding: 12px 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            background: none;
+            border: none;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: color 0.15s, border-color 0.15s;
+        }
+        .admin-tab:hover {
+            color: var(--text);
+        }
+        .admin-tab.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+        .admin-tab .tab-icon {
+            margin-right: 6px;
+        }
+        .tab-panel {
+            display: none;
+        }
+        .tab-panel.active {
+            display: block;
+        }
+
+        /* ── KPI strip ── */
+        .kpi-strip {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 16px;
+            margin-bottom: 28px;
+        }
+        .kpi-card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 20px;
+            box-shadow: var(--shadow);
+            text-align: center;
+        }
+        .kpi-card .kpi-value {
+            font-size: 2rem;
+            font-weight: 800;
+            line-height: 1.1;
+            color: var(--text);
+        }
+        .kpi-card .kpi-value.green { color: #16A34A; }
+        .kpi-card .kpi-value.orange { color: #D97706; }
+        .kpi-card .kpi-value.red { color: #DC2626; }
+        .kpi-card .kpi-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        /* ── Section title inside panels ── */
+        .section-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--text);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .section-title .badge {
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 999px;
+            color: #fff;
+        }
+        .badge-seo { background: #7B1FA2; }
+        .badge-backlinks { background: #00695C; }
+        .badge-info { background: var(--accent); }
+
+        /* ── Two-col layout within panels ── */
+        .panel-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+        .panel-grid.full {
+            grid-template-columns: 1fr;
+        }
+        @media (max-width: 768px) {
+            .panel-grid { grid-template-columns: 1fr; }
+        }
+
+        /* ── Cards (flat) ── */
+        .flat-card {
+            background: var(--surface);
+            border-radius: var(--radius);
+            padding: 20px;
+            box-shadow: var(--shadow);
+        }
+        .flat-card h4 {
+            font-size: 0.9rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: var(--text);
+        }
+
+        /* ── Backlinks structured cards ── */
+        .bl-stat-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .bl-stat {
+            background: var(--bg);
+            border-radius: var(--radius-sm);
+            padding: 14px;
+            text-align: center;
+        }
+        .bl-stat .stat-num {
+            font-size: 1.5rem;
+            font-weight: 800;
+        }
+        .bl-stat .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        .prospect-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+        .prospect-table th {
+            text-align: left;
+            padding: 8px 10px;
+            background: var(--bg);
+            font-weight: 600;
+            border-bottom: 2px solid var(--border);
+            white-space: nowrap;
+        }
+        .prospect-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--border);
+        }
+        .prospect-table tr:last-child td { border-bottom: none; }
+        .status-pill {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 600;
+        }
+        .status-pill.acquired { background: #D1FAE5; color: #065F46; }
+        .status-pill.pending { background: #FEF3C7; color: #92400E; }
+        .status-pill.draft { background: #DBEAFE; color: #1E40AF; }
+        .status-pill.contacted { background: #E0E7FF; color: #3730A3; }
+
+        /* ── Log viewer ── */
+        .log-viewer {
+            background: var(--bg);
+            padding: 16px;
+            border-radius: var(--radius-sm);
+            overflow-x: auto;
+            max-height: 350px;
+            overflow-y: auto;
+            font-size: 0.8rem;
+            white-space: pre-wrap;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            line-height: 1.6;
+            color: var(--text-secondary);
+        }
+
+        /* ── Chart fallback ── */
+        .chart-fallback {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            background: var(--bg);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        /* ── Action buttons (flat) ── */
+        .action-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .action-btn {
+            padding: 9px 18px;
+            border: none;
+            border-radius: var(--radius-sm);
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.15s, transform 0.1s;
+            color: #fff;
+        }
+        .action-btn:hover { opacity: 0.88; }
+        .action-btn:active { transform: scale(0.97); }
+        .action-btn.blue { background: var(--accent); }
+        .action-btn.green { background: #16A34A; }
+        .action-btn.purple { background: #7B1FA2; }
+        .action-btn.teal { background: #00695C; }
+        .action-btn.gray { background: #6B7280; }
+
+        /* ── Subscribers ── */
+        .sub-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+        .sub-table th {
+            text-align: left;
+            padding: 8px 10px;
+            background: var(--bg);
+            font-weight: 600;
+            border-bottom: 2px solid var(--border);
+        }
+        .sub-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--border);
+        }
+        .sub-table tr:last-child td { border-bottom: none; }
+
+        /* ── Draft accordion ── */
+        .draft-item {
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            margin-bottom: 8px;
+            overflow: hidden;
+        }
+        .draft-item summary {
+            padding: 10px 14px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            background: var(--bg);
+        }
+        .draft-item summary:hover { background: var(--border); }
+        .draft-item pre {
+            padding: 14px;
+            font-size: 0.78rem;
+            white-space: pre-wrap;
+            max-height: 250px;
+            overflow-y: auto;
+        }
+
+        /* ── Responsive footer spacing ── */
+        .admin-footer {
+            margin-top: 40px;
+            padding: 20px 0;
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+        .admin-footer a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+    </style>
 </head>
 <body>
 
@@ -20,7 +331,7 @@
 <header role="banner">
     <div class="container header-row">
         <a href="/" class="header-brand">
-            <h1>Calendrier Tempo EDF — Admin</h1>
+            <span class="header-title">Calendrier Tempo EDF — Admin</span>
         </a>
         <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu de navigation" aria-expanded="false" aria-controls="main-nav">
             <span class="bar"></span>
@@ -28,7 +339,9 @@
             <span class="bar"></span>
         </button>
         <nav id="main-nav" aria-label="Navigation admin">
-            <a href="/">Dashboard public</a>
+            <a href="/">Dashboard</a>
+            <a href="/calendrier">Calendrier</a>
+            <a href="/blog/">Blog</a>
             <a href="/admin?auth=1" class="active" aria-current="page">Admin</a>
         </nav>
     </div>
@@ -36,192 +349,284 @@
 
 <main id="main-content" class="container" role="main">
 
-    <!-- Fix I-10 : noscript fallback -->
     <noscript>
         <div style="background:#FFEBEE;border:2px solid #F44336;border-radius:8px;padding:20px;margin:24px 0;text-align:center">
             <strong>JavaScript est nécessaire</strong> pour utiliser le dashboard admin.
         </div>
     </noscript>
 
-    <!-- Authentification -->
-    <div style="margin:24px 0">
-        <div class="form-group" style="max-width:400px">
-            <label for="admin-pw">Mot de passe admin</label>
-            <div style="display:flex;gap:8px">
-                <input type="password" id="admin-pw" placeholder="Mot de passe" autocomplete="current-password">
-                <button class="task-btn" onclick="loadAdminData()" aria-label="Charger les données admin">Charger</button>
-            </div>
+    <!-- ── Login ── -->
+    <div id="admin-login" class="admin-login">
+        <h2>Administration</h2>
+        <p>Entrez le mot de passe pour accéder au tableau de bord.</p>
+        <div class="login-row">
+            <input type="password" id="admin-pw" placeholder="Mot de passe" autocomplete="current-password"
+                   onkeydown="if(event.key==='Enter') loadAdminData()">
+            <button class="action-btn blue" onclick="loadAdminData()" aria-label="Charger les données admin">Connexion</button>
         </div>
     </div>
 
+    <!-- ── Dashboard content (hidden until auth) ── -->
     <div id="admin-content" style="display:none">
 
-        <!-- Métriques globales -->
-        <div class="admin-grid">
-            <div class="admin-card">
-                <h3>Précision globale</h3>
-                <div id="metrics-global">
-                    <div class="metric-row">
-                        <span>30 derniers jours</span>
-                        <span class="metric-value" id="acc-30j">—</span>
+        <!-- KPI strip -->
+        <div class="kpi-strip" id="kpi-strip">
+            <div class="kpi-card">
+                <div class="kpi-value" id="kpi-acc30">—</div>
+                <div class="kpi-label">Précision 30j</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-value" id="kpi-acc90">—</div>
+                <div class="kpi-label">Précision 90j</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-value" id="kpi-total">—</div>
+                <div class="kpi-label">Prédictions 30j</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-value" id="kpi-subs">—</div>
+                <div class="kpi-label">Abonnés actifs</div>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="admin-tabs" role="tablist">
+            <button class="admin-tab active" role="tab" aria-selected="true" data-tab="performance">
+                <span class="tab-icon">&#9632;</span>Performance
+            </button>
+            <button class="admin-tab" role="tab" aria-selected="false" data-tab="seo">
+                <span class="tab-icon">&#9998;</span>SEO
+            </button>
+            <button class="admin-tab" role="tab" aria-selected="false" data-tab="backlinks">
+                <span class="tab-icon">&#128279;</span>Backlinks
+            </button>
+            <button class="admin-tab" role="tab" aria-selected="false" data-tab="subscribers">
+                <span class="tab-icon">&#128100;</span>Abonnés
+            </button>
+            <button class="admin-tab" role="tab" aria-selected="false" data-tab="actions">
+                <span class="tab-icon">&#9881;</span>Actions
+            </button>
+        </div>
+
+        <!-- ═══════ TAB 1 : Performance ═══════ -->
+        <div id="panel-performance" class="tab-panel active" role="tabpanel">
+
+            <div class="panel-grid">
+                <div class="flat-card">
+                    <h4>Précision par horizon</h4>
+                    <div id="metrics-horizon"></div>
+                </div>
+                <div class="flat-card">
+                    <h4>Précision par horizon</h4>
+                    <div class="chart-container" style="height:260px">
+                        <canvas id="chart-horizon"></canvas>
                     </div>
-                    <div class="metric-row">
-                        <span>90 derniers jours</span>
-                        <span class="metric-value" id="acc-90j">—</span>
-                    </div>
-                    <div class="metric-row">
-                        <span>Total prédictions (30j)</span>
-                        <span class="metric-value" id="total-pred">—</span>
+                    <div id="chart-horizon-fallback" class="chart-fallback" style="display:none">
+                        Chart.js non disponible — vérifiez votre connexion.
                     </div>
                 </div>
             </div>
 
-            <div class="admin-card">
-                <h3>Précision par horizon</h3>
-                <div id="metrics-horizon"></div>
-            </div>
-        </div>
-
-        <!-- Matrice de confusion + Graphique -->
-        <div class="admin-grid">
-            <div class="admin-card">
-                <h3>Matrice de confusion (90 jours)</h3>
-                <div id="confusion-matrix"></div>
-            </div>
-
-            <div class="admin-card">
-                <h3>Précision par horizon</h3>
-                <div class="chart-container">
-                    <canvas id="chart-horizon"></canvas>
+            <div class="panel-grid">
+                <div class="flat-card">
+                    <h4>Matrice de confusion (90j)</h4>
+                    <div id="confusion-matrix"></div>
+                </div>
+                <div class="flat-card">
+                    <h4>Poids de l'algorithme</h4>
+                    <div id="current-weights"></div>
+                    <div class="chart-container" style="height:220px">
+                        <canvas id="chart-weights"></canvas>
+                    </div>
+                    <div id="chart-weights-fallback" class="chart-fallback" style="display:none">
+                        Chart.js non disponible.
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Erreurs récentes + Poids -->
-        <div class="admin-grid">
-            <div class="admin-card">
-                <h3>Erreurs récentes</h3>
-                <ul class="error-list" id="errors-list">
-                    <li>Chargement...</li>
-                </ul>
-            </div>
-
-            <div class="admin-card">
-                <h3>Poids actuels de l'algorithme</h3>
-                <div id="current-weights"></div>
-                <div class="chart-container" style="height:250px">
-                    <canvas id="chart-weights"></canvas>
+            <div class="panel-grid full">
+                <div class="flat-card">
+                    <h4>Erreurs récentes</h4>
+                    <ul class="error-list" id="errors-list">
+                        <li>Chargement...</li>
+                    </ul>
                 </div>
             </div>
+
         </div>
 
-        <!-- Actions manuelles -->
-        <div class="admin-card" style="margin:24px 0">
-            <h3>Actions manuelles</h3>
-            <p style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:12px">
-                Exécuter les tâches du scheduler manuellement :
-            </p>
-            <button class="task-btn" onclick="runTask('verification')">Vérification EDF + recalcul</button>
-            <button class="task-btn" onclick="runTask('predictions')">Prédictions + alertes WhatsApp</button>
-            <button class="task-btn" onclick="runTask('weights')">Recalcul poids</button>
-            <button class="task-btn" onclick="runTask('recap')">Récap hebdo</button>
-            <button class="task-btn" onclick="runTask('backfill')">Backfill saison</button>
-            <button class="task-btn" onclick="runTask('seo_agent')" style="background:#7B1FA2;color:#fff">Agent SEO</button>
-            <button class="task-btn" onclick="runTask('backlinks_agent')" style="background:#00695C;color:#fff">Agent Backlinks</button>
-            <div id="task-result" style="margin-top:12px;font-size:0.9rem;color:var(--text-secondary)"></div>
-        </div>
+        <!-- ═══════ TAB 2 : SEO ═══════ -->
+        <div id="panel-seo" class="tab-panel" role="tabpanel">
 
-        <!-- Abonnés WhatsApp (liste détaillée) -->
-        <div class="admin-card" style="margin-bottom:24px">
-            <h3>Abonnés WhatsApp</h3>
-            <div id="subscribers-summary" style="margin-bottom:12px">Chargement...</div>
-            <div style="overflow-x:auto">
-                <table id="subscribers-table" class="confusion-table" style="display:none;width:100%;font-size:0.85rem">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Téléphone</th>
-                            <th>Seuil rouge</th>
-                            <th>Délai</th>
-                            <th>Alerte blanc</th>
-                            <th>Récap hebdo</th>
-                            <th>Statut</th>
-                            <th>Inscrit le</th>
-                        </tr>
-                    </thead>
-                    <tbody id="subscribers-body"></tbody>
-                </table>
+            <div class="section-title">
+                Journal de publication <span class="badge badge-seo">Agent SEO</span>
             </div>
-        </div>
-
-        <!-- Rapports Agent SEO -->
-        <div class="admin-card" style="margin-bottom:24px">
-            <h3 style="cursor:pointer" onclick="toggleSection('seo-report')">
-                Agent SEO — Rapport <span id="seo-report-toggle" style="font-size:0.8em">&#9654;</span>
-            </h3>
-            <div id="seo-report" style="display:none">
-                <h4 style="margin:12px 0 8px;font-size:0.95rem">Journal de publication</h4>
-                <pre id="seo-log" style="background:var(--bg-secondary);padding:12px;border-radius:8px;overflow-x:auto;max-height:400px;overflow-y:auto;font-size:0.8rem;white-space:pre-wrap">Chargement...</pre>
-                <h4 style="margin:16px 0 8px;font-size:0.95rem">Calendrier éditorial</h4>
-                <pre id="seo-calendar" style="background:var(--bg-secondary);padding:12px;border-radius:8px;overflow-x:auto;max-height:400px;overflow-y:auto;font-size:0.8rem;white-space:pre-wrap">Chargement...</pre>
+            <div class="flat-card" style="margin-bottom:20px">
+                <pre class="log-viewer" id="seo-log">Chargement...</pre>
             </div>
+
+            <div class="section-title">Calendrier éditorial</div>
+            <div class="flat-card">
+                <pre class="log-viewer" id="seo-calendar">Chargement...</pre>
+            </div>
+
         </div>
 
-        <!-- Rapports Agent Backlinks -->
-        <div class="admin-card" style="margin-bottom:24px">
-            <h3 style="cursor:pointer" onclick="toggleSection('backlinks-report')">
-                Agent Backlinks — Rapport <span id="backlinks-report-toggle" style="font-size:0.8em">&#9654;</span>
-            </h3>
-            <div id="backlinks-report" style="display:none">
-                <h4 style="margin:12px 0 8px;font-size:0.95rem">Journal hebdomadaire</h4>
-                <pre id="backlinks-log" style="background:var(--bg-secondary);padding:12px;border-radius:8px;overflow-x:auto;max-height:400px;overflow-y:auto;font-size:0.8rem;white-space:pre-wrap">Chargement...</pre>
-                <h4 style="margin:16px 0 8px;font-size:0.95rem">Prospects netlinking</h4>
-                <pre id="backlinks-prospects" style="background:var(--bg-secondary);padding:12px;border-radius:8px;overflow-x:auto;max-height:400px;overflow-y:auto;font-size:0.8rem;white-space:pre-wrap">Chargement...</pre>
-                <div id="backlinks-drafts-section" style="display:none">
-                    <h4 style="margin:16px 0 8px;font-size:0.95rem">Drafts prêts à poster</h4>
+        <!-- ═══════ TAB 3 : Backlinks ═══════ -->
+        <div id="panel-backlinks" class="tab-panel" role="tabpanel">
+
+            <div class="section-title">
+                Vue d'ensemble <span class="badge badge-backlinks">Agent Backlinks</span>
+            </div>
+
+            <div class="bl-stat-grid" id="bl-stats">
+                <div class="bl-stat">
+                    <div class="stat-num" id="bl-total">—</div>
+                    <div class="stat-label">Prospects</div>
+                </div>
+                <div class="bl-stat">
+                    <div class="stat-num" style="color:#16A34A" id="bl-acquired">—</div>
+                    <div class="stat-label">Acquis</div>
+                </div>
+                <div class="bl-stat">
+                    <div class="stat-num" style="color:#D97706" id="bl-pending">—</div>
+                    <div class="stat-label">En cours</div>
+                </div>
+                <div class="bl-stat">
+                    <div class="stat-num" style="color:var(--accent)" id="bl-drafts-count">—</div>
+                    <div class="stat-label">Drafts prêts</div>
+                </div>
+            </div>
+
+            <div class="panel-grid">
+                <div class="flat-card">
+                    <h4>Prospects netlinking</h4>
+                    <div id="backlinks-prospects-table" style="overflow-x:auto">
+                        <p style="color:var(--text-secondary);font-size:0.85rem">Chargement...</p>
+                    </div>
+                </div>
+                <div class="flat-card">
+                    <h4>Journal hebdomadaire</h4>
+                    <pre class="log-viewer" id="backlinks-log">Chargement...</pre>
+                </div>
+            </div>
+
+            <div class="panel-grid full" id="backlinks-drafts-section" style="display:none">
+                <div class="flat-card">
+                    <h4>Drafts prêts à poster</h4>
                     <div id="backlinks-drafts"></div>
                 </div>
             </div>
+
         </div>
 
-        <!-- Export CSV -->
-        <div class="admin-card" style="margin-bottom:24px">
-            <h3>Export CSV des performances</h3>
-            <div style="display:flex;gap:8px;align-items:center">
-                <select id="csv-month" aria-label="Mois">
-                    <option value="1">Janvier</option>
-                    <option value="2">Février</option>
-                    <option value="3">Mars</option>
-                    <option value="4">Avril</option>
-                    <option value="5">Mai</option>
-                    <option value="6">Juin</option>
-                    <option value="7">Juillet</option>
-                    <option value="8">Août</option>
-                    <option value="9">Septembre</option>
-                    <option value="10">Octobre</option>
-                    <option value="11">Novembre</option>
-                    <option value="12">Décembre</option>
-                </select>
-                <input type="number" id="csv-year" value="2026" aria-label="Année" style="width:80px;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm)">
-                <button class="task-btn" onclick="downloadCsv()">Télécharger CSV</button>
+        <!-- ═══════ TAB 4 : Abonnés ═══════ -->
+        <div id="panel-subscribers" class="tab-panel" role="tabpanel">
+
+            <div class="panel-grid">
+                <div class="flat-card">
+                    <h4>Résumé</h4>
+                    <div id="subscribers-summary">Chargement...</div>
+                </div>
+                <div class="flat-card">
+                    <h4>Export CSV</h4>
+                    <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:12px">
+                        Téléchargez les données de performance par mois.
+                    </p>
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                        <select id="csv-month" aria-label="Mois" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:0.85rem">
+                            <option value="1">Janvier</option>
+                            <option value="2">Février</option>
+                            <option value="3">Mars</option>
+                            <option value="4">Avril</option>
+                            <option value="5">Mai</option>
+                            <option value="6">Juin</option>
+                            <option value="7">Juillet</option>
+                            <option value="8">Août</option>
+                            <option value="9">Septembre</option>
+                            <option value="10">Octobre</option>
+                            <option value="11">Novembre</option>
+                            <option value="12">Décembre</option>
+                        </select>
+                        <input type="number" id="csv-year" value="2026" aria-label="Année" style="width:80px;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:0.85rem">
+                        <button class="action-btn blue" onclick="downloadCsv()">Télécharger</button>
+                    </div>
+                </div>
             </div>
+
+            <div class="panel-grid full">
+                <div class="flat-card">
+                    <h4>Liste des abonnés</h4>
+                    <div style="overflow-x:auto">
+                        <table id="subscribers-table" class="sub-table" style="display:none">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Téléphone</th>
+                                    <th>Seuil rouge</th>
+                                    <th>Délai</th>
+                                    <th>Blanc</th>
+                                    <th>Récap</th>
+                                    <th>Statut</th>
+                                    <th>Inscrit le</th>
+                                </tr>
+                            </thead>
+                            <tbody id="subscribers-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ═══════ TAB 5 : Actions ═══════ -->
+        <div id="panel-actions" class="tab-panel" role="tabpanel">
+
+            <div class="flat-card" style="margin-bottom:20px">
+                <h4>Tâches manuelles</h4>
+                <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:14px">
+                    Exécuter les tâches du scheduler manuellement.
+                </p>
+                <div class="action-grid">
+                    <button class="action-btn blue" onclick="runTask('verification')">Vérification EDF</button>
+                    <button class="action-btn blue" onclick="runTask('predictions')">Prédictions + Alertes</button>
+                    <button class="action-btn green" onclick="runTask('weights')">Recalcul poids</button>
+                    <button class="action-btn gray" onclick="runTask('recap')">Récap hebdo</button>
+                    <button class="action-btn gray" onclick="runTask('backfill')">Backfill saison</button>
+                    <button class="action-btn purple" onclick="runTask('seo_agent')">Agent SEO</button>
+                    <button class="action-btn teal" onclick="runTask('backlinks_agent')">Agent Backlinks</button>
+                </div>
+                <div id="task-result" style="margin-top:12px;font-size:0.85rem;padding:10px;border-radius:var(--radius-sm);display:none"></div>
+            </div>
+
         </div>
 
     </div>
 
 </main>
 
-<footer role="contentinfo">
-    <div class="container">
-        <p>Calendrier Tempo EDF — Admin &mdash; <a href="/">Retour au dashboard</a></p>
-    </div>
-</footer>
+<div class="admin-footer">
+    <a href="/">Retour au dashboard</a>
+</div>
 
 <script>
 let adminPassword = '';
 let chartHorizon = null;
 let chartWeights = null;
+const chartAvailable = typeof Chart !== 'undefined';
 
+/* ── Tabs ── */
+document.querySelectorAll('.admin-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.admin-tab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); });
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        tab.setAttribute('aria-selected', 'true');
+        document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+    });
+});
+
+/* ── Main loader ── */
 async function loadAdminData() {
     adminPassword = document.getElementById('admin-pw').value;
     if (!adminPassword) return;
@@ -236,23 +641,19 @@ async function loadAdminData() {
             return;
         }
         const data = await resp.json();
+        if (data.status !== 'ok') { alert('Erreur de chargement'); return; }
 
-        if (data.status !== 'ok') {
-            alert('Erreur de chargement');
-            return;
-        }
-
+        document.getElementById('admin-login').style.display = 'none';
         document.getElementById('admin-content').style.display = 'block';
 
-        // Métriques globales
+        /* KPI strip */
         const g30 = data.global_30j;
         const g90 = data.global_90j;
-        document.getElementById('acc-30j').textContent = g30.total > 0 ? `${g30.precision}%` : 'N/A';
-        document.getElementById('acc-90j').textContent = g90.total > 0 ? `${g90.precision}%` : 'N/A';
-        document.getElementById('total-pred').textContent = g30.total;
+        setKpi('kpi-acc30', g30.total > 0 ? g30.precision + '%' : 'N/A', g30.precision);
+        setKpi('kpi-acc90', g90.total > 0 ? g90.precision + '%' : 'N/A', g90.precision);
+        document.getElementById('kpi-total').textContent = g30.total;
 
-        // Précision par horizon
-        // Fix audit v6 : escapeHtml sur toutes les valeurs dynamiques
+        /* Horizon metrics */
         const horizonEl = document.getElementById('metrics-horizon');
         if (data.by_horizon.length > 0) {
             horizonEl.innerHTML = data.by_horizon.map(h =>
@@ -262,15 +663,13 @@ async function loadAdminData() {
                 </div>`
             ).join('');
         } else {
-            horizonEl.innerHTML = '<p style="color:var(--text-secondary);font-size:0.9rem">Pas encore de données</p>';
+            horizonEl.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Pas encore de données</p>';
         }
 
-        // Matrice de confusion
-        // Fix audit v6 : escapeHtml sur les valeurs de la matrice
+        /* Confusion matrix */
         const cm = data.confusion_matrix;
-        const cmEl = document.getElementById('confusion-matrix');
         const s = (v) => escapeHtml(String(v ?? 0));
-        cmEl.innerHTML = `
+        document.getElementById('confusion-matrix').innerHTML = `
             <table class="confusion-table">
                 <tr><th>Prédit \\ Réel</th><th>BLEU</th><th>BLANC</th><th>ROUGE</th></tr>
                 <tr><td><strong>BLEU</strong></td><td>${s(cm.BLEU?.BLEU)}</td><td>${s(cm.BLEU?.BLANC)}</td><td>${s(cm.BLEU?.ROUGE)}</td></tr>
@@ -279,7 +678,7 @@ async function loadAdminData() {
             </table>
         `;
 
-        // Erreurs récentes
+        /* Recent errors */
         const errEl = document.getElementById('errors-list');
         if (data.recent_errors.length > 0) {
             errEl.innerHTML = data.recent_errors.map(e =>
@@ -292,36 +691,51 @@ async function loadAdminData() {
                 </li>`
             ).join('');
         } else {
-            errEl.innerHTML = '<li style="color:var(--text-secondary)">Aucune erreur enregistrée</li>';
+            errEl.innerHTML = '<li style="color:var(--text-secondary)">Aucune erreur récente</li>';
         }
 
-        // Poids
-        // Fix audit v6 : escapeHtml sur les clés et valeurs
+        /* Weights */
         const weights = data.current_weights;
         const wEl = document.getElementById('current-weights');
         wEl.innerHTML = Object.entries(weights).map(([k, v]) =>
             `<div class="metric-row"><span>${escapeHtml(k)}</span><span class="metric-value">${escapeHtml((Number(v) * 100).toFixed(1))}%</span></div>`
         ).join('');
 
-        // Graphiques
-        renderHorizonChart(data.by_horizon);
-        renderWeightsChart(weights);
+        /* Charts (guarded) */
+        if (chartAvailable) {
+            renderHorizonChart(data.by_horizon);
+            renderWeightsChart(weights);
+        } else {
+            document.getElementById('chart-horizon').style.display = 'none';
+            document.getElementById('chart-horizon-fallback').style.display = 'flex';
+            document.getElementById('chart-weights').style.display = 'none';
+            document.getElementById('chart-weights-fallback').style.display = 'flex';
+        }
 
-        // Stats users + agents + subscribers
+        /* Parallel loads */
         loadSubscribers();
         loadAgentReports();
 
     } catch (e) {
-        alert('Erreur: ' + e.message);
+        alert('Erreur : ' + e.message);
     }
 }
 
-function renderHorizonChart(horizonData) {
-    const ctx = document.getElementById('chart-horizon');
-    if (!ctx) return;
-    if (horizonData.length === 0) return;
+function setKpi(id, text, value) {
+    const el = document.getElementById(id);
+    el.textContent = text;
+    if (typeof value === 'number') {
+        el.classList.remove('green', 'orange', 'red');
+        el.classList.add(value >= 75 ? 'green' : value >= 55 ? 'orange' : 'red');
+    }
+}
 
-    if (chartHorizon) { chartHorizon.destroy(); }
+/* ── Charts ── */
+function renderHorizonChart(horizonData) {
+    if (!chartAvailable) return;
+    const ctx = document.getElementById('chart-horizon');
+    if (!ctx || horizonData.length === 0) return;
+    if (chartHorizon) chartHorizon.destroy();
     chartHorizon = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -347,62 +761,66 @@ function renderHorizonChart(horizonData) {
 }
 
 function renderWeightsChart(weights) {
+    if (!chartAvailable) return;
     const ctx = document.getElementById('chart-weights');
     if (!ctx) return;
-
     const labels = Object.keys(weights).map(k => k.replace('_', ' '));
     const values = Object.values(weights).map(v => v * 100);
-
-    if (chartWeights) { chartWeights.destroy(); }
+    if (chartWeights) chartWeights.destroy();
     chartWeights = new Chart(ctx, {
         type: 'doughnut',
         data: {
             labels: labels,
             datasets: [{
                 data: values,
-                backgroundColor: ['#F44336', '#FF9800', '#2196F3', '#4CAF50', '#9C27B0', '#795548'],
+                backgroundColor: ['#F44336', '#FF9800', '#2196F3', '#4CAF50', '#9C27B0', '#795548', '#607D8B'],
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { position: 'bottom', labels: { font: { size: 12 } } }
+                legend: { position: 'bottom', labels: { font: { size: 11 } } }
             }
         }
     });
 }
 
+/* ── Tasks ── */
 async function runTask(taskName) {
-    // M-08 QA : confirmation avant exécution
-    if (!confirm(`Êtes-vous sûr de vouloir exécuter la tâche "${taskName}" ?`)) return;
+    if (!confirm(`Exécuter la tâche « ${taskName} » ?`)) return;
     const resultEl = document.getElementById('task-result');
-    resultEl.textContent = `Exécution de "${taskName}"...`;
+    resultEl.style.display = 'block';
+    resultEl.style.background = 'var(--bg)';
+    resultEl.style.color = 'var(--text-secondary)';
+    resultEl.textContent = `Exécution de « ${taskName} »...`;
 
     try {
         const formData = new FormData();
         formData.append('task', taskName);
-
         const resp = await fetch('/admin/run-task', {
             method: 'POST',
             body: formData,
             headers: { 'Authorization': `Bearer ${adminPassword}` },
         });
         const data = await resp.json();
-
         if (resp.ok) {
             resultEl.textContent = data.result;
-            resultEl.style.color = '#2E7D32';
+            resultEl.style.background = '#F0FDF4';
+            resultEl.style.color = '#166534';
         } else {
             resultEl.textContent = data.detail || 'Erreur';
-            resultEl.style.color = '#C62828';
+            resultEl.style.background = '#FEF2F2';
+            resultEl.style.color = '#991B1B';
         }
     } catch (e) {
-        resultEl.textContent = 'Erreur: ' + e.message;
-        resultEl.style.color = '#C62828';
+        resultEl.textContent = 'Erreur : ' + e.message;
+        resultEl.style.background = '#FEF2F2';
+        resultEl.style.color = '#991B1B';
     }
 }
 
+/* ── Subscribers ── */
 async function loadSubscribers() {
     try {
         const resp = await fetch('/admin/subscribers', {
@@ -411,11 +829,15 @@ async function loadSubscribers() {
         const data = await resp.json();
         if (data.status !== 'ok') return;
 
+        /* KPI */
+        document.getElementById('kpi-subs').textContent = data.actifs;
+
+        /* Summary */
         const sumEl = document.getElementById('subscribers-summary');
         sumEl.innerHTML = `
             <div class="metric-row"><span>Total inscrits</span><span class="metric-value">${escapeHtml(String(data.total))}</span></div>
-            <div class="metric-row"><span>Actifs</span><span class="metric-value" style="color:#2E7D32">${escapeHtml(String(data.actifs))}</span></div>
-            <div class="metric-row"><span>Désinscrits</span><span class="metric-value" style="color:#C62828">${escapeHtml(String(data.total - data.actifs))}</span></div>
+            <div class="metric-row"><span>Actifs</span><span class="metric-value" style="color:#16A34A">${escapeHtml(String(data.actifs))}</span></div>
+            <div class="metric-row"><span>Désinscrits</span><span class="metric-value" style="color:#DC2626">${escapeHtml(String(data.total - data.actifs))}</span></div>
         `;
 
         if (data.users.length > 0) {
@@ -427,16 +849,15 @@ async function loadSubscribers() {
                 <td>J-${escapeHtml(String(u.delai_alerte))}</td>
                 <td>${u.alerte_blanc ? 'Oui' : 'Non'}</td>
                 <td>${u.recap_hebdo ? 'Oui' : 'Non'}</td>
-                <td>${u.actif ? '<span style="color:#2E7D32">Actif</span>' : '<span style="color:#C62828">Inactif</span>'}</td>
+                <td>${u.actif ? '<span style="color:#16A34A">Actif</span>' : '<span style="color:#DC2626">Inactif</span>'}</td>
                 <td>${escapeHtml(u.created_at?.substring(0, 10) || '—')}</td>
             </tr>`).join('');
             document.getElementById('subscribers-table').style.display = 'table';
         }
-    } catch {
-        // silently fail
-    }
+    } catch { /* silent */ }
 }
 
+/* ── Agent reports ── */
 async function loadAgentReports() {
     try {
         const resp = await fetch('/admin/agent-reports', {
@@ -445,42 +866,94 @@ async function loadAgentReports() {
         const data = await resp.json();
         if (data.status !== 'ok') return;
 
-        // SEO
+        /* SEO */
         document.getElementById('seo-log').textContent = data.seo_log || 'Aucun rapport disponible.';
         document.getElementById('seo-calendar').textContent = data.seo_calendar || 'Aucun calendrier disponible.';
 
-        // Backlinks
-        document.getElementById('backlinks-log').textContent = data.backlinks_log || 'Aucun rapport disponible. L\'agent s\'exécutera mercredi prochain.';
-        document.getElementById('backlinks-prospects').textContent = data.backlinks_prospects || 'Aucun prospect identifié.';
+        /* Backlinks — log */
+        document.getElementById('backlinks-log').textContent = data.backlinks_log || 'Aucun rapport. L\'agent s\'exécute le mercredi.';
 
-        // Drafts
+        /* Backlinks — parse prospects markdown into table */
+        renderBacklinksProspects(data.backlinks_prospects);
+
+        /* Backlinks — drafts */
         if (data.backlinks_drafts && data.backlinks_drafts.length > 0) {
+            document.getElementById('bl-drafts-count').textContent = data.backlinks_drafts.length;
             const draftsEl = document.getElementById('backlinks-drafts');
             draftsEl.innerHTML = data.backlinks_drafts.map(d => `
-                <details style="margin-bottom:8px">
-                    <summary style="cursor:pointer;font-weight:600;font-size:0.85rem;padding:6px 0">${escapeHtml(d.filename)}</summary>
-                    <pre style="background:var(--bg-secondary);padding:12px;border-radius:8px;font-size:0.8rem;white-space:pre-wrap;max-height:300px;overflow-y:auto">${escapeHtml(d.content)}</pre>
+                <details class="draft-item">
+                    <summary>${escapeHtml(d.filename)}</summary>
+                    <pre>${escapeHtml(d.content)}</pre>
                 </details>
             `).join('');
             document.getElementById('backlinks-drafts-section').style.display = 'block';
+        } else {
+            document.getElementById('bl-drafts-count').textContent = '0';
         }
-    } catch {
-        // silently fail
-    }
+    } catch { /* silent */ }
 }
 
-function toggleSection(id) {
-    const el = document.getElementById(id);
-    const toggle = document.getElementById(id + '-toggle');
-    if (el.style.display === 'none') {
-        el.style.display = 'block';
-        toggle.innerHTML = '&#9660;';
-    } else {
-        el.style.display = 'none';
-        toggle.innerHTML = '&#9654;';
+/* ── Parse prospects markdown table ── */
+function renderBacklinksProspects(raw) {
+    const container = document.getElementById('backlinks-prospects-table');
+    if (!raw || raw.trim() === '') {
+        container.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Aucun prospect identifié.</p>';
+        document.getElementById('bl-total').textContent = '0';
+        document.getElementById('bl-acquired').textContent = '0';
+        document.getElementById('bl-pending').textContent = '0';
+        return;
     }
+
+    /* Try to parse markdown table */
+    const lines = raw.trim().split('\n').filter(l => l.trim().startsWith('|'));
+    if (lines.length < 3) {
+        /* Not a table — fallback to raw display */
+        container.innerHTML = `<pre class="log-viewer">${escapeHtml(raw)}</pre>`;
+        return;
+    }
+
+    const parseRow = line => line.split('|').slice(1, -1).map(c => c.trim());
+    const headers = parseRow(lines[0]);
+    const rows = lines.slice(2).map(parseRow);
+
+    /* Stats */
+    let acquired = 0, pending = 0;
+    const statusIdx = headers.findIndex(h => /statut|status/i.test(h));
+    rows.forEach(r => {
+        if (!r[statusIdx]) return;
+        const st = r[statusIdx].toLowerCase();
+        if (/acquis|obtained|done|ok/i.test(st)) acquired++;
+        else pending++;
+    });
+    document.getElementById('bl-total').textContent = rows.length;
+    document.getElementById('bl-acquired').textContent = acquired;
+    document.getElementById('bl-pending').textContent = pending;
+
+    /* Render table */
+    let html = '<table class="prospect-table"><thead><tr>';
+    headers.forEach(h => { html += `<th>${escapeHtml(h)}</th>`; });
+    html += '</tr></thead><tbody>';
+    rows.forEach(r => {
+        html += '<tr>';
+        r.forEach((cell, i) => {
+            if (i === statusIdx) {
+                const st = cell.toLowerCase();
+                const cls = /acquis|obtained|done|ok/i.test(st) ? 'acquired'
+                          : /draft|brouillon/i.test(st) ? 'draft'
+                          : /contact/i.test(st) ? 'contacted'
+                          : 'pending';
+                html += `<td><span class="status-pill ${cls}">${escapeHtml(cell)}</span></td>`;
+            } else {
+                html += `<td>${escapeHtml(cell)}</td>`;
+            }
+        });
+        html += '</tr>';
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
 }
 
+/* ── CSV download ── */
 async function downloadCsv() {
     const month = document.getElementById('csv-month').value;
     const year = document.getElementById('csv-year').value;
@@ -493,14 +966,15 @@ async function downloadCsv() {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `performance_${year}_${month.padStart(2, '0')}.csv`;
+        a.download = `performance_${year}_${String(month).padStart(2, '0')}.csv`;
         a.click();
         URL.revokeObjectURL(url);
     } catch (e) {
-        alert('Erreur: ' + e.message);
+        alert('Erreur : ' + e.message);
     }
 }
 
+/* ── Helpers ── */
 function escapeHtml(str) {
     if (!str) return '';
     const div = document.createElement('div');
@@ -508,7 +982,7 @@ function escapeHtml(str) {
     return div.innerHTML;
 }
 
-// Hamburger menu toggle
+/* Hamburger */
 (function() {
     const btn = document.getElementById('hamburger-btn');
     const nav = document.getElementById('main-nav');
