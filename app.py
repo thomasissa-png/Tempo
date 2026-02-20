@@ -1762,8 +1762,14 @@ async def admin_run_task(request: Request, task: str = Form(...)):
     client_ip = request.client.host if request.client else "unknown"
     verify_admin(request.headers.get("Authorization"), client_ip)
     from scheduler import run_task_now
-    result = await run_task_now(task)
-    return {"status": "ok", "result": result}
+    try:
+        logger.info(f"[Admin] Exécution manuelle: {task} (IP: {client_ip})")
+        result = await run_task_now(task)
+        logger.info(f"[Admin] Tâche {task} terminée: {result[:200]}")
+        return {"status": "ok", "result": result}
+    except Exception as e:
+        logger.error(f"[Admin] Erreur tâche {task}: {e}", exc_info=True)
+        return {"status": "error", "result": f"Erreur d'exécution: {e}"}
 
 
 @app.get("/admin/weights-history")
