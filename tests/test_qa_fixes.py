@@ -707,6 +707,102 @@ class TestBug01StoreProtectsConfirmed:
             conn.close()
 
 
+    def test_confirmed_row_never_replaced_by_refresh(self):
+        """Fix confirmed-overwrite : INSERT OR REPLACE ne doit JAMAIS toucher
+        une ligne déjà confirmée, même si la pred entrante est aussi confirmed.
+        Scénario réel : EDF confirme demain à 8h, puis le refresh météo à 18h
+        tente de remplacer la ligne confirmée via INSERT OR REPLACE.
+        L'ancien code supprimait la ligne confirmée (DELETE) puis insérait ;
+        si l'INSERT échouait, la confirmation était perdue."""
+        from predictor import store_prediction, confirm_prediction
+        from database import get_db
+
+        target = (date.today() + timedelta(days=1)).isoformat()
+        pred = {
+            "date": target,
+            "couleur_predite": "BLANC",
+            "probabilite_bleu": 0.1, "probabilite_blanc": 0.7, "probabilite_rouge": 0.2,
+            "score_risque": 48.0,
+            "temp_min_prevue": 3.0, "temp_max_prevue": 9.0, "pression_prevue": None,
+            "jours_rouges_restants": 10, "jours_blancs_restants": 20,
+            "raison": "Test", "horizon": "J-1",
+            "timestamp_prediction": datetime.now().isoformat(),
+            "score_temperature": 50, "score_budget": 40, "score_weekday": 30,
+            "score_gradient": 20, "score_clustering": 10, "score_rte": 15,
+        }
+        # 1. Stocker la prédiction initiale
+        store_prediction(pred, "J-1", cycle_id="cycle_init")
+
+        # 2. EDF confirme : BLEU (via confirm_prediction qui fait UPDATE)
+        confirm_prediction(target, "BLEU")
+
+        # 3. Vérifier que la ligne est confirmée
+        conn = get_db()
+        try:
+            row = conn.execute(
+                "SELECT id, confirmed, couleur_predite FROM predictions "
+                "WHERE date = ? AND horizon = ?",
+                (target, "J-1")
+            ).fetchone()
+            assert row["confirmed"] == 1
+            assert row["couleur_predite"] == "BLEU"
+            confirmed_id = row["id"]
+        finally:
+            conn.close()
+
+        # 4. Le refresh tente de remplacer avec une pred confirmed=True
+        #    (simule predict_range qui a trouvé l'actual dans _load_future_actuals)
+        pred_refresh = pred.copy()
+        pred_refresh["couleur_predite"] = "BLEU"
+        pred_refresh["confirmed"] = True
+        pred_refresh["score_risque"] = 0
+        result = store_prediction(pred_refresh, "J-1", cycle_id="cycle_refresh")
+        assert result is None  # Doit être bloqué
+
+        # 5. Vérifier que la ligne originale est intacte (même id)
+        conn = get_db()
+        try:
+            row = conn.execute(
+                "SELECT id, confirmed, couleur_predite FROM predictions "
+                "WHERE date = ? AND horizon = ?",
+                (target, "J-1")
+            ).fetchone()
+            assert row["confirmed"] == 1
+            assert row["couleur_predite"] == "BLEU"
+            assert row["id"] == confirmed_id  # Même ligne, pas de DELETE+INSERT
+        finally:
+            conn.close()
+
+    def test_confirmed_other_horizon_still_blocked(self):
+        """Vérifie que les horizons non-confirmés sont toujours bloqués
+        quand la date a une ligne confirmée (gate existant any_confirmed)."""
+        from predictor import store_prediction, confirm_prediction
+        from database import get_db
+
+        target = (date.today() + timedelta(days=3)).isoformat()
+        pred = {
+            "date": target,
+            "couleur_predite": "ROUGE",
+            "probabilite_bleu": 0.05, "probabilite_blanc": 0.15, "probabilite_rouge": 0.8,
+            "score_risque": 78.0,
+            "temp_min_prevue": -1.0, "temp_max_prevue": 4.0, "pression_prevue": None,
+            "jours_rouges_restants": 8, "jours_blancs_restants": 18,
+            "raison": "Test", "horizon": "J-3",
+            "timestamp_prediction": datetime.now().isoformat(),
+            "score_temperature": 80, "score_budget": 60, "score_weekday": 30,
+            "score_gradient": 20, "score_clustering": 10, "score_rte": 50,
+        }
+        store_prediction(pred, "J-3", cycle_id="cycle_a")
+        confirm_prediction(target, "ROUGE")
+
+        # Tenter de stocker un AUTRE horizon (J-2) non confirmé
+        pred2 = pred.copy()
+        pred2["couleur_predite"] = "BLANC"
+        pred2["confirmed"] = False
+        result = store_prediction(pred2, "J-2", cycle_id="cycle_b")
+        assert result is None  # Bloqué par gate any_confirmed
+
+
 class TestCacheTTLConfig:
     """BUG-02 : le cache utilise Config.PREDICTIONS_CACHE_TTL."""
     def test_cache_ttl_not_hardcoded(self):

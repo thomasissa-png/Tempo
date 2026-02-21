@@ -1861,6 +1861,15 @@ def store_prediction(pred: dict, horizon: str = "J-1",
             (pred["date"], horizon)
         ).fetchone()
 
+        # Fix confirmed-overwrite : JAMAIS remplacer une ligne déjà confirmée.
+        # INSERT OR REPLACE fait DELETE + INSERT → si l'INSERT échoue (timeout,
+        # concurrence), la ligne confirmée est perdue et le jour apparaît
+        # « pas encore confirmé ». Une fois confirmée, seul confirm_prediction()
+        # (qui fait UPDATE, pas DELETE) peut modifier la ligne.
+        if prev and prev["confirmed"]:
+            logger.debug(f"[Prediction] {pred['date']} {horizon} déjà confirmé en DB, skip")
+            return None
+
         # Fix #34 : préserver couleur_originale lors des INSERT OR REPLACE.
         # Sans ça, _refresh_predictions() écrase couleur_originale → l'évaluation
         # de performance skip la prédiction → fiabilité artificiellement à 100%.
