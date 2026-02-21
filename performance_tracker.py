@@ -368,17 +368,65 @@ def get_rouge_recall_by_horizon(days: int = 90) -> dict:
         conn.close()
 
 
+def get_budget_season() -> dict:
+    """Retourne l'état du budget saison pour le dashboard admin."""
+    try:
+        from tempo_client import (
+            get_remaining_days, count_used_days, days_left_in_season,
+            get_season_dates,
+        )
+        remaining = get_remaining_days()
+        used = count_used_days()
+        d_left = days_left_in_season()
+        start, end = get_season_dates()
+
+        # Compter les prédictions futures non-confirmées par couleur
+        conn = get_db()
+        try:
+            today = date.today().isoformat()
+            rows = conn.execute(
+                """SELECT couleur_predite, COUNT(DISTINCT date) as cnt
+                   FROM predictions
+                   WHERE date > ? AND confirmed = 0
+                   GROUP BY couleur_predite""",
+                (today,),
+            ).fetchall()
+            predicted_future = {r["couleur_predite"]: r["cnt"] for r in rows}
+        finally:
+            conn.close()
+
+        return {
+            "rouge_used": used.get("ROUGE", 0),
+            "rouge_remaining": remaining.get("ROUGE", 0),
+            "rouge_total": Config.JOURS_ROUGES_TOTAL,
+            "rouge_predicted": predicted_future.get("ROUGE", 0),
+            "blanc_used": used.get("BLANC", 0),
+            "blanc_remaining": remaining.get("BLANC", 0),
+            "blanc_total": Config.JOURS_BLANCS_TOTAL,
+            "blanc_predicted": predicted_future.get("BLANC", 0),
+            "days_left_season": d_left,
+            "season_start": start.isoformat(),
+            "season_end": end.isoformat(),
+        }
+    except Exception as e:
+        logger.warning(f"[Budget] Erreur calcul budget saison: {e}")
+        return {}
+
+
 def get_performance_summary() -> dict:
     """Résumé complet des performances pour le dashboard admin."""
     return {
         "global_30j": get_accuracy_global(30),
         "global_90j": get_accuracy_global(90),
+        "accuracy_j2_j5_30j": get_accuracy_global(30, min_horizon=2, max_horizon=5),
+        "accuracy_j2_j5_90j": get_accuracy_global(90, min_horizon=2, max_horizon=5),
         "by_horizon": get_accuracy_by_horizon(90),
         "confusion_matrix": get_confusion_matrix(90),
         "precision_recall_f1": get_precision_recall_f1(90),
         "rouge_recall_by_horizon": get_rouge_recall_by_horizon(90),
         "recent_errors": get_recent_errors(10),
         "current_weights": get_current_weights(),
+        "budget_season": get_budget_season(),
     }
 
 

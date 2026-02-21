@@ -310,6 +310,120 @@
             overflow-y: auto;
         }
 
+        /* ── PRF table (precision/recall/f1) ── */
+        .prf-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        .prf-table th, .prf-table td {
+            padding: 10px 14px;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+        .prf-table th {
+            background: var(--bg);
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+        .prf-table .color-dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 6px;
+            vertical-align: middle;
+        }
+
+        /* ── Confusion matrix enhanced ── */
+        .confusion-table .diag {
+            background: #E8F5E9;
+            font-weight: 700;
+        }
+        .confusion-table .miss-rouge {
+            background: #FFEBEE;
+            color: #B71C1C;
+            font-weight: 600;
+        }
+        .confusion-table .row-pct {
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+            display: block;
+        }
+
+        /* ── Budget bars ── */
+        .budget-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) { .budget-grid { grid-template-columns: 1fr; } }
+        .budget-item {
+            padding: 14px;
+            background: var(--bg);
+            border-radius: var(--radius-sm);
+        }
+        .budget-item .budget-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        .budget-bar {
+            height: 24px;
+            background: var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            position: relative;
+        }
+        .budget-bar .bar-used {
+            height: 100%;
+            transition: width 0.5s;
+        }
+        .budget-bar .bar-predicted {
+            height: 100%;
+            transition: width 0.5s;
+            opacity: 0.45;
+        }
+        .budget-detail {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            margin-top: 6px;
+        }
+        .budget-meta {
+            text-align: center;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+        }
+
+        /* ── Rouge recall table ── */
+        .rouge-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        .rouge-table th, .rouge-table td {
+            padding: 10px 14px;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+        .rouge-table th {
+            background: var(--bg);
+            font-weight: 600;
+            font-size: 0.8rem;
+        }
+        .rouge-table .val-good { color: #16A34A; font-weight: 700; }
+        .rouge-table .val-warn { color: #D97706; font-weight: 700; }
+        .rouge-table .val-bad { color: #DC2626; font-weight: 700; }
+
         /* ── Responsive footer spacing ── */
         .admin-footer {
             margin-top: 40px;
@@ -373,16 +487,24 @@
         <!-- KPI strip -->
         <div class="kpi-strip" id="kpi-strip">
             <div class="kpi-card">
-                <div class="kpi-value" id="kpi-acc30">—</div>
-                <div class="kpi-label">Précision 30j</div>
+                <div class="kpi-value" id="kpi-acc-j2j5">—</div>
+                <div class="kpi-label">Précision J+2→J+5 (30j)</div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-value" id="kpi-acc90">—</div>
-                <div class="kpi-label">Précision 90j</div>
+                <div class="kpi-value" id="kpi-rouge-recall">—</div>
+                <div class="kpi-label">Recall ROUGE (90j)</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-value" id="kpi-f1">—</div>
+                <div class="kpi-label">F1 pondéré (90j)</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-value" id="kpi-acc30">—</div>
+                <div class="kpi-label">Précision globale 30j</div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-value" id="kpi-total">—</div>
-                <div class="kpi-label">Prédictions 30j</div>
+                <div class="kpi-label">Évaluations 30j</div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-value" id="kpi-subs">—</div>
@@ -412,13 +534,50 @@
         <!-- ═══════ TAB 1 : Performance ═══════ -->
         <div id="panel-performance" class="tab-panel active" role="tabpanel">
 
+            <!-- ── Suivi ROUGE (priorité #1) ── -->
+            <div class="section-title">Suivi jours ROUGE <span class="badge" style="background:#DC2626">Priorité #1</span></div>
             <div class="panel-grid">
                 <div class="flat-card">
-                    <h4>Précision par horizon</h4>
+                    <h4>Recall ROUGE par horizon (90j)</h4>
+                    <p style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:10px">
+                        % de vrais jours ROUGE correctement détectés. Un recall faible = jours rouges manqués.
+                    </p>
+                    <div id="rouge-recall-table">Chargement...</div>
+                </div>
+                <div class="flat-card">
+                    <h4>Recall ROUGE par horizon</h4>
+                    <div class="chart-container" style="height:260px">
+                        <canvas id="chart-rouge-recall"></canvas>
+                    </div>
+                    <div id="chart-rouge-recall-fallback" class="chart-fallback" style="display:none">
+                        Chart.js non disponible.
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Precision / Recall / F1 par couleur ── -->
+            <div class="section-title">Precision / Recall / F1 par couleur (90j)</div>
+            <div class="panel-grid full">
+                <div class="flat-card">
+                    <div id="prf-table">Chargement...</div>
+                </div>
+            </div>
+
+            <!-- ── Budget saison ── -->
+            <div class="section-title">Budget saison EDF</div>
+            <div class="panel-grid full">
+                <div class="flat-card">
+                    <div id="budget-season">Chargement...</div>
+                </div>
+            </div>
+
+            <!-- ── Précision par horizon + chart ── -->
+            <div class="section-title">Précision par horizon (90j)</div>
+            <div class="panel-grid">
+                <div class="flat-card">
                     <div id="metrics-horizon"></div>
                 </div>
                 <div class="flat-card">
-                    <h4>Précision par horizon</h4>
                     <div class="chart-container" style="height:260px">
                         <canvas id="chart-horizon"></canvas>
                     </div>
@@ -428,9 +587,13 @@
                 </div>
             </div>
 
+            <!-- ── Matrice de confusion + Poids ── -->
             <div class="panel-grid">
                 <div class="flat-card">
                     <h4>Matrice de confusion (90j)</h4>
+                    <p style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:10px">
+                        Lignes = prédit, colonnes = réel. La diagonale = prédictions correctes.
+                    </p>
                     <div id="confusion-matrix"></div>
                 </div>
                 <div class="flat-card">
@@ -445,9 +608,10 @@
                 </div>
             </div>
 
+            <!-- ── Erreurs récentes ── -->
+            <div class="section-title">Erreurs récentes</div>
             <div class="panel-grid full">
                 <div class="flat-card">
-                    <h4>Erreurs récentes</h4>
                     <ul class="error-list" id="errors-list">
                         <li>Chargement...</li>
                     </ul>
@@ -647,55 +811,65 @@ async function loadAdminData() {
         document.getElementById('admin-login').style.display = 'none';
         document.getElementById('admin-content').style.display = 'block';
 
-        /* KPI strip */
+        /* ── KPI strip ── */
         const g30 = data.global_30j;
-        const g90 = data.global_90j;
+        const j2j5 = data.accuracy_j2_j5_30j || {};
+        setKpi('kpi-acc-j2j5', j2j5.total > 0 ? j2j5.precision + '%' : 'N/A', j2j5.precision);
         setKpi('kpi-acc30', g30.total > 0 ? g30.precision + '%' : 'N/A', g30.precision);
-        setKpi('kpi-acc90', g90.total > 0 ? g90.precision + '%' : 'N/A', g90.precision);
         document.getElementById('kpi-total').textContent = g30.total;
 
-        /* Horizon metrics */
+        /* Recall ROUGE global (moyenne J+2→J+5) */
+        const rrh = data.rouge_recall_by_horizon || {};
+        let totalRouge = 0, totalCaught = 0;
+        ['J+2','J+3','J+4','J+5'].forEach(k => {
+            if (rrh[k]) { totalRouge += rrh[k].rouge_total; totalCaught += rrh[k].rouge_caught; }
+        });
+        const rougeRecallGlobal = totalRouge > 0 ? Math.round(totalCaught / totalRouge * 100) : null;
+        setKpi('kpi-rouge-recall',
+            rougeRecallGlobal !== null ? rougeRecallGlobal + '%' : 'N/A',
+            rougeRecallGlobal !== null ? rougeRecallGlobal : 0
+        );
+
+        /* F1 pondéré */
+        const prf = data.precision_recall_f1 || {};
+        const wf1 = prf.weighted_f1;
+        setKpi('kpi-f1', wf1 != null ? wf1 + '%' : 'N/A', wf1 || 0);
+
+        /* ── Suivi ROUGE : tableau recall par horizon ── */
+        renderRougeRecallTable(rrh);
+        if (chartAvailable) renderRougeRecallChart(rrh);
+        else {
+            document.getElementById('chart-rouge-recall').style.display = 'none';
+            document.getElementById('chart-rouge-recall-fallback').style.display = 'flex';
+        }
+
+        /* ── Precision / Recall / F1 par couleur ── */
+        renderPrfTable(prf);
+
+        /* ── Budget saison ── */
+        renderBudgetSeason(data.budget_season || {});
+
+        /* ── Horizon metrics ── */
         const horizonEl = document.getElementById('metrics-horizon');
         if (data.by_horizon.length > 0) {
-            horizonEl.innerHTML = data.by_horizon.map(h =>
-                `<div class="metric-row">
-                    <span>${escapeHtml(String(h.horizon))} (${escapeHtml(String(h.total))} préd.)</span>
-                    <span class="metric-value">${escapeHtml(String(h.precision))}%</span>
-                </div>`
-            ).join('');
+            horizonEl.innerHTML = data.by_horizon.map(h => {
+                const cls = h.precision >= 80 ? 'green' : h.precision >= 60 ? 'orange' : 'red';
+                return `<div class="metric-row">
+                    <span>${escapeHtml(String(h.horizon))} <small style="color:var(--text-secondary)">(${h.total} éval.)</small></span>
+                    <span class="metric-value ${cls}">${escapeHtml(String(h.precision))}%</span>
+                </div>`;
+            }).join('');
         } else {
             horizonEl.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Pas encore de données</p>';
         }
 
-        /* Confusion matrix */
-        const cm = data.confusion_matrix;
-        const s = (v) => escapeHtml(String(v ?? 0));
-        document.getElementById('confusion-matrix').innerHTML = `
-            <table class="confusion-table">
-                <tr><th>Prédit \\ Réel</th><th>BLEU</th><th>BLANC</th><th>ROUGE</th></tr>
-                <tr><td><strong>BLEU</strong></td><td>${s(cm.BLEU?.BLEU)}</td><td>${s(cm.BLEU?.BLANC)}</td><td>${s(cm.BLEU?.ROUGE)}</td></tr>
-                <tr><td><strong>BLANC</strong></td><td>${s(cm.BLANC?.BLEU)}</td><td>${s(cm.BLANC?.BLANC)}</td><td>${s(cm.BLANC?.ROUGE)}</td></tr>
-                <tr><td><strong>ROUGE</strong></td><td>${s(cm.ROUGE?.BLEU)}</td><td>${s(cm.ROUGE?.BLANC)}</td><td>${s(cm.ROUGE?.ROUGE)}</td></tr>
-            </table>
-        `;
+        /* ── Confusion matrix (enhanced) ── */
+        renderConfusionMatrix(data.confusion_matrix);
 
-        /* Recent errors */
-        const errEl = document.getElementById('errors-list');
-        if (data.recent_errors.length > 0) {
-            errEl.innerHTML = data.recent_errors.map(e =>
-                `<li>
-                    <strong>${escapeHtml(e.date_cible)}</strong> (${e.jours_avance > 0 ? 'J-' + e.jours_avance : 'J0'}) :
-                    Prédit <span style="color:var(--${e.couleur_predite === 'ROUGE' ? 'rouge' : e.couleur_predite === 'BLANC' ? 'blanc' : 'bleu'})">${escapeHtml(e.couleur_predite)}</span>
-                    → Réel <strong>${escapeHtml(e.couleur_reelle)}</strong>
-                    (score: ${e.score_risque_predit})
-                    <br><small style="color:var(--text-secondary)">${escapeHtml(e.contexte_meteo) || 'Pas de contexte'}</small>
-                </li>`
-            ).join('');
-        } else {
-            errEl.innerHTML = '<li style="color:var(--text-secondary)">Aucune erreur récente</li>';
-        }
+        /* ── Recent errors (enhanced) ── */
+        renderRecentErrors(data.recent_errors);
 
-        /* Weights */
+        /* ── Weights ── */
         const weights = data.current_weights;
         const wEl = document.getElementById('current-weights');
         wEl.innerHTML = Object.entries(weights).map(([k, v]) =>
@@ -720,6 +894,224 @@ async function loadAdminData() {
     } catch (e) {
         alert('Erreur : ' + e.message);
     }
+}
+
+/* ── Rouge recall table ── */
+function renderRougeRecallTable(rrh) {
+    const el = document.getElementById('rouge-recall-table');
+    const horizons = ['J+1','J+2','J+3','J+4','J+5'];
+    let html = `<table class="rouge-table">
+        <thead><tr>
+            <th>Horizon</th><th>Recall</th><th>Precision</th>
+            <th>ROUGE détectés</th><th>ROUGE réels</th><th>Fausses alarmes</th>
+        </tr></thead><tbody>`;
+    horizons.forEach(h => {
+        const d = rrh[h] || {};
+        const recallCls = d.recall == null ? '' : d.recall >= 70 ? 'val-good' : d.recall >= 40 ? 'val-warn' : 'val-bad';
+        const precCls = d.precision == null ? '' : d.precision >= 70 ? 'val-good' : d.precision >= 40 ? 'val-warn' : 'val-bad';
+        html += `<tr>
+            <td><strong>${h}</strong></td>
+            <td class="${recallCls}">${d.recall != null ? d.recall + '%' : '—'}</td>
+            <td class="${precCls}">${d.precision != null ? d.precision + '%' : '—'}</td>
+            <td>${d.rouge_caught ?? '—'}</td>
+            <td>${d.rouge_total ?? '—'}</td>
+            <td>${d.false_alarms ?? '—'}</td>
+        </tr>`;
+    });
+    html += '</tbody></table>';
+    el.innerHTML = html;
+}
+
+/* ── Rouge recall chart ── */
+let chartRougeRecall = null;
+function renderRougeRecallChart(rrh) {
+    if (!chartAvailable) return;
+    const ctx = document.getElementById('chart-rouge-recall');
+    if (!ctx) return;
+    if (chartRougeRecall) chartRougeRecall.destroy();
+    const horizons = ['J+1','J+2','J+3','J+4','J+5'];
+    const recalls = horizons.map(h => rrh[h]?.recall ?? 0);
+    const precisions = horizons.map(h => rrh[h]?.precision ?? 0);
+    chartRougeRecall = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: horizons,
+            datasets: [
+                {
+                    label: 'Recall (%)',
+                    data: recalls,
+                    backgroundColor: recalls.map(v => v >= 70 ? '#4CAF50' : v >= 40 ? '#FFC107' : '#F44336'),
+                    borderRadius: 4,
+                },
+                {
+                    label: 'Precision (%)',
+                    data: precisions,
+                    backgroundColor: 'rgba(33,150,243,0.5)',
+                    borderRadius: 4,
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true, max: 100, title: { display: true, text: '%' } } },
+            plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } }
+        }
+    });
+}
+
+/* ── Precision / Recall / F1 table ── */
+function renderPrfTable(prf) {
+    const el = document.getElementById('prf-table');
+    const colors = [
+        { key: 'BLEU', label: 'BLEU', dot: '#2196F3' },
+        { key: 'BLANC', label: 'BLANC', dot: '#9E9E9E' },
+        { key: 'ROUGE', label: 'ROUGE', dot: '#F44336' },
+    ];
+    let html = `<table class="prf-table">
+        <thead><tr>
+            <th>Couleur</th><th>Precision</th><th>Recall</th><th>F1</th><th>Support</th>
+        </tr></thead><tbody>`;
+    colors.forEach(c => {
+        const d = prf[c.key] || {};
+        html += `<tr>
+            <td style="text-align:left"><span class="color-dot" style="background:${c.dot}"></span><strong>${c.label}</strong></td>
+            <td>${d.precision != null ? d.precision + '%' : '—'}</td>
+            <td>${d.recall != null ? d.recall + '%' : '—'}</td>
+            <td><strong>${d.f1 != null ? d.f1 + '%' : '—'}</strong></td>
+            <td style="color:var(--text-secondary)">${d.support ?? '—'}</td>
+        </tr>`;
+    });
+    html += `</tbody><tfoot><tr style="background:var(--bg)">
+        <td style="text-align:left"><strong>F1 pondéré</strong></td>
+        <td colspan="4"><strong>${prf.weighted_f1 != null ? prf.weighted_f1 + '%' : '—'}</strong></td>
+    </tr></tfoot></table>`;
+    html += `<p style="font-size:0.75rem;color:var(--text-secondary);margin-top:8px">
+        <strong>Precision</strong> = % des prédictions d'une couleur qui étaient correctes.
+        <strong>Recall</strong> = % des vrais jours d'une couleur correctement détectés.
+        <strong>Support</strong> = nombre réel de jours de cette couleur.
+    </p>`;
+    el.innerHTML = html;
+}
+
+/* ── Budget saison ── */
+function renderBudgetSeason(bs) {
+    const el = document.getElementById('budget-season');
+    if (!bs || !bs.rouge_total) {
+        el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Données budget non disponibles.</p>';
+        return;
+    }
+    const pctR = Math.round(bs.rouge_used / bs.rouge_total * 100);
+    const pctRpred = Math.round(bs.rouge_predicted / bs.rouge_total * 100);
+    const pctB = Math.round(bs.blanc_used / bs.blanc_total * 100);
+    const pctBpred = Math.round(bs.blanc_predicted / bs.blanc_total * 100);
+
+    el.innerHTML = `
+    <div class="budget-grid">
+        <div class="budget-item">
+            <div class="budget-header">
+                <span style="color:#DC2626">ROUGE</span>
+                <span>${bs.rouge_used} / ${bs.rouge_total} utilisés</span>
+            </div>
+            <div class="budget-bar">
+                <div class="bar-used" style="width:${pctR}%;background:#DC2626"></div>
+                <div class="bar-predicted" style="width:${Math.min(pctRpred, 100-pctR)}%;background:#DC2626"></div>
+            </div>
+            <div class="budget-detail">
+                <span>${bs.rouge_remaining} restants</span>
+                <span>${bs.rouge_predicted} prédits prochains jours</span>
+            </div>
+        </div>
+        <div class="budget-item">
+            <div class="budget-header">
+                <span style="color:#757575">BLANC</span>
+                <span>${bs.blanc_used} / ${bs.blanc_total} utilisés</span>
+            </div>
+            <div class="budget-bar">
+                <div class="bar-used" style="width:${pctB}%;background:#9E9E9E"></div>
+                <div class="bar-predicted" style="width:${Math.min(pctBpred, 100-pctB)}%;background:#9E9E9E"></div>
+            </div>
+            <div class="budget-detail">
+                <span>${bs.blanc_remaining} restants</span>
+                <span>${bs.blanc_predicted} prédits prochains jours</span>
+            </div>
+        </div>
+    </div>
+    <div class="budget-meta">
+        Saison ${bs.season_start} → ${bs.season_end} &middot; ${bs.days_left_season} jours restants
+    </div>`;
+}
+
+/* ── Confusion matrix (enhanced with %) ── */
+function renderConfusionMatrix(cm) {
+    const el = document.getElementById('confusion-matrix');
+    const colors = ['BLEU', 'BLANC', 'ROUGE'];
+    let html = `<table class="confusion-table">
+        <tr><th>Prédit \\ Réel</th>`;
+    colors.forEach(c => { html += `<th>${c}</th>`; });
+    html += '<th style="font-size:0.75rem">Total préd.</th></tr>';
+
+    colors.forEach(predicted => {
+        const row = cm[predicted] || {};
+        const rowTotal = colors.reduce((s, c) => s + (row[c] || 0), 0);
+        html += `<tr><td><strong>${predicted}</strong></td>`;
+        colors.forEach(actual => {
+            const val = row[actual] || 0;
+            const pct = rowTotal > 0 ? Math.round(val / rowTotal * 100) : 0;
+            const isDiag = predicted === actual;
+            const isMissRouge = actual === 'ROUGE' && predicted !== 'ROUGE' && val > 0;
+            const cls = isDiag ? 'diag' : isMissRouge ? 'miss-rouge' : '';
+            html += `<td class="${cls}">${val}<span class="row-pct">${pct}%</span></td>`;
+        });
+        html += `<td style="color:var(--text-secondary);font-size:0.8rem">${rowTotal}</td></tr>`;
+    });
+
+    /* Totals row */
+    html += '<tr style="background:var(--bg)"><td><strong>Total réel</strong></td>';
+    colors.forEach(actual => {
+        const colTotal = colors.reduce((s, p) => s + ((cm[p] || {})[actual] || 0), 0);
+        html += `<td style="font-weight:600">${colTotal}</td>`;
+    });
+    const grandTotal = colors.reduce((s, p) => s + colors.reduce((s2, a) => s2 + ((cm[p] || {})[a] || 0), 0), 0);
+    html += `<td style="font-weight:600">${grandTotal}</td></tr>`;
+    html += '</table>';
+    html += `<p style="font-size:0.75rem;color:var(--text-secondary);margin-top:8px">
+        <span style="display:inline-block;width:12px;height:12px;background:#E8F5E9;border:1px solid #ccc;border-radius:2px;vertical-align:middle;margin-right:4px"></span>Diagonale = correct &nbsp;
+        <span style="display:inline-block;width:12px;height:12px;background:#FFEBEE;border:1px solid #ccc;border-radius:2px;vertical-align:middle;margin-right:4px"></span>ROUGE manqué (danger)
+    </p>`;
+    el.innerHTML = html;
+}
+
+/* ── Recent errors (enhanced) ── */
+function renderRecentErrors(errors) {
+    const errEl = document.getElementById('errors-list');
+    if (!errors || errors.length === 0) {
+        errEl.innerHTML = '<li style="color:var(--text-secondary)">Aucune erreur récente</li>';
+        return;
+    }
+    const colorStyle = c => c === 'ROUGE' ? 'color:#DC2626;font-weight:700' : c === 'BLANC' ? 'color:#757575;font-weight:700' : 'color:#2196F3;font-weight:700';
+    errEl.innerHTML = errors.map(e => {
+        const horizon = e.jours_avance > 0 ? `J+${e.jours_avance}` : 'J0';
+        const confusionType = `${e.couleur_predite} → ${e.couleur_reelle}`;
+        const isDangereux = e.couleur_reelle === 'ROUGE' && e.couleur_predite !== 'ROUGE';
+        return `<li${isDangereux ? ' style="border-left:3px solid #DC2626;padding-left:10px"' : ''}>
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px">
+                <span>
+                    <strong>${escapeHtml(e.date_cible)}</strong>
+                    <span style="background:var(--bg);padding:2px 6px;border-radius:4px;font-size:0.75rem;margin-left:4px">${horizon}</span>
+                </span>
+                <span style="font-size:0.8rem">
+                    <span style="${colorStyle(e.couleur_predite)}">${escapeHtml(e.couleur_predite)}</span>
+                    → <span style="${colorStyle(e.couleur_reelle)}">${escapeHtml(e.couleur_reelle)}</span>
+                </span>
+            </div>
+            <div style="font-size:0.78rem;color:var(--text-secondary);margin-top:4px">
+                Score: ${e.score_risque_predit}${e.ecart_score ? ' (écart: ' + e.ecart_score + ')' : ''}
+                ${isDangereux ? ' <strong style="color:#DC2626">⚠ ROUGE MANQUÉ</strong>' : ''}
+            </div>
+            ${e.contexte_meteo ? '<div style="font-size:0.75rem;color:var(--text-secondary);margin-top:2px">' + escapeHtml(e.contexte_meteo) + '</div>' : ''}
+        </li>`;
+    }).join('');
 }
 
 function setKpi(id, text, value) {
