@@ -694,12 +694,9 @@ async def page_alertes(request: Request):
 async def page_admin(request: Request):
     """Dashboard admin — performance et gestion.
 
-    Fix #18 : simple deterrent — redirect to homepage if ``?auth=1`` query
-    param is absent.  Real data protection is enforced via the Authorization
-    header on every admin API endpoint.
+    La protection réelle est le mot de passe côté client + header Authorization
+    sur chaque endpoint API admin. La page HTML seule ne contient aucune donnée.
     """
-    if request.query_params.get("auth") != "1":
-        return RedirectResponse(url="/")
     return templates.TemplateResponse("admin.html", {"request": request})
 
 
