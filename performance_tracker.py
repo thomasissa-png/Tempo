@@ -205,11 +205,20 @@ def get_accuracy_global(days: int = 30, max_horizon: int | None = None,
         total = sum(r["cnt"] for r in rows)
         correct = sum(r["cnt"] for r in rows if r["correct"] == 1)
 
+        # Plage de dates réelles dans cette fenêtre
+        date_range = conn.execute(
+            """SELECT MIN(date_cible) as first_date, MAX(date_cible) as last_date
+               FROM performance WHERE date_cible >= ?""",
+            (since,),
+        ).fetchone()
+
         return {
             "total": total,
             "correct": correct,
             "precision": round(correct / total * 100, 1) if total > 0 else 0,
             "periode_jours": days,
+            "first_date": date_range["first_date"] if date_range else None,
+            "last_date": date_range["last_date"] if date_range else None,
         }
     finally:
         conn.close()
@@ -309,20 +318,33 @@ def get_precision_recall_f1(days: int = 60) -> dict:
     return metrics
 
 
-def get_recent_errors(limit: int = 5) -> list[dict]:
-    """Top N erreurs récentes avec contexte météo."""
+def get_recent_errors(limit: int = 5, days: int | None = None) -> list[dict]:
+    """Top N erreurs récentes avec contexte météo, filtré par période."""
     conn = get_db()
     try:
-        rows = conn.execute(
-            """SELECT date_cible, couleur_predite, couleur_reelle,
-                      score_risque_predit, ecart_score, contexte_meteo,
-                      jours_avance, timestamp_evaluation
-               FROM performance
-               WHERE correct = 0
-               ORDER BY timestamp_evaluation DESC
-               LIMIT ?""",
-            (limit,)
-        ).fetchall()
+        if days is not None:
+            since = (date.today() - timedelta(days=days)).isoformat()
+            rows = conn.execute(
+                """SELECT date_cible, couleur_predite, couleur_reelle,
+                          score_risque_predit, ecart_score, contexte_meteo,
+                          jours_avance, timestamp_evaluation
+                   FROM performance
+                   WHERE correct = 0 AND date_cible >= ?
+                   ORDER BY date_cible DESC, jours_avance
+                   LIMIT ?""",
+                (since, limit),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """SELECT date_cible, couleur_predite, couleur_reelle,
+                          score_risque_predit, ecart_score, contexte_meteo,
+                          jours_avance, timestamp_evaluation
+                   FROM performance
+                   WHERE correct = 0
+                   ORDER BY date_cible DESC, jours_avance
+                   LIMIT ?""",
+                (limit,)
+            ).fetchall()
         return [dict(r) for r in rows]
     finally:
         conn.close()
@@ -586,12 +608,13 @@ def get_performance_summary(days: int = 90) -> dict:
     return {
         "days": d,
         "global": get_accuracy_global(d),
+        "accuracy_j1": get_accuracy_global(d, max_horizon=1),
         "accuracy_j2_j5": get_accuracy_global(d, min_horizon=2, max_horizon=5),
         "by_horizon": get_accuracy_by_horizon(d),
         "confusion_matrix": get_confusion_matrix(d),
         "precision_recall_f1": get_precision_recall_f1(d),
         "rouge_recall_by_horizon": get_rouge_recall_by_horizon(d),
-        "recent_errors": get_recent_errors(10),
+        "recent_errors": get_recent_errors(10, days=d),
         "current_weights": get_current_weights(),
         "budget_season": get_budget_season(),
         "trend": get_accuracy_trend(d),

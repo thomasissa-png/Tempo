@@ -555,27 +555,30 @@
             </div>
         </div>
 
+        <!-- Data range indicator -->
+        <div id="data-range" style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:12px;display:none"></div>
+
         <!-- KPI strip -->
         <div class="kpi-strip" id="kpi-strip">
             <div class="kpi-card">
-                <div class="kpi-value" id="kpi-acc">—</div>
-                <div class="kpi-label">Précision globale</div>
+                <div class="kpi-value" id="kpi-acc-j1">—</div>
+                <div class="kpi-label">Précision J+1<br><small style="font-weight:400">prédiction du lendemain</small></div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-value" id="kpi-acc-j2j5">—</div>
-                <div class="kpi-label">Précision J+2→J+5</div>
+                <div class="kpi-label">Précision J+2→J+5<br><small style="font-weight:400">anticipation 2-5 jours</small></div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-value" id="kpi-rouge-recall">—</div>
-                <div class="kpi-label">Détection ROUGE</div>
+                <div class="kpi-label">Détection ROUGE<br><small style="font-weight:400">% jours rouges repérés</small></div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-value" id="kpi-total">—</div>
-                <div class="kpi-label">Évaluations</div>
+                <div class="kpi-label">Évaluations<br><small style="font-weight:400">sur la période</small></div>
             </div>
             <div class="kpi-card">
-                <div class="kpi-value" id="kpi-score">—</div>
-                <div class="kpi-label" id="kpi-score-label">Score qualité</div>
+                <div class="kpi-value" id="kpi-acc">—</div>
+                <div class="kpi-label">Tous horizons<br><small style="font-weight:400">J+1 à J+5 mélangés</small></div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-value" id="kpi-subs">—</div>
@@ -624,11 +627,9 @@
             <!-- Détail par couleur -->
             <div class="panel-grid full">
                 <div class="flat-card">
-                    <h4>Precision / Détection par couleur</h4>
+                    <h4>Bilan par couleur</h4>
                     <p class="card-hint">
-                        <strong>Precision</strong> = quand on prédit cette couleur, est-ce correct ?
-                        <strong>Détection (recall)</strong> = combien de vrais jours de cette couleur sont repérés ?
-                        <strong>F1</strong> = équilibre entre les deux.
+                        Pour chaque couleur : est-ce qu'on la prédit correctement, et est-ce qu'on détecte bien les vrais jours ?
                     </p>
                     <div id="prf-table">Chargement...</div>
                 </div>
@@ -988,24 +989,53 @@ async function loadPerformanceData(days) {
 /* ── Render all performance data ── */
 function renderPerformanceData(data) {
     const g = data.global || {};
+    const j1 = data.accuracy_j1 || {};
     const j2j5 = data.accuracy_j2_j5 || {};
 
     /* ── Low-data banner ── */
     const banner = document.getElementById('low-data-banner');
-    if (g.total != null && g.total < 10) {
+    if (g.total != null && g.total === 0) {
+        banner.textContent = 'Aucune évaluation sur cette période. Les prédictions récentes n\'ont peut-être pas encore été vérifiées contre les couleurs EDF.';
+        banner.style.display = 'block';
+    } else if (g.total != null && g.total < 10) {
         banner.textContent = `Seulement ${g.total} évaluation(s) sur cette période. Les métriques peuvent être peu fiables.`;
         banner.style.display = 'block';
     } else {
         banner.style.display = 'none';
     }
 
+    /* ── Data range indicator ── */
+    const rangeEl = document.getElementById('data-range');
+    if (g.total > 0 && g.first_date && g.last_date) {
+        rangeEl.textContent = `Données du ${g.first_date} au ${g.last_date} — ${g.total} évaluation(s) tous horizons confondus`;
+        rangeEl.style.display = 'block';
+    } else if (g.total === 0) {
+        rangeEl.textContent = 'Aucune donnée évaluée sur cette période.';
+        rangeEl.style.display = 'block';
+    } else {
+        rangeEl.style.display = 'none';
+    }
+
     /* ── Verdict banner ── */
     renderVerdict(data.diagnostic || {}, data.comparison || {});
 
     /* ── KPI strip ── */
-    const comp = data.comparison || {};
+    /* J+1 = primary (prediction for tomorrow, what users care about) */
+    if (j1.total > 0) {
+        setKpi('kpi-acc-j1', j1.precision + '%', j1.precision);
+    } else {
+        document.getElementById('kpi-acc-j1').textContent = 'N/A';
+        document.getElementById('kpi-acc-j1').className = 'kpi-value';
+    }
+    /* J+2→J+5 */
+    if (j2j5.total > 0) {
+        setKpi('kpi-acc-j2j5', j2j5.precision + '%', j2j5.precision);
+    } else {
+        document.getElementById('kpi-acc-j2j5').textContent = 'N/A';
+        document.getElementById('kpi-acc-j2j5').className = 'kpi-value';
+    }
+    /* All horizons combined */
     setKpi('kpi-acc', g.total > 0 ? g.precision + '%' : 'N/A', g.precision);
-    setKpi('kpi-acc-j2j5', j2j5.total > 0 ? j2j5.precision + '%' : 'N/A', j2j5.precision);
     document.getElementById('kpi-total').textContent = g.total ?? '—';
 
     /* Recall ROUGE global */
@@ -1020,14 +1050,9 @@ function renderPerformanceData(data) {
         rougeRecallGlobal !== null ? rougeRecallGlobal : 0
     );
 
-    /* Score qualité = F1 pondéré */
-    const prf = data.precision_recall_f1 || {};
-    const wf1 = prf.weighted_f1;
-    setKpi('kpi-score', wf1 != null ? wf1 + '%' : 'N/A', wf1 || 0);
-    document.getElementById('kpi-score-label').textContent = 'Score qualité (F1)';
-
     /* ── SECTION 1 : Nos prévisions sont-elles bonnes ? ── */
     renderBudgetSeason(data.budget_season || {});
+    const prf = data.precision_recall_f1 || {};
     renderPrfTable(prf);
     renderConfusionMatrix(data.confusion_matrix || {});
 
@@ -1296,37 +1321,50 @@ function renderRougeRecallChart(rrh) {
     });
 }
 
-/* ── Precision / Recall / F1 table ── */
+/* ── Bilan par couleur (plain language) ── */
 function renderPrfTable(prf) {
     const el = document.getElementById('prf-table');
     const colors = [
-        { key: 'BLEU', label: 'BLEU', dot: '#2196F3' },
-        { key: 'BLANC', label: 'BLANC', dot: '#9E9E9E' },
-        { key: 'ROUGE', label: 'ROUGE', dot: '#F44336' },
+        { key: 'ROUGE', label: 'ROUGE', dot: '#F44336', bg: '#FFEBEE' },
+        { key: 'BLANC', label: 'BLANC', dot: '#757575', bg: '#F5F5F5' },
+        { key: 'BLEU', label: 'BLEU', dot: '#2196F3', bg: '#E3F2FD' },
     ];
-    let html = `<table class="prf-table">
-        <thead><tr>
-            <th>Couleur</th><th>Precision</th><th>Recall</th><th>F1</th><th>Support</th>
-        </tr></thead><tbody>`;
+
+    const verdict = (val) => {
+        if (val == null) return { text: 'pas de données', cls: '', icon: '' };
+        if (val >= 80) return { text: 'excellent', cls: 'color:#16A34A', icon: '' };
+        if (val >= 60) return { text: 'correct', cls: 'color:#16A34A', icon: '' };
+        if (val >= 40) return { text: 'moyen', cls: 'color:#D97706', icon: '' };
+        return { text: 'insuffisant', cls: 'color:#DC2626', icon: '' };
+    };
+
+    let html = '<div style="display:flex;flex-direction:column;gap:10px">';
     colors.forEach(c => {
         const d = prf[c.key] || {};
-        html += `<tr>
-            <td style="text-align:left"><span class="color-dot" style="background:${c.dot}"></span><strong>${c.label}</strong></td>
-            <td>${d.precision != null ? d.precision + '%' : '—'}</td>
-            <td>${d.recall != null ? d.recall + '%' : '—'}</td>
-            <td><strong>${d.f1 != null ? d.f1 + '%' : '—'}</strong></td>
-            <td style="color:var(--text-secondary)">${d.support ?? '—'}</td>
-        </tr>`;
+        const precV = verdict(d.precision);
+        const recV = verdict(d.recall);
+
+        html += `<div style="background:${c.bg};border-radius:var(--radius-sm);padding:12px 14px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${c.dot}"></span>
+                <strong style="font-size:0.9rem">${c.label}</strong>
+                <span style="margin-left:auto;font-size:0.78rem;color:var(--text-secondary)">${d.support ?? 0} jours réels</span>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.82rem">
+                <div>
+                    Quand on prédit ${c.label} :
+                    <strong style="${precV.cls}">${d.precision != null ? d.precision + '% correct' : '—'}</strong>
+                    <span style="font-size:0.75rem;${precV.cls}"> (${precV.text})</span>
+                </div>
+                <div>
+                    Vrais jours ${c.label} détectés :
+                    <strong style="${recV.cls}">${d.recall != null ? d.recall + '%' : '—'}</strong>
+                    <span style="font-size:0.75rem;${recV.cls}"> (${recV.text})</span>
+                </div>
+            </div>
+        </div>`;
     });
-    html += `</tbody><tfoot><tr style="background:var(--bg)">
-        <td style="text-align:left"><strong>F1 pondéré</strong></td>
-        <td colspan="4"><strong>${prf.weighted_f1 != null ? prf.weighted_f1 + '%' : '—'}</strong></td>
-    </tr></tfoot></table>`;
-    html += `<p style="font-size:0.75rem;color:var(--text-secondary);margin-top:8px">
-        <strong>Precision</strong> = % des prédictions d'une couleur qui étaient correctes.
-        <strong>Recall</strong> = % des vrais jours d'une couleur correctement détectés.
-        <strong>Support</strong> = nombre réel de jours de cette couleur.
-    </p>`;
+    html += '</div>';
     el.innerHTML = html;
 }
 
@@ -1418,34 +1456,41 @@ function renderConfusionMatrix(cm) {
     el.innerHTML = html;
 }
 
-/* ── Recent errors (enhanced) ── */
+/* ── Recent errors (grouped by date) ── */
 function renderRecentErrors(errors) {
     const errEl = document.getElementById('errors-list');
     if (!errors || errors.length === 0) {
-        errEl.innerHTML = '<li style="color:var(--text-secondary)">Aucune erreur récente</li>';
+        errEl.innerHTML = '<li style="color:var(--text-secondary)">Aucune erreur sur cette période</li>';
         return;
     }
-    const colorStyle = c => c === 'ROUGE' ? 'color:#DC2626;font-weight:700' : c === 'BLANC' ? 'color:#757575;font-weight:700' : 'color:#2196F3;font-weight:700';
-    errEl.innerHTML = errors.map(e => {
-        const horizon = e.jours_avance > 0 ? `J+${e.jours_avance}` : 'J0';
-        const confusionType = `${e.couleur_predite} → ${e.couleur_reelle}`;
-        const isDangereux = e.couleur_reelle === 'ROUGE' && e.couleur_predite !== 'ROUGE';
-        return `<li${isDangereux ? ' style="border-left:3px solid #DC2626;padding-left:10px"' : ''}>
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px">
-                <span>
-                    <strong>${escapeHtml(e.date_cible)}</strong>
-                    <span style="background:var(--bg);padding:2px 6px;border-radius:4px;font-size:0.75rem;margin-left:4px">${horizon}</span>
-                </span>
-                <span style="font-size:0.8rem">
-                    <span style="${colorStyle(e.couleur_predite)}">${escapeHtml(e.couleur_predite)}</span>
-                    → <span style="${colorStyle(e.couleur_reelle)}">${escapeHtml(e.couleur_reelle)}</span>
-                </span>
+
+    const colorBg = c => c === 'ROUGE' ? '#F44336' : c === 'BLANC' ? '#9E9E9E' : '#2196F3';
+    const colorPill = c => `<span style="display:inline-block;padding:1px 8px;border-radius:999px;background:${colorBg(c)};color:#fff;font-size:0.72rem;font-weight:600">${c}</span>`;
+
+    /* Group errors by date */
+    const byDate = {};
+    errors.forEach(e => {
+        if (!byDate[e.date_cible]) byDate[e.date_cible] = [];
+        byDate[e.date_cible].push(e);
+    });
+
+    errEl.innerHTML = Object.entries(byDate).map(([dt, errs]) => {
+        const actual = errs[0].couleur_reelle;
+        const isDangereux = actual === 'ROUGE';
+        const horizons = errs.map(e => {
+            const h = e.jours_avance > 0 ? `J+${e.jours_avance}` : 'J0';
+            return `${colorPill(e.couleur_predite)} <span style="font-size:0.72rem;color:var(--text-secondary)">à ${h}</span>`;
+        }).join('&nbsp; ');
+
+        return `<li style="${isDangereux ? 'border-left:3px solid #DC2626;padding-left:10px' : ''}">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:4px">
+                <strong>${escapeHtml(dt)}</strong>
+                <span style="font-size:0.82rem">Réel : ${colorPill(actual)}</span>
             </div>
-            <div style="font-size:0.78rem;color:var(--text-secondary);margin-top:4px">
-                Score: ${e.score_risque_predit}${e.ecart_score ? ' (écart: ' + e.ecart_score + ')' : ''}
-                ${isDangereux ? ' <strong style="color:#DC2626">⚠ ROUGE MANQUÉ</strong>' : ''}
+            <div style="font-size:0.82rem;margin-bottom:2px">
+                On avait prédit : ${horizons}
             </div>
-            ${e.contexte_meteo ? '<div style="font-size:0.75rem;color:var(--text-secondary);margin-top:2px">' + escapeHtml(e.contexte_meteo) + '</div>' : ''}
+            ${isDangereux ? '<div style="font-size:0.78rem;color:#DC2626;font-weight:600">Jour ROUGE manqué</div>' : ''}
         </li>`;
     }).join('');
 }
