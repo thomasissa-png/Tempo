@@ -37,7 +37,8 @@ def _now_paris() -> datetime:
 
 from fastapi import FastAPI, Request, Form, HTTPException, Header
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
+from pathlib import Path
+from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
@@ -778,6 +779,16 @@ async def manifest_json():
                 {"src": "/static/icon-512.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any maskable"},
             ],
         },
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
+
+
+# Favicon route — serve the ICO file at /favicon.ico for Google & browsers
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return FileResponse(
+        Path(__file__).parent / "static" / "favicon.ico",
+        media_type="image/x-icon",
         headers={"Cache-Control": "public, max-age=86400"},
     )
 
