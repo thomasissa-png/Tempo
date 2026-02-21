@@ -8,8 +8,7 @@
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%232196F3'/><path d='M50 5A45 45 0 0 1 95 50H5A45 45 0 0 1 50 5z' fill='%23F44336'/><circle cx='50' cy='50' r='20' fill='white'/></svg>" type="image/svg+xml">
     <link rel="stylesheet" href="/static/css/style.min.css">
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"
-            integrity="sha384-e1kSEwCaVTZnKiRDkBBbMLR5cMrqYOBNMu90RCMBB4RnXQ+LiY7SAFnFEeYz8dT"
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"
             crossorigin="anonymous"></script>
     <style>
         /* ── Admin flat design overrides ── */
@@ -451,6 +450,39 @@
         .rouge-table .val-warn { color: #D97706; font-weight: 700; }
         .rouge-table .val-bad { color: #DC2626; font-weight: 700; }
 
+        /* ── Period filter ── */
+        .period-btns {
+            display: flex;
+            gap: 0;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            overflow: hidden;
+        }
+        .period-btn {
+            padding: 6px 14px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            background: var(--surface);
+            border: none;
+            border-right: 1px solid var(--border);
+            cursor: pointer;
+            color: var(--text-secondary);
+            transition: background 0.15s, color 0.15s;
+        }
+        .period-btn:last-child { border-right: none; }
+        .period-btn:hover { background: var(--bg); color: var(--text); }
+        .period-btn.active { background: var(--accent); color: #fff; }
+
+        /* ── Low-data warning ── */
+        .low-data-warn {
+            font-size: 0.75rem;
+            color: #D97706;
+            background: #FEF3C7;
+            padding: 6px 10px;
+            border-radius: var(--radius-sm);
+            margin-bottom: 12px;
+        }
+
         /* ── Responsive footer spacing ── */
         .admin-footer {
             margin-top: 40px;
@@ -511,27 +543,39 @@
     <!-- ── Dashboard content (hidden until auth) ── -->
     <div id="admin-content" style="display:none">
 
+        <!-- Period filter -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+            <span style="font-size:0.82rem;font-weight:600;color:var(--text-secondary)">Période :</span>
+            <div class="period-btns" id="period-btns">
+                <button class="period-btn" data-days="1">24h</button>
+                <button class="period-btn active" data-days="7">7j</button>
+                <button class="period-btn" data-days="14">14j</button>
+                <button class="period-btn" data-days="30">30j</button>
+                <button class="period-btn" data-days="90">90j</button>
+            </div>
+        </div>
+
         <!-- KPI strip -->
         <div class="kpi-strip" id="kpi-strip">
             <div class="kpi-card">
+                <div class="kpi-value" id="kpi-acc">—</div>
+                <div class="kpi-label">Précision globale</div>
+            </div>
+            <div class="kpi-card">
                 <div class="kpi-value" id="kpi-acc-j2j5">—</div>
-                <div class="kpi-label">Précision J+2→J+5 (30j)</div>
+                <div class="kpi-label">Précision J+2→J+5</div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-value" id="kpi-rouge-recall">—</div>
-                <div class="kpi-label">Recall ROUGE (90j)</div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-value" id="kpi-f1">—</div>
-                <div class="kpi-label">F1 pondéré (90j)</div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-value" id="kpi-acc30">—</div>
-                <div class="kpi-label">Précision globale 30j</div>
+                <div class="kpi-label">Détection ROUGE</div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-value" id="kpi-total">—</div>
-                <div class="kpi-label">Évaluations 30j</div>
+                <div class="kpi-label">Évaluations</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-value" id="kpi-score">—</div>
+                <div class="kpi-label" id="kpi-score-label">Score qualité</div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-value" id="kpi-subs">—</div>
@@ -551,34 +595,7 @@
         <!-- ═══════ TAB 1 : Performance ═══════ -->
         <div id="panel-performance" class="tab-panel active" role="tabpanel">
 
-            <!-- ── Suivi ROUGE (priorité #1) ── -->
-            <div class="section-title">Suivi jours ROUGE <span class="badge" style="background:#DC2626">Priorité #1</span></div>
-            <div class="panel-grid">
-                <div class="flat-card">
-                    <h4>Recall ROUGE par horizon (90j)</h4>
-                    <p class="card-hint">
-                        % de vrais jours ROUGE correctement détectés. Un recall faible = jours rouges manqués.
-                    </p>
-                    <div id="rouge-recall-table">Chargement...</div>
-                </div>
-                <div class="flat-card">
-                    <h4>Recall ROUGE par horizon</h4>
-                    <div class="chart-container" style="height:260px">
-                        <canvas id="chart-rouge-recall"></canvas>
-                    </div>
-                    <div id="chart-rouge-recall-fallback" class="chart-fallback" style="display:none">
-                        Chart.js non disponible.
-                    </div>
-                </div>
-            </div>
-
-            <!-- ── Precision / Recall / F1 par couleur ── -->
-            <div class="section-title">Precision / Recall / F1 par couleur (90j)</div>
-            <div class="panel-grid full">
-                <div class="flat-card">
-                    <div id="prf-table">Chargement...</div>
-                </div>
-            </div>
+            <div id="low-data-banner" class="low-data-warn" style="display:none"></div>
 
             <!-- ── Budget saison ── -->
             <div class="section-title">Budget saison EDF</div>
@@ -588,10 +605,49 @@
                 </div>
             </div>
 
-            <!-- ── Précision par horizon + chart ── -->
-            <div class="section-title">Précision par horizon (90j)</div>
+            <!-- ── Suivi ROUGE (priorité #1) ── -->
+            <div class="section-title">Détection des jours ROUGE <span class="badge" style="background:#DC2626">Priorité #1</span></div>
             <div class="panel-grid">
                 <div class="flat-card">
+                    <h4>Détection ROUGE par horizon</h4>
+                    <p class="card-hint">
+                        Combien de vrais jours ROUGE ont été correctement anticipés ?
+                        Un chiffre bas = jours rouges manqués (coûteux pour les abonnés).
+                    </p>
+                    <div id="rouge-recall-table">Chargement...</div>
+                </div>
+                <div class="flat-card">
+                    <h4>Graphique détection ROUGE</h4>
+                    <div class="chart-container" style="height:260px">
+                        <canvas id="chart-rouge-recall"></canvas>
+                    </div>
+                    <div id="chart-rouge-recall-fallback" class="chart-fallback" style="display:none">
+                        Chart.js non disponible.
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Détail par couleur ── -->
+            <div class="section-title">Détail par couleur</div>
+            <div class="panel-grid full">
+                <div class="flat-card">
+                    <p class="card-hint">
+                        <strong>Précision</strong> = quand on prédit ROUGE, est-ce vraiment rouge ?
+                        <strong>Détection</strong> = a-t-on repéré tous les vrais jours rouges ?
+                        <strong>F1</strong> = équilibre entre les deux. <strong>Support</strong> = nombre réel de jours de cette couleur.
+                    </p>
+                    <div id="prf-table">Chargement...</div>
+                </div>
+            </div>
+
+            <!-- ── Précision par horizon + chart ── -->
+            <div class="section-title">Précision par horizon</div>
+            <div class="panel-grid">
+                <div class="flat-card">
+                    <p class="card-hint">
+                        J+1 = prédiction pour demain, J+2 = après-demain, etc.
+                        Plus l'horizon est lointain, plus la météo est incertaine.
+                    </p>
                     <div id="metrics-horizon"></div>
                 </div>
                 <div class="flat-card">
@@ -607,14 +663,19 @@
             <!-- ── Matrice de confusion + Poids ── -->
             <div class="panel-grid">
                 <div class="flat-card">
-                    <h4>Matrice de confusion (90j)</h4>
+                    <h4>Matrice de confusion</h4>
                     <p class="card-hint">
-                        Lignes = prédit, colonnes = réel. La diagonale = prédictions correctes.
+                        Croisement prédit vs réel. La diagonale = prédictions correctes.
+                        Les cases rouges = jours ROUGE manqués (le plus critique).
                     </p>
                     <div id="confusion-matrix"></div>
                 </div>
                 <div class="flat-card">
                     <h4>Poids de l'algorithme</h4>
+                    <p class="card-hint">
+                        Importance de chaque facteur dans le score final.
+                        Recalculés automatiquement tous les 15 jours.
+                    </p>
                     <div id="current-weights"></div>
                     <div class="chart-container" style="height:220px">
                         <canvas id="chart-weights"></canvas>
@@ -629,6 +690,9 @@
             <div class="section-title">Erreurs récentes</div>
             <div class="panel-grid full">
                 <div class="flat-card">
+                    <p class="card-hint">
+                        Les 10 dernières prédictions incorrectes. Les bordures rouges signalent un jour ROUGE non détecté.
+                    </p>
                     <ul class="error-list" id="errors-list">
                         <li>Chargement...</li>
                     </ul>
@@ -795,6 +859,7 @@
 let adminPassword = '';
 let chartHorizon = null;
 let chartWeights = null;
+let currentDays = 7;
 const chartAvailable = typeof Chart !== 'undefined';
 
 /* ── Tabs ── */
@@ -808,13 +873,23 @@ document.querySelectorAll('.admin-tab').forEach(tab => {
     });
 });
 
-/* ── Main loader ── */
+/* ── Period filter buttons ── */
+document.querySelectorAll('.period-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentDays = parseInt(btn.dataset.days, 10);
+        loadPerformanceData(currentDays);
+    });
+});
+
+/* ── Main loader (login) ── */
 async function loadAdminData() {
     adminPassword = document.getElementById('admin-pw').value;
     if (!adminPassword) return;
 
     try {
-        const resp = await fetch('/api/performance', {
+        const resp = await fetch(`/api/performance?days=${currentDays}`, {
             headers: { 'Authorization': `Bearer ${adminPassword}` }
         });
         if (!resp.ok) {
@@ -828,88 +903,118 @@ async function loadAdminData() {
         document.getElementById('admin-login').style.display = 'none';
         document.getElementById('admin-content').style.display = 'block';
 
-        /* ── KPI strip ── */
-        const g30 = data.global_30j;
-        const j2j5 = data.accuracy_j2_j5_30j || {};
-        setKpi('kpi-acc-j2j5', j2j5.total > 0 ? j2j5.precision + '%' : 'N/A', j2j5.precision);
-        setKpi('kpi-acc30', g30.total > 0 ? g30.precision + '%' : 'N/A', g30.precision);
-        document.getElementById('kpi-total').textContent = g30.total;
+        renderPerformanceData(data);
 
-        /* Recall ROUGE global (moyenne J+2→J+5) */
-        const rrh = data.rouge_recall_by_horizon || {};
-        let totalRouge = 0, totalCaught = 0;
-        ['J+2','J+3','J+4','J+5'].forEach(k => {
-            if (rrh[k]) { totalRouge += rrh[k].rouge_total; totalCaught += rrh[k].rouge_caught; }
-        });
-        const rougeRecallGlobal = totalRouge > 0 ? Math.round(totalCaught / totalRouge * 100) : null;
-        setKpi('kpi-rouge-recall',
-            rougeRecallGlobal !== null ? rougeRecallGlobal + '%' : 'N/A',
-            rougeRecallGlobal !== null ? rougeRecallGlobal : 0
-        );
-
-        /* F1 pondéré */
-        const prf = data.precision_recall_f1 || {};
-        const wf1 = prf.weighted_f1;
-        setKpi('kpi-f1', wf1 != null ? wf1 + '%' : 'N/A', wf1 || 0);
-
-        /* ── Suivi ROUGE : tableau recall par horizon ── */
-        renderRougeRecallTable(rrh);
-        if (chartAvailable) renderRougeRecallChart(rrh);
-        else {
-            document.getElementById('chart-rouge-recall').style.display = 'none';
-            document.getElementById('chart-rouge-recall-fallback').style.display = 'flex';
-        }
-
-        /* ── Precision / Recall / F1 par couleur ── */
-        renderPrfTable(prf);
-
-        /* ── Budget saison ── */
-        renderBudgetSeason(data.budget_season || {});
-
-        /* ── Horizon metrics ── */
-        const horizonEl = document.getElementById('metrics-horizon');
-        if (data.by_horizon.length > 0) {
-            horizonEl.innerHTML = data.by_horizon.map(h => {
-                const cls = h.precision >= 80 ? 'green' : h.precision >= 60 ? 'orange' : 'red';
-                return `<div class="metric-row">
-                    <span>${escapeHtml(String(h.horizon))} <small style="color:var(--text-secondary)">(${h.total} éval.)</small></span>
-                    <span class="metric-value ${cls}">${escapeHtml(String(h.precision))}%</span>
-                </div>`;
-            }).join('');
-        } else {
-            horizonEl.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Pas encore de données</p>';
-        }
-
-        /* ── Confusion matrix (enhanced) ── */
-        renderConfusionMatrix(data.confusion_matrix);
-
-        /* ── Recent errors (enhanced) ── */
-        renderRecentErrors(data.recent_errors);
-
-        /* ── Weights ── */
-        const weights = data.current_weights;
-        const wEl = document.getElementById('current-weights');
-        wEl.innerHTML = Object.entries(weights).map(([k, v]) =>
-            `<div class="metric-row"><span>${escapeHtml(k)}</span><span class="metric-value">${escapeHtml((Number(v) * 100).toFixed(1))}%</span></div>`
-        ).join('');
-
-        /* Charts (guarded) */
-        if (chartAvailable) {
-            renderHorizonChart(data.by_horizon);
-            renderWeightsChart(weights);
-        } else {
-            document.getElementById('chart-horizon').style.display = 'none';
-            document.getElementById('chart-horizon-fallback').style.display = 'flex';
-            document.getElementById('chart-weights').style.display = 'none';
-            document.getElementById('chart-weights-fallback').style.display = 'flex';
-        }
-
-        /* Parallel loads */
+        /* Parallel loads (non-period-dependent) */
         loadSubscribers();
         loadAgentReports();
 
     } catch (e) {
         alert('Erreur : ' + e.message);
+    }
+}
+
+/* ── Reload performance data for a given period ── */
+async function loadPerformanceData(days) {
+    if (!adminPassword) return;
+    try {
+        const resp = await fetch(`/api/performance?days=${days}`, {
+            headers: { 'Authorization': `Bearer ${adminPassword}` }
+        });
+        if (!resp.ok) return;
+        const data = await resp.json();
+        if (data.status !== 'ok') return;
+        renderPerformanceData(data);
+    } catch { /* silent */ }
+}
+
+/* ── Render all performance data ── */
+function renderPerformanceData(data) {
+    const g = data.global || {};
+    const j2j5 = data.accuracy_j2_j5 || {};
+
+    /* ── Low-data banner ── */
+    const banner = document.getElementById('low-data-banner');
+    if (g.total != null && g.total < 10) {
+        banner.textContent = `Seulement ${g.total} évaluation(s) sur cette période. Les métriques peuvent être peu fiables.`;
+        banner.style.display = 'block';
+    } else {
+        banner.style.display = 'none';
+    }
+
+    /* ── KPI strip ── */
+    setKpi('kpi-acc', g.total > 0 ? g.precision + '%' : 'N/A', g.precision);
+    setKpi('kpi-acc-j2j5', j2j5.total > 0 ? j2j5.precision + '%' : 'N/A', j2j5.precision);
+    document.getElementById('kpi-total').textContent = g.total ?? '—';
+
+    /* Recall ROUGE global (moyenne J+2→J+5) */
+    const rrh = data.rouge_recall_by_horizon || {};
+    let totalRouge = 0, totalCaught = 0;
+    ['J+2','J+3','J+4','J+5'].forEach(k => {
+        if (rrh[k]) { totalRouge += rrh[k].rouge_total; totalCaught += rrh[k].rouge_caught; }
+    });
+    const rougeRecallGlobal = totalRouge > 0 ? Math.round(totalCaught / totalRouge * 100) : null;
+    setKpi('kpi-rouge-recall',
+        rougeRecallGlobal !== null ? rougeRecallGlobal + '%' : 'N/A',
+        rougeRecallGlobal !== null ? rougeRecallGlobal : 0
+    );
+
+    /* Score qualité = F1 pondéré */
+    const prf = data.precision_recall_f1 || {};
+    const wf1 = prf.weighted_f1;
+    setKpi('kpi-score', wf1 != null ? wf1 + '%' : 'N/A', wf1 || 0);
+    document.getElementById('kpi-score-label').textContent = 'Score qualité (F1)';
+
+    /* ── Suivi ROUGE : tableau recall par horizon ── */
+    renderRougeRecallTable(rrh);
+    if (chartAvailable) renderRougeRecallChart(rrh);
+    else {
+        document.getElementById('chart-rouge-recall').style.display = 'none';
+        document.getElementById('chart-rouge-recall-fallback').style.display = 'flex';
+    }
+
+    /* ── Precision / Recall / F1 par couleur ── */
+    renderPrfTable(prf);
+
+    /* ── Budget saison ── */
+    renderBudgetSeason(data.budget_season || {});
+
+    /* ── Horizon metrics ── */
+    const horizonEl = document.getElementById('metrics-horizon');
+    if (data.by_horizon && data.by_horizon.length > 0) {
+        horizonEl.innerHTML = data.by_horizon.map(h => {
+            const cls = h.precision >= 80 ? 'green' : h.precision >= 60 ? 'orange' : 'red';
+            return `<div class="metric-row">
+                <span>${escapeHtml(String(h.horizon))} <small style="color:var(--text-secondary)">(${h.total} éval.)</small></span>
+                <span class="metric-value ${cls}">${escapeHtml(String(h.precision))}%</span>
+            </div>`;
+        }).join('');
+    } else {
+        horizonEl.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Pas encore de données sur cette période</p>';
+    }
+
+    /* ── Confusion matrix (enhanced) ── */
+    renderConfusionMatrix(data.confusion_matrix || {});
+
+    /* ── Recent errors (enhanced) ── */
+    renderRecentErrors(data.recent_errors || []);
+
+    /* ── Weights ── */
+    const weights = data.current_weights || {};
+    const wEl = document.getElementById('current-weights');
+    wEl.innerHTML = Object.entries(weights).map(([k, v]) =>
+        `<div class="metric-row"><span>${escapeHtml(k)}</span><span class="metric-value">${escapeHtml((Number(v) * 100).toFixed(1))}%</span></div>`
+    ).join('');
+
+    /* Charts (guarded) */
+    if (chartAvailable) {
+        renderHorizonChart(data.by_horizon || []);
+        renderWeightsChart(weights);
+    } else {
+        document.getElementById('chart-horizon').style.display = 'none';
+        document.getElementById('chart-horizon-fallback').style.display = 'flex';
+        document.getElementById('chart-weights').style.display = 'none';
+        document.getElementById('chart-weights-fallback').style.display = 'flex';
     }
 }
 

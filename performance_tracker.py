@@ -413,17 +413,21 @@ def get_budget_season() -> dict:
         return {}
 
 
-def get_performance_summary() -> dict:
-    """Résumé complet des performances pour le dashboard admin."""
+def get_performance_summary(days: int = 90) -> dict:
+    """Résumé complet des performances pour le dashboard admin.
+
+    Args:
+        days: fenêtre temporelle en jours (1, 7, 14, 30, 90).
+    """
+    d = max(1, min(days, 365))
     return {
-        "global_30j": get_accuracy_global(30),
-        "global_90j": get_accuracy_global(90),
-        "accuracy_j2_j5_30j": get_accuracy_global(30, min_horizon=2, max_horizon=5),
-        "accuracy_j2_j5_90j": get_accuracy_global(90, min_horizon=2, max_horizon=5),
-        "by_horizon": get_accuracy_by_horizon(90),
-        "confusion_matrix": get_confusion_matrix(90),
-        "precision_recall_f1": get_precision_recall_f1(90),
-        "rouge_recall_by_horizon": get_rouge_recall_by_horizon(90),
+        "days": d,
+        "global": get_accuracy_global(d),
+        "accuracy_j2_j5": get_accuracy_global(d, min_horizon=2, max_horizon=5),
+        "by_horizon": get_accuracy_by_horizon(d),
+        "confusion_matrix": get_confusion_matrix(d),
+        "precision_recall_f1": get_precision_recall_f1(d),
+        "rouge_recall_by_horizon": get_rouge_recall_by_horizon(d),
         "recent_errors": get_recent_errors(10),
         "current_weights": get_current_weights(),
         "budget_season": get_budget_season(),
@@ -507,7 +511,6 @@ def recalculate_weights():
     try:
         X = []
         y = []
-        label_map = {"BLEU": 0, "BLANC": 1, "ROUGE": 2}
 
         for row in rows:
             t = row["score_temperature"]
@@ -523,7 +526,7 @@ def recalculate_weights():
                 (c * g) / 100,
                 (t * r) / 100,
             ])
-            y.append(label_map.get(row["couleur_reelle"], 0))
+            y.append(row["couleur_reelle"] or "BLEU")
 
         X = np.array(X)
         y = np.array(y)
