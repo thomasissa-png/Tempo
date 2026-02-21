@@ -1468,7 +1468,8 @@ footer a {
     .legend-item { align-items: flex-start; }
     .today-card { padding: 18px 14px; }
     .today-card h3 { font-size: 0.8rem; margin-bottom: 8px; }
-    header[role="banner"] h1 { font-size: 1.2rem; }
+    header[role="banner"] h1,
+    .header-title { font-size: 1.2rem; }
     .welcome-banner { padding: 18px; }
 
     /* Counter cards compact on mobile */
