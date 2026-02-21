@@ -597,22 +597,75 @@
 
             <div id="low-data-banner" class="low-data-warn" style="display:none"></div>
 
-            <!-- ── Budget saison ── -->
-            <div class="section-title">Budget saison EDF</div>
+            <!-- ── VERDICT GLOBAL ── -->
+            <div id="verdict-banner" class="flat-card" style="margin-bottom:24px;display:none">
+                <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                    <div id="verdict-dot" style="width:16px;height:16px;border-radius:50%;flex-shrink:0"></div>
+                    <div style="flex:1">
+                        <div id="verdict-title" style="font-size:1rem;font-weight:700"></div>
+                        <div id="verdict-detail" style="font-size:0.82rem;color:var(--text-secondary);margin-top:4px"></div>
+                    </div>
+                    <div id="verdict-delta" style="font-size:0.85rem;font-weight:700;text-align:right"></div>
+                </div>
+            </div>
+
+            <!-- ════════════════════════════════════════ -->
+            <!-- SECTION 1 : Nos prévisions sont-elles bonnes ? -->
+            <!-- ════════════════════════════════════════ -->
+            <div class="section-title">1. Nos prévisions sont-elles bonnes ?</div>
+
+            <!-- Budget saison -->
             <div class="panel-grid full">
                 <div class="flat-card">
                     <div id="budget-season">Chargement...</div>
                 </div>
             </div>
 
-            <!-- ── Suivi ROUGE (priorité #1) ── -->
-            <div class="section-title">Détection des jours ROUGE <span class="badge" style="background:#DC2626">Priorité #1</span></div>
+            <!-- Détail par couleur -->
+            <div class="panel-grid full">
+                <div class="flat-card">
+                    <h4>Precision / Détection par couleur</h4>
+                    <p class="card-hint">
+                        <strong>Precision</strong> = quand on prédit cette couleur, est-ce correct ?
+                        <strong>Détection (recall)</strong> = combien de vrais jours de cette couleur sont repérés ?
+                        <strong>F1</strong> = équilibre entre les deux.
+                    </p>
+                    <div id="prf-table">Chargement...</div>
+                </div>
+            </div>
+
+            <!-- Matrice de confusion -->
+            <div class="panel-grid full">
+                <div class="flat-card">
+                    <h4>Matrice de confusion</h4>
+                    <p class="card-hint">
+                        Croisement prédit vs réel. La diagonale = correct.
+                        Les cases rouges = jours ROUGE manqués (le plus critique).
+                    </p>
+                    <div id="confusion-matrix"></div>
+                </div>
+            </div>
+
+            <!-- ════════════════════════════════════════ -->
+            <!-- SECTION 2 : Pourquoi des erreurs ? -->
+            <!-- ════════════════════════════════════════ -->
+            <div class="section-title">2. Pourquoi des erreurs ?</div>
+
+            <!-- Diagnostic automatique -->
+            <div class="panel-grid full">
+                <div class="flat-card">
+                    <h4>Diagnostic</h4>
+                    <div id="diagnostic-content">Chargement...</div>
+                </div>
+            </div>
+
+            <!-- Suivi ROUGE -->
             <div class="panel-grid">
                 <div class="flat-card">
-                    <h4>Détection ROUGE par horizon</h4>
+                    <h4>Détection ROUGE par horizon <span class="badge" style="background:#DC2626">Priorite #1</span></h4>
                     <p class="card-hint">
                         Combien de vrais jours ROUGE ont été correctement anticipés ?
-                        Un chiffre bas = jours rouges manqués (coûteux pour les abonnés).
+                        Un chiffre bas = jours rouges manqués = coûteux pour les abonnés.
                     </p>
                     <div id="rouge-recall-table">Chargement...</div>
                 </div>
@@ -627,54 +680,64 @@
                 </div>
             </div>
 
-            <!-- ── Détail par couleur ── -->
-            <div class="section-title">Détail par couleur</div>
+            <!-- Erreurs récentes -->
             <div class="panel-grid full">
                 <div class="flat-card">
+                    <h4>Erreurs récentes</h4>
                     <p class="card-hint">
-                        <strong>Précision</strong> = quand on prédit ROUGE, est-ce vraiment rouge ?
-                        <strong>Détection</strong> = a-t-on repéré tous les vrais jours rouges ?
-                        <strong>F1</strong> = équilibre entre les deux. <strong>Support</strong> = nombre réel de jours de cette couleur.
+                        Les 10 dernières prédictions incorrectes. Les bordures rouges signalent un jour ROUGE manqué.
                     </p>
-                    <div id="prf-table">Chargement...</div>
+                    <ul class="error-list" id="errors-list">
+                        <li>Chargement...</li>
+                    </ul>
                 </div>
             </div>
 
-            <!-- ── Précision par horizon + chart ── -->
-            <div class="section-title">Précision par horizon</div>
+            <!-- ════════════════════════════════════════ -->
+            <!-- SECTION 3 : Progresse-t-on ? -->
+            <!-- ════════════════════════════════════════ -->
+            <div class="section-title">3. Progresse-t-on ?</div>
+
             <div class="panel-grid">
                 <div class="flat-card">
+                    <h4>Évolution de la précision</h4>
                     <p class="card-hint">
-                        J+1 = prédiction pour demain, J+2 = après-demain, etc.
+                        Précision jour par jour sur la période sélectionnée.
+                    </p>
+                    <div class="chart-container" style="height:260px">
+                        <canvas id="chart-trend"></canvas>
+                    </div>
+                    <div id="chart-trend-fallback" class="chart-fallback" style="display:none">
+                        Chart.js non disponible.
+                    </div>
+                </div>
+                <div class="flat-card">
+                    <h4>Précision par horizon</h4>
+                    <p class="card-hint">
+                        J+1 = demain, J+2 = après-demain, etc.
                         Plus l'horizon est lointain, plus la météo est incertaine.
                     </p>
                     <div id="metrics-horizon"></div>
-                </div>
-                <div class="flat-card">
-                    <div class="chart-container" style="height:260px">
+                    <div class="chart-container" style="height:200px;margin-top:12px">
                         <canvas id="chart-horizon"></canvas>
                     </div>
                     <div id="chart-horizon-fallback" class="chart-fallback" style="display:none">
-                        Chart.js non disponible — vérifiez votre connexion.
+                        Chart.js non disponible.
                     </div>
                 </div>
             </div>
 
-            <!-- ── Matrice de confusion + Poids ── -->
+            <!-- ════════════════════════════════════════ -->
+            <!-- SECTION 4 : Learnings -->
+            <!-- ════════════════════════════════════════ -->
+            <div class="section-title">4. Learnings et leviers d'amélioration</div>
+
             <div class="panel-grid">
-                <div class="flat-card">
-                    <h4>Matrice de confusion</h4>
-                    <p class="card-hint">
-                        Croisement prédit vs réel. La diagonale = prédictions correctes.
-                        Les cases rouges = jours ROUGE manqués (le plus critique).
-                    </p>
-                    <div id="confusion-matrix"></div>
-                </div>
                 <div class="flat-card">
                     <h4>Poids de l'algorithme</h4>
                     <p class="card-hint">
                         Importance de chaque facteur dans le score final.
-                        Recalculés automatiquement tous les 15 jours.
+                        Recalculés tous les 15 jours si suffisamment de données.
                     </p>
                     <div id="current-weights"></div>
                     <div class="chart-container" style="height:220px">
@@ -684,18 +747,12 @@
                         Chart.js non disponible.
                     </div>
                 </div>
-            </div>
-
-            <!-- ── Erreurs récentes ── -->
-            <div class="section-title">Erreurs récentes</div>
-            <div class="panel-grid full">
                 <div class="flat-card">
+                    <h4>Recommandations</h4>
                     <p class="card-hint">
-                        Les 10 dernières prédictions incorrectes. Les bordures rouges signalent un jour ROUGE non détecté.
+                        Actions prioritaires identifiées par l'analyse automatique.
                     </p>
-                    <ul class="error-list" id="errors-list">
-                        <li>Chargement...</li>
-                    </ul>
+                    <div id="recommendations-content">Chargement...</div>
                 </div>
             </div>
 
@@ -942,15 +999,19 @@ function renderPerformanceData(data) {
         banner.style.display = 'none';
     }
 
+    /* ── Verdict banner ── */
+    renderVerdict(data.diagnostic || {}, data.comparison || {});
+
     /* ── KPI strip ── */
+    const comp = data.comparison || {};
     setKpi('kpi-acc', g.total > 0 ? g.precision + '%' : 'N/A', g.precision);
     setKpi('kpi-acc-j2j5', j2j5.total > 0 ? j2j5.precision + '%' : 'N/A', j2j5.precision);
     document.getElementById('kpi-total').textContent = g.total ?? '—';
 
-    /* Recall ROUGE global (moyenne J+2→J+5) */
+    /* Recall ROUGE global */
     const rrh = data.rouge_recall_by_horizon || {};
     let totalRouge = 0, totalCaught = 0;
-    ['J+2','J+3','J+4','J+5'].forEach(k => {
+    ['J+1','J+2','J+3','J+4','J+5'].forEach(k => {
         if (rrh[k]) { totalRouge += rrh[k].rouge_total; totalCaught += rrh[k].rouge_caught; }
     });
     const rougeRecallGlobal = totalRouge > 0 ? Math.round(totalCaught / totalRouge * 100) : null;
@@ -965,21 +1026,27 @@ function renderPerformanceData(data) {
     setKpi('kpi-score', wf1 != null ? wf1 + '%' : 'N/A', wf1 || 0);
     document.getElementById('kpi-score-label').textContent = 'Score qualité (F1)';
 
-    /* ── Suivi ROUGE : tableau recall par horizon ── */
+    /* ── SECTION 1 : Nos prévisions sont-elles bonnes ? ── */
+    renderBudgetSeason(data.budget_season || {});
+    renderPrfTable(prf);
+    renderConfusionMatrix(data.confusion_matrix || {});
+
+    /* ── SECTION 2 : Pourquoi des erreurs ? ── */
+    renderDiagnostic(data.diagnostic || {});
     renderRougeRecallTable(rrh);
     if (chartAvailable) renderRougeRecallChart(rrh);
     else {
         document.getElementById('chart-rouge-recall').style.display = 'none';
         document.getElementById('chart-rouge-recall-fallback').style.display = 'flex';
     }
+    renderRecentErrors(data.recent_errors || []);
 
-    /* ── Precision / Recall / F1 par couleur ── */
-    renderPrfTable(prf);
-
-    /* ── Budget saison ── */
-    renderBudgetSeason(data.budget_season || {});
-
-    /* ── Horizon metrics ── */
+    /* ── SECTION 3 : Progresse-t-on ? ── */
+    if (chartAvailable) renderTrendChart(data.trend || []);
+    else {
+        document.getElementById('chart-trend').style.display = 'none';
+        document.getElementById('chart-trend-fallback').style.display = 'flex';
+    }
     const horizonEl = document.getElementById('metrics-horizon');
     if (data.by_horizon && data.by_horizon.length > 0) {
         horizonEl.innerHTML = data.by_horizon.map(h => {
@@ -992,30 +1059,177 @@ function renderPerformanceData(data) {
     } else {
         horizonEl.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Pas encore de données sur cette période</p>';
     }
+    if (chartAvailable) renderHorizonChart(data.by_horizon || []);
+    else {
+        document.getElementById('chart-horizon').style.display = 'none';
+        document.getElementById('chart-horizon-fallback').style.display = 'flex';
+    }
 
-    /* ── Confusion matrix (enhanced) ── */
-    renderConfusionMatrix(data.confusion_matrix || {});
-
-    /* ── Recent errors (enhanced) ── */
-    renderRecentErrors(data.recent_errors || []);
-
-    /* ── Weights ── */
+    /* ── SECTION 4 : Learnings ── */
     const weights = data.current_weights || {};
     const wEl = document.getElementById('current-weights');
     wEl.innerHTML = Object.entries(weights).map(([k, v]) =>
         `<div class="metric-row"><span>${escapeHtml(k)}</span><span class="metric-value">${escapeHtml((Number(v) * 100).toFixed(1))}%</span></div>`
     ).join('');
-
-    /* Charts (guarded) */
-    if (chartAvailable) {
-        renderHorizonChart(data.by_horizon || []);
-        renderWeightsChart(weights);
-    } else {
-        document.getElementById('chart-horizon').style.display = 'none';
-        document.getElementById('chart-horizon-fallback').style.display = 'flex';
+    if (chartAvailable) renderWeightsChart(weights);
+    else {
         document.getElementById('chart-weights').style.display = 'none';
         document.getElementById('chart-weights-fallback').style.display = 'flex';
     }
+    renderRecommendations(data.diagnostic || {});
+}
+
+/* ── Verdict banner ── */
+function renderVerdict(diag, comp) {
+    const el = document.getElementById('verdict-banner');
+    if (!diag.verdict) { el.style.display = 'none'; return; }
+    el.style.display = 'block';
+
+    const dot = document.getElementById('verdict-dot');
+    const title = document.getElementById('verdict-title');
+    const detail = document.getElementById('verdict-detail');
+    const delta = document.getElementById('verdict-delta');
+
+    const colors = { bon: '#16A34A', moyen: '#D97706', insuffisant: '#DC2626' };
+    const labels = { bon: 'Bonnes prévisions', moyen: 'Prévisions moyennes', insuffisant: 'Prévisions insuffisantes' };
+
+    dot.style.background = colors[diag.verdict] || '#6B7280';
+    title.textContent = labels[diag.verdict] || diag.verdict;
+    title.style.color = colors[diag.verdict] || 'var(--text)';
+
+    let detailParts = [];
+    if (diag.precision != null) detailParts.push(`Précision ${diag.precision}%`);
+    if (diag.rouge_recall != null) detailParts.push(`Détection ROUGE ${diag.rouge_recall}%`);
+    if (diag.bias && diag.bias !== 'aucun') {
+        const biasLabels = { 'sur-prediction': 'tendance à sur-prédire la sévérité', 'sous-prediction': 'tendance à sous-prédire', 'mixte': 'erreurs mixtes' };
+        detailParts.push(biasLabels[diag.bias] || diag.bias);
+    }
+    detail.textContent = detailParts.join(' · ');
+
+    if (comp.delta != null) {
+        const sign = comp.delta > 0 ? '+' : '';
+        delta.textContent = `${sign}${comp.delta}% vs période précédente`;
+        delta.style.color = comp.delta > 0 ? '#16A34A' : comp.delta < 0 ? '#DC2626' : 'var(--text-secondary)';
+    } else {
+        delta.textContent = '';
+    }
+}
+
+/* ── Diagnostic ── */
+function renderDiagnostic(diag) {
+    const el = document.getElementById('diagnostic-content');
+    if (!diag.top_confusions || diag.top_confusions.length === 0) {
+        el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Pas assez de données pour un diagnostic.</p>';
+        return;
+    }
+
+    const colorDot = c => c === 'ROUGE' ? '#F44336' : c === 'BLANC' ? '#9E9E9E' : '#2196F3';
+
+    let html = '<div style="margin-bottom:12px">';
+    if (diag.bias === 'sur-prediction') {
+        html += `<div style="padding:8px 12px;background:#FEF3C7;border-radius:var(--radius-sm);font-size:0.82rem;color:#92400E;margin-bottom:8px">
+            <strong>Biais dominant : sur-prédiction de sévérité</strong> — l'algorithme prédit trop de jours ROUGE et BLANC qui sont en réalité BLEU.
+            ${diag.over_predictions} sur-prédictions vs ${diag.under_predictions} sous-prédictions sur ${diag.total_errors} erreurs.
+        </div>`;
+    } else if (diag.bias === 'sous-prediction') {
+        html += `<div style="padding:8px 12px;background:#FFEBEE;border-radius:var(--radius-sm);font-size:0.82rem;color:#B71C1C;margin-bottom:8px">
+            <strong>Biais dominant : sous-prédiction</strong> — l'algorithme manque des jours sévères.
+            ${diag.under_predictions} sous-prédictions vs ${diag.over_predictions} sur-prédictions sur ${diag.total_errors} erreurs.
+        </div>`;
+    }
+    html += '</div>';
+
+    html += '<div style="font-size:0.85rem"><strong>Top confusions :</strong></div>';
+    html += '<div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">';
+    diag.top_confusions.forEach(c => {
+        const pct = diag.total_errors > 0 ? Math.round(c.count / diag.total_errors * 100) : 0;
+        html += `<div style="display:flex;align-items:center;gap:8px;font-size:0.82rem">
+            <div style="display:flex;align-items:center;gap:4px;min-width:140px">
+                <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colorDot(c.predicted)}"></span>
+                <span>${c.predicted}</span>
+                <span style="color:var(--text-secondary)">→</span>
+                <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${colorDot(c.actual)}"></span>
+                <span>${c.actual}</span>
+            </div>
+            <div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden">
+                <div style="height:100%;width:${pct}%;background:${c.actual === 'ROUGE' && c.predicted !== 'ROUGE' ? '#DC2626' : '#D97706'};border-radius:4px"></div>
+            </div>
+            <span style="min-width:60px;text-align:right;font-weight:600">${c.count}x (${pct}%)</span>
+        </div>`;
+    });
+    html += '</div>';
+    el.innerHTML = html;
+}
+
+/* ── Recommendations ── */
+function renderRecommendations(diag) {
+    const el = document.getElementById('recommendations-content');
+    if (!diag.recommendations || diag.recommendations.length === 0) {
+        el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Pas assez de données pour des recommandations.</p>';
+        return;
+    }
+    el.innerHTML = '<ul style="margin:0;padding-left:18px;font-size:0.85rem;line-height:1.6">' +
+        diag.recommendations.map(r =>
+            `<li style="margin-bottom:6px">${escapeHtml(r)}</li>`
+        ).join('') +
+    '</ul>';
+}
+
+/* ── Trend chart ── */
+let chartTrend = null;
+function renderTrendChart(trend) {
+    if (!chartAvailable) return;
+    const ctx = document.getElementById('chart-trend');
+    if (!ctx || !trend || trend.length === 0) return;
+    if (chartTrend) chartTrend.destroy();
+
+    chartTrend = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: trend.map(t => t.date.substring(5)),
+            datasets: [{
+                label: 'Précision (%)',
+                data: trend.map(t => t.precision),
+                borderColor: '#2563EB',
+                backgroundColor: 'rgba(37,99,235,0.1)',
+                fill: true,
+                tension: 0.3,
+                pointRadius: trend.length > 30 ? 0 : 4,
+                pointBackgroundColor: trend.map(t =>
+                    t.precision >= 80 ? '#4CAF50' : t.precision >= 60 ? '#FFC107' : '#F44336'
+                ),
+            }, {
+                label: 'Évaluations',
+                data: trend.map(t => t.total),
+                borderColor: '#9E9E9E',
+                borderDash: [4, 4],
+                yAxisID: 'y1',
+                pointRadius: 0,
+                borderWidth: 1,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            scales: {
+                y: { beginAtZero: true, max: 100, title: { display: true, text: 'Précision %' } },
+                y1: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false },
+                       title: { display: true, text: 'Éval.' } },
+            },
+            plugins: {
+                legend: { position: 'bottom', labels: { font: { size: 11 } } },
+                annotation: {
+                    annotations: {
+                        line76: { type: 'line', yMin: 76, yMax: 76, borderColor: '#9E9E9E',
+                                  borderDash: [6, 3], borderWidth: 1,
+                                  label: { display: true, content: 'Baseline BLEU', position: 'start',
+                                           font: { size: 10 }, color: '#9E9E9E' } }
+                    }
+                }
+            }
+        }
+    });
 }
 
 /* ── Rouge recall table ── */

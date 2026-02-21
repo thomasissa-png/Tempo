@@ -413,6 +413,169 @@ def get_budget_season() -> dict:
         return {}
 
 
+def get_accuracy_trend(days: int = 14) -> list[dict]:
+    """Précision quotidienne sur les N derniers jours (pour graphique d'évolution)."""
+    conn = get_db()
+    try:
+        since = (date.today() - timedelta(days=days)).isoformat()
+        rows = conn.execute(
+            """SELECT date_cible, COUNT(*) as total, SUM(correct) as corrects
+               FROM performance
+               WHERE date_cible >= ?
+               GROUP BY date_cible
+               ORDER BY date_cible""",
+            (since,),
+        ).fetchall()
+        return [
+            {
+                "date": r["date_cible"],
+                "total": r["total"],
+                "correct": r["corrects"],
+                "precision": round(r["corrects"] / r["total"] * 100, 1)
+                if r["total"] > 0 else 0,
+            }
+            for r in rows
+        ]
+    finally:
+        conn.close()
+
+
+def get_period_comparison(days: int = 7) -> dict:
+    """Compare la période actuelle vs la période précédente de même durée."""
+    conn = get_db()
+    try:
+        now_start = (date.today() - timedelta(days=days)).isoformat()
+        prev_start = (date.today() - timedelta(days=days * 2)).isoformat()
+
+        current = conn.execute(
+            """SELECT COUNT(*) as total, SUM(correct) as corrects
+               FROM performance WHERE date_cible >= ?""",
+            (now_start,),
+        ).fetchone()
+        previous = conn.execute(
+            """SELECT COUNT(*) as total, SUM(correct) as corrects
+               FROM performance WHERE date_cible >= ? AND date_cible < ?""",
+            (prev_start, now_start),
+        ).fetchone()
+
+        c_total = current["total"] or 0
+        c_correct = current["corrects"] or 0
+        p_total = previous["total"] or 0
+        p_correct = previous["corrects"] or 0
+
+        c_pct = round(c_correct / c_total * 100, 1) if c_total > 0 else None
+        p_pct = round(p_correct / p_total * 100, 1) if p_total > 0 else None
+
+        delta = None
+        if c_pct is not None and p_pct is not None:
+            delta = round(c_pct - p_pct, 1)
+
+        return {
+            "current": {"precision": c_pct, "total": c_total},
+            "previous": {"precision": p_pct, "total": p_total},
+            "delta": delta,
+        }
+    finally:
+        conn.close()
+
+
+def get_diagnostic(days: int = 30) -> dict:
+    """Diagnostic synthétique : identifie les causes principales d'erreur.
+
+    Retourne un verdict global + les top problèmes + recommandations.
+    """
+    cm = get_confusion_matrix(days)
+    prf = get_precision_recall_f1(days)
+    g = get_accuracy_global(days)
+
+    # Calculer les confusions dominantes
+    problems = []
+    total_errors = 0
+    for predicted in ("BLEU", "BLANC", "ROUGE"):
+        for actual in ("BLEU", "BLANC", "ROUGE"):
+            if predicted != actual:
+                count = cm.get(predicted, {}).get(actual, 0)
+                total_errors += count
+                if count >= 2:
+                    problems.append({
+                        "predicted": predicted,
+                        "actual": actual,
+                        "count": count,
+                    })
+
+    problems.sort(key=lambda x: x["count"], reverse=True)
+
+    # Déterminer le biais dominant
+    over_pred = sum(p["count"] for p in problems
+                    if _color_rank(p["predicted"]) > _color_rank(p["actual"]))
+    under_pred = sum(p["count"] for p in problems
+                     if _color_rank(p["predicted"]) < _color_rank(p["actual"]))
+
+    if total_errors == 0:
+        bias = "aucun"
+    elif over_pred > under_pred * 1.5:
+        bias = "sur-prediction"
+    elif under_pred > over_pred * 1.5:
+        bias = "sous-prediction"
+    else:
+        bias = "mixte"
+
+    # Verdict
+    precision = g.get("precision", 0)
+    rouge_recall = prf.get("ROUGE", {}).get("recall", 0)
+
+    if precision >= 80 and rouge_recall >= 60:
+        verdict = "bon"
+    elif precision >= 65 or rouge_recall >= 40:
+        verdict = "moyen"
+    else:
+        verdict = "insuffisant"
+
+    # Recommandations
+    recs = []
+    top_confusions = problems[:3]
+    for p in top_confusions:
+        if p["predicted"] == "BLANC" and p["actual"] == "BLEU":
+            recs.append(
+                f"{p['count']}x BLANC predit au lieu de BLEU — le seuil BLANC "
+                f"est probablement trop bas, ou le score budget pousse trop."
+            )
+        elif p["predicted"] == "ROUGE" and p["actual"] in ("BLEU", "BLANC"):
+            recs.append(
+                f"{p['count']}x fausse alarme ROUGE (reel={p['actual']}) — "
+                f"le seuil ROUGE est trop sensible ou la temperature est "
+                f"surestimee."
+            )
+        elif p["actual"] == "ROUGE" and p["predicted"] != "ROUGE":
+            recs.append(
+                f"{p['count']}x ROUGE manque (predit {p['predicted']}) — "
+                f"critique pour les abonnes. Verifier le recall ROUGE."
+            )
+        else:
+            recs.append(
+                f"{p['count']}x {p['predicted']} predit au lieu de "
+                f"{p['actual']}."
+            )
+
+    if bias == "sur-prediction":
+        recs.append(
+            "Tendance globale : sur-prediction de severite. "
+            "L'algo predit trop de jours ROUGE/BLANC."
+        )
+
+    return {
+        "verdict": verdict,
+        "precision": precision,
+        "rouge_recall": rouge_recall,
+        "bias": bias,
+        "over_predictions": over_pred,
+        "under_predictions": under_pred,
+        "total_errors": total_errors,
+        "top_confusions": top_confusions[:5],
+        "recommendations": recs,
+    }
+
+
 def get_performance_summary(days: int = 90) -> dict:
     """Résumé complet des performances pour le dashboard admin.
 
@@ -431,6 +594,9 @@ def get_performance_summary(days: int = 90) -> dict:
         "recent_errors": get_recent_errors(10),
         "current_weights": get_current_weights(),
         "budget_season": get_budget_season(),
+        "trend": get_accuracy_trend(d),
+        "comparison": get_period_comparison(d),
+        "diagnostic": get_diagnostic(d),
     }
 
 
