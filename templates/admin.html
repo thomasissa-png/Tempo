@@ -151,7 +151,7 @@
     <div class="container header-row">
         <a href="/" class="header-brand">
             <svg class="header-logo" viewBox="0 0 100 100" width="32" height="32" aria-hidden="true"><circle cx="50" cy="50" r="45" fill="#fff"/><circle cx="50" cy="50" r="40" fill="#2563EB"/><path d="M50 10A40 40 0 0 1 90 50H10A40 40 0 0 1 50 10z" fill="#DC2626"/><circle cx="50" cy="50" r="16" fill="#fff"/></svg>
-            <span class="header-title">Calendrier Tempo EDF</span>
+            <span class="header-title" style="line-height:1.2">Calendrier Tempo EDF</span>
         </a>
         <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu de navigation" aria-expanded="false" aria-controls="main-nav">
             <span class="bar"></span><span class="bar"></span><span class="bar"></span>
@@ -270,8 +270,8 @@
             </div>
             <div class="panel-grid">
                 <div class="flat-card">
-                    <h4>Matrice de confusion</h4>
-                    <p class="card-hint">Prédit vs réel (tous horizons). Diagonale = correct. Rouge = ROUGE manqué.</p>
+                    <h4>Matrice de confusion <span style="font-weight:400;font-size:0.78rem;color:var(--text-secondary)">(tous horizons confondus)</span></h4>
+                    <p class="card-hint">Prédit vs réel. Diagonale = correct. Rouge = ROUGE manqué.</p>
                     <div id="confusion-matrix"></div>
                 </div>
                 <div class="flat-card">
@@ -282,18 +282,11 @@
 
             <!-- SECTION 3 : Progresse-t-on ? -->
             <div class="section-title">Progresse-t-on ?</div>
-            <div class="panel-grid">
+            <div class="panel-grid full">
                 <div class="flat-card">
                     <h4>Bilan mois par mois</h4>
-                    <p class="card-hint">Précision globale et par couleur (fiabilité / couverture), mois après mois. Permet de voir la progression.</p>
+                    <p class="card-hint">Précision par horizon de prédiction (J-1 = veille, J-15 = 15 jours avant), mois après mois.</p>
                     <div id="monthly-perf-table">Chargement...</div>
-                </div>
-                <div class="flat-card">
-                    <h4>Précision par horizon</h4>
-                    <p class="card-hint">J-1 = veille, J-2 = 2 jours avant, etc.</p>
-                    <div id="metrics-horizon"></div>
-                    <div class="chart-container" style="height:200px;margin-top:12px"><canvas id="chart-horizon"></canvas></div>
-                    <div id="chart-horizon-fallback" class="chart-fallback" style="display:none">Chart.js non disponible.</div>
                 </div>
             </div>
 
@@ -399,7 +392,7 @@
 <script>
 let adminPassword = '';
 let currentSeason = '2025-2026';
-let chartHorizon = null, chartWeights = null;
+let chartWeights = null;
 let _recapData = []; // cached for month filter
 const chartAvailable = typeof Chart !== 'undefined';
 
@@ -502,7 +495,7 @@ function renderPerformanceData(data) {
 
     const rrh = data.rouge_recall_by_horizon||{};
     let totalRouge=0, totalCaught=0;
-    ['J+1','J+2','J+3','J+4','J+5'].forEach(k => { if(rrh[k]){totalRouge+=rrh[k].total_actual||0;totalCaught+=rrh[k].caught||0;} });
+    ['J-1','J-2','J-3','J-4','J-5'].forEach(k => { if(rrh[k]){totalRouge+=rrh[k].total_actual||0;totalCaught+=rrh[k].caught||0;} });
     if (totalRouge > 0) { const rr=Math.round(totalCaught/totalRouge*100); setKpi('kpi-rouge-recall',rr+'%',rr); kpiRougeCard.style.opacity='1'; }
     else { document.getElementById('kpi-rouge-recall').textContent='—'; document.getElementById('kpi-rouge-recall').className='kpi-value'; kpiRougeCard.style.opacity='0.4'; }
 
@@ -517,23 +510,22 @@ function renderPerformanceData(data) {
     renderDiagnostic(data.diagnostic||{}, g.total||0);
     renderMonthlyPerfTable(data.monthly_performance||[]);
 
-    const hEl = document.getElementById('metrics-horizon');
-    if (data.by_horizon && data.by_horizon.length > 0) {
-        hEl.innerHTML = data.by_horizon.map(h => {
-            const cls = h.precision>=80?'green':h.precision>=60?'orange':'red';
-            return `<div class="metric-row"><span>${escapeHtml(String(h.horizon))} <small style="color:var(--text-secondary)">(${h.total} éval.)</small></span><span class="metric-value ${cls}">${h.precision}%</span></div>`;
-        }).join('');
-    } else hEl.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Pas de données</p>';
-    if (chartAvailable) renderHorizonChart(data.by_horizon||[]);
-    else { document.getElementById('chart-horizon').style.display='none'; document.getElementById('chart-horizon-fallback').style.display='flex'; }
-
+    const weightLabels = {
+        "temperature": "Température",
+        "jours_restants": "Pression budgétaire",
+        "jour_semaine": "Jour de la semaine",
+        "gradient_thermique": "Gradient thermique",
+        "clustering": "Clustering",
+        "consommation_rte": "Consommation nette (C_nette)",
+        "pression": "Pression atmosphérique",
+    };
     const weights = data.current_weights||{};
     document.getElementById('current-weights').innerHTML = Object.entries(weights).map(([k,v]) =>
-        `<div class="metric-row"><span>${escapeHtml(k)}</span><span class="metric-value">${(Number(v)*100).toFixed(1)}%</span></div>`
+        `<div class="metric-row"><span>${escapeHtml(weightLabels[k]||k)}</span><span class="metric-value">${(Number(v)*100).toFixed(1)}%</span></div>`
     ).join('');
-    if (chartAvailable) renderWeightsChart(weights);
+    if (chartAvailable) renderWeightsChart(weights, weightLabels);
     else { document.getElementById('chart-weights').style.display='none'; document.getElementById('chart-weights-fallback').style.display='flex'; }
-    renderRecommendations(data.diagnostic||{});
+    renderRecommendations(data.diagnostic||{}, data.last_tool_update, data.last_tool_update_label);
 }
 
 function setKpi(id, text, value) {
@@ -659,7 +651,7 @@ function renderColorRecallTable(elId, data, totalActual) {
     const el = document.getElementById(elId);
     if (!el) return;
     if (totalActual === 0) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Aucun jour réel.</p>'; return; }
-    const horizons = ['J+1','J+2','J+3','J+4','J+5'].filter(h => data[h] && ((data[h].total_actual||0)>0 || (data[h].false_alarms||0)>0));
+    const horizons = ['J-1','J-2','J-3','J-4','J-5'].filter(h => data[h] && ((data[h].total_actual||0)>0 || (data[h].false_alarms||0)>0));
     if (horizons.length === 0) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Pas de données.</p>'; return; }
     let h = '<table class="rouge-table"><thead><tr><th>Horizon</th><th>Couverture</th><th>Fiabilité</th><th>Détectés</th><th>Réels</th><th>Faux +</th></tr></thead><tbody>';
     horizons.forEach(hz => {
@@ -680,29 +672,34 @@ function renderMonthlyPerfTable(monthly) {
     if (!el) return;
     if (!monthly || monthly.length === 0) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Pas encore de données mensuelles.</p>'; return; }
     const vc = v => { if(v==null) return ''; return v>=70?'val-good':v>=50?'val-warn':'val-bad'; };
-    let h = '<div style="overflow-x:auto"><table class="rouge-table" style="font-size:0.8rem"><thead><tr>';
-    h += '<th>Mois</th><th>Éval.</th><th>Précision</th>';
-    h += '<th style="color:#F44336">R. fiab.</th><th style="color:#F44336">R. couv.</th>';
-    h += '<th style="color:#757575">B. fiab.</th><th style="color:#757575">B. couv.</th>';
-    h += '<th style="color:#2196F3">Bl. fiab.</th><th style="color:#2196F3">Bl. couv.</th>';
+    // Determine which horizons have data across all months
+    const allHorizons = [];
+    for (let i = 1; i <= 15; i++) allHorizons.push(`J-${i}`);
+    const activeHorizons = allHorizons.filter(hz =>
+        monthly.some(m => m.horizons && m.horizons[hz] && m.horizons[hz].total > 0));
+    if (activeHorizons.length === 0) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Pas de données par horizon.</p>'; return; }
+
+    let h = '<div style="overflow-x:auto"><table class="rouge-table" style="font-size:0.78rem"><thead><tr>';
+    h += '<th>Mois</th><th>Éval.</th><th>Glob.</th>';
+    activeHorizons.forEach(hz => { h += `<th>${hz}</th>`; });
     h += '</tr></thead><tbody>';
     monthly.forEach(m => {
         const ac = m.accuracy>=75?'val-good':m.accuracy>=55?'val-warn':'val-bad';
-        const r = m.colors?.ROUGE||{}, b = m.colors?.BLANC||{}, bl = m.colors?.BLEU||{};
-        h += `<tr>`;
-        h += `<td><strong>${escapeHtml(m.month_label)}</strong></td>`;
+        h += `<tr><td><strong>${escapeHtml(m.month_label)}</strong></td>`;
         h += `<td>${m.total}</td>`;
         h += `<td class="${ac}"><strong>${m.accuracy}%</strong></td>`;
-        h += `<td class="${vc(r.precision)}">${r.precision!=null?r.precision+'%':'—'}</td>`;
-        h += `<td class="${vc(r.recall)}">${r.recall!=null?r.recall+'%':'—'}</td>`;
-        h += `<td class="${vc(b.precision)}">${b.precision!=null?b.precision+'%':'—'}</td>`;
-        h += `<td class="${vc(b.recall)}">${b.recall!=null?b.recall+'%':'—'}</td>`;
-        h += `<td class="${vc(bl.precision)}">${bl.precision!=null?bl.precision+'%':'—'}</td>`;
-        h += `<td class="${vc(bl.recall)}">${bl.recall!=null?bl.recall+'%':'—'}</td>`;
-        h += `</tr>`;
+        activeHorizons.forEach(hz => {
+            const hd = m.horizons?.[hz];
+            if (hd && hd.precision != null) {
+                h += `<td class="${vc(hd.precision)}" title="${hd.total} éval.">${hd.precision}%</td>`;
+            } else {
+                h += '<td style="color:var(--text-secondary)">—</td>';
+            }
+        });
+        h += '</tr>';
     });
     h += '</tbody></table></div>';
-    h += '<p style="font-size:0.7rem;color:var(--text-secondary);margin-top:6px">Fiab. = fiabilité (précision), Couv. = couverture (rappel)</p>';
+    h += '<p style="font-size:0.7rem;color:var(--text-secondary);margin-top:6px">Glob. = précision tous horizons. Chaque colonne J-N = précision à cet horizon. Survol pour le nombre d\'évaluations.</p>';
     el.innerHTML = h;
 }
 
@@ -755,33 +752,26 @@ function renderDiagnostic(diag, totalEvals) {
 }
 
 /* ── Recommendations ── */
-function renderRecommendations(diag) {
+function renderRecommendations(diag, lastUpdate, lastUpdateLabel) {
     const el = document.getElementById('recommendations-content');
-    if (!diag.recommendations||diag.recommendations.length===0) { el.innerHTML='<p style="color:var(--text-secondary);font-size:0.85rem">Pas assez de données.</p>'; return; }
-    el.innerHTML = '<ul style="margin:0;padding-left:18px;font-size:0.85rem;line-height:1.6">' +
+    let header = '';
+    if (lastUpdate) {
+        header = `<div style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:10px;padding:6px 10px;background:var(--bg);border-radius:var(--radius-sm)">Analyse depuis la dernière MAJ : <strong>${escapeHtml(lastUpdate)}</strong>${lastUpdateLabel ? ' — '+escapeHtml(lastUpdateLabel) : ''}</div>`;
+    }
+    if (!diag.recommendations||diag.recommendations.length===0) { el.innerHTML=header+'<p style="color:var(--text-secondary);font-size:0.85rem">Aucune erreur détectée depuis la dernière mise à jour.</p>'; return; }
+    el.innerHTML = header + '<ul style="margin:0;padding-left:18px;font-size:0.85rem;line-height:1.6">' +
         diag.recommendations.map(r => `<li style="margin-bottom:6px">${escapeHtml(r)}</li>`).join('') + '</ul>';
 }
 
 /* ══════════════════════════════════ */
 /* CHARTS                            */
 /* ══════════════════════════════════ */
-function renderHorizonChart(hd) {
-    if (!chartAvailable||!hd||!hd.length) return;
-    const ctx = document.getElementById('chart-horizon'); if (!ctx) return;
-    if (chartHorizon) chartHorizon.destroy();
-    chartHorizon = new Chart(ctx, {
-        type:'bar', data:{ labels:hd.map(h=>h.horizon), datasets:[{ label:'Précision (%)', data:hd.map(h=>h.precision),
-            backgroundColor:hd.map(h=>h.precision>=80?'#4CAF50':h.precision>=60?'#FFC107':'#F44336'), borderRadius:6 }] },
-        options:{ responsive:true, maintainAspectRatio:false, scales:{y:{beginAtZero:true,max:100,title:{display:true,text:'%'}}}, plugins:{legend:{display:false}} }
-    });
-}
-
-function renderWeightsChart(weights) {
+function renderWeightsChart(weights, labels) {
     if (!chartAvailable) return;
     const ctx = document.getElementById('chart-weights'); if (!ctx) return;
     if (chartWeights) chartWeights.destroy();
     chartWeights = new Chart(ctx, {
-        type:'doughnut', data:{ labels:Object.keys(weights).map(k=>k.replace('_',' ')),
+        type:'doughnut', data:{ labels:Object.keys(weights).map(k=>(labels&&labels[k])||k.replace('_',' ')),
             datasets:[{ data:Object.values(weights).map(v=>v*100), backgroundColor:['#F44336','#FF9800','#2196F3','#4CAF50','#9C27B0','#795548','#607D8B'] }] },
         options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom',labels:{font:{size:11}}}} }
     });

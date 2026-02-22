@@ -107,9 +107,9 @@ def evaluate_predictions_for_date(target_date: date, couleur_reelle: str):
             couleur_pred = pred["couleur_predite"]
             if pred["confirmed"] and pred["couleur_originale"]:
                 couleur_pred = pred["couleur_originale"]
-            elif pred["confirmed"]:
-                # Confirmé sans couleur_originale sauvegardée → skip (ancien format)
-                continue
+            elif pred["confirmed"] and pred["couleur_originale"] is None:
+                continue  # Old format before couleur_originale column existed
+            # When confirmed + couleur_originale = '' → prediction matched EDF, use couleur_predite
 
             # Calculer l'avance en jours
             ts = datetime.fromisoformat(pred["timestamp_prediction"])
@@ -363,7 +363,7 @@ def get_recent_errors(limit: int = 5, days: int | None = None) -> list[dict]:
 
 
 def get_rouge_recall_by_horizon(days: int = 90) -> dict:
-    """Audit DS P2-H : recall ROUGE par horizon (J+1..J+5).
+    """Audit DS P2-H : recall ROUGE par horizon (J-1..J-5).
 
     Mesure indépendante du recall ROUGE pour chaque horizon de prédiction.
     Permet d'identifier si certains horizons sont particulièrement faibles
@@ -390,7 +390,7 @@ def get_rouge_recall_by_horizon(days: int = 90) -> dict:
             fp = row["fp"] or 0
             recall = round(tp / total * 100, 1) if total > 0 else None
             precision = round(tp / (tp + fp) * 100, 1) if (tp + fp) > 0 else None
-            result[f"J+{h}"] = {
+            result[f"J-{h}"] = {
                 "recall": recall,
                 "precision": precision,
                 "rouge_total": total,
@@ -611,7 +611,7 @@ def get_diagnostic(days: int = 30) -> dict:
 
 
 def get_color_recall_by_horizon(color: str, days: int = 90) -> dict:
-    """Recall/precision for a specific color (ROUGE/BLANC/BLEU) by horizon J+1..J+5."""
+    """Recall/precision for a specific color (ROUGE/BLANC/BLEU) by horizon J-1..J-5."""
     conn = get_db()
     try:
         since = _enforce_start_date((date.today() - timedelta(days=days)).isoformat())
@@ -633,7 +633,7 @@ def get_color_recall_by_horizon(color: str, days: int = 90) -> dict:
             fp = row["fp"] or 0
             recall = round(tp / total * 100, 1) if total > 0 else None
             precision = round(tp / (tp + fp) * 100, 1) if (tp + fp) > 0 else None
-            result[f"J+{h}"] = {
+            result[f"J-{h}"] = {
                 "recall": recall,
                 "precision": precision,
                 "total_actual": total,
@@ -646,7 +646,7 @@ def get_color_recall_by_horizon(color: str, days: int = 90) -> dict:
 
 
 def get_monthly_performance(season: str = "2025-2026") -> list[dict]:
-    """Performance breakdown by month with per-color precision/recall."""
+    """Accuracy per horizon (J-1 to J-15) per month."""
     conn = get_db()
     try:
         season_start, season_end = parse_season(season)
@@ -656,12 +656,13 @@ def get_monthly_performance(season: str = "2025-2026") -> list[dict]:
         rows = conn.execute(
             """SELECT
                    strftime('%Y-%m', date_cible) as month_key,
-                   couleur_reelle, couleur_predite,
-                   COUNT(*) as cnt
+                   jours_avance,
+                   COUNT(*) as total,
+                   SUM(correct) as corrects
                FROM performance
                WHERE date_cible >= ? AND date_cible <= ?
-               GROUP BY month_key, couleur_reelle, couleur_predite
-               ORDER BY month_key""",
+               GROUP BY month_key, jours_avance
+               ORDER BY month_key, jours_avance""",
             (start_date, end_date),
         ).fetchall()
 
@@ -670,45 +671,41 @@ def get_monthly_performance(season: str = "2025-2026") -> list[dict]:
             "05": "Mai", "06": "Juin", "07": "Juillet", "08": "Août",
             "09": "Septembre", "10": "Octobre", "11": "Novembre", "12": "Décembre",
         }
-        colors = ["BLEU", "BLANC", "ROUGE"]
 
-        # Build confusion data per month
+        # Build per-month per-horizon accuracy
         months_data: dict[str, dict] = {}
+        months_totals: dict[str, dict] = {}
         for r in rows:
             mk = r["month_key"]
             if mk not in months_data:
-                months_data[mk] = {
-                    c_pred: {c_real: 0 for c_real in colors}
-                    for c_pred in colors
+                months_data[mk] = {}
+                months_totals[mk] = {"total": 0, "correct": 0}
+            h = r["jours_avance"]
+            total = r["total"]
+            corrects = r["corrects"] or 0
+            if 1 <= h <= 15:
+                months_data[mk][h] = {
+                    "total": total,
+                    "precision": round(corrects / total * 100, 1) if total > 0 else None,
                 }
-            cp, cr = r["couleur_predite"], r["couleur_reelle"]
-            if cp in months_data[mk] and cr in months_data[mk].get(cp, {}):
-                months_data[mk][cp][cr] = r["cnt"]
+            months_totals[mk]["total"] += total
+            months_totals[mk]["correct"] += corrects
 
         result = []
         for mk in sorted(months_data.keys()):
-            cm = months_data[mk]
-            total = sum(cm[p][a] for p in colors for a in colors)
-            correct = sum(cm[c][c] for c in colors)
-            accuracy = round(correct / total * 100, 1) if total > 0 else 0
-
-            color_metrics = {}
-            for c in colors:
-                tp = cm[c][c]
-                fp = sum(cm[c][a] for a in colors if a != c)
-                fn = sum(cm[p][c] for p in colors if p != c)
-                prec = round(tp / (tp + fp) * 100) if (tp + fp) > 0 else None
-                rec = round(tp / (tp + fn) * 100) if (tp + fn) > 0 else None
-                color_metrics[c] = {"precision": prec, "recall": rec, "support": tp + fn}
-
             mm = mk.split("-")[1]
-            result.append({
+            mt = months_totals[mk]
+            entry = {
                 "month_key": mk,
                 "month_label": month_names.get(mm, mm),
-                "total": total,
-                "accuracy": accuracy,
-                "colors": color_metrics,
-            })
+                "total": mt["total"],
+                "accuracy": round(mt["correct"] / mt["total"] * 100, 1) if mt["total"] > 0 else 0,
+                "horizons": {},
+            }
+            for h in range(1, 16):
+                if h in months_data[mk]:
+                    entry["horizons"][f"J-{h}"] = months_data[mk][h]
+            result.append(entry)
 
         return result
     finally:
@@ -841,9 +838,10 @@ def get_daily_recap(season: str = "2025-2026") -> list[dict]:
             if dt not in dates_data:
                 dates_data[dt] = {}
 
-            if r["confirmed"] and not r["couleur_originale"]:
-                continue
+            if r["confirmed"] and r["couleur_originale"] is None:
+                continue  # Old format before couleur_originale migration
 
+            # When confirmed + couleur_originale empty string → prediction matched EDF
             couleur = r["couleur_originale"] if r["couleur_originale"] else r["couleur_predite"]
             horizon = r["horizon"]  # DB format: J-1, J-2, ... J-15
 
@@ -932,6 +930,13 @@ def get_performance_summary(season: str = "2025-2026") -> dict:
     """
     season_start, _ = parse_season(season)
     d = max(1, min((date.today() - season_start).days, 365))
+
+    # Last tool update for recommendations scope
+    tool_dates = sorted(Config.TOOL_UPDATE_DATES.keys()) if hasattr(Config, 'TOOL_UPDATE_DATES') else []
+    last_update = tool_dates[-1] if tool_dates else None
+    last_update_label = Config.TOOL_UPDATE_DATES.get(last_update, "") if last_update else ""
+    days_since_update = max(1, (date.today() - date.fromisoformat(last_update)).days) if last_update else d
+
     return {
         "season": season,
         "available_seasons": get_available_seasons(),
@@ -948,7 +953,9 @@ def get_performance_summary(season: str = "2025-2026") -> dict:
         "monthly_performance": get_monthly_performance(season),
         "current_weights": get_current_weights(),
         "trend": get_accuracy_trend(d),
-        "diagnostic": get_diagnostic(d),
+        "diagnostic": get_diagnostic(days_since_update),
+        "last_tool_update": last_update,
+        "last_tool_update_label": last_update_label,
         "daily_recap": get_daily_recap(season),
     }
 
