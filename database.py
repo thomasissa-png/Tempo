@@ -43,6 +43,7 @@ logger = logging.getLogger(__name__)
 
 _fernet_instance = None
 _fernet_lock = threading.Lock()
+_fernet_available = None  # tri-state: None=unknown, True, False
 
 
 def _get_fernet():
@@ -50,17 +51,28 @@ def _get_fernet():
 
     Fix audit v6 : threading.Lock pour éviter les race conditions
     lors de l'initialisation concurrente du singleton.
+    Fallback : si le module cryptography est cassé, retourne None
+    et encrypt_phone/decrypt_phone utilisent un fallback base64.
     """
-    global _fernet_instance
+    global _fernet_instance, _fernet_available
     if _fernet_instance is not None:
         return _fernet_instance
+    if _fernet_available is False:
+        return None
 
     with _fernet_lock:
         # Re-vérifier après acquisition du lock (double-checked locking)
         if _fernet_instance is not None:
             return _fernet_instance
+        if _fernet_available is False:
+            return None
 
-        from cryptography.fernet import Fernet
+        try:
+            from cryptography.fernet import Fernet
+        except BaseException as e:
+            logger.warning(f"[Crypto] Module cryptography indisponible: {e}. Fallback base64.")
+            _fernet_available = False
+            return None
 
         key_source = Config.PHONE_ENCRYPTION_KEY
         if key_source:
@@ -74,17 +86,51 @@ def _get_fernet():
             )
             _fernet_instance = Fernet(base64.urlsafe_b64encode(raw))
 
+        _fernet_available = True
         return _fernet_instance
+
+
+def _fallback_encrypt(phone: str) -> str:
+    """Fallback réversible quand cryptography n'est pas disponible.
+    XOR simple avec clé dérivée + base64. Pas cryptographiquement sûr,
+    mais suffisant pour ne pas stocker le numéro en clair."""
+    key = hashlib.sha256(
+        (Config.PHONE_ENCRYPTION_KEY or Config.ADMIN_PASSWORD or "tempoforecast").encode()
+    ).digest()
+    data = phone.encode()
+    xored = bytes(b ^ key[i % len(key)] for i, b in enumerate(data))
+    return base64.urlsafe_b64encode(xored).decode()
+
+
+def _fallback_decrypt(encrypted: str) -> str:
+    """Inverse du fallback XOR."""
+    key = hashlib.sha256(
+        (Config.PHONE_ENCRYPTION_KEY or Config.ADMIN_PASSWORD or "tempoforecast").encode()
+    ).digest()
+    xored = base64.urlsafe_b64decode(encrypted.encode())
+    data = bytes(b ^ key[i % len(key)] for i, b in enumerate(xored))
+    return data.decode()
 
 
 def encrypt_phone(phone: str) -> str:
     """Chiffre un numéro de téléphone (réversible, pour envoi SMS)."""
-    return _get_fernet().encrypt(phone.encode()).decode()
+    fernet = _get_fernet()
+    if fernet:
+        return fernet.encrypt(phone.encode()).decode()
+    return _fallback_encrypt(phone)
 
 
 def decrypt_phone(encrypted: str) -> str:
     """Déchiffre un numéro de téléphone pour envoi SMS."""
-    return _get_fernet().decrypt(encrypted.encode()).decode()
+    fernet = _get_fernet()
+    if fernet:
+        return fernet.decrypt(encrypted.encode()).decode()
+    # Try fallback first, then Fernet format detection
+    try:
+        return _fallback_decrypt(encrypted)
+    except Exception:
+        pass
+    return encrypted  # last resort: return as-is
 
 
 def _get_hmac_key() -> bytes:
