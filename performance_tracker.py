@@ -331,22 +331,40 @@ def get_accuracy_by_horizon(days: int = 60) -> list[dict]:
         conn.close()
 
 
-def get_confusion_matrix(days: int = 60, since_date: str | None = None) -> dict:
+def get_confusion_matrix(days: int = 60, since_date: str | None = None,
+                         end_date: str | None = None,
+                         min_horizon: int | None = None,
+                         max_horizon: int | None = None) -> dict:
     """Matrice de confusion 3×3 (BLEU/BLANC/ROUGE prédit vs réel).
 
     Args:
         since_date: if provided, overrides the days-based calculation.
+        end_date: if provided, upper bound on date_cible (exclusive).
+        min_horizon: minimum jours_avance (inclusive). A1/A6: filter by horizon.
+        max_horizon: maximum jours_avance (inclusive). A1/A6: filter by horizon.
     """
     conn = get_db()
     try:
         since = since_date or _enforce_start_date(
             (date.today() - timedelta(days=days)).isoformat())
+        conditions = ["date_cible >= ?"]
+        params: list = [since]
+        if end_date:
+            conditions.append("date_cible < ?")
+            params.append(end_date)
+        if min_horizon is not None:
+            conditions.append("jours_avance >= ?")
+            params.append(min_horizon)
+        if max_horizon is not None:
+            conditions.append("jours_avance <= ?")
+            params.append(max_horizon)
+
         rows = conn.execute(
-            """SELECT couleur_predite, couleur_reelle, COUNT(*) as cnt
+            f"""SELECT couleur_predite, couleur_reelle, COUNT(*) as cnt
                FROM performance
-               WHERE date_cible >= ?
+               WHERE {' AND '.join(conditions)}
                GROUP BY couleur_predite, couleur_reelle""",
-            (since,)
+            params,
         ).fetchall()
 
         matrix = {
@@ -362,9 +380,15 @@ def get_confusion_matrix(days: int = 60, since_date: str | None = None) -> dict:
         conn.close()
 
 
-def get_precision_recall_f1(days: int = 60, since_date: str | None = None) -> dict:
+def get_precision_recall_f1(days: int = 60, since_date: str | None = None,
+                            end_date: str | None = None,
+                            min_horizon: int | None = None,
+                            max_horizon: int | None = None) -> dict:
     """Fix ML-4 : Precision, Recall et F1 par classe sur les N derniers jours."""
-    matrix = get_confusion_matrix(days, since_date=since_date)
+    matrix = get_confusion_matrix(days, since_date=since_date,
+                                  end_date=end_date,
+                                  min_horizon=min_horizon,
+                                  max_horizon=max_horizon)
     couleurs = ["BLEU", "BLANC", "ROUGE"]
     metrics = {}
 
@@ -484,18 +508,27 @@ def get_budget_season() -> dict:
         d_left = days_left_in_season()
         start, end = get_season_dates()
 
-        # Compter les prédictions futures non-confirmées par couleur
+        # A7: Count future predictions weighted by confidence
         conn = get_db()
         try:
             today = date.today().isoformat()
             rows = conn.execute(
-                """SELECT couleur_predite, COUNT(DISTINCT date) as cnt
+                """SELECT couleur_predite, COUNT(DISTINCT date) as cnt,
+                          AVG(CASE WHEN probabilite_rouge > 0 OR probabilite_blanc > 0
+                              OR probabilite_bleu > 0
+                              THEN MAX(probabilite_rouge, probabilite_blanc, probabilite_bleu)
+                              ELSE NULL END) as avg_confidence
                    FROM predictions
                    WHERE date > ? AND confirmed = 0
                    GROUP BY couleur_predite""",
                 (today,),
             ).fetchall()
             predicted_future = {r["couleur_predite"]: r["cnt"] for r in rows}
+            predicted_confidence = {
+                r["couleur_predite"]: round(r["avg_confidence"])
+                if r["avg_confidence"] else None
+                for r in rows
+            }
         finally:
             conn.close()
 
@@ -504,10 +537,12 @@ def get_budget_season() -> dict:
             "rouge_remaining": remaining.get("ROUGE", 0),
             "rouge_total": Config.JOURS_ROUGES_TOTAL,
             "rouge_predicted": predicted_future.get("ROUGE", 0),
+            "rouge_predicted_confidence": predicted_confidence.get("ROUGE"),
             "blanc_used": used.get("BLANC", 0),
             "blanc_remaining": remaining.get("BLANC", 0),
             "blanc_total": Config.JOURS_BLANCS_TOTAL,
             "blanc_predicted": predicted_future.get("BLANC", 0),
+            "blanc_predicted_confidence": predicted_confidence.get("BLANC"),
             "days_left_season": d_left,
             "season_start": start.isoformat(),
             "season_end": end.isoformat(),
@@ -544,12 +579,27 @@ def get_accuracy_trend(days: int = 14) -> list[dict]:
         conn.close()
 
 
-def get_period_comparison(days: int = 7) -> dict:
-    """Compare la période actuelle vs la période précédente de même durée."""
+def get_period_comparison(days: int = 7, pivot_date: str | None = None) -> dict:
+    """Compare current period vs previous period.
+
+    A4: If pivot_date is provided, compares after pivot vs before pivot
+    (same number of days). Otherwise falls back to rolling N-day comparison.
+    """
     conn = get_db()
     try:
-        now_start = (date.today() - timedelta(days=days)).isoformat()
-        prev_start = (date.today() - timedelta(days=days * 2)).isoformat()
+        if pivot_date:
+            # A4: Compare after vs before the last tool update
+            pivot = date.fromisoformat(pivot_date)
+            days_after = max(1, (date.today() - pivot).days)
+            days_before = days_after  # same window size for fair comparison
+            now_start = _enforce_start_date(pivot_date)
+            prev_start = _enforce_start_date(
+                (pivot - timedelta(days=days_before)).isoformat())
+            prev_end = pivot_date
+        else:
+            now_start = (date.today() - timedelta(days=days)).isoformat()
+            prev_start = (date.today() - timedelta(days=days * 2)).isoformat()
+            prev_end = now_start
 
         current = conn.execute(
             """SELECT COUNT(*) as total, SUM(correct) as corrects
@@ -559,7 +609,7 @@ def get_period_comparison(days: int = 7) -> dict:
         previous = conn.execute(
             """SELECT COUNT(*) as total, SUM(correct) as corrects
                FROM performance WHERE date_cible >= ? AND date_cible < ?""",
-            (prev_start, now_start),
+            (prev_start, prev_end),
         ).fetchone()
 
         c_total = current["total"] or 0
@@ -578,21 +628,35 @@ def get_period_comparison(days: int = 7) -> dict:
             "current": {"precision": c_pct, "total": c_total},
             "previous": {"precision": p_pct, "total": p_total},
             "delta": delta,
+            "pivot_date": pivot_date,
+            "label": f"depuis {pivot_date}" if pivot_date else f"{days}j glissants",
         }
     finally:
         conn.close()
 
 
-def get_diagnostic(days: int = 30, since_date: str | None = None) -> dict:
+def get_diagnostic(days: int = 30, since_date: str | None = None,
+                   end_date: str | None = None,
+                   min_horizon: int | None = None,
+                   max_horizon: int | None = None) -> dict:
     """Diagnostic synthétique : identifie les causes principales d'erreur.
 
     Retourne un verdict global + les top problèmes + recommandations.
     Args:
         since_date: if provided, overrides the days-based calculation.
+        end_date: upper bound on date_cible (exclusive). A5: per-version.
+        min_horizon/max_horizon: A1/A6: restrict to specific horizon range.
     """
-    cm = get_confusion_matrix(days, since_date=since_date)
-    prf = get_precision_recall_f1(days, since_date=since_date)
-    g = get_accuracy_global(days)
+    cm = get_confusion_matrix(days, since_date=since_date, end_date=end_date,
+                              min_horizon=min_horizon, max_horizon=max_horizon)
+    prf = get_precision_recall_f1(days, since_date=since_date, end_date=end_date,
+                                  min_horizon=min_horizon, max_horizon=max_horizon)
+    # A3/B6: Compute accuracy directly from confusion matrix (consistent scope)
+    couleurs = ["BLEU", "BLANC", "ROUGE"]
+    total_all = sum(cm.get(p, {}).get(a, 0) for p in couleurs for a in couleurs)
+    correct_all = sum(cm.get(c, {}).get(c, 0) for c in couleurs)
+    g = {"precision": round(correct_all / total_all * 100, 1) if total_all > 0 else 0,
+         "total": total_all}
 
     # Calculer les confusions dominantes
     problems = []
@@ -731,33 +795,53 @@ def get_diagnostic(days: int = 30, since_date: str | None = None) -> dict:
 
 def get_color_recall_by_horizon(color: str, days: int = 90,
                                 max_horizon: int = 10,
-                                since_date: str | None = None) -> dict:
+                                since_date: str | None = None,
+                                end_date: str | None = None) -> dict:
     """Recall/precision for a specific color by horizon J-1..J-N.
 
+    B2: Single GROUP BY query instead of N individual queries.
     A3: Extended from J-5 to J-10 for consistency with recap table.
-    Args:
-        since_date: if provided, overrides the days-based calculation.
+    A5: end_date support for per-version filtering.
     """
     conn = get_db()
     try:
         since = since_date or _enforce_start_date(
             (date.today() - timedelta(days=days)).isoformat())
-        result = {}
-        for h in range(1, max_horizon + 1):
-            row = conn.execute(
-                """SELECT
+        conditions = ["date_cible >= ?", "jours_avance >= 1", "jours_avance <= ?"]
+        params: list = [since, max_horizon]
+        if end_date:
+            conditions.insert(1, "date_cible < ?")
+            params.insert(1, end_date)
+
+        rows = conn.execute(
+            f"""SELECT jours_avance,
                      SUM(CASE WHEN couleur_predite = ? AND couleur_reelle = ?
                          THEN 1 ELSE 0 END) as tp,
                      SUM(CASE WHEN couleur_reelle = ? THEN 1 ELSE 0 END) as total_actual,
                      SUM(CASE WHEN couleur_predite = ? AND couleur_reelle != ?
                          THEN 1 ELSE 0 END) as fp
                    FROM performance
-                   WHERE date_cible >= ? AND jours_avance = ?""",
-                (color, color, color, color, color, since, h),
-            ).fetchone()
-            tp = row["tp"] or 0
-            total = row["total_actual"] or 0
-            fp = row["fp"] or 0
+                   WHERE {' AND '.join(conditions)}
+                   GROUP BY jours_avance
+                   ORDER BY jours_avance""",
+            [color, color, color, color, color] + params,
+        ).fetchall()
+
+        # Build result dict with all horizons (empty ones get None)
+        horizon_data = {}
+        for r in rows:
+            h = r["jours_avance"]
+            horizon_data[h] = r
+
+        result = {}
+        for h in range(1, max_horizon + 1):
+            r = horizon_data.get(h)
+            if r:
+                tp = r["tp"] or 0
+                total = r["total_actual"] or 0
+                fp = r["fp"] or 0
+            else:
+                tp, total, fp = 0, 0, 0
             recall = round(tp / total * 100, 1) if total > 0 else None
             precision = round(tp / (tp + fp) * 100, 1) if (tp + fp) > 0 else None
             result[f"J-{h}"] = {
@@ -889,11 +973,26 @@ def get_version_performance() -> list[dict]:
                         "precision": round(c / t * 100, 1) if t > 0 else None,
                     }
 
+            # D8: Number of calendar days with data for this version
+            start_d = date.fromisoformat(start)
+            end_d = date.fromisoformat(end) if end != (date.today() + timedelta(days=1)).isoformat() else date.today()
+            days_count = max(1, (end_d - start_d).days)
+
+            # D12: Count distinct dates with evaluations (coverage)
+            distinct_dates_row = conn.execute(
+                """SELECT COUNT(DISTINCT date_cible) as cnt
+                   FROM performance WHERE date_cible >= ? AND date_cible < ?""",
+                (start, end),
+            ).fetchone()
+            dates_with_data = distinct_dates_row["cnt"] if distinct_dates_row else 0
+
             entry = {
                 "version_date": vdate,
                 "version_label": label,
                 "total": total_all,
                 "accuracy": round(correct_all / total_all * 100, 1) if total_all > 0 else 0,
+                "days_count": days_count,
+                "dates_with_data": dates_with_data,
                 "horizons": {},
             }
             for h in range(1, 16):
@@ -1113,6 +1212,8 @@ def get_daily_recap(season: str = "2025-2026") -> list[dict]:
 
             # A4: Diagnostic for J-1 to J-5 errors (not just J-1)
             diagnostic = None
+            # D5: Temperature deviation info for error context
+            temp_deviation = None
             if actual:
                 # Check J-1 first (most important), then J-2→J-5
                 for h in range(1, 6):
@@ -1122,13 +1223,20 @@ def get_daily_recap(season: str = "2025-2026") -> list[dict]:
                         diag = _build_error_diagnostic(
                             jh["couleur"], actual, jh.get("score"), raison_text
                         )
+                        # D5: Add temperature deviation context
+                        obs_w = weather_obs_map.get(dt)
+                        if obs_w and obs_w.get("temp_moy") is not None and jh.get("temp_prevue") is not None:
+                            delta_t = round(obs_w["temp_moy"] - jh["temp_prevue"], 1)
+                            sign = "+" if delta_t > 0 else ""
+                            diag += f" · ΔT={sign}{delta_t}°"
+                            temp_deviation = delta_t
                         if h == 1:
                             diagnostic = diag
                         else:
                             # For J-2→J-5 errors, prefix with horizon
                             diagnostic = f"J-{h}: {diag}"
                         break  # Show first error (closest horizon)
-                # If J-1 correct but J-2→J-5 had errors, show which were wrong
+                # A8: If J-1 correct but J-2→J-5 had errors, show as WARNING
                 j1 = preds.get("J-1")
                 if j1 and j1.get("correct") is True and diagnostic is None:
                     wrong_horizons = [
@@ -1137,15 +1245,21 @@ def get_daily_recap(season: str = "2025-2026") -> list[dict]:
                         preds[f"J-{h}"].get("correct") is False
                     ]
                     if wrong_horizons:
-                        diagnostic = f"Rattrapé J-1 (erreur {', '.join(wrong_horizons)})"
+                        diagnostic = f"⚠ Rattrapé J-1 (erreur {', '.join(wrong_horizons)})"
+
+            # A11: consec_correct — for past days without actual yet, mark as "pending"
+            actual_status = "confirmed" if actual else (
+                "pending" if dt <= today.isoformat() else "future")
 
             result.append({
                 "date": dt,
                 "actual": actual,
+                "actual_status": actual_status,
                 "predictions": preds,
                 "weather_observed": weather_obs_map.get(dt),
                 "consec_correct": consec_correct,
                 "diagnostic": diagnostic,
+                "temp_deviation": temp_deviation,
                 "tool_update": tool_updates.get(dt),
             })
 
@@ -1155,12 +1269,227 @@ def get_daily_recap(season: str = "2025-2026") -> list[dict]:
         conn.close()
 
 
+def get_weather_reliability(days: int = 90) -> dict:
+    """D6: Measure weather forecast accuracy by horizon.
+
+    Compares forecast temperature at each horizon vs J-0 observation.
+    Returns avg absolute error and bias per horizon.
+    """
+    conn = get_db()
+    try:
+        since = _enforce_start_date((date.today() - timedelta(days=days)).isoformat())
+        rows = conn.execute(
+            """SELECT wf.horizon_days,
+                      AVG(ABS(wf.temp_moy - wc.temp_moy)) as avg_abs_error,
+                      AVG(wf.temp_moy - wc.temp_moy) as avg_bias,
+                      COUNT(*) as cnt
+               FROM weather_forecast_log wf
+               JOIN (SELECT date, temp_moy FROM weather_cache
+                     WHERE temp_moy IS NOT NULL
+                     GROUP BY date HAVING MAX(fetched_at)) wc
+                 ON wf.target_date = wc.date
+               WHERE wf.target_date >= ?
+                 AND wf.temp_moy IS NOT NULL
+                 AND wf.horizon_days BETWEEN 1 AND 15
+               GROUP BY wf.horizon_days
+               ORDER BY wf.horizon_days""",
+            (since,),
+        ).fetchall()
+
+        result = {}
+        for r in rows:
+            h = r["horizon_days"]
+            result[f"J-{h}"] = {
+                "avg_error": round(r["avg_abs_error"], 1) if r["avg_abs_error"] else None,
+                "avg_bias": round(r["avg_bias"], 1) if r["avg_bias"] else None,
+                "samples": r["cnt"],
+            }
+        return result
+    except Exception as e:
+        logger.warning(f"[WeatherReliability] Error: {e}")
+        return {}
+    finally:
+        conn.close()
+
+
+def get_rouge_postmortem(season: str = "2025-2026") -> list[dict]:
+    """D10: Detailed analysis of each ROUGE day in the season.
+
+    For each actual ROUGE day: temperature, predictions at each horizon,
+    which horizons caught it, which version was running.
+    """
+    conn = get_db()
+    try:
+        season_start, season_end = parse_season(season)
+        since = _enforce_start_date(season_start.isoformat())
+        until = min(season_end, date.today()).isoformat()
+
+        # Get all ROUGE actuals
+        rouge_days = conn.execute(
+            """SELECT date, couleur_reelle FROM actuals
+               WHERE date >= ? AND date <= ? AND couleur_reelle = 'ROUGE'
+                 AND synthetic = 0
+               ORDER BY date""",
+            (since, until),
+        ).fetchall()
+
+        if not rouge_days:
+            return []
+
+        tool_dates = sorted(getattr(Config, 'TOOL_UPDATE_DATES', {}).keys())
+        tool_labels = getattr(Config, 'TOOL_UPDATE_DATES', {})
+
+        result = []
+        for rd in rouge_days:
+            dt = rd["date"]
+
+            # Get predictions for this date
+            preds = conn.execute(
+                """SELECT horizon, couleur_predite, couleur_originale,
+                          score_risque, confirmed,
+                          probabilite_rouge, probabilite_blanc, probabilite_bleu
+                   FROM predictions
+                   WHERE date = ? AND simulated = 0
+                   ORDER BY timestamp_prediction""",
+                (dt,),
+            ).fetchall()
+
+            # Build per-horizon info
+            horizons = {}
+            for p in preds:
+                if p["confirmed"] and p["couleur_originale"] is None:
+                    continue
+                couleur = p["couleur_originale"] if p["couleur_originale"] else p["couleur_predite"]
+                hz = p["horizon"]
+                horizons[hz] = {
+                    "couleur": couleur,
+                    "correct": couleur == "ROUGE",
+                    "score": round(p["score_risque"], 1) if p["score_risque"] else None,
+                    "prob_rouge": p["probabilite_rouge"],
+                }
+
+            # Caught at which horizons?
+            caught_at = [hz for hz, v in horizons.items() if v["correct"]]
+            missed_at = [hz for hz, v in horizons.items() if not v["correct"]]
+
+            # Observed weather
+            weather = conn.execute(
+                """SELECT temp_moy, humidity, wind_speed
+                   FROM weather_cache WHERE date = ?
+                   ORDER BY fetched_at DESC LIMIT 1""",
+                (dt,),
+            ).fetchone()
+
+            # Which version was running?
+            version = None
+            for td in reversed(tool_dates):
+                if dt >= td:
+                    version = f"{td} — {tool_labels.get(td, '')}"
+                    break
+
+            result.append({
+                "date": dt,
+                "temp_observed": round(weather["temp_moy"], 1) if weather and weather["temp_moy"] else None,
+                "humidity": round(weather["humidity"]) if weather and weather["humidity"] else None,
+                "horizons": horizons,
+                "caught_at": caught_at,
+                "missed_at": missed_at,
+                "caught_j2_j5": sum(1 for hz in caught_at if hz in ("J-2", "J-3", "J-4", "J-5")),
+                "total_j2_j5": sum(1 for hz in ("J-2", "J-3", "J-4", "J-5") if hz in horizons),
+                "version": version,
+            })
+
+        return result
+    except Exception as e:
+        logger.warning(f"[RougePostmortem] Error: {e}")
+        return []
+    finally:
+        conn.close()
+
+
+def get_data_coverage(season: str = "2025-2026") -> dict:
+    """D12: Data coverage indicator.
+
+    For each horizon J-1 to J-15, count how many days have predictions
+    and how many days have been evaluated.
+    """
+    conn = get_db()
+    try:
+        season_start, season_end = parse_season(season)
+        since = _enforce_start_date(season_start.isoformat())
+        today_str = date.today().isoformat()
+        until = min(season_end.isoformat(), today_str)
+
+        # Total evaluable days (days with actuals)
+        total_days_row = conn.execute(
+            """SELECT COUNT(DISTINCT date) as cnt FROM actuals
+               WHERE date >= ? AND date <= ? AND synthetic = 0""",
+            (since, until),
+        ).fetchone()
+        total_days = total_days_row["cnt"] if total_days_row else 0
+
+        # Predictions coverage by horizon
+        pred_rows = conn.execute(
+            """SELECT horizon, COUNT(DISTINCT date) as cnt
+               FROM predictions
+               WHERE date >= ? AND date <= ? AND simulated = 0
+               GROUP BY horizon""",
+            (since, until),
+        ).fetchall()
+        pred_coverage = {r["horizon"]: r["cnt"] for r in pred_rows}
+
+        # Performance coverage by horizon (evaluated predictions)
+        perf_rows = conn.execute(
+            """SELECT jours_avance, COUNT(DISTINCT date_cible) as cnt
+               FROM performance
+               WHERE date_cible >= ? AND date_cible <= ?
+               GROUP BY jours_avance""",
+            (since, until),
+        ).fetchall()
+        perf_coverage = {r["jours_avance"]: r["cnt"] for r in perf_rows}
+
+        horizons = {}
+        for h in range(1, 16):
+            key = f"J-{h}"
+            preds = pred_coverage.get(key, 0)
+            evals = perf_coverage.get(h, 0)
+            horizons[key] = {
+                "predictions": preds,
+                "evaluations": evals,
+                "coverage_pct": round(evals / total_days * 100) if total_days > 0 else 0,
+            }
+
+        return {
+            "total_days": total_days,
+            "horizons": horizons,
+        }
+    except Exception as e:
+        logger.warning(f"[DataCoverage] Error: {e}")
+        return {"total_days": 0, "horizons": {}}
+    finally:
+        conn.close()
+
+
+# B7: Simple TTL cache for performance summary
+_perf_summary_cache: dict = {"data": None, "season": None, "ts": 0}
+_CACHE_TTL_SECONDS = 300  # 5 minutes
+
+
 def get_performance_summary(season: str = "2025-2026") -> dict:
     """Résumé complet des performances pour le dashboard admin.
 
     Args:
         season: saison au format "YYYY-YYYY" (ex: "2025-2026").
     """
+    import time as _time
+
+    # B7: Check cache
+    now_ts = _time.time()
+    if (_perf_summary_cache["data"] is not None
+            and _perf_summary_cache["season"] == season
+            and (now_ts - _perf_summary_cache["ts"]) < _CACHE_TTL_SECONDS):
+        return _perf_summary_cache["data"]
+
     season_start, _ = parse_season(season)
     d = max(1, min((date.today() - season_start).days, 365))
 
@@ -1179,20 +1508,30 @@ def get_performance_summary(season: str = "2025-2026") -> dict:
     for td in tool_dates:
         tool_versions.append({"date": td, "label": raw_dates.get(td, td)})
 
-    # Pre-compute per-version detection data for frontend filtering
+    # A5: Pre-compute per-version data with proper end_date bounding
     per_version_data = {}
     for i, td in enumerate(tool_dates):
-        end_date = tool_dates[i + 1] if i + 1 < len(tool_dates) else None
+        v_end = tool_dates[i + 1] if i + 1 < len(tool_dates) else None
         v_days = max(1, (date.today() - date.fromisoformat(td)).days)
         per_version_data[td] = {
-            "confusion_matrix": get_confusion_matrix(v_days, since_date=td),
-            "diagnostic": get_diagnostic(v_days, since_date=td),
-            "rouge_recall_by_horizon": get_color_recall_by_horizon("ROUGE", v_days, since_date=td),
-            "blanc_recall_by_horizon": get_color_recall_by_horizon("BLANC", v_days, since_date=td),
-            "bleu_recall_by_horizon": get_color_recall_by_horizon("BLEU", v_days, since_date=td),
+            "confusion_matrix": get_confusion_matrix(
+                v_days, since_date=td, end_date=v_end),
+            "diagnostic": get_diagnostic(
+                v_days, since_date=td, end_date=v_end),
+            "precision_recall_f1": get_precision_recall_f1(
+                v_days, since_date=td, end_date=v_end),
+            "rouge_recall_by_horizon": get_color_recall_by_horizon(
+                "ROUGE", v_days, since_date=td, end_date=v_end),
+            "blanc_recall_by_horizon": get_color_recall_by_horizon(
+                "BLANC", v_days, since_date=td, end_date=v_end),
+            "bleu_recall_by_horizon": get_color_recall_by_horizon(
+                "BLEU", v_days, since_date=td, end_date=v_end),
         }
 
-    return {
+    # A4: Period comparison anchored on last tool update
+    period_comp = get_period_comparison(7, pivot_date=last_update)
+
+    result = {
         "season": season,
         "available_seasons": get_available_seasons(),
         "days": d,
@@ -1201,8 +1540,12 @@ def get_performance_summary(season: str = "2025-2026") -> dict:
         "accuracy_j2_j5": acc["j2_j5"],
         "accuracy_j6_j15": acc["j6_j15"],
         "by_horizon": get_accuracy_by_horizon(d),
-        "confusion_matrix": get_confusion_matrix(d),
-        "precision_recall_f1": get_precision_recall_f1(d),
+        # A1/A6: Global confusion matrix restricted to J-2→J-5 (our value zone)
+        "confusion_matrix": get_confusion_matrix(d, min_horizon=2, max_horizon=5),
+        # Also provide all-horizons matrix for reference
+        "confusion_matrix_all": get_confusion_matrix(d),
+        "precision_recall_f1": get_precision_recall_f1(d, min_horizon=2, max_horizon=5),
+        "precision_recall_f1_all": get_precision_recall_f1(d),
         "rouge_recall_by_horizon": get_color_recall_by_horizon("ROUGE", d),
         "blanc_recall_by_horizon": get_color_recall_by_horizon("BLANC", d),
         "bleu_recall_by_horizon": get_color_recall_by_horizon("BLEU", d),
@@ -1210,15 +1553,29 @@ def get_performance_summary(season: str = "2025-2026") -> dict:
         "version_performance": get_version_performance(),
         "current_weights": get_current_weights(),
         "trend": get_accuracy_trend(d),
-        "diagnostic": get_diagnostic(days_since_update),
-        "period_comparison": get_period_comparison(7),
+        # C1: Diagnostic uses same scope as confusion matrix (since last update, J-2→J-5)
+        "diagnostic": get_diagnostic(days_since_update, min_horizon=2, max_horizon=5),
+        "period_comparison": period_comp,
         "budget_season": get_budget_season(),
         "tool_versions": tool_versions,
         "per_version_data": per_version_data,
         "last_tool_update": last_update,
         "last_tool_update_label": last_update_label,
         "daily_recap": get_daily_recap(season),
+        # D6: Weather forecast reliability by horizon
+        "weather_reliability": get_weather_reliability(d),
+        # D10: Post-mortem ROUGE analysis
+        "rouge_postmortem": get_rouge_postmortem(season),
+        # D12: Data coverage indicator
+        "data_coverage": get_data_coverage(season),
     }
+
+    # B7: Store in cache
+    _perf_summary_cache["data"] = result
+    _perf_summary_cache["season"] = season
+    _perf_summary_cache["ts"] = now_ts
+
+    return result
 
 
 # ================================================================

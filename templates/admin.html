@@ -11,7 +11,8 @@
     <link rel="stylesheet" href="/static/css/style.min.css">
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"
-            crossorigin="anonymous"></script>
+            crossorigin="anonymous"
+            onerror="window._chartJsFailed=true;console.warn('Chart.js CDN unavailable')"></script>
     <style>
         .admin-login { max-width:400px; margin:60px auto; text-align:center; }
         .admin-login h2 { font-size:1.25rem; font-weight:700; margin-bottom:8px; }
@@ -139,6 +140,19 @@
         .update-marker { display:inline-block; width:8px; height:8px; border-radius:50%; background:#7B1FA2; margin-left:4px; vertical-align:middle; }
         .diag-text { font-size:0.65rem; color:var(--text-secondary); text-align:left; max-width:200px; white-space:normal; line-height:1.3; }
 
+        .postmortem-card { border-left:4px solid #F44336; padding:12px 16px; margin-bottom:10px; background:var(--surface); border-radius:0 var(--radius-sm) var(--radius-sm) 0; box-shadow:var(--shadow); }
+        .postmortem-card .pm-date { font-weight:700; font-size:0.88rem; }
+        .postmortem-card .pm-temp { font-size:0.82rem; color:var(--text-secondary); }
+        .postmortem-card .pm-horizons { display:flex; gap:4px; flex-wrap:wrap; margin-top:6px; }
+        .postmortem-card .pm-hz { display:inline-block; padding:2px 6px; border-radius:4px; font-size:0.7rem; font-weight:600; }
+        .postmortem-card .pm-hz.caught { background:#D1FAE5; color:#065F46; }
+        .postmortem-card .pm-hz.missed { background:#FEE2E2; color:#991B1B; }
+        .coverage-bar { height:8px; background:var(--border); border-radius:4px; overflow:hidden; }
+        .coverage-bar .fill { height:100%; border-radius:4px; transition:width .3s; }
+        .quick-month-btn { padding:4px 10px; font-size:0.72rem; font-weight:600; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--surface); cursor:pointer; color:var(--accent); }
+        .quick-month-btn:hover { background:var(--accent); color:#fff; }
+        .scope-label { font-size:0.72rem; color:var(--text-secondary); font-weight:400; background:var(--bg); padding:2px 8px; border-radius:999px; }
+        .summary-total-row { font-weight:700; background:var(--bg); border-top:2px solid var(--border); }
         .admin-footer { margin-top:40px; padding:20px 0; text-align:center; font-size:0.85rem; color:var(--text-secondary); }
         .admin-footer a { color:var(--accent); text-decoration:none; }
     </style>
@@ -242,11 +256,12 @@
                         <span style="color:#DC2626;font-weight:600">rouge</span> = faux.
                         <span class="update-marker" style="display:inline-block;vertical-align:middle"></span> = mise à jour de l'outil (description affichée).
                     </p>
-                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
                         <span style="font-size:0.8rem;font-weight:600;color:var(--text-secondary)">Mois :</span>
                         <select id="month-filter" style="padding:5px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:0.82rem" aria-label="Filtre par mois">
                             <option value="all">Tous</option>
                         </select>
+                        <button class="quick-month-btn" id="btn-current-month" title="Filtrer sur le mois en cours">Ce mois</button>
                     </div>
                     <div id="daily-recap">Chargement...</div>
                 </div>
@@ -281,14 +296,26 @@
             </div>
             <div class="panel-grid">
                 <div class="flat-card">
-                    <h4>Matrice de confusion <span style="font-weight:400;font-size:0.78rem;color:var(--text-secondary)">(tous horizons confondus)</span></h4>
-                    <p class="card-hint">Prédit vs réel. Diagonale = correct. Rouge = ROUGE manqué.</p>
+                    <h4>Matrice de confusion <span id="cm-scope-label" class="scope-label">J-2→J-5</span></h4>
+                    <p class="card-hint">Prédit vs réel sur notre zone de valeur (J-2 à J-5). Diagonale = correct. Rouge = ROUGE manqué.</p>
                     <div id="confusion-matrix"></div>
                 </div>
                 <div class="flat-card">
-                    <h4>Diagnostic</h4>
+                    <h4>Diagnostic <span id="diag-scope-label" class="scope-label"></span></h4>
                     <div id="diagnostic-summary" style="display:none;padding:10px 14px;border-radius:var(--radius-sm);margin-bottom:12px;font-size:0.85rem;line-height:1.5"></div>
                     <div id="diagnostic-content">Chargement...</div>
+                </div>
+            </div>
+            <div class="panel-grid">
+                <div class="flat-card">
+                    <h4>Précision / Rappel / F1 <span id="prf-scope-label" class="scope-label">J-2→J-5</span></h4>
+                    <p class="card-hint">Métriques par couleur. Recall ROUGE = capacité à détecter les jours rouges.</p>
+                    <div id="prf-table">Chargement...</div>
+                </div>
+                <div class="flat-card">
+                    <h4>Fiabilité météo par horizon</h4>
+                    <p class="card-hint">D6: Écart moyen entre la prévision météo et l'observation réelle. Plus l'horizon est lointain, moins la météo est fiable.</p>
+                    <div id="weather-reliability">Chargement...</div>
                 </div>
             </div>
 
@@ -306,6 +333,34 @@
                     <h4>Bilan par version de l'outil</h4>
                     <p class="card-hint">Même vue que ci-dessus mais segmentée par version de l'algorithme. Permet de mesurer l'impact de chaque mise à jour.</p>
                     <div id="version-perf-table">Chargement...</div>
+                </div>
+            </div>
+
+            <!-- SECTION 3b: Trend chart -->
+            <div class="panel-grid full">
+                <div class="flat-card">
+                    <h4>Évolution de la précision quotidienne</h4>
+                    <p class="card-hint">Précision jour par jour (tous horizons). Permet de détecter les dérives.</p>
+                    <div class="chart-container" style="height:200px"><canvas id="chart-trend"></canvas></div>
+                    <div id="chart-trend-fallback" class="chart-fallback" style="display:none">Chart.js non disponible.</div>
+                </div>
+            </div>
+
+            <!-- SECTION 3c: Data coverage -->
+            <div class="panel-grid full">
+                <div class="flat-card">
+                    <h4>Couverture des données <span class="badge badge-info">D12</span></h4>
+                    <p class="card-hint">Nombre de jours évalués par horizon. Un pourcentage faible indique des métriques fragiles.</p>
+                    <div id="data-coverage">Chargement...</div>
+                </div>
+            </div>
+
+            <!-- SECTION 3d: ROUGE Post-mortem -->
+            <div class="section-title">Post-mortem ROUGE <span class="badge" style="background:#DC2626">D10</span></div>
+            <div class="panel-grid full">
+                <div class="flat-card">
+                    <p class="card-hint">Fiche détaillée de chaque jour ROUGE de la saison : température, prédictions par horizon, version de l'outil.</p>
+                    <div id="rouge-postmortem">Chargement...</div>
                 </div>
             </div>
 
@@ -412,11 +467,12 @@
 let adminPassword = '';
 let currentSeason = '2025-2026';
 let chartWeights = null;
+let chartTrend = null;
 let _recapData = []; // cached for month filter
 let _selectedMonth = 'all'; // D5: persist month filter across reloads
 let _perfData = null; // cached full performance data for version filtering
 let _selectedVersion = 'all'; // persisted version filter
-const chartAvailable = typeof Chart !== 'undefined';
+const chartAvailable = typeof Chart !== 'undefined' && !window._chartJsFailed;
 
 function escapeHtml(s) {
     if (!s) return '';
@@ -519,40 +575,22 @@ function renderPerformanceData(data) {
         rangeEl.style.display = 'block';
     } else { rangeEl.style.display = g.total===0?'block':'none'; rangeEl.textContent = g.total===0?'Aucune donnée évaluée.':''; }
 
-    /* KPIs */
-    const kpiJ2J5Card = document.getElementById('kpi-acc-j2j5').closest('.kpi-card');
-    const kpiRougeCard = document.getElementById('kpi-rouge-recall').closest('.kpi-card');
-    const kpiJ6J15Card = document.getElementById('kpi-acc-j6j15').closest('.kpi-card');
-
-    if (j1.total > 0) setKpi('kpi-acc-j1', j1.precision+'%', j1.precision);
-    else { document.getElementById('kpi-acc-j1').textContent = '—'; document.getElementById('kpi-acc-j1').className = 'kpi-value'; }
-
-    if (j2j5.total > 0) { setKpi('kpi-acc-j2j5', j2j5.precision+'%', j2j5.precision); kpiJ2J5Card.style.opacity='1'; }
-    else { document.getElementById('kpi-acc-j2j5').textContent='—'; document.getElementById('kpi-acc-j2j5').className='kpi-value'; kpiJ2J5Card.style.opacity='0.4'; }
-
-    /* A2: J-6→J-15 KPI with reduced visual weight */
-    if (j6j15.total > 0) { setKpi('kpi-acc-j6j15', j6j15.precision+'%', j6j15.precision); kpiJ6J15Card.style.opacity='0.7'; }
-    else { document.getElementById('kpi-acc-j6j15').textContent='—'; document.getElementById('kpi-acc-j6j15').className='kpi-value'; kpiJ6J15Card.style.opacity='0.4'; }
-
-    const rrh = data.rouge_recall_by_horizon||{};
-    let totalRouge=0, totalCaught=0;
-    ['J-1','J-2','J-3','J-4','J-5'].forEach(k => { if(rrh[k]){totalRouge+=rrh[k].total_actual||0;totalCaught+=rrh[k].caught||0;} });
-    if (totalRouge > 0) { const rr=Math.round(totalCaught/totalRouge*100); setKpi('kpi-rouge-recall',rr+'%',rr); kpiRougeCard.style.opacity='1'; }
-    else { document.getElementById('kpi-rouge-recall').textContent='—'; document.getElementById('kpi-rouge-recall').className='kpi-value'; kpiRougeCard.style.opacity='0.4'; }
-
-    /* E1: Executive summary */
-    renderExecSummary(data);
-
     /* Cache full data for version filtering */
     _perfData = data;
 
     /* Populate version filter */
     _populateVersionFilter(data.tool_versions||[]);
 
+    /* KPIs (version-aware: A2/B4/C2) */
+    _renderKPIs(data, _selectedVersion);
+
+    /* E1: Executive summary (C3: consistent with diagnostic scope) */
+    renderExecSummary(data, _selectedVersion);
+
     /* Sections */
     renderDailyRecap(data.daily_recap||[]);
     renderErrorSection(data, _selectedVersion);
-    renderMonthlyPerfTable(data.monthly_performance||[]);
+    renderMonthlyPerfTable(data.monthly_performance||[], _selectedVersion);
     renderVersionPerfTable(data.version_performance||[]);
 
     const weightLabels = {
@@ -568,17 +606,62 @@ function renderPerformanceData(data) {
     document.getElementById('current-weights').innerHTML = Object.entries(weights).map(([k,v]) =>
         `<div class="metric-row"><span>${escapeHtml(weightLabels[k]||k)}</span><span class="metric-value">${(Number(v)*100).toFixed(1)}%</span></div>`
     ).join('');
-    if (chartAvailable) renderWeightsChart(weights, weightLabels);
-    else { document.getElementById('chart-weights').style.display='none'; document.getElementById('chart-weights-fallback').style.display='flex'; }
-    renderRecommendations(data.diagnostic||{}, data.last_tool_update, data.last_tool_update_label);
+    if (chartAvailable) {
+        renderWeightsChart(weights, weightLabels);
+        renderTrendChart(data.trend||[]);
+    } else {
+        document.getElementById('chart-weights').style.display='none';
+        document.getElementById('chart-weights-fallback').style.display='flex';
+        document.getElementById('chart-trend').style.display='none';
+        document.getElementById('chart-trend-fallback').style.display='flex';
+    }
+
+    /* C4: Scope label on recommendations */
+    renderRecommendations(data.diagnostic||{}, data.last_tool_update, data.last_tool_update_label, data.period_comparison);
+
+    /* New sections */
+    renderWeatherReliability(data.weather_reliability||{});
+    renderRougePostmortem(data.rouge_postmortem||[]);
+    renderDataCoverage(data.data_coverage||{});
 }
 
-/* E1: Executive summary banner */
-function renderExecSummary(data) {
+/* B4/C2: Extract KPI rendering to reuse when version changes */
+function _renderKPIs(data, version) {
+    const j1 = data.accuracy_j1||{}, j2j5 = data.accuracy_j2_j5||{};
+    const j6j15 = data.accuracy_j6_j15||{};
+    const kpiJ2J5Card = document.getElementById('kpi-acc-j2j5').closest('.kpi-card');
+    const kpiRougeCard = document.getElementById('kpi-rouge-recall').closest('.kpi-card');
+    const kpiJ6J15Card = document.getElementById('kpi-acc-j6j15').closest('.kpi-card');
+
+    if (j1.total > 0) setKpi('kpi-acc-j1', j1.precision+'%', j1.precision);
+    else { document.getElementById('kpi-acc-j1').textContent = '—'; document.getElementById('kpi-acc-j1').className = 'kpi-value'; }
+
+    if (j2j5.total > 0) { setKpi('kpi-acc-j2j5', j2j5.precision+'%', j2j5.precision); kpiJ2J5Card.style.opacity='1'; }
+    else { document.getElementById('kpi-acc-j2j5').textContent='—'; document.getElementById('kpi-acc-j2j5').className='kpi-value'; kpiJ2J5Card.style.opacity='0.4'; }
+
+    if (j6j15.total > 0) { setKpi('kpi-acc-j6j15', j6j15.precision+'%', j6j15.precision); kpiJ6J15Card.style.opacity='0.7'; }
+    else { document.getElementById('kpi-acc-j6j15').textContent='—'; document.getElementById('kpi-acc-j6j15').className='kpi-value'; kpiJ6J15Card.style.opacity='0.4'; }
+
+    /* A2: ROUGE recall on J-2→J-5 only (not J-1 which is EDF-provided) */
+    let rrh = data.rouge_recall_by_horizon||{};
+    if (version !== 'all' && data.per_version_data && data.per_version_data[version]) {
+        rrh = data.per_version_data[version].rouge_recall_by_horizon || {};
+    }
+    let totalRouge=0, totalCaught=0;
+    ['J-2','J-3','J-4','J-5'].forEach(k => { if(rrh[k]){totalRouge+=rrh[k].total_actual||0;totalCaught+=rrh[k].caught||0;} });
+    if (totalRouge > 0) { const rr=Math.round(totalCaught/totalRouge*100); setKpi('kpi-rouge-recall',rr+'%',rr); kpiRougeCard.style.opacity='1'; }
+    else { document.getElementById('kpi-rouge-recall').textContent='—'; document.getElementById('kpi-rouge-recall').className='kpi-value'; kpiRougeCard.style.opacity='0.4'; }
+}
+
+/* E1: Executive summary banner (C3: consistent with diagnostic) */
+function renderExecSummary(data, version) {
     const el = document.getElementById('exec-summary');
     if (!el) return;
     const j2j5 = data.accuracy_j2_j5||{};
-    const diag = data.diagnostic||{};
+    let diag = data.diagnostic||{};
+    if (version && version !== 'all' && data.per_version_data && data.per_version_data[version]) {
+        diag = data.per_version_data[version].diagnostic || {};
+    }
     const comp = data.period_comparison||{};
     const budget = data.budget_season||{};
 
@@ -590,11 +673,12 @@ function renderExecSummary(data) {
 
     let parts = [`<strong>Fiabilité J+2→J+5 : ${pct}%</strong> sur ${j2j5.total} évaluations`];
 
-    /* Period comparison */
+    /* A4: Period comparison with label */
     if (comp.delta != null) {
         const arrow = comp.delta > 0 ? '\u25B2' : comp.delta < 0 ? '\u25BC' : '\u25CF';
         const sign = comp.delta > 0 ? '+' : '';
-        parts.push(`<span style="font-weight:600">${arrow} ${sign}${comp.delta} pts</span> vs semaine précédente`);
+        const lbl = comp.label ? ` (${escapeHtml(comp.label)})` : ' vs semaine précédente';
+        parts.push(`<span style="font-weight:600">${arrow} ${sign}${comp.delta} pts</span>${lbl}`);
     }
 
     /* Rouge recall from diagnostic */
@@ -743,7 +827,20 @@ function _renderRecapTable(recap) {
             h += '</td>';
         } else h += '<td style="font-size:0.7rem;color:var(--text-secondary)">—</td>';
 
-        h += `<td class="diag-text">${row.diagnostic ? escapeHtml(row.diagnostic) : (row.actual && !isFuture ? '<span style="color:#16A34A">OK</span>' : '—')}</td>`;
+        /* A8: "Rattrapé J-1" shown as warning (orange), not neutral. A11: show "en attente" for past without actual */
+        let diagHtml;
+        if (row.diagnostic) {
+            const isRattrape = row.diagnostic.startsWith('\u26A0');
+            const diagColor = isRattrape ? 'color:#D97706' : '';
+            diagHtml = `<span style="${diagColor}">${escapeHtml(row.diagnostic)}</span>`;
+        } else if (row.actual && !isFuture) {
+            diagHtml = '<span style="color:#16A34A">OK</span>';
+        } else if (!isFuture && !row.actual && row.actual_status === 'pending') {
+            diagHtml = '<span style="color:var(--text-secondary);font-style:italic">en attente EDF</span>';
+        } else {
+            diagHtml = '—';
+        }
+        h += `<td class="diag-text">${diagHtml}</td>`;
         h += '</tr>';
     });
 
@@ -763,7 +860,7 @@ function _renderRecapTable(recap) {
 /* ══════════════════════════════════ */
 /* COLOR RECALL TABLE (generic)      */
 /* ══════════════════════════════════ */
-/* C3: Accessible labels + A3: extended horizons J-1→J-10 */
+/* C3: Accessible labels + A3: extended horizons J-1→J-10 + D9: total J-2→J-5 row */
 function renderColorRecallTable(elId, data, totalActual) {
     const el = document.getElementById(elId);
     if (!el) return;
@@ -771,21 +868,35 @@ function renderColorRecallTable(elId, data, totalActual) {
     const allH = []; for(let i=1;i<=10;i++) allH.push('J-'+i);
     const horizons = allH.filter(h => data[h] && ((data[h].total_actual||0)>0 || (data[h].false_alarms||0)>0));
     if (horizons.length === 0) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Pas de données.</p>'; return; }
-    /* C3: "Couverture" → "Détectés / Réels" tooltip, "Fiabilité" → "Alertes justes" */
     let h = '<table class="rouge-table"><thead><tr><th>Horizon</th>';
     h += '<th title="Parmi les vrais jours de cette couleur, combien avons-nous anticipés ?">Détectés</th>';
     h += '<th title="Parmi nos alertes, combien étaient correctes ?">Alertes justes</th>';
     h += '<th>OK</th><th>Réels</th><th>Faux +</th></tr></thead><tbody>';
+
+    /* D9: Accumulate totals for J-2→J-5 summary row */
+    let sumCaught=0, sumTotal=0, sumFP=0;
     horizons.forEach(hz => {
         const d = data[hz]||{};
+        const hNum = parseInt(hz.split('-')[1]);
+        if (hNum >= 2 && hNum <= 5) { sumCaught += d.caught||0; sumTotal += d.total_actual||0; sumFP += d.false_alarms||0; }
         const rc = d.recall==null?'':d.recall>=70?'val-good':d.recall>=40?'val-warn':'val-bad';
         const pc = d.precision==null?'':d.precision>=70?'val-good':d.precision>=40?'val-warn':'val-bad';
-        const isIndicative = parseInt(hz.split('-')[1]) >= 6;
+        const isIndicative = hNum >= 6;
         const rowStyle = isIndicative ? ' style="opacity:0.6"' : '';
         h += `<tr${rowStyle}><td><strong>${hz}</strong>${isIndicative?' <span style="font-size:0.6rem;color:var(--text-secondary)">(indicatif)</span>':''}</td>`;
         h += `<td class="${rc}">${d.recall!=null?d.recall+'%':'—'}</td>`;
         h += `<td class="${pc}">${d.precision!=null?d.precision+'%':'—'}</td>`;
         h += `<td>${d.caught??'—'}</td><td>${d.total_actual??'—'}</td><td>${d.false_alarms??'—'}</td></tr>`;
+        /* D9: Insert total row after J-5 */
+        if (hNum === 5 && sumTotal > 0) {
+            const sr = Math.round(sumCaught/sumTotal*100);
+            const sp = (sumCaught+sumFP) > 0 ? Math.round(sumCaught/(sumCaught+sumFP)*100) : 0;
+            const src = sr>=70?'val-good':sr>=40?'val-warn':'val-bad';
+            const spc = sp>=70?'val-good':sp>=40?'val-warn':'val-bad';
+            h += `<tr class="summary-total-row"><td><strong>Total J-2→J-5</strong></td>`;
+            h += `<td class="${src}"><strong>${sr}%</strong></td><td class="${spc}"><strong>${sp}%</strong></td>`;
+            h += `<td><strong>${sumCaught}</strong></td><td><strong>${sumTotal}</strong></td><td><strong>${sumFP}</strong></td></tr>`;
+        }
     });
     h += '</tbody></table>';
     el.innerHTML = h;
@@ -794,25 +905,33 @@ function renderColorRecallTable(elId, data, totalActual) {
 /* ══════════════════════════════════ */
 /* MONTHLY PERFORMANCE TABLE         */
 /* ══════════════════════════════════ */
-function renderMonthlyPerfTable(monthly) {
+/* C5: Monthly performance table — version-aware */
+function renderMonthlyPerfTable(monthly, version) {
     const el = document.getElementById('monthly-perf-table');
     if (!el) return;
     if (!monthly || monthly.length === 0) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Pas encore de données mensuelles.</p>'; return; }
     const vc = v => { if(v==null) return ''; return v>=70?'val-good':v>=50?'val-warn':'val-bad'; };
-    // Determine which horizons have data across all months
     const allHorizons = [];
     for (let i = 1; i <= 15; i++) allHorizons.push(`J-${i}`);
     const activeHorizons = allHorizons.filter(hz =>
         monthly.some(m => m.horizons && m.horizons[hz] && m.horizons[hz].total > 0));
     if (activeHorizons.length === 0) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Pas de données par horizon.</p>'; return; }
 
-    let h = '<div style="overflow-x:auto"><table class="rouge-table" style="font-size:0.78rem"><thead><tr>';
+    /* C5: If version filter is active, show notice */
+    let versionNote = '';
+    if (version && version !== 'all') {
+        versionNote = `<div style="font-size:0.75rem;color:#D97706;margin-bottom:6px">Note : le tableau mensuel couvre toutes les versions. Utilisez le tableau par version ci-dessous pour une vue par version.</div>`;
+    }
+
+    let h = versionNote + '<div style="overflow-x:auto"><table class="rouge-table" style="font-size:0.78rem"><thead><tr>';
     h += '<th>Mois</th><th>Éval.</th><th>Glob.</th>';
     activeHorizons.forEach(hz => { h += `<th>${hz}</th>`; });
     h += '</tr></thead><tbody>';
     monthly.forEach(m => {
         const ac = m.accuracy>=75?'val-good':m.accuracy>=55?'val-warn':'val-bad';
-        h += `<tr><td><strong>${escapeHtml(m.month_label)}</strong></td>`;
+        /* D11: Click month to filter recap */
+        h += `<tr style="cursor:pointer" onclick="_clickMonth('${escapeHtml(m.month_key)}')" title="Cliquer pour filtrer le récapitulatif sur ${escapeHtml(m.month_label)}">`;
+        h += `<td><strong>${escapeHtml(m.month_label)}</strong></td>`;
         h += `<td>${m.total}</td>`;
         h += `<td class="${ac}"><strong>${m.accuracy}%</strong></td>`;
         activeHorizons.forEach(hz => {
@@ -826,8 +945,20 @@ function renderMonthlyPerfTable(monthly) {
         h += '</tr>';
     });
     h += '</tbody></table></div>';
-    h += '<p style="font-size:0.7rem;color:var(--text-secondary);margin-top:6px">Glob. = précision tous horizons. Chaque colonne J-N = précision à cet horizon. Survol pour le nombre d\'évaluations.</p>';
+    h += '<p style="font-size:0.7rem;color:var(--text-secondary);margin-top:6px">Glob. = précision tous horizons. Cliquez sur un mois pour filtrer le récapitulatif ci-dessus.</p>';
     el.innerHTML = h;
+}
+
+/* D11: Click month in monthly table to filter recap */
+function _clickMonth(monthKey) {
+    _selectedMonth = monthKey;
+    const sel = document.getElementById('month-filter');
+    if (sel) sel.value = monthKey;
+    if (_recapData.length) {
+        _renderRecapTable(_recapData.filter(r => r.date && r.date.startsWith(monthKey)));
+    }
+    /* Scroll to recap */
+    document.getElementById('daily-recap')?.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
 /* ══════════════════════════════════ */
@@ -848,19 +979,26 @@ function _populateVersionFilter(versions) {
 
 document.getElementById('version-filter')?.addEventListener('change', e => {
     _selectedVersion = e.target.value;
-    if (_perfData) renderErrorSection(_perfData, _selectedVersion);
+    if (_perfData) {
+        /* B4/C2: Version filter updates KPIs + exec summary + errors + monthly */
+        _renderKPIs(_perfData, _selectedVersion);
+        renderExecSummary(_perfData, _selectedVersion);
+        renderErrorSection(_perfData, _selectedVersion);
+        renderMonthlyPerfTable(_perfData.monthly_performance||[], _selectedVersion);
+    }
 });
 
 function renderErrorSection(data, version) {
-    let rrh, brh, blh, cm, diag, totalEvals;
-    if (version !== 'all' && data.per_version_data && data.per_version_data[version]) {
+    let rrh, brh, blh, cm, diag, prf, totalEvals;
+    const isVersioned = version !== 'all' && data.per_version_data && data.per_version_data[version];
+    if (isVersioned) {
         const vd = data.per_version_data[version];
         rrh = vd.rouge_recall_by_horizon || {};
         brh = vd.blanc_recall_by_horizon || {};
         blh = vd.bleu_recall_by_horizon || {};
         cm = vd.confusion_matrix || {};
         diag = vd.diagnostic || {};
-        /* Compute total evals from confusion matrix */
+        prf = vd.precision_recall_f1 || {};
         const C = ['BLEU','BLANC','ROUGE'];
         totalEvals = C.reduce((s,p) => s + C.reduce((s2,a) => s2 + ((cm[p]||{})[a]||0), 0), 0);
     } else {
@@ -869,8 +1007,19 @@ function renderErrorSection(data, version) {
         blh = data.bleu_recall_by_horizon || {};
         cm = data.confusion_matrix || {};
         diag = data.diagnostic || {};
-        totalEvals = (data.global||{}).total || 0;
+        prf = data.precision_recall_f1 || {};
+        const C = ['BLEU','BLANC','ROUGE'];
+        totalEvals = C.reduce((s,p) => s + C.reduce((s2,a) => s2 + ((cm[p]||{})[a]||0), 0), 0);
     }
+
+    /* C4: Scope labels */
+    const scopeText = isVersioned ? `version ${version}` : 'J-2→J-5';
+    const diagScopeEl = document.getElementById('diag-scope-label');
+    if (diagScopeEl) diagScopeEl.textContent = isVersioned ? `version ${version}` : `depuis ${data.last_tool_update||'—'}`;
+    const cmScopeEl = document.getElementById('cm-scope-label');
+    if (cmScopeEl) cmScopeEl.textContent = scopeText;
+    const prfScopeEl = document.getElementById('prf-scope-label');
+    if (prfScopeEl) prfScopeEl.textContent = scopeText;
 
     const totalRouge = Object.values(rrh).reduce((s,v) => s + (v.total_actual||0), 0);
     renderColorRecallTable('rouge-recall-table', rrh, totalRouge);
@@ -880,6 +1029,8 @@ function renderErrorSection(data, version) {
         Object.values(blh).reduce((s,v) => s + (v.total_actual||0), 0));
     renderConfusionMatrix(cm, totalEvals);
     renderDiagnostic(diag, totalEvals);
+    /* A9: Render P/R/F1 table */
+    renderPRFTable(prf, totalEvals);
 }
 
 /* ══════════════════════════════════ */
@@ -897,13 +1048,16 @@ function renderVersionPerfTable(versionPerf) {
     if (activeHorizons.length === 0) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Pas de données par horizon.</p>'; return; }
 
     let h = '<div style="overflow-x:auto"><table class="rouge-table" style="font-size:0.78rem"><thead><tr>';
-    h += '<th style="text-align:left">Version</th><th>Éval.</th><th>Glob.</th>';
+    h += '<th style="text-align:left">Version</th><th>Jours</th><th>Éval.</th><th>Glob.</th>';
     activeHorizons.forEach(hz => { h += `<th>${hz}</th>`; });
     h += '</tr></thead><tbody>';
     versionPerf.forEach(v => {
         const ac = v.accuracy>=75?'val-good':v.accuracy>=55?'val-warn':'val-bad';
         h += `<tr><td style="text-align:left;white-space:nowrap"><strong>${escapeHtml(v.version_date)}</strong>`;
         h += `<div style="font-size:0.65rem;color:var(--text-secondary);line-height:1.2;max-width:180px;white-space:normal">${escapeHtml(v.version_label)}</div></td>`;
+        /* D8: Show days count and coverage */
+        const dc = v.days_count||'?', dd = v.dates_with_data||0;
+        h += `<td title="${dd} jours avec données sur ${dc} jours calendaires">${dc}j <span style="font-size:0.6rem;color:var(--text-secondary)">(${dd} éval.)</span></td>`;
         h += `<td>${v.total}</td>`;
         h += `<td class="${ac}"><strong>${v.accuracy}%</strong></td>`;
         activeHorizons.forEach(hz => {
@@ -982,14 +1136,21 @@ function renderDiagnostic(diag, totalEvals) {
     el.innerHTML = h;
 }
 
-/* ── Recommendations ── */
-function renderRecommendations(diag, lastUpdate, lastUpdateLabel) {
+/* ── Recommendations (C4: clear scope label) ── */
+function renderRecommendations(diag, lastUpdate, lastUpdateLabel, periodComp) {
     const el = document.getElementById('recommendations-content');
+    /* C4: Clear scope labeling */
     let header = '';
     if (lastUpdate) {
-        header = `<div style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:10px;padding:6px 10px;background:var(--bg);border-radius:var(--radius-sm)">Analyse depuis la dernière MAJ : <strong>${escapeHtml(lastUpdate)}</strong>${lastUpdateLabel ? ' — '+escapeHtml(lastUpdateLabel) : ''}</div>`;
+        header = `<div style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:10px;padding:6px 10px;background:var(--bg);border-radius:var(--radius-sm)">`;
+        header += `<strong>Périmètre :</strong> Prédictions J-2→J-5 depuis la MAJ <strong>${escapeHtml(lastUpdate)}</strong>`;
+        if (lastUpdateLabel) header += ` — ${escapeHtml(lastUpdateLabel)}`;
+        if (periodComp && periodComp.current) {
+            header += `<br>Évaluations dans ce périmètre : ${periodComp.current.total||0}`;
+        }
+        header += '</div>';
     }
-    if (!diag.recommendations||diag.recommendations.length===0) { el.innerHTML=header+'<p style="color:var(--text-secondary);font-size:0.85rem">Aucune erreur détectée depuis la dernière mise à jour.</p>'; return; }
+    if (!diag.recommendations||diag.recommendations.length===0) { el.innerHTML=header+'<p style="color:var(--text-secondary);font-size:0.85rem">Aucune erreur détectée dans ce périmètre.</p>'; return; }
     el.innerHTML = header + '<ul style="margin:0;padding-left:18px;font-size:0.85rem;line-height:1.6">' +
         diag.recommendations.map(r => `<li style="margin-bottom:6px">${escapeHtml(r)}</li>`).join('') + '</ul>';
 }
@@ -1007,6 +1168,165 @@ function renderWeightsChart(weights, labels) {
         options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom',labels:{font:{size:11}}}} }
     });
 }
+
+/* ══════════════════════════════════ */
+/* B8: TREND CHART                   */
+/* ══════════════════════════════════ */
+function renderTrendChart(trend) {
+    if (!chartAvailable || !trend || trend.length < 2) {
+        const c = document.getElementById('chart-trend');
+        if (c) c.style.display = 'none';
+        const fb = document.getElementById('chart-trend-fallback');
+        if (fb) fb.style.display = 'flex';
+        return;
+    }
+    const ctx = document.getElementById('chart-trend'); if (!ctx) return;
+    if (chartTrend) chartTrend.destroy();
+    chartTrend = new Chart(ctx, {
+        type:'line',
+        data:{
+            labels: trend.map(t => t.date),
+            datasets:[{
+                label:'Précision %',
+                data: trend.map(t => t.precision),
+                borderColor:'#2563EB', backgroundColor:'rgba(37,99,235,0.1)',
+                fill:true, tension:0.3, pointRadius:3
+            }]
+        },
+        options:{
+            responsive:true, maintainAspectRatio:false,
+            scales:{
+                y:{min:0,max:100,ticks:{callback:v=>v+'%'}},
+                x:{ticks:{maxRotation:45,font:{size:9}}}
+            },
+            plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y+'%'}}}
+        }
+    });
+}
+
+/* ══════════════════════════════════ */
+/* A9: P/R/F1 TABLE                  */
+/* ══════════════════════════════════ */
+function renderPRFTable(prf, totalEvals) {
+    const el = document.getElementById('prf-table');
+    if (!el) return;
+    if (totalEvals === 0 || !prf) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Aucune évaluation.</p>'; return; }
+    const vc = v => v>=70?'val-good':v>=40?'val-warn':'val-bad';
+    let h = '<table class="prf-table"><thead><tr><th>Couleur</th><th>Précision</th><th>Rappel</th><th>F1</th><th>Support</th></tr></thead><tbody>';
+    ['BLEU','BLANC','ROUGE'].forEach(c => {
+        const m = prf[c];
+        if (!m) return;
+        const cd = c==='ROUGE'?'#F44336':c==='BLANC'?'#9E9E9E':'#2196F3';
+        h += `<tr><td style="text-align:left"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${cd};margin-right:6px;vertical-align:middle"></span><strong>${c}</strong></td>`;
+        h += `<td class="${vc(m.precision)}">${m.precision}%</td>`;
+        h += `<td class="${vc(m.recall)}">${m.recall}%</td>`;
+        h += `<td class="${vc(m.f1)}">${m.f1}%</td>`;
+        h += `<td>${m.support}</td></tr>`;
+    });
+    if (prf.weighted_f1 != null) {
+        h += `<tr style="background:var(--bg);font-weight:600"><td style="text-align:left">F1 pondéré</td><td colspan="4" class="${vc(prf.weighted_f1)}">${prf.weighted_f1}%</td></tr>`;
+    }
+    h += '</tbody></table>';
+    el.innerHTML = h;
+}
+
+/* ══════════════════════════════════ */
+/* D6: WEATHER RELIABILITY           */
+/* ══════════════════════════════════ */
+function renderWeatherReliability(wr) {
+    const el = document.getElementById('weather-reliability');
+    if (!el) return;
+    if (!wr || Object.keys(wr).length === 0) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Pas de données.</p>'; return; }
+    let h = '<table class="rouge-table" style="font-size:0.82rem"><thead><tr><th>Horizon</th><th>Écart moyen</th><th>Biais</th><th>Échantillon</th></tr></thead><tbody>';
+    for (let i = 1; i <= 15; i++) {
+        const k = 'J-'+i;
+        const d = wr[k];
+        if (!d || d.samples < 1) continue;
+        const errClass = d.avg_error <= 1.5 ? 'val-good' : d.avg_error <= 3 ? 'val-warn' : 'val-bad';
+        const biasSign = d.avg_bias > 0 ? '+' : '';
+        h += `<tr${i>=6?' style="opacity:0.6"':''}>`;
+        h += `<td><strong>${k}</strong></td>`;
+        h += `<td class="${errClass}">±${d.avg_error}°C</td>`;
+        h += `<td>${biasSign}${d.avg_bias}°C</td>`;
+        h += `<td>${d.samples}</td></tr>`;
+    }
+    h += '</tbody></table>';
+    h += '<p style="font-size:0.7rem;color:var(--text-secondary);margin-top:6px">Écart moyen = erreur absolue moyenne (°C). Biais = tendance systématique (positif = prévu plus chaud que réel).</p>';
+    el.innerHTML = h;
+}
+
+/* ══════════════════════════════════ */
+/* D10: ROUGE POST-MORTEM            */
+/* ══════════════════════════════════ */
+function renderRougePostmortem(postmortem) {
+    const el = document.getElementById('rouge-postmortem');
+    if (!el) return;
+    if (!postmortem || postmortem.length === 0) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Aucun jour ROUGE évalué cette saison.</p>'; return; }
+    let h = '';
+    postmortem.forEach(pm => {
+        const caught25 = pm.caught_j2_j5, total25 = pm.total_j2_j5;
+        const status = caught25 === total25 && total25 > 0 ? '#16A34A' : caught25 === 0 ? '#DC2626' : '#D97706';
+        h += `<div class="postmortem-card">`;
+        h += `<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">`;
+        h += `<span class="pm-date">${escapeHtml(pm.date)}</span>`;
+        h += `<span class="pm-temp">${pm.temp_observed!=null?pm.temp_observed+'°C':'—'} ${pm.humidity!=null?pm.humidity+'%':''}</span>`;
+        h += `<span style="font-size:0.78rem;font-weight:700;color:${status}">J-2→J-5 : ${caught25}/${total25} anticipé(s)</span>`;
+        h += '</div>';
+        h += '<div class="pm-horizons">';
+        for (let i = 1; i <= 10; i++) {
+            const hz = 'J-'+i;
+            const hd = pm.horizons[hz];
+            if (!hd) continue;
+            const cls = hd.correct ? 'caught' : 'missed';
+            h += `<span class="pm-hz ${cls}" title="${hd.couleur} (score ${hd.score||'?'}, prob rouge ${hd.prob_rouge||'?'}%)">${hz}: ${hd.couleur}</span>`;
+        }
+        h += '</div>';
+        if (pm.version) h += `<div style="font-size:0.65rem;color:var(--text-secondary);margin-top:4px">${escapeHtml(pm.version)}</div>`;
+        h += '</div>';
+    });
+    el.innerHTML = h;
+}
+
+/* ══════════════════════════════════ */
+/* D12: DATA COVERAGE                */
+/* ══════════════════════════════════ */
+function renderDataCoverage(coverage) {
+    const el = document.getElementById('data-coverage');
+    if (!el) return;
+    if (!coverage || !coverage.horizons) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Pas de données.</p>'; return; }
+    const total = coverage.total_days || 0;
+    if (total === 0) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Aucune donnée évaluée.</p>'; return; }
+    let h = `<div style="font-size:0.82rem;margin-bottom:10px"><strong>${total}</strong> jour(s) avec résultat réel (EDF) sur cette saison.</div>`;
+    h += '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px">';
+    for (let i = 1; i <= 15; i++) {
+        const k = 'J-'+i;
+        const d = coverage.horizons[k];
+        if (!d) continue;
+        const pct = d.coverage_pct;
+        const color = pct >= 80 ? '#16A34A' : pct >= 50 ? '#D97706' : '#DC2626';
+        h += `<div style="text-align:center;padding:6px;background:var(--bg);border-radius:var(--radius-sm)${i>=6?';opacity:0.6':''}">`;
+        h += `<div style="font-weight:700;font-size:0.82rem">${k}</div>`;
+        h += `<div class="coverage-bar" style="margin:4px 0"><div class="fill" style="width:${pct}%;background:${color}"></div></div>`;
+        h += `<div style="font-size:0.7rem;color:var(--text-secondary)">${d.evaluations}/${total} (${pct}%)</div>`;
+        h += '</div>';
+    }
+    h += '</div>';
+    el.innerHTML = h;
+}
+
+/* ══════════════════════════════════ */
+/* D4: QUICK MONTH BUTTON            */
+/* ══════════════════════════════════ */
+document.getElementById('btn-current-month')?.addEventListener('click', () => {
+    const now = new Date();
+    const key = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    _selectedMonth = key;
+    const sel = document.getElementById('month-filter');
+    if (sel) sel.value = key;
+    if (_recapData.length) {
+        _renderRecapTable(_recapData.filter(r => r.date && r.date.startsWith(key)));
+    }
+});
 
 /* ══════════════════════════════════ */
 /* TASKS, SUBSCRIBERS, AGENTS        */
@@ -1088,12 +1408,22 @@ function renderBacklinksProspects(raw) {
 
 async function downloadCsv() {
     const m=document.getElementById('csv-month').value, y=document.getElementById('csv-year').value;
+    const btn = document.querySelector('#panel-subscribers .action-btn.blue');
+    const origText = btn ? btn.textContent : '';
+    if (btn) { btn.textContent = 'Téléchargement...'; btn.disabled = true; }
     try {
         const resp = await fetch(`/api/performance/csv?month=${m}&year=${y}`, { headers:{'Authorization':`Bearer ${adminPassword}`} });
-        if (!resp.ok) { alert('Erreur CSV'); return; }
-        const blob=await resp.blob(), url=URL.createObjectURL(blob), a=document.createElement('a');
+        if (!resp.ok) {
+            const detail = await resp.text().catch(()=>'');
+            alert(`Erreur CSV (${resp.status})${detail ? ' : '+detail : ''}`);
+            return;
+        }
+        const blob=await resp.blob();
+        if (blob.size < 50) { alert('Le fichier CSV est vide — aucune donnée pour cette période.'); return; }
+        const url=URL.createObjectURL(blob), a=document.createElement('a');
         a.href=url; a.download=`performance_${y}_${String(m).padStart(2,'0')}.csv`; a.click(); URL.revokeObjectURL(url);
-    } catch(e) { alert('Erreur : '+e.message); }
+    } catch(e) { alert('Erreur réseau : '+e.message); }
+    finally { if (btn) { btn.textContent = origText; btn.disabled = false; } }
 }
 
 /* Hamburger */
