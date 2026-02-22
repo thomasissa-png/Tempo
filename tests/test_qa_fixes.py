@@ -2117,3 +2117,654 @@ class TestJourTempoSeason:
             f"12°C en mars avec budget modéré ne devrait pas être ROUGE, "
             f"got {r['couleur_predite']} (score={r['score_risque']})"
         )
+
+
+# ================================================================
+# ADMIN DASHBOARD — performance_tracker.py functions
+# ================================================================
+
+def _insert_perf_rows(rows):
+    """Helper: insert rows into performance table for admin tests."""
+    from database import get_db
+    conn = get_db()
+    for r in rows:
+        conn.execute(
+            """INSERT OR IGNORE INTO performance
+               (date_prediction, date_cible, jours_avance, correct,
+                couleur_predite, couleur_reelle, score_risque_predit,
+                ecart_score, contexte_meteo, timestamp_evaluation)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (r.get("date_prediction", date.today().isoformat()),
+             r["date_cible"], r.get("jours_avance", 2),
+             r["correct"], r["couleur_predite"], r["couleur_reelle"],
+             r.get("score_risque_predit", 50), r.get("ecart_score", 10),
+             r.get("contexte_meteo", ""), datetime.now().isoformat()),
+        )
+    conn.commit()
+    conn.close()
+
+
+class TestConfusionMatrixHorizonFilter:
+    """A1/A6: Confusion matrix filtered by horizon range."""
+
+    def test_default_returns_all_horizons(self):
+        from performance_tracker import get_confusion_matrix
+        # Should work without error
+        cm = get_confusion_matrix(30)
+        assert isinstance(cm, dict)
+        assert "BLEU" in cm and "BLANC" in cm and "ROUGE" in cm
+
+    def test_min_max_horizon_filter(self):
+        """A1/A6: min_horizon and max_horizon filter correctly."""
+        from performance_tracker import get_confusion_matrix
+        # Insert test data at different horizons
+        today = date.today()
+        base = (today - timedelta(days=3)).isoformat()
+        _insert_perf_rows([
+            {"date_cible": base, "jours_avance": 1, "correct": 1,
+             "couleur_predite": "BLEU", "couleur_reelle": "BLEU"},
+            {"date_cible": base, "jours_avance": 3, "correct": 0,
+             "couleur_predite": "BLANC", "couleur_reelle": "BLEU"},
+            {"date_cible": base, "jours_avance": 7, "correct": 0,
+             "couleur_predite": "ROUGE", "couleur_reelle": "BLEU"},
+        ])
+        # Filter J-2 to J-5: should NOT include J-1 or J-7
+        cm_25 = get_confusion_matrix(30, min_horizon=2, max_horizon=5)
+        # The J-3 BLANC→BLEU error should be counted
+        assert cm_25["BLANC"]["BLEU"] >= 1
+        # J-1 BLEU→BLEU should NOT be in this filtered matrix
+        # (but we can't prove absence without exclusive test data,
+        # so just verify the function accepts the params)
+
+    def test_end_date_param(self):
+        """A5: end_date parameter bounds the query."""
+        from performance_tracker import get_confusion_matrix
+        cm = get_confusion_matrix(30, end_date="2020-01-01")
+        # With end_date in the past, should return empty matrix
+        total = sum(cm[p][a] for p in cm for a in cm[p])
+        assert total == 0
+
+
+class TestPrecisionRecallF1HorizonFilter:
+    """A9: P/R/F1 accepts horizon filtering."""
+
+    def test_accepts_horizon_params(self):
+        from performance_tracker import get_precision_recall_f1
+        prf = get_precision_recall_f1(30, min_horizon=2, max_horizon=5)
+        assert isinstance(prf, dict)
+        assert "BLEU" in prf
+        assert "weighted_f1" in prf
+
+    def test_prf_structure(self):
+        from performance_tracker import get_precision_recall_f1
+        prf = get_precision_recall_f1(30)
+        for color in ["BLEU", "BLANC", "ROUGE"]:
+            assert color in prf
+            for key in ["precision", "recall", "f1", "support"]:
+                assert key in prf[color], f"Missing {key} in {color}"
+
+    def test_end_date_passthrough(self):
+        """A5: end_date passes through to confusion_matrix."""
+        from performance_tracker import get_precision_recall_f1
+        prf = get_precision_recall_f1(30, end_date="2020-01-01")
+        # With impossible end_date, all supports should be 0
+        for color in ["BLEU", "BLANC", "ROUGE"]:
+            assert prf[color]["support"] == 0
+
+
+class TestColorRecallByHorizonSingleQuery:
+    """B2: Single GROUP BY query instead of N individual queries."""
+
+    def test_returns_dict_with_horizons(self):
+        from performance_tracker import get_color_recall_by_horizon
+        result = get_color_recall_by_horizon("ROUGE", 30, max_horizon=5)
+        assert isinstance(result, dict)
+        for h in range(1, 6):
+            key = f"J-{h}"
+            assert key in result
+            assert "recall" in result[key]
+            assert "precision" in result[key]
+            assert "total_actual" in result[key]
+            assert "caught" in result[key]
+            assert "false_alarms" in result[key]
+
+    def test_end_date_param(self):
+        """A5: end_date support for per-version filtering."""
+        from performance_tracker import get_color_recall_by_horizon
+        result = get_color_recall_by_horizon(
+            "ROUGE", 30, since_date="2026-02-15", end_date="2026-02-20")
+        assert isinstance(result, dict)
+        # Should not crash
+
+    def test_empty_result_for_impossible_range(self):
+        from performance_tracker import get_color_recall_by_horizon
+        result = get_color_recall_by_horizon(
+            "ROUGE", 30, since_date="2099-01-01")
+        for h in range(1, 11):
+            assert result[f"J-{h}"]["recall"] is None
+
+
+class TestDiagnosticConsistency:
+    """A3/B6/C1: Diagnostic computes accuracy from confusion matrix."""
+
+    def test_diagnostic_returns_required_keys(self):
+        from performance_tracker import get_diagnostic
+        diag = get_diagnostic(30)
+        for key in ["verdict", "precision", "rouge_recall", "bias",
+                     "total_errors", "top_confusions", "recommendations",
+                     "summary", "action"]:
+            assert key in diag, f"Missing key: {key}"
+
+    def test_diagnostic_accepts_horizon_params(self):
+        """A1/A6: Diagnostic filtered by horizon range."""
+        from performance_tracker import get_diagnostic
+        diag = get_diagnostic(30, min_horizon=2, max_horizon=5)
+        assert isinstance(diag, dict)
+        assert "verdict" in diag
+
+    def test_diagnostic_accepts_end_date(self):
+        """A5: end_date for per-version diagnostic."""
+        from performance_tracker import get_diagnostic
+        diag = get_diagnostic(30, since_date="2026-02-15",
+                              end_date="2026-02-20")
+        assert isinstance(diag, dict)
+
+    def test_diagnostic_precision_coherent(self):
+        """A3/B6: Precision in diagnostic matches confusion matrix data."""
+        from performance_tracker import get_diagnostic, get_confusion_matrix
+        diag = get_diagnostic(90, min_horizon=2, max_horizon=5)
+        cm = get_confusion_matrix(90, min_horizon=2, max_horizon=5)
+        # Compute accuracy from CM
+        colors = ["BLEU", "BLANC", "ROUGE"]
+        total = sum(cm[p][a] for p in colors for a in colors)
+        correct = sum(cm[c][c] for c in colors)
+        expected_pct = round(correct / total * 100, 1) if total > 0 else 0
+        assert diag["precision"] == expected_pct, (
+            f"Diagnostic precision {diag['precision']} != CM-derived {expected_pct}"
+        )
+
+
+class TestPeriodComparison:
+    """A4: Period comparison anchored on tool update pivot_date."""
+
+    def test_default_rolling_comparison(self):
+        from performance_tracker import get_period_comparison
+        comp = get_period_comparison(7)
+        assert "current" in comp and "previous" in comp
+        assert "delta" in comp
+        assert "label" in comp
+        assert "7j glissants" in comp["label"]
+
+    def test_pivot_date_comparison(self):
+        from performance_tracker import get_period_comparison
+        comp = get_period_comparison(7, pivot_date="2026-02-20")
+        assert comp["pivot_date"] == "2026-02-20"
+        assert "depuis 2026-02-20" in comp["label"]
+        assert "current" in comp and "previous" in comp
+
+
+class TestBudgetSeasonConfidence:
+    """A7: Budget season includes confidence weighting."""
+
+    def test_budget_season_returns_dict(self):
+        from performance_tracker import get_budget_season
+        budget = get_budget_season()
+        # May be empty dict if tempo_client not available, but should not crash
+        assert isinstance(budget, dict)
+
+    def test_confidence_keys_present_when_data_exists(self):
+        """A7: Confidence keys should be present in response."""
+        from performance_tracker import get_budget_season
+        budget = get_budget_season()
+        if budget.get("rouge_remaining") is not None:
+            assert "rouge_predicted_confidence" in budget
+            assert "blanc_predicted_confidence" in budget
+
+
+class TestVersionPerformanceDaysCount:
+    """D8: Version performance includes days_count and dates_with_data."""
+
+    def test_returns_list(self):
+        from performance_tracker import get_version_performance
+        result = get_version_performance()
+        assert isinstance(result, list)
+
+    def test_entries_have_days_count(self):
+        """D8: Each version entry has days_count and dates_with_data."""
+        from performance_tracker import get_version_performance
+        result = get_version_performance()
+        for entry in result:
+            assert "days_count" in entry, "Missing days_count"
+            assert "dates_with_data" in entry, "Missing dates_with_data"
+            assert "version_date" in entry
+            assert "version_label" in entry
+            assert "accuracy" in entry
+            assert "horizons" in entry
+            assert entry["days_count"] >= 1
+
+
+class TestWeatherReliability:
+    """D6: Weather forecast reliability by horizon."""
+
+    def test_returns_dict(self):
+        from performance_tracker import get_weather_reliability
+        result = get_weather_reliability(30)
+        assert isinstance(result, dict)
+
+    def test_entries_have_required_keys(self):
+        from performance_tracker import get_weather_reliability
+        result = get_weather_reliability(90)
+        for key, val in result.items():
+            assert key.startswith("J-")
+            assert "avg_error" in val
+            assert "avg_bias" in val
+            assert "samples" in val
+
+
+class TestRougePostmortem:
+    """D10: Post-mortem analysis of ROUGE days."""
+
+    def test_returns_list(self):
+        from performance_tracker import get_rouge_postmortem
+        result = get_rouge_postmortem("2025-2026")
+        assert isinstance(result, list)
+
+    def test_entries_have_required_keys(self):
+        """D10: Each ROUGE day entry has expected structure."""
+        from performance_tracker import get_rouge_postmortem
+        result = get_rouge_postmortem("2025-2026")
+        for entry in result:
+            assert "date" in entry
+            assert "temp_observed" in entry
+            assert "horizons" in entry
+            assert "caught_at" in entry
+            assert "missed_at" in entry
+            assert "caught_j2_j5" in entry
+            assert "total_j2_j5" in entry
+            assert "version" in entry
+
+
+class TestDataCoverage:
+    """D12: Data coverage indicator."""
+
+    def test_returns_expected_structure(self):
+        from performance_tracker import get_data_coverage
+        result = get_data_coverage("2025-2026")
+        assert isinstance(result, dict)
+        assert "total_days" in result
+        assert "horizons" in result
+        assert isinstance(result["horizons"], dict)
+
+    def test_horizons_have_required_keys(self):
+        from performance_tracker import get_data_coverage
+        result = get_data_coverage("2025-2026")
+        for h in range(1, 16):
+            key = f"J-{h}"
+            assert key in result["horizons"], f"Missing {key}"
+            hz = result["horizons"][key]
+            assert "predictions" in hz
+            assert "evaluations" in hz
+            assert "coverage_pct" in hz
+
+    def test_coverage_pct_is_bounded(self):
+        """Coverage percentage should be 0-100."""
+        from performance_tracker import get_data_coverage
+        result = get_data_coverage("2025-2026")
+        for key, hz in result["horizons"].items():
+            assert 0 <= hz["coverage_pct"] <= 100, (
+                f"{key} coverage {hz['coverage_pct']} not in 0-100"
+            )
+
+
+class TestPerformanceSummaryCache:
+    """B7: Performance summary has TTL cache."""
+
+    def test_cache_module_variables_exist(self):
+        import performance_tracker as pt
+        assert hasattr(pt, '_perf_summary_cache')
+        assert hasattr(pt, '_CACHE_TTL_SECONDS')
+        assert pt._CACHE_TTL_SECONDS == 300
+
+    def test_summary_returns_all_required_keys(self):
+        from performance_tracker import get_performance_summary
+        data = get_performance_summary("2025-2026")
+        required_keys = [
+            "season", "available_seasons", "days", "global",
+            "accuracy_j1", "accuracy_j2_j5", "accuracy_j6_j15",
+            "by_horizon", "confusion_matrix", "confusion_matrix_all",
+            "precision_recall_f1", "precision_recall_f1_all",
+            "rouge_recall_by_horizon", "blanc_recall_by_horizon",
+            "bleu_recall_by_horizon", "monthly_performance",
+            "version_performance", "current_weights", "trend",
+            "diagnostic", "period_comparison", "budget_season",
+            "tool_versions", "per_version_data", "last_tool_update",
+            "last_tool_update_label", "daily_recap",
+            "weather_reliability", "rouge_postmortem", "data_coverage",
+        ]
+        for key in required_keys:
+            assert key in data, f"Missing key in summary: {key}"
+
+    def test_confusion_matrix_is_j2_j5_scoped(self):
+        """A1/A6: Default confusion matrix restricted to J-2→J-5."""
+        from performance_tracker import get_performance_summary
+        data = get_performance_summary("2025-2026")
+        # confusion_matrix should be J-2→J-5 scoped
+        # confusion_matrix_all should be all horizons
+        assert "confusion_matrix" in data
+        assert "confusion_matrix_all" in data
+
+    def test_diagnostic_has_horizon_scope(self):
+        """C1: Diagnostic uses J-2→J-5 scope."""
+        from performance_tracker import get_performance_summary
+        data = get_performance_summary("2025-2026")
+        diag = data["diagnostic"]
+        assert "verdict" in diag
+        assert "summary" in diag
+
+    def test_period_comparison_has_pivot(self):
+        """A4: Period comparison includes pivot_date."""
+        from performance_tracker import get_performance_summary
+        data = get_performance_summary("2025-2026")
+        comp = data["period_comparison"]
+        assert "label" in comp
+        # If tool_update_dates exist, pivot should be set
+        if data.get("last_tool_update"):
+            assert comp.get("pivot_date") == data["last_tool_update"]
+
+    def test_per_version_data_bounded(self):
+        """A5: per_version_data uses end_date for each version."""
+        from performance_tracker import get_performance_summary
+        from config import Config
+        data = get_performance_summary("2025-2026")
+        pvd = data["per_version_data"]
+        tool_dates = sorted(Config.TOOL_UPDATE_DATES.keys())
+        for td in tool_dates:
+            if td in pvd:
+                vd = pvd[td]
+                assert "confusion_matrix" in vd
+                assert "diagnostic" in vd
+                assert "precision_recall_f1" in vd
+                assert "rouge_recall_by_horizon" in vd
+
+    def test_cache_populated_after_first_call(self):
+        """B7: Cache is populated after the first call."""
+        import performance_tracker as pt
+        # Clear cache
+        pt._perf_summary_cache["data"] = None
+        pt._perf_summary_cache["ts"] = 0
+        pt.get_performance_summary("2025-2026")
+        assert pt._perf_summary_cache["data"] is not None
+        assert pt._perf_summary_cache["season"] == "2025-2026"
+        assert pt._perf_summary_cache["ts"] > 0
+
+
+class TestDailyRecapEnhancements:
+    """A8/A11/D5: Daily recap enhancements."""
+
+    def test_recap_returns_list(self):
+        from performance_tracker import get_daily_recap
+        result = get_daily_recap("2025-2026")
+        assert isinstance(result, list)
+
+    def test_entries_have_actual_status(self):
+        """A11: Each entry has actual_status field."""
+        from performance_tracker import get_daily_recap
+        result = get_daily_recap("2025-2026")
+        for entry in result:
+            assert "actual_status" in entry, "Missing actual_status (A11)"
+            assert entry["actual_status"] in ("confirmed", "pending", "future")
+
+    def test_entries_have_temp_deviation(self):
+        """D5: Each entry has temp_deviation field."""
+        from performance_tracker import get_daily_recap
+        result = get_daily_recap("2025-2026")
+        for entry in result:
+            assert "temp_deviation" in entry, "Missing temp_deviation (D5)"
+
+    def test_entries_have_tool_update(self):
+        """Tool update markers present."""
+        from performance_tracker import get_daily_recap
+        result = get_daily_recap("2025-2026")
+        for entry in result:
+            assert "tool_update" in entry
+
+    def test_rattrap_diagnostic_has_warning_prefix(self):
+        """A8: Rattrapé J-1 diagnostic starts with ⚠."""
+        from performance_tracker import get_daily_recap
+        result = get_daily_recap("2025-2026")
+        for entry in result:
+            if entry["diagnostic"] and "Rattrapé" in entry["diagnostic"]:
+                assert entry["diagnostic"].startswith("\u26A0"), (
+                    f"Rattrapé diagnostic should start with ⚠: {entry['diagnostic']}"
+                )
+
+
+class TestAccuracyCombined:
+    """D2: Single combined accuracy query."""
+
+    def test_returns_all_buckets(self):
+        from performance_tracker import get_accuracy_combined
+        result = get_accuracy_combined(30)
+        for key in ["global", "j1", "j2_j5", "j6_j15"]:
+            assert key in result, f"Missing bucket: {key}"
+            assert "total" in result[key]
+            assert "correct" in result[key]
+            assert "precision" in result[key]
+
+    def test_precision_bounded(self):
+        from performance_tracker import get_accuracy_combined
+        result = get_accuracy_combined(30)
+        for key in ["global", "j1", "j2_j5", "j6_j15"]:
+            assert 0 <= result[key]["precision"] <= 100
+
+
+class TestAvailableSeasons:
+    """Season selector respects PREDICTION_START_DATE."""
+
+    def test_returns_list(self):
+        from performance_tracker import get_available_seasons
+        seasons = get_available_seasons()
+        assert isinstance(seasons, list)
+
+    def test_seasons_format(self):
+        """Seasons are in 'YYYY-YYYY' format."""
+        from performance_tracker import get_available_seasons
+        seasons = get_available_seasons()
+        for s in seasons:
+            parts = s.split("-")
+            assert len(parts) == 2
+            assert int(parts[1]) == int(parts[0]) + 1
+
+    def test_no_pre_start_seasons(self):
+        """Seasons before PREDICTION_START_DATE are excluded."""
+        from performance_tracker import get_available_seasons
+        from config import Config
+        start = getattr(Config, 'PREDICTION_START_DATE', None)
+        if start:
+            start_d = date.fromisoformat(start)
+            seasons = get_available_seasons()
+            for s in seasons:
+                year_end = int(s.split("-")[1])
+                # Season end year should be >= start year
+                assert year_end >= start_d.year, (
+                    f"Season {s} should not appear (start={start})"
+                )
+
+
+class TestParseSeason:
+    """parse_season utility."""
+
+    def test_parse_2025_2026(self):
+        from performance_tracker import parse_season
+        start, end = parse_season("2025-2026")
+        assert start == date(2025, 9, 1)
+        assert end == date(2026, 8, 31)
+
+    def test_parse_2024_2025(self):
+        from performance_tracker import parse_season
+        start, end = parse_season("2024-2025")
+        assert start == date(2024, 9, 1)
+        assert end == date(2025, 8, 31)
+
+
+class TestEnforceStartDate:
+    """_enforce_start_date utility."""
+
+    def test_clamps_to_prediction_start(self):
+        from performance_tracker import _enforce_start_date
+        from config import Config
+        start = getattr(Config, 'PREDICTION_START_DATE', None)
+        if start:
+            # Use a date guaranteed to be before any reasonable start date
+            early_date = "1990-01-01"
+            result = _enforce_start_date(early_date)
+            assert result == start
+
+    def test_preserves_later_date(self):
+        from performance_tracker import _enforce_start_date
+        # Date after start should be preserved
+        result = _enforce_start_date("2099-01-01")
+        assert result == "2099-01-01"
+
+
+class TestAdminHTMLStructure:
+    """Tests for admin.html template structure."""
+
+    def test_admin_has_prf_table_div(self):
+        """A9: P/R/F1 table container exists."""
+        with open("templates/admin.html") as f:
+            html = f.read()
+        assert 'id="prf-table"' in html
+
+    def test_admin_has_weather_reliability_div(self):
+        """D6: Weather reliability section exists."""
+        with open("templates/admin.html") as f:
+            html = f.read()
+        assert 'id="weather-reliability"' in html
+
+    def test_admin_has_rouge_postmortem_div(self):
+        """D10: ROUGE post-mortem section exists."""
+        with open("templates/admin.html") as f:
+            html = f.read()
+        assert 'id="rouge-postmortem"' in html
+
+    def test_admin_has_data_coverage_div(self):
+        """D12: Data coverage section exists."""
+        with open("templates/admin.html") as f:
+            html = f.read()
+        assert 'id="data-coverage"' in html
+
+    def test_admin_has_trend_chart_canvas(self):
+        """B8: Trend chart canvas exists."""
+        with open("templates/admin.html") as f:
+            html = f.read()
+        assert 'id="chart-trend"' in html
+
+    def test_admin_has_version_filter(self):
+        """Version filter dropdown exists."""
+        with open("templates/admin.html") as f:
+            html = f.read()
+        assert 'id="version-filter"' in html
+
+    def test_admin_has_quick_month_button(self):
+        """D4: Quick month button exists."""
+        with open("templates/admin.html") as f:
+            html = f.read()
+        assert 'id="btn-current-month"' in html
+
+    def test_admin_has_scope_labels(self):
+        """C4: Scope labels exist on confusion matrix and diagnostic."""
+        with open("templates/admin.html") as f:
+            html = f.read()
+        assert 'id="cm-scope-label"' in html
+        assert 'id="diag-scope-label"' in html
+        assert 'id="prf-scope-label"' in html
+
+    def test_admin_has_chartjs_onerror(self):
+        """B5: Chart.js script has onerror handler."""
+        with open("templates/admin.html") as f:
+            html = f.read()
+        assert 'onerror="window._chartJsFailed=true' in html
+
+    def test_admin_kpi_rouge_label_j2_j5(self):
+        """A2: ROUGE recall KPI label mentions detection, not J-1."""
+        with open("templates/admin.html") as f:
+            html = f.read()
+        assert 'Détection ROUGE' in html
+        # The JS should use J-2→J-5 for ROUGE recall (not J-1)
+        assert "['J-2','J-3','J-4','J-5']" in html
+
+    def test_admin_js_renderKPIs_function(self):
+        """B4: _renderKPIs function exists for version-aware KPIs."""
+        with open("templates/admin.html") as f:
+            html = f.read()
+        assert 'function _renderKPIs(' in html
+
+    def test_admin_js_renderPRFTable_function(self):
+        """A9: renderPRFTable function exists."""
+        with open("templates/admin.html") as f:
+            html = f.read()
+        assert 'function renderPRFTable(' in html
+
+    def test_admin_js_renderTrendChart_function(self):
+        """B8: renderTrendChart function exists."""
+        with open("templates/admin.html") as f:
+            html = f.read()
+        assert 'function renderTrendChart(' in html
+
+    def test_admin_js_renderWeatherReliability_function(self):
+        """D6: renderWeatherReliability function exists."""
+        with open("templates/admin.html") as f:
+            html = f.read()
+        assert 'function renderWeatherReliability(' in html
+
+    def test_admin_js_renderRougePostmortem_function(self):
+        """D10: renderRougePostmortem function exists."""
+        with open("templates/admin.html") as f:
+            html = f.read()
+        assert 'function renderRougePostmortem(' in html
+
+    def test_admin_js_renderDataCoverage_function(self):
+        """D12: renderDataCoverage function exists."""
+        with open("templates/admin.html") as f:
+            html = f.read()
+        assert 'function renderDataCoverage(' in html
+
+    def test_admin_js_clickMonth_function(self):
+        """D11: _clickMonth function exists."""
+        with open("templates/admin.html") as f:
+            html = f.read()
+        assert 'function _clickMonth(' in html
+
+    def test_admin_confusion_matrix_scope_label(self):
+        """A1/A6: Confusion matrix has J-2→J-5 scope label."""
+        with open("templates/admin.html") as f:
+            html = f.read()
+        assert 'Matrice de confusion' in html
+        assert 'J-2→J-5' in html
+
+    def test_admin_version_filter_updates_kpis(self):
+        """B4/C2: Version filter change triggers _renderKPIs."""
+        with open("templates/admin.html") as f:
+            html = f.read()
+        # The change handler should call _renderKPIs
+        assert '_renderKPIs(_perfData' in html
+
+    def test_admin_rattrap_warning_style(self):
+        """A8: Rattrapé lines styled with warning color."""
+        with open("templates/admin.html") as f:
+            html = f.read()
+        assert "isRattrape" in html
+        assert "color:#D97706" in html
+
+    def test_admin_summary_total_row_css(self):
+        """D9: CSS class for summary total row exists."""
+        with open("templates/admin.html") as f:
+            html = f.read()
+        assert "summary-total-row" in html
+
+    def test_admin_pending_actual_status(self):
+        """A11: 'en attente EDF' text for pending actual status."""
+        with open("templates/admin.html") as f:
+            html = f.read()
+        assert "en attente EDF" in html

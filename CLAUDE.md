@@ -114,6 +114,80 @@
 - `post_startup` (deferred 90s): backfill + ML evaluation + predictions
 - `seo_agent_seasonal` (Tuesday 9h, seasonal frequency): autonomous SEO blog agent (requires ANTHROPIC_API_KEY)
 
+### Admin Dashboard (`/admin`, `performance_tracker.py`, `templates/admin.html`)
+- **Authentication**: Bearer token via `Config.ADMIN_PASSWORD`. All API calls include `Authorization: Bearer <pw>`.
+- **5 tabs**: Performance (default), SEO, Backlinks, Abonnés, Actions.
+- **Performance tab architecture**: Single API call `GET /api/performance?season=YYYY-YYYY` returns all data. Frontend caches in `_perfData` and re-renders sections on filter changes (no additional API calls).
+
+#### KPI Strip (4 cards)
+- **Précision J-1**: Accuracy at 1-day horizon (EDF-provided, reference only).
+- **Précision J-2→J-5**: Our primary success metric. Accuracy of anticipation predictions.
+- **Détection ROUGE (J-2→J-5 only)**: Recall computed from J-2 to J-5 horizons. **J-1 is excluded** because EDF provides it — including it would inflate the number artificially.
+- **Précision J-6→J-15**: Indicative (weather unreliable). Shown at reduced opacity (0.7).
+- All KPIs update when the version filter changes (B4/C2 fix).
+
+#### Executive Summary Banner
+- Shows fiabilité J+2→J+5, period delta, ROUGE recall, budget remaining.
+- Period comparison (A4): anchored on last `TOOL_UPDATE_DATE` via `pivot_date` — compares "since MAJ" vs "same period before MAJ".
+- Consistent with diagnostic scope (C3): uses versioned diagnostic when filter active.
+
+#### Section 1: Récapitulatif jour par jour
+- 15-horizon grid (J-15 to J-1) with colored dots (correct=green border, incorrect=red border, pending=transparent).
+- Temperatures shown under all dots (forecast temperature at that horizon).
+- Confidence percentage only in tooltip on hover (not visible under dots — user explicitly requested this).
+- **Quick month button** (D4): "Ce mois" button auto-selects current month in filter.
+- **Month filter persisted** (D5): `_selectedMonth` variable survives season changes.
+- **Tool update markers**: Purple dot + description when `TOOL_UPDATE_DATES[date]` matches.
+- **Diagnostic column**: Shows error analysis for J-1→J-5. "Rattrapé J-1 (erreur J-2, J-3)" shown in **orange/warning** (A8) — not green, because failing J-2→J-5 is an anticipation failure even if J-1 is correct.
+- **A11**: Past days without EDF actual yet show "en attente EDF" (not misleading "—").
+- **D5**: Error diagnostics include ΔT (temperature deviation: observed - forecast) when available.
+- **No separate today/tomorrow block**: Removed by user to avoid redundancy with 10-day summary dots.
+
+#### Section 2: Analyse des erreurs
+- **Version filter**: Dropdown filters the ENTIRE error section (detection tables, confusion matrix, diagnostic, P/R/F1). When a version is selected, KPIs and exec summary also update (B4).
+- **A5**: Per-version data is **bounded by end_date** — version N's data stops where version N+1 starts. Prevents data contamination.
+- **Detection tables** (3 cards: ROUGE/BLANC/BLEU): Recall/precision by horizon J-1→J-10. J-6+ shown at opacity 0.6 marked "(indicatif)".
+- **D9**: Summary row "Total J-2→J-5" inserted after J-5 in each detection table — shows aggregated recall/precision for the value zone.
+- **Confusion matrix** (A1/A6): Filtered to **J-2→J-5 only** by default. Scope label visible. Prevents J-1 (trivial) and J-6+ (unreliable) from diluting metrics.
+- **Diagnostic** (A3/B6/C1): Precision computed **directly from confusion matrix** (same scope), not from separate `get_accuracy_global()` call. Verdict (bon/moyen/insuffisant) is now coherent. Scope = since last tool update, J-2→J-5 horizons.
+- **C4**: All sections display explicit scope labels (e.g., "J-2→J-5", "version 2026-02-20", "depuis 2026-02-21").
+- **A9**: New P/R/F1 table: Precision, Recall, F1 per color + Weighted F1. Uses same scope as confusion matrix.
+- **D6**: Weather reliability table: Average absolute forecast error and systematic bias per horizon. Helps distinguish "algo wrong" from "weather wrong".
+
+#### Section 3: Progresse-t-on ?
+- **Monthly table**: Accuracy per horizon per month. **D11**: Clickable rows → filters the recap table to that month and scrolls up.
+- **C5**: When version filter is active, shows a note that monthly data covers all versions (use version table below for per-version view).
+- **Version table** (D8): Same columns + "Jours" column showing `days_count` (calendar days) and `dates_with_data` (days with evaluations). Helps relativize percentages based on small samples.
+- **Trend chart** (B8): Line chart of daily accuracy (all horizons). Uses Chart.js. Hidden with fallback message if CDN unavailable.
+- **D12**: Data coverage section — for each horizon J-1→J-15, shows evaluations/total as progress bars. Low coverage = fragile metrics.
+- **D10**: ROUGE Post-mortem — card per ROUGE day: observed temperature, humidity, per-horizon predictions (caught=green/missed=red badges), J-2→J-5 score, version running.
+
+#### Section 4: Learnings
+- **Weights donut chart**: Algorithm weight distribution (Chart.js). Fallback if CDN unavailable (B5).
+- **Recommendations** (C4): Scoped explicitly to "Prédictions J-2→J-5 depuis la MAJ [date]". Shows evaluation count in scope.
+
+#### Backend Design Principles (`performance_tracker.py`)
+- **`_enforce_start_date(since)`**: All queries clamp to `PREDICTION_START_DATE` to ignore pre-tool data.
+- **B2**: `get_color_recall_by_horizon()` uses single `GROUP BY jours_avance` query (not N individual queries per horizon).
+- **B7**: `get_performance_summary()` has 5-minute TTL cache (`_perf_summary_cache`). Invalidated on season change.
+- **`get_confusion_matrix(days, since_date, end_date, min_horizon, max_horizon)`**: Fully parameterized. Default in summary: min_horizon=2, max_horizon=5.
+- **`get_diagnostic(days, since_date, end_date, min_horizon, max_horizon)`**: Computes accuracy from confusion matrix internally (A3/B6). No separate `get_accuracy_global()` call.
+- **`get_period_comparison(days, pivot_date)`**: When `pivot_date` set, compares after vs before that date (same window size).
+- **`get_budget_season()`**: Returns `rouge_predicted_confidence` and `blanc_predicted_confidence` (A7: average max probability of future predictions).
+- **`get_weather_reliability(days)`**: JOIN weather_forecast_log + weather_cache to compute avg absolute error and bias per horizon.
+- **`get_rouge_postmortem(season)`**: Per ROUGE day: predictions at each horizon, caught/missed lists, temperature, version.
+- **`get_data_coverage(season)`**: Per horizon: prediction count, evaluation count, coverage percentage.
+- **`get_version_performance()`**: Per version: total, accuracy, days_count, dates_with_data, per-horizon accuracy.
+- **`get_daily_recap(season)`**: Returns `actual_status` (confirmed/pending/future), `temp_deviation`, `tool_update`.
+
+#### Frontend Design Principles (`templates/admin.html`)
+- **Single API call**: All performance data loaded in one `GET /api/performance`. No per-section API calls.
+- **Version filter rerenders**: Changes to version filter call `_renderKPIs()`, `renderExecSummary()`, `renderErrorSection()`, `renderMonthlyPerfTable()` — all from cached `_perfData`.
+- **Chart.js**: Loaded with `onerror` handler on script tag. `chartAvailable` checks both `typeof Chart` and `!window._chartJsFailed`.
+- **State variables**: `_perfData` (cached API response), `_selectedVersion` (version filter), `_selectedMonth` (month filter), `_recapData` (recap for filtering).
+- **No `kpi-subs` element**: Subscriber count KPI was removed from performance tab (C2). `loadSubscribers()` has null-check for the element.
+- **Season selector**: Only shows seasons with non-simulated predictions after `PREDICTION_START_DATE`.
+
 ## Common Pitfalls
 - **Data leakage**: Never use same-day RTE consumption for predictions (only lag features D-1+)
 - **Multi-horizon storage**: `store_prediction` blocks ANY new non-confirmed prediction if the date already has a confirmed row (any horizon). This prevents new horizons from shadowing confirmed predictions via `GROUP BY date + MAX(id)` queries
