@@ -914,12 +914,23 @@ def parse_season(season: str) -> tuple[date, date]:
 
 
 def get_available_seasons() -> list[str]:
-    """Return seasons that have non-simulated prediction data."""
+    """Return seasons that have non-simulated prediction data.
+
+    Respects PREDICTION_START_DATE: ignores predictions before this date
+    to avoid listing seasons with no real prediction data.
+    """
+    start = getattr(Config, 'PREDICTION_START_DATE', None)
     conn = get_db()
     try:
-        rows = conn.execute(
-            "SELECT DISTINCT date FROM predictions WHERE simulated = 0 ORDER BY date"
-        ).fetchall()
+        if start:
+            rows = conn.execute(
+                "SELECT DISTINCT date FROM predictions WHERE simulated = 0 AND date >= ? ORDER BY date",
+                (start,),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT DISTINCT date FROM predictions WHERE simulated = 0 ORDER BY date"
+            ).fetchall()
         seasons = set()
         for r in rows:
             d = date.fromisoformat(r["date"])
