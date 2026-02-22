@@ -254,6 +254,15 @@ class Config:
         12: "weekly",   # Décembre
     }
 
+    # --- Dates de mises à jour de l'outil de prédiction ---
+    # Utilisé dans le dashboard admin pour corréler changements algo ↔ précision
+    TOOL_UPDATE_DATES = {
+        "2026-02-14": "Démarrage des prédictions",
+        "2026-02-19": "v3.1 C_nette proxy + seuil dynamique RTE",
+        "2026-02-20": "v3.5 calibration (85→87%, ROUGE 80→96%)",
+        "2026-02-21": "Fix confirmations EDF + météo v19",
+    }
+
     # --- Proxy C_nette (estimation consommation nette depuis météo) ---
     # Inspiré de l'algorithme RTE officiel : C_nette = Conso - Éolien - Solaire
     # Permet d'estimer le stress réseau à partir des prévisions météo (temp + vent)

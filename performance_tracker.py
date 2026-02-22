@@ -598,104 +598,204 @@ def get_diagnostic(days: int = 30) -> dict:
     }
 
 
-def get_daily_recap(days: int = 15) -> list[dict]:
-    """Récapitulatif jour par jour : prévisions à chaque horizon + résultat EDF + météo.
+def parse_season(season: str) -> tuple[date, date]:
+    """Parse '2025-2026' into (date(2025,9,1), date(2026,8,31))."""
+    parts = season.split("-")
+    start_year = int(parts[0])
+    return date(start_year, 9, 1), date(start_year + 1, 8, 31)
 
-    Retourne une liste de dicts triés par date décroissante.
-    Les clés de predictions utilisent la convention J+N (ex: "J+1", "J+2")
-    pour la cohérence avec le reste du dashboard.
+
+def get_available_seasons() -> list[str]:
+    """Return seasons that have non-simulated prediction data."""
+    conn = get_db()
+    try:
+        rows = conn.execute(
+            "SELECT DISTINCT date FROM predictions WHERE simulated = 0 ORDER BY date"
+        ).fetchall()
+        seasons = set()
+        for r in rows:
+            d = date.fromisoformat(r["date"])
+            if d.month >= 9:
+                seasons.add(f"{d.year}-{d.year + 1}")
+            else:
+                seasons.add(f"{d.year - 1}-{d.year}")
+        return sorted(seasons, reverse=True)
+    finally:
+        conn.close()
+
+
+def _build_error_diagnostic(predicted: str, actual: str,
+                            score: float | None, raison: str | None) -> str:
+    """Build a concise human-readable diagnostic for a wrong prediction."""
+    if predicted == actual:
+        return ""
+    parts = []
+    # Error type
+    if actual == "ROUGE" and predicted != "ROUGE":
+        parts.append(f"ROUGE manqué (prédit {predicted})")
+    elif predicted == "ROUGE" and actual != "ROUGE":
+        parts.append(f"Fausse alerte ROUGE (réel {actual})")
+    elif predicted == "BLANC" and actual == "BLEU":
+        parts.append("Sur-estimation BLANC→BLEU")
+    elif predicted == "BLEU" and actual == "BLANC":
+        parts.append("Sous-estimation BLEU→BLANC")
+    else:
+        parts.append(f"{predicted}→{actual}")
+    if score is not None:
+        parts.append(f"score {score}")
+    # Extract key info from raison (first 2 items)
+    if raison:
+        items = [r.strip() for r in raison.split("·") if r.strip()]
+        if items:
+            parts.append(items[0][:50])
+    return " — ".join(parts)
+
+
+def get_daily_recap(season: str = "2025-2026") -> list[dict]:
+    """Récapitulatif jour par jour avec 15 horizons de prévision.
+
+    Horizons en format J-N (J-1 = veille, J-15 = 15 jours avant).
+    Inclut l'évolution de la météo prévue à chaque horizon,
+    le premier horizon correct, et un diagnostic pour les erreurs.
     """
     conn = get_db()
     try:
-        since = (date.today() - timedelta(days=days)).isoformat()
-        tomorrow = (date.today() + timedelta(days=1)).isoformat()
+        season_start, season_end = parse_season(season)
+        today = date.today()
+        end_date = min(season_end, today + timedelta(days=1))
 
-        # Single query with LEFT JOINs for predictions + actuals + weather
-        rows = conn.execute(
-            """SELECT p.date, p.horizon, p.couleur_predite, p.couleur_originale,
-                      p.score_risque, p.confirmed, p.timestamp_prediction,
-                      a.couleur_reelle,
-                      w.temp_moy, w.temp_min, w.temp_max, w.humidity, w.wind_speed
-               FROM predictions p
-               LEFT JOIN actuals a ON a.date = p.date AND a.synthetic = 0
-               LEFT JOIN (
-                   SELECT date, temp_moy, temp_min, temp_max, humidity, wind_speed,
-                          ROW_NUMBER() OVER (PARTITION BY date ORDER BY fetched_at DESC) as rn
-                   FROM weather_cache
-                   WHERE date >= ?
-               ) w ON w.date = p.date AND w.rn = 1
-               WHERE p.date >= ? AND p.date <= ?
-                 AND p.simulated = 0
-               ORDER BY p.date DESC, p.timestamp_prediction""",
-            (since, since, tomorrow),
+        since = season_start.isoformat()
+        until = end_date.isoformat()
+
+        # 1) All non-simulated predictions in season
+        pred_rows = conn.execute(
+            """SELECT date, horizon, couleur_predite, couleur_originale,
+                      score_risque, confirmed, raison
+               FROM predictions
+               WHERE date >= ? AND date <= ? AND simulated = 0
+               ORDER BY date, timestamp_prediction""",
+            (since, until),
         ).fetchall()
 
-        # Also get actuals for dates that may have no predictions
-        actual_only = conn.execute(
-            """SELECT date, couleur_reelle FROM actuals
-               WHERE date >= ? AND synthetic = 0""",
-            (since,),
+        # 2) Actuals
+        actual_rows = conn.execute(
+            "SELECT date, couleur_reelle FROM actuals WHERE date >= ? AND date <= ? AND synthetic = 0",
+            (since, until),
         ).fetchall()
-        actuals_map = {r["date"]: r["couleur_reelle"] for r in actual_only}
+        actuals_map = {r["date"]: r["couleur_reelle"] for r in actual_rows}
 
-        # Build per-date structure
-        dates_data = {}
-        weather_map = {}
-        for r in rows:
-            dt = r["date"]
-            if dt not in dates_data:
-                dates_data[dt] = {}
+        # 3) Weather forecast evolution from weather_forecast_log
+        weather_log = conn.execute(
+            """SELECT target_date, horizon_days, temp_moy
+               FROM weather_forecast_log
+               WHERE target_date >= ? AND target_date <= ?
+               ORDER BY target_date, horizon_days""",
+            (since, until),
+        ).fetchall()
+        # {target_date: {horizon_days: temp_moy}}
+        weather_evo = {}
+        for r in weather_log:
+            td = r["target_date"]
+            if td not in weather_evo:
+                weather_evo[td] = {}
+            weather_evo[td][r["horizon_days"]] = r["temp_moy"]
 
-            # Cache weather from JOIN
-            if dt not in weather_map and r["temp_moy"] is not None:
-                weather_map[dt] = {
+        # 4) Observed weather (J-0 from weather_cache, latest per date)
+        weather_obs = conn.execute(
+            """SELECT date, temp_moy, humidity, wind_speed
+               FROM weather_cache WHERE date >= ? AND date <= ?
+               ORDER BY fetched_at DESC""",
+            (since, until),
+        ).fetchall()
+        weather_obs_map = {}
+        for r in weather_obs:
+            if r["date"] not in weather_obs_map:
+                weather_obs_map[r["date"]] = {
                     "temp_moy": r["temp_moy"],
-                    "temp_min": r["temp_min"],
-                    "temp_max": r["temp_max"],
                     "humidity": r["humidity"],
                     "wind_speed": r["wind_speed"],
                 }
 
-            # For confirmed rows (EDF propagation without original), skip
+        # 5) Build per-date predictions structure
+        dates_data = {}
+        dates_raison = {}  # raison from closest available prediction
+        for r in pred_rows:
+            dt = r["date"]
+            if dt not in dates_data:
+                dates_data[dt] = {}
+
             if r["confirmed"] and not r["couleur_originale"]:
                 continue
 
-            # Use couleur_originale if available (what model actually predicted)
             couleur = r["couleur_originale"] if r["couleur_originale"] else r["couleur_predite"]
+            horizon = r["horizon"]  # DB format: J-1, J-2, ... J-15
 
-            actual = r["couleur_reelle"] or actuals_map.get(dt)
+            actual = actuals_map.get(dt)
             correct = None
             if actual:
                 correct = couleur == actual
 
-            # Score: only use real score, never approximate
             score = None
             if r["score_risque"] and r["score_risque"] > 0:
                 score = round(r["score_risque"], 1)
 
-            # Convert DB horizon J-N to display convention J+N
-            horizon_key = r["horizon"]
-            if horizon_key and horizon_key.startswith("J-"):
-                horizon_key = "J+" + horizon_key[2:]
+            # Get weather forecast temp for this horizon from weather_forecast_log
+            temp_prevue = None
+            if horizon and horizon.startswith("J-"):
+                try:
+                    h_num = int(horizon[2:])
+                    if dt in weather_evo:
+                        temp_prevue = weather_evo[dt].get(h_num)
+                        if temp_prevue is not None:
+                            temp_prevue = round(temp_prevue, 1)
+                except ValueError:
+                    pass
 
-            dates_data[dt][horizon_key] = {
+            dates_data[dt][horizon] = {
                 "couleur": couleur,
                 "score": score,
                 "correct": correct,
+                "temp_prevue": temp_prevue,
             }
 
-        # Assemble result sorted by date descending
-        all_dates = sorted(set(list(dates_data.keys()) + list(actuals_map.keys())), reverse=True)
+            # Keep raison from J-1 (or lowest horizon) for diagnostic
+            if r["raison"] and (dt not in dates_raison or horizon == "J-1"):
+                dates_raison[dt] = (r["raison"], couleur, score)
 
+        # 6) Assemble — only dates with predictions (skip backfill-only dates)
+        tool_updates = Config.TOOL_UPDATE_DATES
         result = []
-        for dt in all_dates:
-            if dt < since:
-                continue
+        for dt in sorted(dates_data.keys(), reverse=True):
+            preds = dates_data[dt]
+            actual = actuals_map.get(dt)
+
+            # First correct horizon: scan from J-15 to J-1, find earliest correct
+            first_correct = None
+            if actual:
+                for n in range(15, 0, -1):
+                    key = f"J-{n}"
+                    if key in preds and preds[key].get("correct") is True:
+                        first_correct = key
+                        break
+
+            # Diagnostic for wrong J-1 prediction
+            diagnostic = None
+            if actual:
+                j1 = preds.get("J-1")
+                if j1 and j1.get("correct") is False:
+                    raison_text = dates_raison.get(dt, (None,))[0]
+                    diagnostic = _build_error_diagnostic(
+                        j1["couleur"], actual, j1.get("score"), raison_text
+                    )
+
             result.append({
                 "date": dt,
-                "actual": actuals_map.get(dt),
-                "weather": weather_map.get(dt),
-                "predictions": dates_data.get(dt, {}),
+                "actual": actual,
+                "predictions": preds,
+                "weather_observed": weather_obs_map.get(dt),
+                "first_correct": first_correct,
+                "diagnostic": diagnostic,
+                "tool_update": tool_updates.get(dt),
             })
 
         return result
@@ -704,14 +804,17 @@ def get_daily_recap(days: int = 15) -> list[dict]:
         conn.close()
 
 
-def get_performance_summary(days: int = 90) -> dict:
+def get_performance_summary(season: str = "2025-2026") -> dict:
     """Résumé complet des performances pour le dashboard admin.
 
     Args:
-        days: fenêtre temporelle en jours (1, 5, 10, 15, 30, 90, saison=~175).
+        season: saison au format "YYYY-YYYY" (ex: "2025-2026").
     """
-    d = max(1, min(days, 365))
+    season_start, _ = parse_season(season)
+    d = max(1, min((date.today() - season_start).days, 365))
     return {
+        "season": season,
+        "available_seasons": get_available_seasons(),
         "days": d,
         "global": get_accuracy_global(d),
         "accuracy_j1": get_accuracy_global(d, max_horizon=1),
@@ -721,11 +824,9 @@ def get_performance_summary(days: int = 90) -> dict:
         "precision_recall_f1": get_precision_recall_f1(d),
         "rouge_recall_by_horizon": get_rouge_recall_by_horizon(d),
         "current_weights": get_current_weights(),
-        "budget_season": get_budget_season(),
         "trend": get_accuracy_trend(d),
-        "comparison": get_period_comparison(d),
         "diagnostic": get_diagnostic(d),
-        "daily_recap": get_daily_recap(d),
+        "daily_recap": get_daily_recap(season),
     }
 
 
