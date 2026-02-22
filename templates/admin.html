@@ -253,7 +253,15 @@
             </div>
 
             <!-- SECTION 2 : Analyse erreurs -->
-            <div class="section-title">Analyse des erreurs</div>
+            <div class="section-title" style="justify-content:space-between;flex-wrap:wrap">
+                <span>Analyse des erreurs</span>
+                <div style="display:flex;align-items:center;gap:8px">
+                    <span style="font-size:0.78rem;font-weight:600;color:var(--text-secondary)">Version :</span>
+                    <select id="version-filter" style="padding:5px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:0.82rem;font-weight:500" aria-label="Filtre par version">
+                        <option value="all">Toutes les versions</option>
+                    </select>
+                </div>
+            </div>
             <div class="detection-grid-3" style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:24px">
                 <div class="flat-card">
                     <h4>Détection ROUGE <span class="badge" style="background:#DC2626">Priorité #1</span></h4>
@@ -291,6 +299,13 @@
                     <h4>Bilan mois par mois</h4>
                     <p class="card-hint">Précision par horizon de prédiction (J-1 = veille, J-15 = 15 jours avant), mois après mois.</p>
                     <div id="monthly-perf-table">Chargement...</div>
+                </div>
+            </div>
+            <div class="panel-grid full">
+                <div class="flat-card">
+                    <h4>Bilan par version de l'outil</h4>
+                    <p class="card-hint">Même vue que ci-dessus mais segmentée par version de l'algorithme. Permet de mesurer l'impact de chaque mise à jour.</p>
+                    <div id="version-perf-table">Chargement...</div>
                 </div>
             </div>
 
@@ -399,6 +414,8 @@ let currentSeason = '2025-2026';
 let chartWeights = null;
 let _recapData = []; // cached for month filter
 let _selectedMonth = 'all'; // D5: persist month filter across reloads
+let _perfData = null; // cached full performance data for version filtering
+let _selectedVersion = 'all'; // persisted version filter
 const chartAvailable = typeof Chart !== 'undefined';
 
 function escapeHtml(s) {
@@ -526,16 +543,17 @@ function renderPerformanceData(data) {
     /* E1: Executive summary */
     renderExecSummary(data);
 
+    /* Cache full data for version filtering */
+    _perfData = data;
+
+    /* Populate version filter */
+    _populateVersionFilter(data.tool_versions||[]);
+
     /* Sections */
     renderDailyRecap(data.daily_recap||[]);
-    renderColorRecallTable('rouge-recall-table', rrh, totalRouge);
-    renderColorRecallTable('blanc-recall-table', data.blanc_recall_by_horizon||{},
-        Object.values(data.blanc_recall_by_horizon||{}).reduce((s,v)=>s+(v.total_actual||0),0));
-    renderColorRecallTable('bleu-recall-table', data.bleu_recall_by_horizon||{},
-        Object.values(data.bleu_recall_by_horizon||{}).reduce((s,v)=>s+(v.total_actual||0),0));
-    renderConfusionMatrix(data.confusion_matrix||{}, g.total||0);
-    renderDiagnostic(data.diagnostic||{}, g.total||0);
+    renderErrorSection(data, _selectedVersion);
     renderMonthlyPerfTable(data.monthly_performance||[]);
+    renderVersionPerfTable(data.version_performance||[]);
 
     const weightLabels = {
         "temperature": "Température",
@@ -656,7 +674,7 @@ function _renderRecapTable(recap) {
     const HORIZONS = [];
     for (let i = 15; i >= 1; i--) HORIZONS.push('J-'+i);
 
-    /* C8: Show confidence % on future predictions */
+    /* Show confidence in tooltip only, temperature below dot (even for future) */
     function dot(pred, isFuture) {
         if (!pred) return '<span class="recap-dot empty"></span>';
         const c = escapeHtml(pred.couleur).toLowerCase();
@@ -669,11 +687,7 @@ function _renderRecapTable(recap) {
         if (pred.score) titleParts.push('score '+pred.score);
         if (conf) titleParts.push('confiance '+conf+'%');
         let h = `<span class="recap-dot ${c} ${border}" title="${titleParts.join(' · ')}"></span>`;
-        if (isFuture && conf != null) {
-            h += `<span class="recap-temp" style="font-weight:600;color:${conf>=70?'#16A34A':conf>=50?'#D97706':'#DC2626'}">${conf}%</span>`;
-        } else if (pred.temp_prevue != null) {
-            h += `<span class="recap-temp">${pred.temp_prevue}°</span>`;
-        }
+        if (pred.temp_prevue != null) h += `<span class="recap-temp">${pred.temp_prevue}°</span>`;
         return h;
     }
 
@@ -813,6 +827,97 @@ function renderMonthlyPerfTable(monthly) {
     });
     h += '</tbody></table></div>';
     h += '<p style="font-size:0.7rem;color:var(--text-secondary);margin-top:6px">Glob. = précision tous horizons. Chaque colonne J-N = précision à cet horizon. Survol pour le nombre d\'évaluations.</p>';
+    el.innerHTML = h;
+}
+
+/* ══════════════════════════════════ */
+/* VERSION FILTER + ERROR SECTION    */
+/* ══════════════════════════════════ */
+function _populateVersionFilter(versions) {
+    const sel = document.getElementById('version-filter');
+    if (!sel || !versions || !versions.length) return;
+    sel.innerHTML = '<option value="all">Toutes les versions</option>' +
+        versions.map(v =>
+            `<option value="${escapeHtml(v.date)}"${v.date===_selectedVersion?' selected':''}>${escapeHtml(v.date)} — ${escapeHtml(v.label)}</option>`
+        ).join('');
+    if (_selectedVersion !== 'all' && !versions.some(v => v.date === _selectedVersion)) {
+        _selectedVersion = 'all';
+        sel.value = 'all';
+    }
+}
+
+document.getElementById('version-filter')?.addEventListener('change', e => {
+    _selectedVersion = e.target.value;
+    if (_perfData) renderErrorSection(_perfData, _selectedVersion);
+});
+
+function renderErrorSection(data, version) {
+    let rrh, brh, blh, cm, diag, totalEvals;
+    if (version !== 'all' && data.per_version_data && data.per_version_data[version]) {
+        const vd = data.per_version_data[version];
+        rrh = vd.rouge_recall_by_horizon || {};
+        brh = vd.blanc_recall_by_horizon || {};
+        blh = vd.bleu_recall_by_horizon || {};
+        cm = vd.confusion_matrix || {};
+        diag = vd.diagnostic || {};
+        /* Compute total evals from confusion matrix */
+        const C = ['BLEU','BLANC','ROUGE'];
+        totalEvals = C.reduce((s,p) => s + C.reduce((s2,a) => s2 + ((cm[p]||{})[a]||0), 0), 0);
+    } else {
+        rrh = data.rouge_recall_by_horizon || {};
+        brh = data.blanc_recall_by_horizon || {};
+        blh = data.bleu_recall_by_horizon || {};
+        cm = data.confusion_matrix || {};
+        diag = data.diagnostic || {};
+        totalEvals = (data.global||{}).total || 0;
+    }
+
+    const totalRouge = Object.values(rrh).reduce((s,v) => s + (v.total_actual||0), 0);
+    renderColorRecallTable('rouge-recall-table', rrh, totalRouge);
+    renderColorRecallTable('blanc-recall-table', brh,
+        Object.values(brh).reduce((s,v) => s + (v.total_actual||0), 0));
+    renderColorRecallTable('bleu-recall-table', blh,
+        Object.values(blh).reduce((s,v) => s + (v.total_actual||0), 0));
+    renderConfusionMatrix(cm, totalEvals);
+    renderDiagnostic(diag, totalEvals);
+}
+
+/* ══════════════════════════════════ */
+/* VERSION PERFORMANCE TABLE         */
+/* ══════════════════════════════════ */
+function renderVersionPerfTable(versionPerf) {
+    const el = document.getElementById('version-perf-table');
+    if (!el) return;
+    if (!versionPerf || versionPerf.length === 0) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Pas encore de données par version.</p>'; return; }
+    const vc = v => { if(v==null) return ''; return v>=70?'val-good':v>=50?'val-warn':'val-bad'; };
+    const allHorizons = [];
+    for (let i = 1; i <= 15; i++) allHorizons.push(`J-${i}`);
+    const activeHorizons = allHorizons.filter(hz =>
+        versionPerf.some(v => v.horizons && v.horizons[hz] && v.horizons[hz].total > 0));
+    if (activeHorizons.length === 0) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Pas de données par horizon.</p>'; return; }
+
+    let h = '<div style="overflow-x:auto"><table class="rouge-table" style="font-size:0.78rem"><thead><tr>';
+    h += '<th style="text-align:left">Version</th><th>Éval.</th><th>Glob.</th>';
+    activeHorizons.forEach(hz => { h += `<th>${hz}</th>`; });
+    h += '</tr></thead><tbody>';
+    versionPerf.forEach(v => {
+        const ac = v.accuracy>=75?'val-good':v.accuracy>=55?'val-warn':'val-bad';
+        h += `<tr><td style="text-align:left;white-space:nowrap"><strong>${escapeHtml(v.version_date)}</strong>`;
+        h += `<div style="font-size:0.65rem;color:var(--text-secondary);line-height:1.2;max-width:180px;white-space:normal">${escapeHtml(v.version_label)}</div></td>`;
+        h += `<td>${v.total}</td>`;
+        h += `<td class="${ac}"><strong>${v.accuracy}%</strong></td>`;
+        activeHorizons.forEach(hz => {
+            const hd = v.horizons?.[hz];
+            if (hd && hd.precision != null) {
+                h += `<td class="${vc(hd.precision)}" title="${hd.total} éval.">${hd.precision}%</td>`;
+            } else {
+                h += '<td style="color:var(--text-secondary)">—</td>';
+            }
+        });
+        h += '</tr>';
+    });
+    h += '</tbody></table></div>';
+    h += '<p style="font-size:0.7rem;color:var(--text-secondary);margin-top:6px">Chaque ligne = une version de l\'outil. La précision ne compte que les prédictions faites après la date de mise en production.</p>';
     el.innerHTML = h;
 }
 
