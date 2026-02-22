@@ -42,6 +42,18 @@ from config import Config
 logger = logging.getLogger(__name__)
 
 
+def _enforce_start_date(since: str) -> str:
+    """Clamp 'since' date to not go before PREDICTION_START_DATE.
+
+    Uses Config.PREDICTION_START_DATE if set, otherwise returns since unchanged.
+    This allows tests to override or unset the start date.
+    """
+    start = getattr(Config, 'PREDICTION_START_DATE', None)
+    if start:
+        return max(since, start)
+    return since
+
+
 # ================================================================
 # UTILITAIRE : profondeur historique disponible
 # ================================================================
@@ -177,7 +189,7 @@ def get_accuracy_global(days: int = 30, max_horizon: int | None = None,
     None → tous les horizons."""
     conn = get_db()
     try:
-        since = (date.today() - timedelta(days=days)).isoformat()
+        since = _enforce_start_date((date.today() - timedelta(days=days)).isoformat())
         if min_horizon is not None and max_horizon is not None:
             rows = conn.execute(
                 """SELECT correct, COUNT(*) as cnt
@@ -228,7 +240,7 @@ def get_accuracy_by_horizon(days: int = 60) -> list[dict]:
     """Précision par horizon de prédiction (J-1, J-2, J-3...)."""
     conn = get_db()
     try:
-        since = (date.today() - timedelta(days=days)).isoformat()
+        since = _enforce_start_date((date.today() - timedelta(days=days)).isoformat())
         rows = conn.execute(
             """SELECT jours_avance,
                       COUNT(*) as total,
@@ -258,7 +270,7 @@ def get_confusion_matrix(days: int = 60) -> dict:
     """Matrice de confusion 3×3 (BLEU/BLANC/ROUGE prédit vs réel)."""
     conn = get_db()
     try:
-        since = (date.today() - timedelta(days=days)).isoformat()
+        since = _enforce_start_date((date.today() - timedelta(days=days)).isoformat())
         rows = conn.execute(
             """SELECT couleur_predite, couleur_reelle, COUNT(*) as cnt
                FROM performance
@@ -323,7 +335,7 @@ def get_recent_errors(limit: int = 5, days: int | None = None) -> list[dict]:
     conn = get_db()
     try:
         if days is not None:
-            since = (date.today() - timedelta(days=days)).isoformat()
+            since = _enforce_start_date((date.today() - timedelta(days=days)).isoformat())
             rows = conn.execute(
                 """SELECT date_cible, couleur_predite, couleur_reelle,
                           score_risque_predit, ecart_score, contexte_meteo,
@@ -359,7 +371,7 @@ def get_rouge_recall_by_horizon(days: int = 90) -> dict:
     """
     conn = get_db()
     try:
-        since = (date.today() - timedelta(days=days)).isoformat()
+        since = _enforce_start_date((date.today() - timedelta(days=days)).isoformat())
         result = {}
         for h in range(1, 6):
             row = conn.execute(
@@ -439,7 +451,7 @@ def get_accuracy_trend(days: int = 14) -> list[dict]:
     """Précision quotidienne sur les N derniers jours (pour graphique d'évolution)."""
     conn = get_db()
     try:
-        since = (date.today() - timedelta(days=days)).isoformat()
+        since = _enforce_start_date((date.today() - timedelta(days=days)).isoformat())
         rows = conn.execute(
             """SELECT date_cible, COUNT(*) as total, SUM(correct) as corrects
                FROM performance
@@ -598,6 +610,111 @@ def get_diagnostic(days: int = 30) -> dict:
     }
 
 
+def get_color_recall_by_horizon(color: str, days: int = 90) -> dict:
+    """Recall/precision for a specific color (ROUGE/BLANC/BLEU) by horizon J+1..J+5."""
+    conn = get_db()
+    try:
+        since = _enforce_start_date((date.today() - timedelta(days=days)).isoformat())
+        result = {}
+        for h in range(1, 6):
+            row = conn.execute(
+                """SELECT
+                     SUM(CASE WHEN couleur_predite = ? AND couleur_reelle = ?
+                         THEN 1 ELSE 0 END) as tp,
+                     SUM(CASE WHEN couleur_reelle = ? THEN 1 ELSE 0 END) as total_actual,
+                     SUM(CASE WHEN couleur_predite = ? AND couleur_reelle != ?
+                         THEN 1 ELSE 0 END) as fp
+                   FROM performance
+                   WHERE date_cible >= ? AND jours_avance = ?""",
+                (color, color, color, color, color, since, h),
+            ).fetchone()
+            tp = row["tp"] or 0
+            total = row["total_actual"] or 0
+            fp = row["fp"] or 0
+            recall = round(tp / total * 100, 1) if total > 0 else None
+            precision = round(tp / (tp + fp) * 100, 1) if (tp + fp) > 0 else None
+            result[f"J+{h}"] = {
+                "recall": recall,
+                "precision": precision,
+                "total_actual": total,
+                "caught": tp,
+                "false_alarms": fp,
+            }
+        return result
+    finally:
+        conn.close()
+
+
+def get_monthly_performance(season: str = "2025-2026") -> list[dict]:
+    """Performance breakdown by month with per-color precision/recall."""
+    conn = get_db()
+    try:
+        season_start, season_end = parse_season(season)
+        start_date = _enforce_start_date(season_start.isoformat())
+        end_date = min(season_end.isoformat(), date.today().isoformat())
+
+        rows = conn.execute(
+            """SELECT
+                   strftime('%Y-%m', date_cible) as month_key,
+                   couleur_reelle, couleur_predite,
+                   COUNT(*) as cnt
+               FROM performance
+               WHERE date_cible >= ? AND date_cible <= ?
+               GROUP BY month_key, couleur_reelle, couleur_predite
+               ORDER BY month_key""",
+            (start_date, end_date),
+        ).fetchall()
+
+        month_names = {
+            "01": "Janvier", "02": "Février", "03": "Mars", "04": "Avril",
+            "05": "Mai", "06": "Juin", "07": "Juillet", "08": "Août",
+            "09": "Septembre", "10": "Octobre", "11": "Novembre", "12": "Décembre",
+        }
+        colors = ["BLEU", "BLANC", "ROUGE"]
+
+        # Build confusion data per month
+        months_data: dict[str, dict] = {}
+        for r in rows:
+            mk = r["month_key"]
+            if mk not in months_data:
+                months_data[mk] = {
+                    c_pred: {c_real: 0 for c_real in colors}
+                    for c_pred in colors
+                }
+            cp, cr = r["couleur_predite"], r["couleur_reelle"]
+            if cp in months_data[mk] and cr in months_data[mk].get(cp, {}):
+                months_data[mk][cp][cr] = r["cnt"]
+
+        result = []
+        for mk in sorted(months_data.keys()):
+            cm = months_data[mk]
+            total = sum(cm[p][a] for p in colors for a in colors)
+            correct = sum(cm[c][c] for c in colors)
+            accuracy = round(correct / total * 100, 1) if total > 0 else 0
+
+            color_metrics = {}
+            for c in colors:
+                tp = cm[c][c]
+                fp = sum(cm[c][a] for a in colors if a != c)
+                fn = sum(cm[p][c] for p in colors if p != c)
+                prec = round(tp / (tp + fp) * 100) if (tp + fp) > 0 else None
+                rec = round(tp / (tp + fn) * 100) if (tp + fn) > 0 else None
+                color_metrics[c] = {"precision": prec, "recall": rec, "support": tp + fn}
+
+            mm = mk.split("-")[1]
+            result.append({
+                "month_key": mk,
+                "month_label": month_names.get(mm, mm),
+                "total": total,
+                "accuracy": accuracy,
+                "colors": color_metrics,
+            })
+
+        return result
+    finally:
+        conn.close()
+
+
 def parse_season(season: str) -> tuple[date, date]:
     """Parse '2025-2026' into (date(2025,9,1), date(2026,8,31))."""
     parts = season.split("-")
@@ -664,7 +781,7 @@ def get_daily_recap(season: str = "2025-2026") -> list[dict]:
         today = date.today()
         end_date = min(season_end, today + timedelta(days=1))
 
-        since = season_start.isoformat()
+        since = _enforce_start_date(season_start.isoformat())
         until = end_date.isoformat()
 
         # 1) All non-simulated predictions in season
@@ -823,6 +940,9 @@ def get_performance_summary(season: str = "2025-2026") -> dict:
         "confusion_matrix": get_confusion_matrix(d),
         "precision_recall_f1": get_precision_recall_f1(d),
         "rouge_recall_by_horizon": get_rouge_recall_by_horizon(d),
+        "blanc_recall_by_horizon": get_color_recall_by_horizon("BLANC", d),
+        "bleu_recall_by_horizon": get_color_recall_by_horizon("BLEU", d),
+        "monthly_performance": get_monthly_performance(season),
         "current_weights": get_current_weights(),
         "trend": get_accuracy_trend(d),
         "diagnostic": get_diagnostic(d),
@@ -1375,7 +1495,7 @@ def analyze_error_patterns(days: int = 90, force: bool = False) -> list[dict]:
                 logger.info("[Learning] Déjà analysé aujourd'hui, skip (force=False)")
                 return []
 
-        since = (date.today() - timedelta(days=days)).isoformat()
+        since = _enforce_start_date((date.today() - timedelta(days=days)).isoformat())
 
         perf_rows = conn.execute(
             "SELECT * FROM performance WHERE date_cible >= ?",
@@ -2093,7 +2213,7 @@ def get_learning_health() -> dict:
         ).fetchone()["c"]
 
         # Précision récente (14j)
-        since_14 = (date.today() - timedelta(days=14)).isoformat()
+        since_14 = _enforce_start_date((date.today() - timedelta(days=14)).isoformat())
         perf_14 = conn.execute(
             "SELECT COUNT(*) as total, SUM(correct) as correct FROM performance WHERE date_cible >= ?",
             (since_14,)

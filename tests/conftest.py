@@ -15,6 +15,8 @@ def use_test_db(tmp_path, monkeypatch):
     """Utilise une base de données temporaire pour chaque test."""
     db_path = str(tmp_path / "test_tempo.db")
     monkeypatch.setattr("config.Config.DATABASE_PATH", db_path)
+    # Disable start date filter in tests (test data uses arbitrary dates)
+    monkeypatch.setattr("config.Config.PREDICTION_START_DATE", "2000-01-01")
     from database import init_db
     init_db()
     yield db_path

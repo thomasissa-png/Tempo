@@ -45,6 +45,7 @@
 
         .panel-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:24px; }
         .panel-grid.full { grid-template-columns:1fr; }
+        @media(max-width:900px){ .detection-grid-3{grid-template-columns:1fr !important;} }
         @media(max-width:768px){ .panel-grid{grid-template-columns:1fr;} }
 
         .flat-card { background:var(--surface); border-radius:var(--radius); padding:20px; box-shadow:var(--shadow); }
@@ -236,27 +237,35 @@
                         et de la température prévue à mesure qu'on se rapproche.
                         Bordure <span style="color:#16A34A;font-weight:600">verte</span> = correct,
                         <span style="color:#DC2626;font-weight:600">rouge</span> = faux.
-                        <span class="update-marker" style="display:inline-block;vertical-align:middle"></span> = mise à jour de l'outil.
+                        <span class="update-marker" style="display:inline-block;vertical-align:middle"></span> = mise à jour de l'outil (description affichée).
                     </p>
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+                        <span style="font-size:0.8rem;font-weight:600;color:var(--text-secondary)">Mois :</span>
+                        <select id="month-filter" style="padding:5px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:0.82rem" aria-label="Filtre par mois">
+                            <option value="all">Tous</option>
+                        </select>
+                    </div>
                     <div id="daily-recap">Chargement...</div>
                 </div>
             </div>
 
             <!-- SECTION 2 : Analyse erreurs -->
             <div class="section-title">Analyse des erreurs</div>
-            <div class="panel-grid">
+            <div class="detection-grid-3" style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:24px">
                 <div class="flat-card">
-                    <h4>Bilan par couleur</h4>
-                    <p class="card-hint">
-                        <strong>Fiabilité</strong> = quand on prédit cette couleur, quel % est correct.<br>
-                        <strong>Couverture</strong> = sur tous les vrais jours de cette couleur, quel % on a détecté.
-                    </p>
-                    <div id="prf-table">Chargement...</div>
+                    <h4>Détection ROUGE <span class="badge" style="background:#DC2626">Priorité #1</span></h4>
+                    <p class="card-hint">Vrais jours ROUGE anticipés par horizon.</p>
+                    <div id="rouge-recall-table">Chargement...</div>
                 </div>
                 <div class="flat-card">
-                    <h4>Détection ROUGE par horizon <span class="badge" style="background:#DC2626">Priorité #1</span></h4>
-                    <p class="card-hint">Combien de vrais jours ROUGE anticipés par horizon.</p>
-                    <div id="rouge-recall-table">Chargement...</div>
+                    <h4>Détection BLANC</h4>
+                    <p class="card-hint">Vrais jours BLANC anticipés par horizon.</p>
+                    <div id="blanc-recall-table">Chargement...</div>
+                </div>
+                <div class="flat-card">
+                    <h4>Détection BLEU</h4>
+                    <p class="card-hint">Vrais jours BLEU anticipés par horizon.</p>
+                    <div id="bleu-recall-table">Chargement...</div>
                 </div>
             </div>
             <div class="panel-grid">
@@ -275,9 +284,9 @@
             <div class="section-title">Progresse-t-on ?</div>
             <div class="panel-grid">
                 <div class="flat-card">
-                    <h4>Évolution de la précision</h4>
-                    <div class="chart-container" style="height:260px"><canvas id="chart-trend"></canvas></div>
-                    <div id="chart-trend-fallback" class="chart-fallback" style="display:none">Chart.js non disponible.</div>
+                    <h4>Bilan mois par mois</h4>
+                    <p class="card-hint">Précision globale et par couleur (fiabilité / couverture), mois après mois. Permet de voir la progression.</p>
+                    <div id="monthly-perf-table">Chargement...</div>
                 </div>
                 <div class="flat-card">
                     <h4>Précision par horizon</h4>
@@ -390,7 +399,8 @@
 <script>
 let adminPassword = '';
 let currentSeason = '2025-2026';
-let chartHorizon = null, chartWeights = null, chartTrend = null;
+let chartHorizon = null, chartWeights = null;
+let _recapData = []; // cached for month filter
 const chartAvailable = typeof Chart !== 'undefined';
 
 function escapeHtml(s) {
@@ -498,13 +508,14 @@ function renderPerformanceData(data) {
 
     /* Sections */
     renderDailyRecap(data.daily_recap||[]);
-    renderPrfTable(data.precision_recall_f1||{}, g.total||0);
-    renderRougeRecallTable(rrh, totalRouge);
+    renderColorRecallTable('rouge-recall-table', rrh, totalRouge, '#F44336');
+    renderColorRecallTable('blanc-recall-table', data.blanc_recall_by_horizon||{},
+        Object.values(data.blanc_recall_by_horizon||{}).reduce((s,v)=>s+(v.total_actual||0),0), '#9E9E9E');
+    renderColorRecallTable('bleu-recall-table', data.bleu_recall_by_horizon||{},
+        Object.values(data.bleu_recall_by_horizon||{}).reduce((s,v)=>s+(v.total_actual||0),0), '#2196F3');
     renderConfusionMatrix(data.confusion_matrix||{}, g.total||0);
     renderDiagnostic(data.diagnostic||{}, g.total||0);
-
-    if (chartAvailable) renderTrendChart(data.trend||[]);
-    else { document.getElementById('chart-trend').style.display='none'; document.getElementById('chart-trend-fallback').style.display='flex'; }
+    renderMonthlyPerfTable(data.monthly_performance||[]);
 
     const hEl = document.getElementById('metrics-horizon');
     if (data.by_horizon && data.by_horizon.length > 0) {
@@ -535,6 +546,32 @@ function setKpi(id, text, value) {
 /* DAILY RECAP (15 horizons)         */
 /* ══════════════════════════════════ */
 function renderDailyRecap(recap) {
+    _recapData = recap; // store for month filtering
+    _populateMonthFilter(recap);
+    _renderRecapTable(recap);
+}
+
+function _populateMonthFilter(recap) {
+    const sel = document.getElementById('month-filter');
+    if (!sel || !recap || !recap.length) return;
+    const months = new Set();
+    recap.forEach(r => { if (r.date) months.add(r.date.substring(0,7)); });
+    const monthNames = {'01':'Janvier','02':'Février','03':'Mars','04':'Avril','05':'Mai','06':'Juin',
+        '07':'Juillet','08':'Août','09':'Septembre','10':'Octobre','11':'Novembre','12':'Décembre'};
+    sel.innerHTML = '<option value="all">Tous</option>' +
+        Array.from(months).sort().map(m => {
+            const mm = m.split('-')[1];
+            return `<option value="${m}">${monthNames[mm]||mm} ${m.split('-')[0]}</option>`;
+        }).join('');
+}
+
+document.getElementById('month-filter')?.addEventListener('change', e => {
+    const val = e.target.value;
+    if (val === 'all') _renderRecapTable(_recapData);
+    else _renderRecapTable(_recapData.filter(r => r.date && r.date.startsWith(val)));
+});
+
+function _renderRecapTable(recap) {
     const el = document.getElementById('daily-recap');
     if (!recap || recap.length === 0) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Aucune donnée.</p>'; return; }
 
@@ -582,7 +619,7 @@ function renderDailyRecap(recap) {
         h += `<tr class="${cls}">`;
         h += `<td class="sticky sticky-date" style="white-space:nowrap">${dayLabel(row.date)}`;
         if (isToday) h += ' <span style="font-size:0.6rem;color:var(--accent);font-weight:700">AUJ.</span>';
-        if (row.tool_update) h += `<span class="update-marker" title="${escapeHtml(row.tool_update)}"></span>`;
+        if (row.tool_update) h += `<div style="font-size:0.55rem;color:#7B1FA2;font-weight:600;line-height:1.1;margin-top:2px;max-width:90px;white-space:normal">${escapeHtml(row.tool_update)}</div>`;
         h += '</td>';
         h += `<td class="sticky sticky-result">${pill(row.actual)}</td>`;
 
@@ -607,75 +644,65 @@ function renderDailyRecap(recap) {
         <span><span class="recap-dot rouge incorrect" style="width:12px;height:12px;border-width:2px"></span> Faux</span>
         <span><span class="recap-dot blanc pending" style="width:12px;height:12px;border-width:2px"></span> En attente</span>
         <span><span class="recap-dot empty" style="width:6px;height:6px;margin:3px"></span> Pas de prévision</span>
-        <span><span class="update-marker"></span> Mise à jour outil</span>
+        <span><span class="update-marker"></span> <span style="color:#7B1FA2">MAJ outil</span> (description affichée sous la date)</span>
         <span style="font-style:italic">Température = prévision météo à cet horizon</span>
     </div>`;
     el.innerHTML = h;
 }
 
 /* ══════════════════════════════════ */
-/* BILAN PAR COULEUR                 */
+/* COLOR RECALL TABLE (generic)      */
 /* ══════════════════════════════════ */
-function renderPrfTable(prf, totalEvals) {
-    const el = document.getElementById('prf-table');
-    if (totalEvals === 0) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Aucune évaluation.</p>'; return; }
-
-    const colors = [
-        {key:'ROUGE',label:'ROUGE',dot:'#F44336',bg:'#FFEBEE'},
-        {key:'BLANC',label:'BLANC',dot:'#757575',bg:'#F5F5F5'},
-        {key:'BLEU',label:'BLEU',dot:'#2196F3',bg:'#E3F2FD'},
-    ];
-    const verdict = v => {
-        if (v==null) return {text:'—',cls:''};
-        if (v>=80) return {text:'excellent',cls:'color:#16A34A'};
-        if (v>=60) return {text:'correct',cls:'color:#16A34A'};
-        if (v>=40) return {text:'moyen',cls:'color:#D97706'};
-        return {text:'insuffisant',cls:'color:#DC2626'};
-    };
-
-    let h = '<div style="display:flex;flex-direction:column;gap:10px">';
-    colors.forEach(c => {
-        const d = prf[c.key]||{};
-        const support = d.support??0;
-        if (support === 0) {
-            h += `<div style="background:${c.bg};border-radius:var(--radius-sm);padding:12px 14px;opacity:0.6">
-                <div style="display:flex;align-items:center;gap:8px">
-                    <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${c.dot}"></span>
-                    <strong>${c.label}</strong>
-                    <span style="margin-left:auto;font-size:0.78rem;color:var(--text-secondary)">0 jour réel</span>
-                </div></div>`;
-            return;
-        }
-        const pV = verdict(d.precision), rV = verdict(d.recall);
-        h += `<div style="background:${c.bg};border-radius:var(--radius-sm);padding:12px 14px">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-                <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${c.dot}"></span>
-                <strong>${c.label}</strong>
-                <span style="margin-left:auto;font-size:0.78rem;color:var(--text-secondary)">${support} jour${support>1?'s':''} réel${support>1?'s':''}</span>
-            </div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.82rem">
-                <div><strong>Fiabilité</strong> : ${d.precision!=null?d.precision+'%':'—'} <span style="font-size:0.75rem;${pV.cls}">(${pV.text})</span></div>
-                <div><strong>Couverture</strong> : ${d.recall!=null?d.recall+'%':'—'} <span style="font-size:0.75rem;${rV.cls}">(${rV.text})</span></div>
-            </div></div>`;
+function renderColorRecallTable(elId, data, totalActual, accentColor) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    if (totalActual === 0) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Aucun jour réel.</p>'; return; }
+    const horizons = ['J+1','J+2','J+3','J+4','J+5'].filter(h => data[h] && ((data[h].total_actual||data[h].rouge_total||0)>0 || (data[h].false_alarms||0)>0));
+    if (horizons.length === 0) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Pas de données.</p>'; return; }
+    let h = '<table class="rouge-table"><thead><tr><th>Horizon</th><th>Couverture</th><th>Fiabilité</th><th>Détectés</th><th>Réels</th><th>Faux +</th></tr></thead><tbody>';
+    horizons.forEach(hz => {
+        const d = data[hz]||{};
+        const rc = d.recall==null?'':d.recall>=70?'val-good':d.recall>=40?'val-warn':'val-bad';
+        const pc = d.precision==null?'':d.precision>=70?'val-good':d.precision>=40?'val-warn':'val-bad';
+        const tot = d.total_actual ?? d.rouge_total ?? '—';
+        const caught = d.caught ?? d.rouge_caught ?? '—';
+        h += `<tr><td><strong>${hz}</strong></td><td class="${rc}">${d.recall!=null?d.recall+'%':'—'}</td><td class="${pc}">${d.precision!=null?d.precision+'%':'—'}</td><td>${caught}</td><td>${tot}</td><td>${d.false_alarms??'—'}</td></tr>`;
     });
-    h += '</div>';
+    h += '</tbody></table>';
     el.innerHTML = h;
 }
 
-/* ── Rouge recall table ── */
-function renderRougeRecallTable(rrh, totalRouge) {
-    const el = document.getElementById('rouge-recall-table');
-    if (totalRouge === 0) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Aucun jour ROUGE réel.</p>'; return; }
-    const horizons = ['J+1','J+2','J+3','J+4','J+5'].filter(h => rrh[h] && (rrh[h].rouge_total>0 || rrh[h].false_alarms>0));
-    if (horizons.length === 0) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Pas de données.</p>'; return; }
-    let h = '<table class="rouge-table"><thead><tr><th>Horizon</th><th>Détection</th><th>Fiabilité</th><th>Détectés</th><th>Réels</th><th>Fausses al.</th></tr></thead><tbody>';
-    horizons.forEach(hz => {
-        const d = rrh[hz]||{};
-        const rc = d.recall==null?'':d.recall>=70?'val-good':d.recall>=40?'val-warn':'val-bad';
-        const pc = d.precision==null?'':d.precision>=70?'val-good':d.precision>=40?'val-warn':'val-bad';
-        h += `<tr><td><strong>${hz}</strong></td><td class="${rc}">${d.recall!=null?d.recall+'%':'—'}</td><td class="${pc}">${d.precision!=null?d.precision+'%':'—'}</td><td>${d.rouge_caught??'—'}</td><td>${d.rouge_total??'—'}</td><td>${d.false_alarms??'—'}</td></tr>`;
+/* ══════════════════════════════════ */
+/* MONTHLY PERFORMANCE TABLE         */
+/* ══════════════════════════════════ */
+function renderMonthlyPerfTable(monthly) {
+    const el = document.getElementById('monthly-perf-table');
+    if (!el) return;
+    if (!monthly || monthly.length === 0) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Pas encore de données mensuelles.</p>'; return; }
+    const vc = v => { if(v==null) return ''; return v>=70?'val-good':v>=50?'val-warn':'val-bad'; };
+    let h = '<div style="overflow-x:auto"><table class="rouge-table" style="font-size:0.8rem"><thead><tr>';
+    h += '<th>Mois</th><th>Éval.</th><th>Précision</th>';
+    h += '<th style="color:#F44336">R. fiab.</th><th style="color:#F44336">R. couv.</th>';
+    h += '<th style="color:#757575">B. fiab.</th><th style="color:#757575">B. couv.</th>';
+    h += '<th style="color:#2196F3">Bl. fiab.</th><th style="color:#2196F3">Bl. couv.</th>';
+    h += '</tr></thead><tbody>';
+    monthly.forEach(m => {
+        const ac = m.accuracy>=75?'val-good':m.accuracy>=55?'val-warn':'val-bad';
+        const r = m.colors?.ROUGE||{}, b = m.colors?.BLANC||{}, bl = m.colors?.BLEU||{};
+        h += `<tr>`;
+        h += `<td><strong>${escapeHtml(m.month_label)}</strong></td>`;
+        h += `<td>${m.total}</td>`;
+        h += `<td class="${ac}"><strong>${m.accuracy}%</strong></td>`;
+        h += `<td class="${vc(r.precision)}">${r.precision!=null?r.precision+'%':'—'}</td>`;
+        h += `<td class="${vc(r.recall)}">${r.recall!=null?r.recall+'%':'—'}</td>`;
+        h += `<td class="${vc(b.precision)}">${b.precision!=null?b.precision+'%':'—'}</td>`;
+        h += `<td class="${vc(b.recall)}">${b.recall!=null?b.recall+'%':'—'}</td>`;
+        h += `<td class="${vc(bl.precision)}">${bl.precision!=null?bl.precision+'%':'—'}</td>`;
+        h += `<td class="${vc(bl.recall)}">${bl.recall!=null?bl.recall+'%':'—'}</td>`;
+        h += `</tr>`;
     });
-    h += '</tbody></table>';
+    h += '</tbody></table></div>';
+    h += '<p style="font-size:0.7rem;color:var(--text-secondary);margin-top:6px">Fiab. = fiabilité (précision), Couv. = couverture (rappel)</p>';
     el.innerHTML = h;
 }
 
@@ -738,22 +765,6 @@ function renderRecommendations(diag) {
 /* ══════════════════════════════════ */
 /* CHARTS                            */
 /* ══════════════════════════════════ */
-function renderTrendChart(trend) {
-    if (!chartAvailable||!trend||!trend.length) return;
-    const ctx = document.getElementById('chart-trend'); if (!ctx) return;
-    if (chartTrend) chartTrend.destroy();
-    chartTrend = new Chart(ctx, {
-        type:'line',
-        data:{ labels:trend.map(t=>t.date.substring(5)),
-            datasets:[{ label:'Précision (%)', data:trend.map(t=>t.precision), borderColor:'#2563EB', backgroundColor:'rgba(37,99,235,0.1)', fill:true, tension:0.3,
-                pointRadius:trend.length>30?0:4, pointBackgroundColor:trend.map(t=>t.precision>=80?'#4CAF50':t.precision>=60?'#FFC107':'#F44336') },
-                { label:'Évaluations', data:trend.map(t=>t.total), borderColor:'#9E9E9E', borderDash:[4,4], yAxisID:'y1', pointRadius:0, borderWidth:1 }]},
-        options:{ responsive:true, maintainAspectRatio:false, interaction:{mode:'index',intersect:false},
-            scales:{ y:{beginAtZero:true,max:100,title:{display:true,text:'%'}}, y1:{beginAtZero:true,position:'right',grid:{drawOnChartArea:false},title:{display:true,text:'Éval.'}} },
-            plugins:{legend:{position:'bottom',labels:{font:{size:11}}}} }
-    });
-}
-
 function renderHorizonChart(hd) {
     if (!chartAvailable||!hd||!hd.length) return;
     const ctx = document.getElementById('chart-horizon'); if (!ctx) return;
