@@ -692,9 +692,21 @@ def get_diagnostic(days: int = 30, since_date: str | None = None,
 
     # Verdict
     precision = g.get("precision", 0)
-    rouge_recall = prf.get("ROUGE", {}).get("recall", 0)
+    rouge_prf = prf.get("ROUGE", {})
+    rouge_support = rouge_prf.get("support", 0)
+    rouge_recall = rouge_prf.get("recall", 0)
+    # If no actual ROUGE days exist, recall is not meaningful (not a failure)
+    has_rouge_days = rouge_support > 0
 
-    if precision >= 80 and rouge_recall >= 60:
+    if not has_rouge_days:
+        # No ROUGE days to detect — judge only on precision
+        if precision >= 75:
+            verdict = "bon"
+        elif precision >= 55:
+            verdict = "moyen"
+        else:
+            verdict = "insuffisant"
+    elif precision >= 80 and rouge_recall >= 60:
         verdict = "bon"
     elif precision >= 65 or rouge_recall >= 40:
         verdict = "moyen"
@@ -734,7 +746,19 @@ def get_diagnostic(days: int = 30, since_date: str | None = None,
         )
 
     # C4: Build actionable summary sentence
-    if verdict == "bon":
+    if not has_rouge_days:
+        # No ROUGE days in period — cannot judge ROUGE detection
+        if total_errors == 0:
+            summary = (
+                f"L'outil fonctionne bien : {precision}% de précision. "
+                f"Aucun jour ROUGE dans la période — détection ROUGE non évaluable."
+            )
+        else:
+            summary = (
+                f"Précision : {precision}%. "
+                f"Aucun jour ROUGE dans la période — détection ROUGE non évaluable."
+            )
+    elif verdict == "bon":
         summary = (
             f"L'outil fonctionne bien : {precision}% de précision globale "
             f"et {rouge_recall}% de détection ROUGE."
@@ -781,7 +805,8 @@ def get_diagnostic(days: int = 30, since_date: str | None = None,
     return {
         "verdict": verdict,
         "precision": precision,
-        "rouge_recall": rouge_recall,
+        "rouge_recall": rouge_recall if has_rouge_days else None,
+        "has_rouge_days": has_rouge_days,
         "bias": bias,
         "over_predictions": over_pred,
         "under_predictions": under_pred,
@@ -1000,6 +1025,8 @@ def get_version_performance() -> list[dict]:
                     entry["horizons"][f"J-{h}"] = horizons_data[h]
             result.append(entry)
 
+        # Latest version first
+        result.reverse()
         return result
     finally:
         conn.close()
@@ -1552,9 +1579,10 @@ def get_performance_summary(season: str = "2025-2026") -> dict:
         "monthly_performance": get_monthly_performance(season),
         "version_performance": get_version_performance(),
         "current_weights": get_current_weights(),
-        "trend": get_accuracy_trend(d),
-        # C1: Diagnostic uses same scope as confusion matrix (since last update, J-2→J-5)
-        "diagnostic": get_diagnostic(days_since_update, min_horizon=2, max_horizon=5),
+        # Diagnostic scoped to latest version (since_date=last_update, J-2→J-5)
+        "diagnostic": get_diagnostic(
+            days_since_update, since_date=last_update,
+            min_horizon=2, max_horizon=5),
         "period_comparison": period_comp,
         "budget_season": get_budget_season(),
         "tool_versions": tool_versions,
@@ -1564,10 +1592,6 @@ def get_performance_summary(season: str = "2025-2026") -> dict:
         "daily_recap": get_daily_recap(season),
         # D6: Weather forecast reliability by horizon
         "weather_reliability": get_weather_reliability(d),
-        # D10: Post-mortem ROUGE analysis
-        "rouge_postmortem": get_rouge_postmortem(season),
-        # D12: Data coverage indicator
-        "data_coverage": get_data_coverage(season),
     }
 
     # B7: Store in cache

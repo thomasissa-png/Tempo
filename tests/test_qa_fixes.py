@@ -2250,9 +2250,9 @@ class TestDiagnosticConsistency:
     def test_diagnostic_returns_required_keys(self):
         from performance_tracker import get_diagnostic
         diag = get_diagnostic(30)
-        for key in ["verdict", "precision", "rouge_recall", "bias",
-                     "total_errors", "top_confusions", "recommendations",
-                     "summary", "action"]:
+        for key in ["verdict", "precision", "rouge_recall", "has_rouge_days",
+                     "bias", "total_errors", "top_confusions",
+                     "recommendations", "summary", "action"]:
             assert key in diag, f"Missing key: {key}"
 
     def test_diagnostic_accepts_horizon_params(self):
@@ -2282,6 +2282,16 @@ class TestDiagnosticConsistency:
         assert diag["precision"] == expected_pct, (
             f"Diagnostic precision {diag['precision']} != CM-derived {expected_pct}"
         )
+
+    def test_diagnostic_no_rouge_days_not_insufficient(self):
+        """When no ROUGE days exist, verdict should NOT be 'insuffisant' due to rouge_recall."""
+        from performance_tracker import get_diagnostic
+        diag = get_diagnostic(30)
+        if not diag["has_rouge_days"]:
+            # rouge_recall should be None when no ROUGE days
+            assert diag["rouge_recall"] is None
+            # Summary should mention "non évaluable", not "insuffisante"
+            assert "insuffisante" not in diag["summary"]
 
 
 class TestPeriodComparison:
@@ -2435,11 +2445,11 @@ class TestPerformanceSummaryCache:
             "precision_recall_f1", "precision_recall_f1_all",
             "rouge_recall_by_horizon", "blanc_recall_by_horizon",
             "bleu_recall_by_horizon", "monthly_performance",
-            "version_performance", "current_weights", "trend",
+            "version_performance", "current_weights",
             "diagnostic", "period_comparison", "budget_season",
             "tool_versions", "per_version_data", "last_tool_update",
             "last_tool_update_label", "daily_recap",
-            "weather_reliability", "rouge_postmortem", "data_coverage",
+            "weather_reliability",
         ]
         for key in required_keys:
             assert key in data, f"Missing key in summary: {key}"
@@ -2627,14 +2637,41 @@ class TestEnforceStartDate:
         assert result == "2099-01-01"
 
 
+class TestVersionPerformanceOrder:
+    """Version performance table should show latest version first."""
+
+    def test_latest_version_first(self):
+        from performance_tracker import get_version_performance
+        vp = get_version_performance()
+        if len(vp) >= 2:
+            # Latest version should be first
+            assert vp[0]["version_date"] >= vp[1]["version_date"]
+
+
+class TestDiagnosticNoRouge:
+    """Diagnostic should handle zero ROUGE days gracefully."""
+
+    def test_has_rouge_days_field(self):
+        from performance_tracker import get_diagnostic
+        diag = get_diagnostic(30)
+        assert "has_rouge_days" in diag
+        assert isinstance(diag["has_rouge_days"], bool)
+
+    def test_rouge_recall_none_when_no_rouge(self):
+        from performance_tracker import get_diagnostic
+        diag = get_diagnostic(30)
+        if not diag["has_rouge_days"]:
+            assert diag["rouge_recall"] is None
+
+    def test_verdict_not_driven_by_rouge_when_no_rouge(self):
+        from performance_tracker import get_diagnostic
+        diag = get_diagnostic(30)
+        if not diag["has_rouge_days"] and diag["precision"] >= 75:
+            assert diag["verdict"] == "bon"
+
+
 class TestAdminHTMLStructure:
     """Tests for admin.html template structure."""
-
-    def test_admin_has_prf_table_div(self):
-        """A9: P/R/F1 table container exists."""
-        with open("templates/admin.html") as f:
-            html = f.read()
-        assert 'id="prf-table"' in html
 
     def test_admin_has_weather_reliability_div(self):
         """D6: Weather reliability section exists."""
@@ -2642,29 +2679,18 @@ class TestAdminHTMLStructure:
             html = f.read()
         assert 'id="weather-reliability"' in html
 
-    def test_admin_has_rouge_postmortem_div(self):
-        """D10: ROUGE post-mortem section exists."""
-        with open("templates/admin.html") as f:
-            html = f.read()
-        assert 'id="rouge-postmortem"' in html
-
-    def test_admin_has_data_coverage_div(self):
-        """D12: Data coverage section exists."""
-        with open("templates/admin.html") as f:
-            html = f.read()
-        assert 'id="data-coverage"' in html
-
-    def test_admin_has_trend_chart_canvas(self):
-        """B8: Trend chart canvas exists."""
-        with open("templates/admin.html") as f:
-            html = f.read()
-        assert 'id="chart-trend"' in html
-
     def test_admin_has_version_filter(self):
         """Version filter dropdown exists."""
         with open("templates/admin.html") as f:
             html = f.read()
         assert 'id="version-filter"' in html
+
+    def test_admin_version_auto_select_latest(self):
+        """Version filter auto-selects latest version on first load."""
+        with open("templates/admin.html") as f:
+            html = f.read()
+        assert '_versionFilterInitialized' in html
+        assert 'versions[versions.length - 1].date' in html
 
     def test_admin_has_quick_month_button(self):
         """D4: Quick month button exists."""
@@ -2678,7 +2704,6 @@ class TestAdminHTMLStructure:
             html = f.read()
         assert 'id="cm-scope-label"' in html
         assert 'id="diag-scope-label"' in html
-        assert 'id="prf-scope-label"' in html
 
     def test_admin_has_chartjs_onerror(self):
         """B5: Chart.js script has onerror handler."""
@@ -2700,35 +2725,11 @@ class TestAdminHTMLStructure:
             html = f.read()
         assert 'function _renderKPIs(' in html
 
-    def test_admin_js_renderPRFTable_function(self):
-        """A9: renderPRFTable function exists."""
-        with open("templates/admin.html") as f:
-            html = f.read()
-        assert 'function renderPRFTable(' in html
-
-    def test_admin_js_renderTrendChart_function(self):
-        """B8: renderTrendChart function exists."""
-        with open("templates/admin.html") as f:
-            html = f.read()
-        assert 'function renderTrendChart(' in html
-
     def test_admin_js_renderWeatherReliability_function(self):
         """D6: renderWeatherReliability function exists."""
         with open("templates/admin.html") as f:
             html = f.read()
         assert 'function renderWeatherReliability(' in html
-
-    def test_admin_js_renderRougePostmortem_function(self):
-        """D10: renderRougePostmortem function exists."""
-        with open("templates/admin.html") as f:
-            html = f.read()
-        assert 'function renderRougePostmortem(' in html
-
-    def test_admin_js_renderDataCoverage_function(self):
-        """D12: renderDataCoverage function exists."""
-        with open("templates/admin.html") as f:
-            html = f.read()
-        assert 'function renderDataCoverage(' in html
 
     def test_admin_js_clickMonth_function(self):
         """D11: _clickMonth function exists."""
