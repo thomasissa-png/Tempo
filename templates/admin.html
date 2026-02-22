@@ -467,7 +467,7 @@ async function loadPerformanceData(season) {
         const data = await resp.json();
         if (data.status !== 'ok') return;
         renderPerformanceData(data);
-    } catch {}
+    } catch (e) { console.error('Erreur chargement performance:', e); }
     finally { panel.style.opacity = '1'; panel.style.pointerEvents = ''; }
 }
 
@@ -502,17 +502,17 @@ function renderPerformanceData(data) {
 
     const rrh = data.rouge_recall_by_horizon||{};
     let totalRouge=0, totalCaught=0;
-    ['J+1','J+2','J+3','J+4','J+5'].forEach(k => { if(rrh[k]){totalRouge+=rrh[k].rouge_total;totalCaught+=rrh[k].rouge_caught;} });
+    ['J+1','J+2','J+3','J+4','J+5'].forEach(k => { if(rrh[k]){totalRouge+=rrh[k].total_actual||0;totalCaught+=rrh[k].caught||0;} });
     if (totalRouge > 0) { const rr=Math.round(totalCaught/totalRouge*100); setKpi('kpi-rouge-recall',rr+'%',rr); kpiRougeCard.style.opacity='1'; }
     else { document.getElementById('kpi-rouge-recall').textContent='—'; document.getElementById('kpi-rouge-recall').className='kpi-value'; kpiRougeCard.style.opacity='0.4'; }
 
     /* Sections */
     renderDailyRecap(data.daily_recap||[]);
-    renderColorRecallTable('rouge-recall-table', rrh, totalRouge, '#F44336');
+    renderColorRecallTable('rouge-recall-table', rrh, totalRouge);
     renderColorRecallTable('blanc-recall-table', data.blanc_recall_by_horizon||{},
-        Object.values(data.blanc_recall_by_horizon||{}).reduce((s,v)=>s+(v.total_actual||0),0), '#9E9E9E');
+        Object.values(data.blanc_recall_by_horizon||{}).reduce((s,v)=>s+(v.total_actual||0),0));
     renderColorRecallTable('bleu-recall-table', data.bleu_recall_by_horizon||{},
-        Object.values(data.bleu_recall_by_horizon||{}).reduce((s,v)=>s+(v.total_actual||0),0), '#2196F3');
+        Object.values(data.bleu_recall_by_horizon||{}).reduce((s,v)=>s+(v.total_actual||0),0));
     renderConfusionMatrix(data.confusion_matrix||{}, g.total||0);
     renderDiagnostic(data.diagnostic||{}, g.total||0);
     renderMonthlyPerfTable(data.monthly_performance||[]);
@@ -607,7 +607,7 @@ function _renderRecapTable(recap) {
     let h = '<div class="recap-wrapper"><table class="recap-table"><thead><tr>';
     h += '<th class="sticky sticky-date">Date</th><th class="sticky sticky-result">Résultat</th>';
     HORIZONS.forEach(hz => { h += `<th>${hz}</th>`; });
-    h += '<th>1er &#10003;</th><th>Météo obs.</th><th style="text-align:left">Analyse erreur</th>';
+    h += '<th>&#10003; consec.</th><th>Météo obs.</th><th style="text-align:left">Analyse erreur</th>';
     h += '</tr></thead><tbody>';
 
     recap.forEach(row => {
@@ -625,7 +625,8 @@ function _renderRecapTable(recap) {
 
         HORIZONS.forEach(hz => { h += `<td>${dot(row.predictions?row.predictions[hz]:null)}</td>`; });
 
-        h += `<td style="font-size:0.7rem;font-weight:600;color:${row.first_correct?'#16A34A':'var(--text-secondary)'}">${row.first_correct||'—'}</td>`;
+        const cc = row.consec_correct;
+        h += `<td style="font-size:0.7rem;font-weight:600;color:${cc?'#16A34A':'var(--text-secondary)'}" title="${cc?cc+' horizon(s) consécutif(s) correct(s) depuis J-1':''}">${cc?cc+'j':'—'}</td>`;
 
         const w = row.weather_observed;
         if (w && w.temp_moy != null) {
@@ -646,6 +647,7 @@ function _renderRecapTable(recap) {
         <span><span class="recap-dot empty" style="width:6px;height:6px;margin:3px"></span> Pas de prévision</span>
         <span><span class="update-marker"></span> <span style="color:#7B1FA2">MAJ outil</span> (description affichée sous la date)</span>
         <span style="font-style:italic">Température = prévision météo à cet horizon</span>
+        <span><strong>✓ consec.</strong> = nb de jours consécutifs corrects en remontant depuis J-1</span>
     </div>`;
     el.innerHTML = h;
 }
@@ -653,20 +655,18 @@ function _renderRecapTable(recap) {
 /* ══════════════════════════════════ */
 /* COLOR RECALL TABLE (generic)      */
 /* ══════════════════════════════════ */
-function renderColorRecallTable(elId, data, totalActual, accentColor) {
+function renderColorRecallTable(elId, data, totalActual) {
     const el = document.getElementById(elId);
     if (!el) return;
     if (totalActual === 0) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Aucun jour réel.</p>'; return; }
-    const horizons = ['J+1','J+2','J+3','J+4','J+5'].filter(h => data[h] && ((data[h].total_actual||data[h].rouge_total||0)>0 || (data[h].false_alarms||0)>0));
+    const horizons = ['J+1','J+2','J+3','J+4','J+5'].filter(h => data[h] && ((data[h].total_actual||0)>0 || (data[h].false_alarms||0)>0));
     if (horizons.length === 0) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Pas de données.</p>'; return; }
     let h = '<table class="rouge-table"><thead><tr><th>Horizon</th><th>Couverture</th><th>Fiabilité</th><th>Détectés</th><th>Réels</th><th>Faux +</th></tr></thead><tbody>';
     horizons.forEach(hz => {
         const d = data[hz]||{};
         const rc = d.recall==null?'':d.recall>=70?'val-good':d.recall>=40?'val-warn':'val-bad';
         const pc = d.precision==null?'':d.precision>=70?'val-good':d.precision>=40?'val-warn':'val-bad';
-        const tot = d.total_actual ?? d.rouge_total ?? '—';
-        const caught = d.caught ?? d.rouge_caught ?? '—';
-        h += `<tr><td><strong>${hz}</strong></td><td class="${rc}">${d.recall!=null?d.recall+'%':'—'}</td><td class="${pc}">${d.precision!=null?d.precision+'%':'—'}</td><td>${caught}</td><td>${tot}</td><td>${d.false_alarms??'—'}</td></tr>`;
+        h += `<tr><td><strong>${hz}</strong></td><td class="${rc}">${d.recall!=null?d.recall+'%':'—'}</td><td class="${pc}">${d.precision!=null?d.precision+'%':'—'}</td><td>${d.caught??'—'}</td><td>${d.total_actual??'—'}</td><td>${d.false_alarms??'—'}</td></tr>`;
     });
     h += '</tbody></table>';
     el.innerHTML = h;

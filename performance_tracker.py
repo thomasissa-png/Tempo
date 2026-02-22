@@ -886,14 +886,17 @@ def get_daily_recap(season: str = "2025-2026") -> list[dict]:
             preds = dates_data[dt]
             actual = actuals_map.get(dt)
 
-            # First correct horizon: scan from J-15 to J-1, find earliest correct
-            first_correct = None
+            # Consecutive correct horizons from J-1 backwards (anticipation)
+            consec_correct = None
             if actual:
-                for n in range(15, 0, -1):
+                count = 0
+                for n in range(1, 16):
                     key = f"J-{n}"
                     if key in preds and preds[key].get("correct") is True:
-                        first_correct = key
+                        count += 1
+                    else:
                         break
+                consec_correct = count if count > 0 else None
 
             # Diagnostic for wrong J-1 prediction
             diagnostic = None
@@ -910,7 +913,7 @@ def get_daily_recap(season: str = "2025-2026") -> list[dict]:
                 "actual": actual,
                 "predictions": preds,
                 "weather_observed": weather_obs_map.get(dt),
-                "first_correct": first_correct,
+                "consec_correct": consec_correct,
                 "diagnostic": diagnostic,
                 "tool_update": tool_updates.get(dt),
             })
@@ -939,7 +942,7 @@ def get_performance_summary(season: str = "2025-2026") -> dict:
         "by_horizon": get_accuracy_by_horizon(d),
         "confusion_matrix": get_confusion_matrix(d),
         "precision_recall_f1": get_precision_recall_f1(d),
-        "rouge_recall_by_horizon": get_rouge_recall_by_horizon(d),
+        "rouge_recall_by_horizon": get_color_recall_by_horizon("ROUGE", d),
         "blanc_recall_by_horizon": get_color_recall_by_horizon("BLANC", d),
         "bleu_recall_by_horizon": get_color_recall_by_horizon("BLEU", d),
         "monthly_performance": get_monthly_performance(season),
@@ -1342,7 +1345,7 @@ def export_monthly_csv(month: int, year: int) -> str:
 
     conn = get_db()
     try:
-        start = f"{year}-{month:02d}-01"
+        start = _enforce_start_date(f"{year}-{month:02d}-01")
         if month == 12:
             end = f"{year + 1}-01-01"
         else:
