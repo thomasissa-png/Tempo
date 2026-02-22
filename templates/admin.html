@@ -87,7 +87,7 @@
         /* ── KPI strip ── */
         .kpi-strip {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 12px;
             margin-bottom: 28px;
         }
@@ -526,13 +526,6 @@
         }
         .recap-weather strong { color: var(--text); }
 
-        .recap-score {
-            font-size: 0.68rem;
-            color: var(--text-secondary);
-            display: block;
-            margin-top: 1px;
-        }
-
         /* ── Period filter ── */
         .period-btns {
             display: flex;
@@ -643,7 +636,7 @@
         <!-- Data range indicator -->
         <div id="data-range" style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:12px;display:none"></div>
 
-        <!-- KPI strip -->
+        <!-- KPI strip (4 KPIs essentiels) -->
         <div class="kpi-strip" id="kpi-strip">
             <div class="kpi-card">
                 <div class="kpi-value" id="kpi-acc-j1">—</div>
@@ -656,14 +649,6 @@
             <div class="kpi-card">
                 <div class="kpi-value" id="kpi-rouge-recall">—</div>
                 <div class="kpi-label">Détection ROUGE<br><small style="font-weight:400">% jours rouges repérés</small></div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-value" id="kpi-total">—</div>
-                <div class="kpi-label">Évaluations<br><small style="font-weight:400">sur la période</small></div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-value" id="kpi-acc">—</div>
-                <div class="kpi-label">Tous horizons<br><small style="font-weight:400">J+1 à J+5 mélangés</small></div>
             </div>
             <div class="kpi-card">
                 <div class="kpi-value" id="kpi-subs">—</div>
@@ -718,13 +703,14 @@
             <!-- Budget saison + Bilan par couleur -->
             <div class="panel-grid">
                 <div class="flat-card">
-                    <h4>Budget saison</h4>
+                    <h4>Budget saison <span class="badge badge-info" style="font-size:0.65rem;vertical-align:middle">Saison complète</span></h4>
                     <div id="budget-season">Chargement...</div>
                 </div>
                 <div class="flat-card">
                     <h4>Bilan par couleur</h4>
                     <p class="card-hint">
                         Pour chaque couleur : est-ce qu'on la prédit correctement, et est-ce qu'on détecte bien les vrais jours ?
+                        <br><em>Agrégé sur tous les horizons (J+1 à J+5) — un même jour compte plusieurs fois.</em>
                     </p>
                     <div id="prf-table">Chargement...</div>
                 </div>
@@ -771,6 +757,7 @@
                     <p class="card-hint">
                         Croisement prédit vs réel. La diagonale = correct.
                         Les cases rouges = jours ROUGE manqués (le plus critique).
+                        <br><em>Tous horizons confondus (J+1 à J+5) — chaque évaluation = 1 entrée.</em>
                     </p>
                     <div id="confusion-matrix"></div>
                 </div>
@@ -1065,6 +1052,9 @@ async function loadAdminData() {
 /* ── Reload performance data for a given period ── */
 async function loadPerformanceData(days) {
     if (!adminPassword) return;
+    const panel = document.getElementById('panel-performance');
+    panel.style.opacity = '0.45';
+    panel.style.pointerEvents = 'none';
     try {
         const resp = await fetch(`/api/performance?days=${days}`, {
             headers: { 'Authorization': `Bearer ${adminPassword}` }
@@ -1074,6 +1064,10 @@ async function loadPerformanceData(days) {
         if (data.status !== 'ok') return;
         renderPerformanceData(data);
     } catch { /* silent */ }
+    finally {
+        panel.style.opacity = '1';
+        panel.style.pointerEvents = '';
+    }
 }
 
 /* ── Render all performance data ── */
@@ -1110,10 +1104,9 @@ function renderPerformanceData(data) {
     /* ── Verdict banner ── */
     renderVerdict(data.diagnostic || {}, data.comparison || {}, g.total || 0);
 
-    /* ── KPI strip ── */
+    /* ── KPI strip (4 KPIs) ── */
     const kpiJ2J5Card = document.getElementById('kpi-acc-j2j5').closest('.kpi-card');
     const kpiRougeCard = document.getElementById('kpi-rouge-recall').closest('.kpi-card');
-    const kpiAllCard = document.getElementById('kpi-acc').closest('.kpi-card');
 
     /* J+1 = primary (prediction for tomorrow, what users care about) */
     if (j1.total > 0) {
@@ -1136,17 +1129,6 @@ function renderPerformanceData(data) {
         document.getElementById('kpi-acc-j2j5').closest('.kpi-card').querySelector('.kpi-label').innerHTML =
             'Précision J+2→J+5<br><small style="font-weight:400">pas de résultats vérifiés</small>';
     }
-
-    /* All horizons combined */
-    if (g.total > 0) {
-        setKpi('kpi-acc', g.precision + '%', g.precision);
-        kpiAllCard.style.opacity = '1';
-    } else {
-        document.getElementById('kpi-acc').textContent = '—';
-        document.getElementById('kpi-acc').className = 'kpi-value';
-        kpiAllCard.style.opacity = '0.4';
-    }
-    document.getElementById('kpi-total').textContent = g.total ?? '—';
 
     /* Recall ROUGE global */
     const rrh = data.rouge_recall_by_horizon || {};
@@ -1366,14 +1348,6 @@ function renderTrendChart(trend) {
             },
             plugins: {
                 legend: { position: 'bottom', labels: { font: { size: 11 } } },
-                annotation: {
-                    annotations: {
-                        line76: { type: 'line', yMin: 76, yMax: 76, borderColor: '#9E9E9E',
-                                  borderDash: [6, 3], borderWidth: 1,
-                                  label: { display: true, content: 'Baseline BLEU', position: 'start',
-                                           font: { size: 10 }, color: '#9E9E9E' } }
-                    }
-                }
             }
         }
     });
@@ -1539,22 +1513,27 @@ function renderDailyRecap(recap) {
     }
 
     const todayISO = new Date().toISOString().split('T')[0];
-    const horizons = ['J-5', 'J-4', 'J-3', 'J-2', 'J-1'];
+    const horizons = ['J+5', 'J+4', 'J+3', 'J+2', 'J+1'];
 
-    /* Build dot HTML */
+    /* Build dot HTML — B4: escape couleur to prevent XSS */
     function dot(pred) {
         if (!pred) return '<span class="recap-dot empty"></span>';
-        const cls = pred.couleur.toLowerCase();
+        const safeColor = escapeHtml(pred.couleur);
+        const cls = safeColor.toLowerCase();
+        if (!['bleu','blanc','rouge'].includes(cls)) return '<span class="recap-dot empty"></span>';
         let border = 'pending';
         if (pred.correct === true) border = 'correct';
         else if (pred.correct === false) border = 'incorrect';
-        const scoreHtml = pred.score != null ? `<span class="recap-score">${pred.score}</span>` : '';
-        return `<span class="recap-dot ${cls} ${border}" title="${pred.couleur} (score ${pred.score ?? '?'})">${scoreHtml ? '' : ''}</span>${scoreHtml}`;
+        const title = pred.score != null ? `${safeColor} (score ${pred.score})` : safeColor;
+        return `<span class="recap-dot ${cls} ${border}" title="${title}"></span>`;
     }
 
     function actualPill(color) {
         if (!color) return '<span class="recap-actual unknown">en attente</span>';
-        return `<span class="recap-actual ${color.toLowerCase()}">${color}</span>`;
+        const safe = escapeHtml(color);
+        const cls = safe.toLowerCase();
+        if (!['bleu','blanc','rouge'].includes(cls)) return `<span class="recap-actual unknown">${safe}</span>`;
+        return `<span class="recap-actual ${cls}">${safe}</span>`;
     }
 
     function weatherCell(w) {

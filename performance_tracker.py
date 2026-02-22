@@ -601,54 +601,54 @@ def get_diagnostic(days: int = 30) -> dict:
 def get_daily_recap(days: int = 15) -> list[dict]:
     """Récapitulatif jour par jour : prévisions à chaque horizon + résultat EDF + météo.
 
-    Retourne une liste de dicts triés par date décroissante :
-    {
-        "date": "2026-02-20",
-        "actual": "BLEU" | null,
-        "weather": {"temp_moy": 8.4, "temp_min": 6.2, "temp_max": 10.7, "humidity": 75, "wind_speed": 12},
-        "predictions": {
-            "J-1": {"couleur": "BLEU", "score": 32.5, "correct": true},
-            "J-2": {"couleur": "BLANC", "score": 48.0, "correct": false},
-            ...
-        }
-    }
+    Retourne une liste de dicts triés par date décroissante.
+    Les clés de predictions utilisent la convention J+N (ex: "J+1", "J+2")
+    pour la cohérence avec le reste du dashboard.
     """
     conn = get_db()
     try:
         since = (date.today() - timedelta(days=days)).isoformat()
         tomorrow = (date.today() + timedelta(days=1)).isoformat()
 
-        # 1) All predictions for dates in range (exclude simulated, only model predictions)
-        pred_rows = conn.execute(
-            """SELECT date, horizon, couleur_predite, couleur_originale,
-                      score_risque, confirmed, timestamp_prediction,
-                      score_temperature, score_budget
-               FROM predictions
-               WHERE date >= ? AND date <= ?
-                 AND simulated = 0
-               ORDER BY date, timestamp_prediction""",
-            (since, tomorrow),
+        # Single query with LEFT JOINs for predictions + actuals + weather
+        rows = conn.execute(
+            """SELECT p.date, p.horizon, p.couleur_predite, p.couleur_originale,
+                      p.score_risque, p.confirmed, p.timestamp_prediction,
+                      a.couleur_reelle,
+                      w.temp_moy, w.temp_min, w.temp_max, w.humidity, w.wind_speed
+               FROM predictions p
+               LEFT JOIN actuals a ON a.date = p.date AND a.synthetic = 0
+               LEFT JOIN (
+                   SELECT date, temp_moy, temp_min, temp_max, humidity, wind_speed,
+                          ROW_NUMBER() OVER (PARTITION BY date ORDER BY fetched_at DESC) as rn
+                   FROM weather_cache
+                   WHERE date >= ?
+               ) w ON w.date = p.date AND w.rn = 1
+               WHERE p.date >= ? AND p.date <= ?
+                 AND p.simulated = 0
+               ORDER BY p.date DESC, p.timestamp_prediction""",
+            (since, since, tomorrow),
         ).fetchall()
 
-        # 2) Actuals for those dates
-        actual_rows = conn.execute(
-            "SELECT date, couleur_reelle FROM actuals WHERE date >= ? AND synthetic = 0",
+        # Also get actuals for dates that may have no predictions
+        actual_only = conn.execute(
+            """SELECT date, couleur_reelle FROM actuals
+               WHERE date >= ? AND synthetic = 0""",
             (since,),
         ).fetchall()
-        actuals_map = {r["date"]: r["couleur_reelle"] for r in actual_rows}
+        actuals_map = {r["date"]: r["couleur_reelle"] for r in actual_only}
 
-        # 3) Weather data (latest fetch per date)
-        weather_rows = conn.execute(
-            """SELECT date, temp_moy, temp_min, temp_max, humidity, wind_speed
-               FROM weather_cache
-               WHERE date >= ?
-               ORDER BY fetched_at DESC""",
-            (since,),
-        ).fetchall()
+        # Build per-date structure
+        dates_data = {}
         weather_map = {}
-        for r in weather_rows:
-            if r["date"] not in weather_map:
-                weather_map[r["date"]] = {
+        for r in rows:
+            dt = r["date"]
+            if dt not in dates_data:
+                dates_data[dt] = {}
+
+            # Cache weather from JOIN
+            if dt not in weather_map and r["temp_moy"] is not None:
+                weather_map[dt] = {
                     "temp_moy": r["temp_moy"],
                     "temp_min": r["temp_min"],
                     "temp_max": r["temp_max"],
@@ -656,14 +656,6 @@ def get_daily_recap(days: int = 15) -> list[dict]:
                     "wind_speed": r["wind_speed"],
                 }
 
-        # 4) Build per-date structure
-        dates_data = {}
-        for r in pred_rows:
-            dt = r["date"]
-            if dt not in dates_data:
-                dates_data[dt] = {}
-
-            horizon = r["horizon"]
             # For confirmed rows (EDF propagation without original), skip
             if r["confirmed"] and not r["couleur_originale"]:
                 continue
@@ -671,33 +663,31 @@ def get_daily_recap(days: int = 15) -> list[dict]:
             # Use couleur_originale if available (what model actually predicted)
             couleur = r["couleur_originale"] if r["couleur_originale"] else r["couleur_predite"]
 
-            actual = actuals_map.get(dt)
+            actual = r["couleur_reelle"] or actuals_map.get(dt)
             correct = None
             if actual:
                 correct = couleur == actual
 
-            # Score: confirmed rows have score_risque=0, use sub-scores estimate
+            # Score: only use real score, never approximate
             score = None
             if r["score_risque"] and r["score_risque"] > 0:
                 score = round(r["score_risque"], 1)
-            elif r["score_temperature"] and r["score_temperature"] > 0:
-                # Approximate from sub-scores (weighted sum)
-                score = round(
-                    r["score_temperature"] * 0.38 + r["score_budget"] * 0.18
-                    + 50 * 0.44,  # other factors default ~50
-                    1)
 
-            dates_data[dt][horizon] = {
+            # Convert DB horizon J-N to display convention J+N
+            horizon_key = r["horizon"]
+            if horizon_key and horizon_key.startswith("J-"):
+                horizon_key = "J+" + horizon_key[2:]
+
+            dates_data[dt][horizon_key] = {
                 "couleur": couleur,
                 "score": score,
                 "correct": correct,
             }
 
-        # 5) Assemble result sorted by date descending
-        result = []
-        # Include all dates from predictions + any dates in actuals not in predictions
+        # Assemble result sorted by date descending
         all_dates = sorted(set(list(dates_data.keys()) + list(actuals_map.keys())), reverse=True)
 
+        result = []
         for dt in all_dates:
             if dt < since:
                 continue
