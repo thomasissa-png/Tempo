@@ -452,6 +452,87 @@
         .rouge-table .val-warn { color: #D97706; font-weight: 700; }
         .rouge-table .val-bad { color: #DC2626; font-weight: 700; }
 
+        /* ── Daily recap table ── */
+        .recap-wrapper {
+            overflow-x: auto;
+            margin: 0 -20px;
+            padding: 0 20px;
+        }
+        .recap-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.78rem;
+            min-width: 700px;
+        }
+        .recap-table th {
+            text-align: center;
+            padding: 7px 6px;
+            background: var(--bg);
+            font-weight: 600;
+            border-bottom: 2px solid var(--border);
+            white-space: nowrap;
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            color: var(--text-secondary);
+        }
+        .recap-table th:first-child,
+        .recap-table td:first-child { text-align: left; padding-left: 10px; }
+        .recap-table td {
+            padding: 5px 6px;
+            text-align: center;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+        .recap-table tr:hover { background: var(--bg); }
+        .recap-table tr.today-row { background: #EFF6FF; }
+        .recap-table tr.future-row { opacity: 0.5; }
+
+        /* Color dots in recap */
+        .recap-dot {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2.5px solid transparent;
+            vertical-align: middle;
+        }
+        .recap-dot.correct { border-color: #16A34A; }
+        .recap-dot.incorrect { border-color: #DC2626; }
+        .recap-dot.pending { border-color: transparent; opacity: 0.6; }
+
+        .recap-dot.bleu { background: #2196F3; }
+        .recap-dot.blanc { background: #B0BEC5; }
+        .recap-dot.rouge { background: #F44336; }
+        .recap-dot.empty { background: var(--border); width: 8px; height: 8px; }
+
+        .recap-actual {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 999px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #fff;
+        }
+        .recap-actual.bleu { background: #2196F3; }
+        .recap-actual.blanc { background: #9E9E9E; }
+        .recap-actual.rouge { background: #F44336; }
+        .recap-actual.unknown { background: var(--border); color: var(--text-secondary); font-weight: 400; }
+
+        .recap-weather {
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+        .recap-weather strong { color: var(--text); }
+
+        .recap-score {
+            font-size: 0.68rem;
+            color: var(--text-secondary);
+            display: block;
+            margin-top: 1px;
+        }
+
         /* ── Period filter ── */
         .period-btns {
             display: flex;
@@ -621,33 +702,31 @@
             <!-- ════════════════════════════════════════ -->
             <div class="section-title">1. Nos prévisions sont-elles bonnes ?</div>
 
-            <!-- Budget saison -->
+            <!-- Récapitulatif jour par jour -->
             <div class="panel-grid full">
                 <div class="flat-card">
-                    <div id="budget-season">Chargement...</div>
+                    <h4>Récapitulatif jour par jour</h4>
+                    <p class="card-hint">
+                        Chaque ligne = une journée. Les colonnes J-5 à J-1 montrent l'évolution de nos prévisions
+                        à mesure qu'on se rapproche. Bordure <span style="color:#16A34A;font-weight:600">verte</span> = correct,
+                        <span style="color:#DC2626;font-weight:600">rouge</span> = faux.
+                    </p>
+                    <div id="daily-recap">Chargement...</div>
                 </div>
             </div>
 
-            <!-- Détail par couleur -->
-            <div class="panel-grid full">
+            <!-- Budget saison + Bilan par couleur -->
+            <div class="panel-grid">
+                <div class="flat-card">
+                    <h4>Budget saison</h4>
+                    <div id="budget-season">Chargement...</div>
+                </div>
                 <div class="flat-card">
                     <h4>Bilan par couleur</h4>
                     <p class="card-hint">
                         Pour chaque couleur : est-ce qu'on la prédit correctement, et est-ce qu'on détecte bien les vrais jours ?
                     </p>
                     <div id="prf-table">Chargement...</div>
-                </div>
-            </div>
-
-            <!-- Matrice de confusion -->
-            <div class="panel-grid full">
-                <div class="flat-card">
-                    <h4>Matrice de confusion</h4>
-                    <p class="card-hint">
-                        Croisement prédit vs réel. La diagonale = correct.
-                        Les cases rouges = jours ROUGE manqués (le plus critique).
-                    </p>
-                    <div id="confusion-matrix"></div>
                 </div>
             </div>
 
@@ -685,16 +764,15 @@
                 </div>
             </div>
 
-            <!-- Erreurs récentes -->
+            <!-- Matrice de confusion -->
             <div class="panel-grid full">
                 <div class="flat-card">
-                    <h4>Erreurs récentes</h4>
+                    <h4>Matrice de confusion</h4>
                     <p class="card-hint">
-                        Les 10 dernières prédictions incorrectes. Les bordures rouges signalent un jour ROUGE manqué.
+                        Croisement prédit vs réel. La diagonale = correct.
+                        Les cases rouges = jours ROUGE manqués (le plus critique).
                     </p>
-                    <ul class="error-list" id="errors-list">
-                        <li>Chargement...</li>
-                    </ul>
+                    <div id="confusion-matrix"></div>
                 </div>
             </div>
 
@@ -1091,6 +1169,7 @@ function renderPerformanceData(data) {
     }
 
     /* ── SECTION 1 : Nos prévisions sont-elles bonnes ? ── */
+    renderDailyRecap(data.daily_recap || []);
     renderBudgetSeason(data.budget_season || {});
     const prf = data.precision_recall_f1 || {};
     renderPrfTable(prf, g.total || 0);
@@ -1104,7 +1183,6 @@ function renderPerformanceData(data) {
         document.getElementById('chart-rouge-recall').style.display = 'none';
         document.getElementById('chart-rouge-recall-fallback').style.display = 'flex';
     }
-    renderRecentErrors(data.recent_errors || []);
 
     /* ── SECTION 3 : Progresse-t-on ? ── */
     if (chartAvailable) renderTrendChart(data.trend || []);
@@ -1452,6 +1530,87 @@ function renderPrfTable(prf, totalEvals) {
     el.innerHTML = html;
 }
 
+/* ── Daily recap table ── */
+function renderDailyRecap(recap) {
+    const el = document.getElementById('daily-recap');
+    if (!recap || recap.length === 0) {
+        el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Aucune donnée disponible.</p>';
+        return;
+    }
+
+    const todayISO = new Date().toISOString().split('T')[0];
+    const horizons = ['J-5', 'J-4', 'J-3', 'J-2', 'J-1'];
+
+    /* Build dot HTML */
+    function dot(pred) {
+        if (!pred) return '<span class="recap-dot empty"></span>';
+        const cls = pred.couleur.toLowerCase();
+        let border = 'pending';
+        if (pred.correct === true) border = 'correct';
+        else if (pred.correct === false) border = 'incorrect';
+        const scoreHtml = pred.score != null ? `<span class="recap-score">${pred.score}</span>` : '';
+        return `<span class="recap-dot ${cls} ${border}" title="${pred.couleur} (score ${pred.score ?? '?'})">${scoreHtml ? '' : ''}</span>${scoreHtml}`;
+    }
+
+    function actualPill(color) {
+        if (!color) return '<span class="recap-actual unknown">en attente</span>';
+        return `<span class="recap-actual ${color.toLowerCase()}">${color}</span>`;
+    }
+
+    function weatherCell(w) {
+        if (!w) return '<span style="color:var(--text-secondary);font-size:0.72rem">—</span>';
+        const parts = [];
+        if (w.temp_moy != null) parts.push(`<strong>${w.temp_moy.toFixed(1)}°C</strong>`);
+        else if (w.temp_min != null && w.temp_max != null) parts.push(`<strong>${w.temp_min.toFixed(0)}-${w.temp_max.toFixed(0)}°C</strong>`);
+        if (w.humidity != null) parts.push(`💧${Math.round(w.humidity)}%`);
+        if (w.wind_speed != null) parts.push(`💨${Math.round(w.wind_speed)}`);
+        return `<span class="recap-weather">${parts.join(' ')}</span>`;
+    }
+
+    function dayLabel(dt) {
+        const d = new Date(dt + 'T12:00:00');
+        const days = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+        const day = d.getDate();
+        const month = d.getMonth() + 1;
+        return `<strong>${days[d.getDay()]}</strong> ${day}/${month < 10 ? '0' + month : month}`;
+    }
+
+    let html = '<div class="recap-wrapper"><table class="recap-table"><thead><tr>';
+    html += '<th>Date</th><th>Résultat</th>';
+    horizons.forEach(h => { html += `<th>${h}</th>`; });
+    html += '<th>Météo</th></tr></thead><tbody>';
+
+    recap.forEach(row => {
+        const isToday = row.date === todayISO;
+        const isFuture = row.date > todayISO;
+        const rowCls = isToday ? 'today-row' : isFuture ? 'future-row' : '';
+
+        html += `<tr class="${rowCls}">`;
+        html += `<td style="white-space:nowrap">${dayLabel(row.date)}${isToday ? ' <span style="font-size:0.65rem;color:var(--accent);font-weight:600">AUJ.</span>' : ''}</td>`;
+        html += `<td>${actualPill(row.actual)}</td>`;
+
+        horizons.forEach(h => {
+            const pred = row.predictions[h];
+            html += `<td>${dot(pred)}</td>`;
+        });
+
+        html += `<td>${weatherCell(row.weather)}</td>`;
+        html += '</tr>';
+    });
+
+    html += '</tbody></table></div>';
+
+    /* Legend */
+    html += `<div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:0.72rem;color:var(--text-secondary)">
+        <span><span class="recap-dot bleu correct" style="width:14px;height:14px;border-width:2px"></span> Correct</span>
+        <span><span class="recap-dot rouge incorrect" style="width:14px;height:14px;border-width:2px"></span> Faux</span>
+        <span><span class="recap-dot blanc pending" style="width:14px;height:14px;border-width:2px"></span> En attente</span>
+        <span><span class="recap-dot empty" style="width:8px;height:8px;margin:3px"></span> Pas de prévision</span>
+    </div>`;
+
+    el.innerHTML = html;
+}
+
 /* ── Budget saison ── */
 function renderBudgetSeason(bs) {
     const el = document.getElementById('budget-season');
@@ -1542,45 +1701,6 @@ function renderConfusionMatrix(cm, totalEvals) {
         <span style="display:inline-block;width:12px;height:12px;background:#FFEBEE;border:1px solid #ccc;border-radius:2px;vertical-align:middle;margin-right:4px"></span>ROUGE manqué (danger)
     </p>`;
     el.innerHTML = html;
-}
-
-/* ── Recent errors (grouped by date) ── */
-function renderRecentErrors(errors) {
-    const errEl = document.getElementById('errors-list');
-    if (!errors || errors.length === 0) {
-        errEl.innerHTML = '<li style="color:var(--text-secondary)">Aucune erreur sur cette période</li>';
-        return;
-    }
-
-    const colorBg = c => c === 'ROUGE' ? '#F44336' : c === 'BLANC' ? '#9E9E9E' : '#2196F3';
-    const colorPill = c => `<span style="display:inline-block;padding:1px 8px;border-radius:999px;background:${colorBg(c)};color:#fff;font-size:0.72rem;font-weight:600">${c}</span>`;
-
-    /* Group errors by date */
-    const byDate = {};
-    errors.forEach(e => {
-        if (!byDate[e.date_cible]) byDate[e.date_cible] = [];
-        byDate[e.date_cible].push(e);
-    });
-
-    errEl.innerHTML = Object.entries(byDate).map(([dt, errs]) => {
-        const actual = errs[0].couleur_reelle;
-        const isDangereux = actual === 'ROUGE';
-        const horizons = errs.map(e => {
-            const h = e.jours_avance > 0 ? `J+${e.jours_avance}` : 'J0';
-            return `${colorPill(e.couleur_predite)} <span style="font-size:0.72rem;color:var(--text-secondary)">à ${h}</span>`;
-        }).join('&nbsp; ');
-
-        return `<li style="${isDangereux ? 'border-left:3px solid #DC2626;padding-left:10px' : ''}">
-            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:4px">
-                <strong>${escapeHtml(dt)}</strong>
-                <span style="font-size:0.82rem">Réel : ${colorPill(actual)}</span>
-            </div>
-            <div style="font-size:0.82rem;margin-bottom:2px">
-                On avait prédit : ${horizons}
-            </div>
-            ${isDangereux ? '<div style="font-size:0.78rem;color:#DC2626;font-weight:600">Jour ROUGE manqué</div>' : ''}
-        </li>`;
-    }).join('');
 }
 
 function setKpi(id, text, value) {
