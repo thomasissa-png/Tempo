@@ -54,6 +54,55 @@ def _enforce_start_date(since: str) -> str:
     return since
 
 
+def _get_all_version_dates() -> dict[str, str]:
+    """Merge code versions (TOOL_UPDATE_DATES) with weight recalculations.
+
+    Returns a sorted dict {date_str: label} combining:
+    - Config.TOOL_UPDATE_DATES (manual code changes)
+    - Successful weight recalculations from weights_history DB table
+      (excludes rejected entries that didn't change active weights)
+    """
+    versions = dict(getattr(Config, 'TOOL_UPDATE_DATES', {}))
+
+    # Read successful weight recalculations from DB
+    start = getattr(Config, 'PREDICTION_START_DATE', None)
+    conn = get_db()
+    try:
+        conditions = ["commentaire NOT LIKE 'REJETE%'"]
+        params: list = []
+        if start:
+            conditions.append("date_update >= ?")
+            params.append(start)
+
+        rows = conn.execute(
+            f"""SELECT date_update, commentaire, precision_avant,
+                       rollback_of
+               FROM weights_history
+               WHERE {' AND '.join(conditions)}
+               ORDER BY id""",
+            params,
+        ).fetchall()
+
+        for r in rows:
+            d = r["date_update"]
+            if d in versions:
+                # Code version on same date takes precedence
+                continue
+            if r["rollback_of"]:
+                label = "Auto-rollback poids"
+            else:
+                # Extract F1 from commentaire if available
+                comm = r["commentaire"] or ""
+                prec = r["precision_avant"] or 0
+                label = f"Recalibration poids (préc. {prec:.0f}%)"
+            versions[d] = label
+    finally:
+        conn.close()
+
+    return dict(sorted(versions.items()))
+
+
+
 # ================================================================
 # UTILITAIRE : profondeur historique disponible
 # ================================================================
@@ -951,11 +1000,12 @@ def get_monthly_performance(season: str = "2025-2026") -> list[dict]:
 def get_version_performance() -> list[dict]:
     """Accuracy per horizon (J-1 to J-15) per tool version.
 
-    Uses Config.TOOL_UPDATE_DATES to segment performance data by version.
+    Uses _get_all_version_dates() to segment performance data by version
+    (code changes + weight recalculations).
     Each version's data starts at its release date and ends the day before
     the next version release (or today for the latest).
     """
-    tool_dates = getattr(Config, 'TOOL_UPDATE_DATES', {})
+    tool_dates = _get_all_version_dates()
     if not tool_dates:
         return []
 
@@ -1520,10 +1570,11 @@ def get_performance_summary(season: str = "2025-2026") -> dict:
     season_start, _ = parse_season(season)
     d = max(1, min((date.today() - season_start).days, 365))
 
-    # Last tool update for recommendations scope
-    tool_dates = sorted(Config.TOOL_UPDATE_DATES.keys()) if hasattr(Config, 'TOOL_UPDATE_DATES') else []
+    # All versions: code changes + weight recalculations
+    all_versions = _get_all_version_dates()
+    tool_dates = sorted(all_versions.keys())
     last_update = tool_dates[-1] if tool_dates else None
-    last_update_label = Config.TOOL_UPDATE_DATES.get(last_update, "") if last_update else ""
+    last_update_label = all_versions.get(last_update, "") if last_update else ""
     days_since_update = max(1, (date.today() - date.fromisoformat(last_update)).days) if last_update else d
 
     # D2: Single combined query instead of 3 separate get_accuracy_global calls
@@ -1531,9 +1582,8 @@ def get_performance_summary(season: str = "2025-2026") -> dict:
 
     # Build tool_versions list for frontend version filter
     tool_versions = []
-    raw_dates = getattr(Config, 'TOOL_UPDATE_DATES', {})
     for td in tool_dates:
-        tool_versions.append({"date": td, "label": raw_dates.get(td, td)})
+        tool_versions.append({"date": td, "label": all_versions.get(td, td)})
 
     # A5: Pre-compute per-version data with proper end_date bounding
     per_version_data = {}

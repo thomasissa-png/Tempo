@@ -210,9 +210,6 @@
                 </select>
             </div>
 
-            <div id="data-range" style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:12px;display:none"></div>
-            <div id="low-data-banner" class="low-data-warn" style="display:none"></div>
-
             <!-- E1: Executive summary banner -->
             <div id="exec-summary" style="display:none;padding:14px 18px;border-radius:var(--radius);margin-bottom:16px;font-size:0.88rem;line-height:1.5"></div>
 
@@ -487,28 +484,23 @@ async function loadAdminData() {
 async function loadPerformanceData(season) {
     if (!adminPassword) return;
     const panel = document.getElementById('panel-performance');
-    const errBanner = document.getElementById('low-data-banner');
     panel.style.opacity = '0.45'; panel.style.pointerEvents = 'none';
     try {
         const resp = await fetch(`/api/performance?season=${season}`, {
             headers: { 'Authorization': `Bearer ${adminPassword}` }
         });
         if (!resp.ok) {
-            errBanner.textContent = `Erreur de chargement (${resp.status}). Vérifiez la connexion et rechargez.`;
-            errBanner.style.display = 'block';
+            console.error(`Erreur de chargement (${resp.status})`);
             return;
         }
         const data = await resp.json();
         if (data.status !== 'ok') {
-            errBanner.textContent = 'Erreur serveur. Réessayez dans quelques instants.';
-            errBanner.style.display = 'block';
+            console.error('Erreur serveur performance');
             return;
         }
         renderPerformanceData(data);
     } catch (e) {
         console.error('Erreur chargement performance:', e);
-        errBanner.textContent = `Impossible de charger les données : ${e.message}`;
-        errBanner.style.display = 'block';
     }
     finally { panel.style.opacity = '1'; panel.style.pointerEvents = ''; }
 }
@@ -519,19 +511,6 @@ async function loadPerformanceData(season) {
 function renderPerformanceData(data) {
     const g = data.global||{}, j1 = data.accuracy_j1||{}, j2j5 = data.accuracy_j2_j5||{};
     const j6j15 = data.accuracy_j6_j15||{};
-
-    /* Banner */
-    const banner = document.getElementById('low-data-banner');
-    if (g.total === 0) { banner.textContent = 'Aucune évaluation sur cette saison.'; banner.style.display = 'block'; }
-    else if (g.total < 5) { banner.textContent = `Seulement ${g.total} évaluation(s). Métriques peu fiables.`; banner.style.display = 'block'; }
-    else banner.style.display = 'none';
-
-    /* Data range */
-    const rangeEl = document.getElementById('data-range');
-    if (g.total > 0 && g.first_date && g.last_date) {
-        rangeEl.textContent = `Données du ${g.first_date} au ${g.last_date} — ${g.total} évaluation(s) tous horizons`;
-        rangeEl.style.display = 'block';
-    } else { rangeEl.style.display = g.total===0?'block':'none'; rangeEl.textContent = g.total===0?'Aucune donnée évaluée.':''; }
 
     /* Cache full data for version filtering */
     _perfData = data;

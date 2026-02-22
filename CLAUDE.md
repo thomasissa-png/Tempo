@@ -137,7 +137,7 @@
 - Confidence percentage only in tooltip on hover (not visible under dots — user explicitly requested this).
 - **Quick month button** (D4): "Ce mois" button auto-selects current month in filter.
 - **Month filter persisted** (D5): `_selectedMonth` variable survives season changes.
-- **Tool update markers**: Purple dot + description when `TOOL_UPDATE_DATES[date]` matches.
+- **Tool update markers**: Purple dot + description when tool version matches (code updates from `TOOL_UPDATE_DATES` + automatic weight recalculations from `weights_history`).
 - **Diagnostic column**: Shows error analysis for J-1→J-5. "Rattrapé J-1 (erreur J-2, J-3)" shown in **orange/warning** (A8) — not green, because failing J-2→J-5 is an anticipation failure even if J-1 is correct.
 - **A11**: Past days without EDF actual yet show "en attente EDF" (not misleading "—").
 - **D5**: Error diagnostics include ΔT (temperature deviation: observed - forecast) when available.
@@ -152,7 +152,7 @@
 - **Diagnostic** (A3/B6/C1): Precision computed **directly from confusion matrix** (same scope), not from separate `get_accuracy_global()` call. Verdict (bon/moyen/insuffisant) is now coherent. **Zero ROUGE days**: when no ROUGE days exist in the period, diagnostic does NOT say "detection insuffisante" — instead says "non évaluable" and judges only on precision.
 - **C4**: All sections display explicit scope labels (e.g., "J-2→J-5", "version 2026-02-20", "depuis 2026-02-21").
 - **D6**: Weather reliability table: Average absolute forecast error and systematic bias per horizon. Helps distinguish "algo wrong" from "weather wrong".
-- **Removed sections**: P/R/F1 table (A9), trend chart (B8), data coverage (D12), ROUGE post-mortem (D10) — removed to simplify dashboard.
+- **Removed sections**: P/R/F1 table (A9), trend chart (B8), data coverage (D12), ROUGE post-mortem (D10), data-range/low-data-banner — removed to simplify dashboard.
 
 #### Section 3: Progresse-t-on ?
 - **Monthly table**: Accuracy per horizon per month. **D11**: Clickable rows → filters the recap table to that month and scrolls up.
@@ -174,7 +174,8 @@
 - **`get_weather_reliability(days)`**: JOIN weather_forecast_log + weather_cache to compute avg absolute error and bias per horizon.
 - **`get_rouge_postmortem(season)`**: Per ROUGE day: predictions at each horizon, caught/missed lists, temperature, version.
 - **`get_data_coverage(season)`**: Per horizon: prediction count, evaluation count, coverage percentage.
-- **`get_version_performance()`**: Per version: total, accuracy, days_count, dates_with_data, per-horizon accuracy. **Latest version first** (reversed chronological order).
+- **`_get_all_version_dates()`**: Merges `Config.TOOL_UPDATE_DATES` (manual code changes) with successful weight recalculations from `weights_history` DB table. Excludes rejected entries (`REJETE%`). Code versions take precedence on same date. Returns sorted dict.
+- **`get_version_performance()`**: Per version: total, accuracy, days_count, dates_with_data, per-horizon accuracy. **Latest version first** (reversed chronological order). Uses `_get_all_version_dates()` so weight recalculations automatically appear as new versions.
 - **`get_daily_recap(season)`**: Returns `actual_status` (confirmed/pending/future), `temp_deviation`, `tool_update`.
 
 #### Frontend Design Principles (`templates/admin.html`)
@@ -183,6 +184,7 @@
 - **Chart.js**: Loaded with `onerror` handler on script tag. `chartAvailable` checks both `typeof Chart` and `!window._chartJsFailed`.
 - **State variables**: `_perfData` (cached API response), `_selectedVersion` (version filter, auto-selects latest on first load via `_versionFilterInitialized`), `_selectedMonth` (month filter), `_recapData` (recap for filtering).
 - **No `kpi-subs` element**: Subscriber count KPI was removed from performance tab (C2). `loadSubscribers()` has null-check for the element.
+- **No `data-range`/`low-data-banner`**: Removed — redundant with executive summary and section-level scope labels.
 - **Season selector**: Only shows seasons with non-simulated predictions after `PREDICTION_START_DATE`.
 
 ## Common Pitfalls

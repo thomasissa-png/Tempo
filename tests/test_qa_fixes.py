@@ -2769,3 +2769,86 @@ class TestAdminHTMLStructure:
         with open("templates/admin.html") as f:
             html = f.read()
         assert "en attente EDF" in html
+
+    def test_admin_no_data_range_element(self):
+        """data-range element removed (redundant with rest of dashboard)."""
+        with open("templates/admin.html") as f:
+            html = f.read()
+        assert 'id="data-range"' not in html
+
+    def test_admin_no_low_data_banner_element(self):
+        """low-data-banner element removed (redundant with rest of dashboard)."""
+        with open("templates/admin.html") as f:
+            html = f.read()
+        assert 'id="low-data-banner"' not in html
+
+
+class TestGetAllVersionDates:
+    """_get_all_version_dates merges code versions + weight recalculations."""
+
+    def test_returns_dict(self):
+        from performance_tracker import _get_all_version_dates
+        result = _get_all_version_dates()
+        assert isinstance(result, dict)
+
+    def test_includes_tool_update_dates(self):
+        from performance_tracker import _get_all_version_dates
+        from config import Config
+        result = _get_all_version_dates()
+        for d in getattr(Config, 'TOOL_UPDATE_DATES', {}):
+            assert d in result
+
+    def test_sorted_chronologically(self):
+        from performance_tracker import _get_all_version_dates
+        result = _get_all_version_dates()
+        dates = list(result.keys())
+        assert dates == sorted(dates)
+
+    def test_excludes_rejected_recalculations(self):
+        """Entries with REJETE prefix should not appear as versions."""
+        from performance_tracker import _get_all_version_dates
+        from database import get_db
+        conn = get_db()
+        try:
+            conn.execute(
+                "INSERT INTO weights_history (date_update, commentaire, weights_json, timestamp_update) VALUES (?, ?, ?, ?)",
+                ("2099-01-01", "REJETE - test fictif", '{}', "2099-01-01T00:00:00"),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        try:
+            result = _get_all_version_dates()
+            assert "2099-01-01" not in result
+        finally:
+            conn = get_db()
+            try:
+                conn.execute("DELETE FROM weights_history WHERE date_update = '2099-01-01'")
+                conn.commit()
+            finally:
+                conn.close()
+
+    def test_includes_successful_recalculation(self):
+        """Successful weight recalculations appear as versions."""
+        from performance_tracker import _get_all_version_dates
+        from database import get_db
+        conn = get_db()
+        try:
+            conn.execute(
+                "INSERT INTO weights_history (date_update, commentaire, precision_avant, weights_json, timestamp_update) VALUES (?, ?, ?, ?, ?)",
+                ("2099-06-15", "OK - test", 78.5, '{}', "2099-06-15T00:00:00"),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        try:
+            result = _get_all_version_dates()
+            assert "2099-06-15" in result
+            assert "Recalibration" in result["2099-06-15"]
+        finally:
+            conn = get_db()
+            try:
+                conn.execute("DELETE FROM weights_history WHERE date_update = '2099-06-15'")
+                conn.commit()
+            finally:
+                conn.close()
