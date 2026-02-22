@@ -776,7 +776,7 @@ def get_daily_recap(season: str = "2025-2026") -> list[dict]:
     try:
         season_start, season_end = parse_season(season)
         today = date.today()
-        end_date = min(season_end, today + timedelta(days=1))
+        end_date = min(season_end, today + timedelta(days=15))
 
         since = _enforce_start_date(season_start.isoformat())
         until = end_date.isoformat()
