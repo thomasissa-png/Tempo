@@ -236,6 +236,71 @@ def get_accuracy_global(days: int = 30, max_horizon: int | None = None,
         conn.close()
 
 
+def get_accuracy_combined(days: int = 30) -> dict:
+    """Précision globale, J-1 et J-2→J-5 en une seule requête SQL.
+
+    Retourne {global: {...}, j1: {...}, j2_j5: {...}, j6_j15: {...}}
+    avec total, correct, precision pour chaque tranche.
+    """
+    conn = get_db()
+    try:
+        since = _enforce_start_date((date.today() - timedelta(days=days)).isoformat())
+        rows = conn.execute(
+            """SELECT
+                 jours_avance,
+                 SUM(CASE WHEN correct = 1 THEN 1 ELSE 0 END) as corrects,
+                 COUNT(*) as total
+               FROM performance
+               WHERE date_cible >= ?
+               GROUP BY jours_avance""",
+            (since,),
+        ).fetchall()
+
+        date_range = conn.execute(
+            """SELECT MIN(date_cible) as first_date, MAX(date_cible) as last_date
+               FROM performance WHERE date_cible >= ?""",
+            (since,),
+        ).fetchone()
+
+        # Accumulate per bucket
+        buckets = {
+            "global": {"total": 0, "correct": 0},
+            "j1": {"total": 0, "correct": 0},
+            "j2_j5": {"total": 0, "correct": 0},
+            "j6_j15": {"total": 0, "correct": 0},
+        }
+        for r in rows:
+            h = r["jours_avance"]
+            t, c = r["total"], r["corrects"] or 0
+            buckets["global"]["total"] += t
+            buckets["global"]["correct"] += c
+            if h == 1:
+                buckets["j1"]["total"] += t
+                buckets["j1"]["correct"] += c
+            if 2 <= h <= 5:
+                buckets["j2_j5"]["total"] += t
+                buckets["j2_j5"]["correct"] += c
+            if 6 <= h <= 15:
+                buckets["j6_j15"]["total"] += t
+                buckets["j6_j15"]["correct"] += c
+
+        result = {}
+        for key, b in buckets.items():
+            result[key] = {
+                "total": b["total"],
+                "correct": b["correct"],
+                "precision": round(b["correct"] / b["total"] * 100, 1)
+                if b["total"] > 0 else 0,
+                "periode_jours": days,
+            }
+        # Only global gets date range
+        result["global"]["first_date"] = date_range["first_date"] if date_range else None
+        result["global"]["last_date"] = date_range["last_date"] if date_range else None
+        return result
+    finally:
+        conn.close()
+
+
 def get_accuracy_by_horizon(days: int = 60) -> list[dict]:
     """Précision par horizon de prédiction (J-1, J-2, J-3...)."""
     conn = get_db()
@@ -565,37 +630,82 @@ def get_diagnostic(days: int = 30) -> dict:
     else:
         verdict = "insuffisant"
 
-    # Recommandations
+    # Recommandations (C7: accents corrects)
     recs = []
     top_confusions = problems[:3]
     for p in top_confusions:
         if p["predicted"] == "BLANC" and p["actual"] == "BLEU":
             recs.append(
-                f"{p['count']}x BLANC predit au lieu de BLEU — le seuil BLANC "
+                f"{p['count']}x BLANC prédit au lieu de BLEU — le seuil BLANC "
                 f"est probablement trop bas, ou le score budget pousse trop."
             )
         elif p["predicted"] == "ROUGE" and p["actual"] in ("BLEU", "BLANC"):
             recs.append(
-                f"{p['count']}x fausse alarme ROUGE (reel={p['actual']}) — "
-                f"le seuil ROUGE est trop sensible ou la temperature est "
-                f"surestimee."
+                f"{p['count']}x fausse alarme ROUGE (réel={p['actual']}) — "
+                f"le seuil ROUGE est trop sensible ou la température est "
+                f"surestimée."
             )
         elif p["actual"] == "ROUGE" and p["predicted"] != "ROUGE":
             recs.append(
-                f"{p['count']}x ROUGE manque (predit {p['predicted']}) — "
-                f"critique pour les abonnes. Verifier le recall ROUGE."
+                f"{p['count']}x ROUGE manqué (prédit {p['predicted']}) — "
+                f"critique pour les abonnés. Vérifier le recall ROUGE."
             )
         else:
             recs.append(
-                f"{p['count']}x {p['predicted']} predit au lieu de "
+                f"{p['count']}x {p['predicted']} prédit au lieu de "
                 f"{p['actual']}."
             )
 
     if bias == "sur-prediction":
         recs.append(
-            "Tendance globale : sur-prediction de severite. "
-            "L'algo predit trop de jours ROUGE/BLANC."
+            "Tendance globale : sur-prédiction de sévérité. "
+            "L'algo prédit trop de jours ROUGE/BLANC."
         )
+
+    # C4: Build actionable summary sentence
+    if verdict == "bon":
+        summary = (
+            f"L'outil fonctionne bien : {precision}% de précision globale "
+            f"et {rouge_recall}% de détection ROUGE."
+        )
+    elif rouge_recall < 40 and precision >= 65:
+        summary = (
+            f"Précision correcte ({precision}%) mais détection ROUGE insuffisante "
+            f"({rouge_recall}%). Priorité : abaisser le seuil ROUGE pour capter "
+            f"plus de jours rouges, quitte à augmenter les fausses alertes."
+        )
+    elif precision < 65 and rouge_recall >= 40:
+        summary = (
+            f"Détection ROUGE acceptable ({rouge_recall}%) mais précision globale "
+            f"faible ({precision}%). Trop de fausses alertes BLANC ou ROUGE. "
+            f"Priorité : remonter les seuils pour réduire les faux positifs."
+        )
+    else:
+        summary = (
+            f"Performance insuffisante : {precision}% de précision, "
+            f"{rouge_recall}% de détection ROUGE. "
+            f"Revoir la calibration des seuils et la qualité des données météo."
+        )
+
+    # Add top problem as actionable focus
+    action = None
+    if top_confusions:
+        p = top_confusions[0]
+        if p["actual"] == "ROUGE" and p["predicted"] != "ROUGE":
+            action = (
+                f"Action prioritaire : {p['count']} jour(s) ROUGE manqué(s) — "
+                f"chaque ROUGE raté coûte 0.76€/kWh aux abonnés."
+            )
+        elif p["predicted"] == "ROUGE" and p["actual"] != "ROUGE":
+            action = (
+                f"Point d'attention : {p['count']} fausse(s) alerte(s) ROUGE "
+                f"— crédibilité en jeu."
+            )
+        elif p["predicted"] == "BLANC" and p["actual"] == "BLEU":
+            action = (
+                f"Point d'attention : {p['count']}x BLANC prédit au lieu de BLEU "
+                f"— le seuil BLANC est peut-être trop bas."
+            )
 
     return {
         "verdict": verdict,
@@ -607,16 +717,22 @@ def get_diagnostic(days: int = 30) -> dict:
         "total_errors": total_errors,
         "top_confusions": top_confusions[:5],
         "recommendations": recs,
+        "summary": summary,
+        "action": action,
     }
 
 
-def get_color_recall_by_horizon(color: str, days: int = 90) -> dict:
-    """Recall/precision for a specific color (ROUGE/BLANC/BLEU) by horizon J-1..J-5."""
+def get_color_recall_by_horizon(color: str, days: int = 90,
+                                max_horizon: int = 10) -> dict:
+    """Recall/precision for a specific color by horizon J-1..J-N.
+
+    A3: Extended from J-5 to J-10 for consistency with recap table.
+    """
     conn = get_db()
     try:
         since = _enforce_start_date((date.today() - timedelta(days=days)).isoformat())
         result = {}
-        for h in range(1, 6):
+        for h in range(1, max_horizon + 1):
             row = conn.execute(
                 """SELECT
                      SUM(CASE WHEN couleur_predite = ? AND couleur_reelle = ?
@@ -781,10 +897,11 @@ def get_daily_recap(season: str = "2025-2026") -> list[dict]:
         since = _enforce_start_date(season_start.isoformat())
         until = end_date.isoformat()
 
-        # 1) All non-simulated predictions in season
+        # 1) All non-simulated predictions in season (C8: include probabilities)
         pred_rows = conn.execute(
             """SELECT date, horizon, couleur_predite, couleur_originale,
-                      score_risque, confirmed, raison
+                      score_risque, confirmed, raison,
+                      probabilite_bleu, probabilite_blanc, probabilite_rouge
                FROM predictions
                WHERE date >= ? AND date <= ? AND simulated = 0
                ORDER BY date, timestamp_prediction""",
@@ -866,11 +983,20 @@ def get_daily_recap(season: str = "2025-2026") -> list[dict]:
                 except ValueError:
                     pass
 
+            # C8: include max probability as confidence indicator
+            prob_values = [
+                r["probabilite_bleu"] or 0,
+                r["probabilite_blanc"] or 0,
+                r["probabilite_rouge"] or 0,
+            ]
+            confidence = round(max(prob_values)) if any(p > 0 for p in prob_values) else None
+
             dates_data[dt][horizon] = {
                 "couleur": couleur,
                 "score": score,
                 "correct": correct,
                 "temp_prevue": temp_prevue,
+                "confidence": confidence,
             }
 
             # Keep raison from J-1 (or lowest horizon) for diagnostic
@@ -896,15 +1022,33 @@ def get_daily_recap(season: str = "2025-2026") -> list[dict]:
                         break
                 consec_correct = count if count > 0 else None
 
-            # Diagnostic for wrong J-1 prediction
+            # A4: Diagnostic for J-1 to J-5 errors (not just J-1)
             diagnostic = None
             if actual:
+                # Check J-1 first (most important), then J-2→J-5
+                for h in range(1, 6):
+                    jh = preds.get(f"J-{h}")
+                    if jh and jh.get("correct") is False:
+                        raison_text = dates_raison.get(dt, (None,))[0]
+                        diag = _build_error_diagnostic(
+                            jh["couleur"], actual, jh.get("score"), raison_text
+                        )
+                        if h == 1:
+                            diagnostic = diag
+                        else:
+                            # For J-2→J-5 errors, prefix with horizon
+                            diagnostic = f"J-{h}: {diag}"
+                        break  # Show first error (closest horizon)
+                # If J-1 correct but J-2→J-5 had errors, show which were wrong
                 j1 = preds.get("J-1")
-                if j1 and j1.get("correct") is False:
-                    raison_text = dates_raison.get(dt, (None,))[0]
-                    diagnostic = _build_error_diagnostic(
-                        j1["couleur"], actual, j1.get("score"), raison_text
-                    )
+                if j1 and j1.get("correct") is True and diagnostic is None:
+                    wrong_horizons = [
+                        f"J-{h}" for h in range(2, 6)
+                        if preds.get(f"J-{h}") and
+                        preds[f"J-{h}"].get("correct") is False
+                    ]
+                    if wrong_horizons:
+                        diagnostic = f"Rattrapé J-1 (erreur {', '.join(wrong_horizons)})"
 
             result.append({
                 "date": dt,
@@ -937,13 +1081,17 @@ def get_performance_summary(season: str = "2025-2026") -> dict:
     last_update_label = Config.TOOL_UPDATE_DATES.get(last_update, "") if last_update else ""
     days_since_update = max(1, (date.today() - date.fromisoformat(last_update)).days) if last_update else d
 
+    # D2: Single combined query instead of 3 separate get_accuracy_global calls
+    acc = get_accuracy_combined(d)
+
     return {
         "season": season,
         "available_seasons": get_available_seasons(),
         "days": d,
-        "global": get_accuracy_global(d),
-        "accuracy_j1": get_accuracy_global(d, max_horizon=1),
-        "accuracy_j2_j5": get_accuracy_global(d, min_horizon=2, max_horizon=5),
+        "global": acc["global"],
+        "accuracy_j1": acc["j1"],
+        "accuracy_j2_j5": acc["j2_j5"],
+        "accuracy_j6_j15": acc["j6_j15"],
         "by_horizon": get_accuracy_by_horizon(d),
         "confusion_matrix": get_confusion_matrix(d),
         "precision_recall_f1": get_precision_recall_f1(d),
@@ -954,6 +1102,8 @@ def get_performance_summary(season: str = "2025-2026") -> dict:
         "current_weights": get_current_weights(),
         "trend": get_accuracy_trend(d),
         "diagnostic": get_diagnostic(days_since_update),
+        "period_comparison": get_period_comparison(7),
+        "budget_season": get_budget_season(),
         "last_tool_update": last_update,
         "last_tool_update_label": last_update_label,
         "daily_recap": get_daily_recap(season),
