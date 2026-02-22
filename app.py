@@ -1479,11 +1479,11 @@ async def api_history(days: int = 30):
 
 @app.get("/api/performance")
 async def api_performance(request: Request, authorization: str | None = Header(None),
-                          days: int = 7):
+                          days: int = 10):
     """Métriques de performance complètes (admin, Fix #3).
 
     Args:
-        days: fenêtre temporelle (1, 7, 14, 30, 90). Défaut 7.
+        days: fenêtre temporelle (1, 5, 10, 15, 30, 90, saison). Défaut 10.
     """
     verify_admin(authorization, request.client.host if request.client else "unknown")
     from performance_tracker import get_performance_summary

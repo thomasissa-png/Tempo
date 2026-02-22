@@ -602,7 +602,7 @@ def get_performance_summary(days: int = 90) -> dict:
     """Résumé complet des performances pour le dashboard admin.
 
     Args:
-        days: fenêtre temporelle en jours (1, 7, 14, 30, 90).
+        days: fenêtre temporelle en jours (1, 5, 10, 15, 30, 90, saison=~175).
     """
     d = max(1, min(days, 365))
     return {

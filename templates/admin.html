@@ -550,10 +550,12 @@
             <span style="font-size:0.82rem;font-weight:600;color:var(--text-secondary)">Période :</span>
             <div class="period-btns" id="period-btns">
                 <button class="period-btn" data-days="1">24h</button>
-                <button class="period-btn active" data-days="7">7j</button>
-                <button class="period-btn" data-days="14">14j</button>
+                <button class="period-btn" data-days="5">5j</button>
+                <button class="period-btn active" data-days="10">10j</button>
+                <button class="period-btn" data-days="15">15j</button>
                 <button class="period-btn" data-days="30">30j</button>
                 <button class="period-btn" data-days="90">90j</button>
+                <button class="period-btn" data-days="saison">Saison</button>
             </div>
         </div>
 
@@ -919,7 +921,7 @@
 let adminPassword = '';
 let chartHorizon = null;
 let chartWeights = null;
-let currentDays = 7;
+let currentDays = 10;
 const chartAvailable = typeof Chart !== 'undefined';
 
 /* ── Tabs ── */
@@ -934,11 +936,19 @@ document.querySelectorAll('.admin-tab').forEach(tab => {
 });
 
 /* ── Period filter buttons ── */
+function getSeasonDays() {
+    /* Saison Tempo = 1er sept → 31 août. Calcule le nb de jours depuis le début. */
+    const now = new Date();
+    const m = now.getMonth(); /* 0-based */
+    const y = now.getFullYear();
+    const seasonStart = m >= 8 ? new Date(y, 8, 1) : new Date(y - 1, 8, 1);
+    return Math.max(1, Math.ceil((now - seasonStart) / 86400000));
+}
 document.querySelectorAll('.period-btn').forEach(btn => {
     btn.addEventListener('click', () => {
         document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        currentDays = parseInt(btn.dataset.days, 10);
+        currentDays = btn.dataset.days === 'saison' ? getSeasonDays() : parseInt(btn.dataset.days, 10);
         loadPerformanceData(currentDays);
     });
 });
@@ -993,13 +1003,14 @@ function renderPerformanceData(data) {
     const g = data.global || {};
     const j1 = data.accuracy_j1 || {};
     const j2j5 = data.accuracy_j2_j5 || {};
+    const days = data.days || currentDays;
 
     /* ── Low-data banner ── */
     const banner = document.getElementById('low-data-banner');
     if (g.total != null && g.total === 0) {
         banner.textContent = 'Aucune évaluation sur cette période. Les prédictions récentes n\'ont peut-être pas encore été vérifiées contre les couleurs EDF.';
         banner.style.display = 'block';
-    } else if (g.total != null && g.total < 10) {
+    } else if (g.total != null && g.total < 5) {
         banner.textContent = `Seulement ${g.total} évaluation(s) sur cette période. Les métriques peuvent être peu fiables.`;
         banner.style.display = 'block';
     } else {
@@ -1019,25 +1030,44 @@ function renderPerformanceData(data) {
     }
 
     /* ── Verdict banner ── */
-    renderVerdict(data.diagnostic || {}, data.comparison || {});
+    renderVerdict(data.diagnostic || {}, data.comparison || {}, g.total || 0);
 
     /* ── KPI strip ── */
+    const kpiJ2J5Card = document.getElementById('kpi-acc-j2j5').closest('.kpi-card');
+    const kpiRougeCard = document.getElementById('kpi-rouge-recall').closest('.kpi-card');
+    const kpiAllCard = document.getElementById('kpi-acc').closest('.kpi-card');
+
     /* J+1 = primary (prediction for tomorrow, what users care about) */
     if (j1.total > 0) {
         setKpi('kpi-acc-j1', j1.precision + '%', j1.precision);
     } else {
-        document.getElementById('kpi-acc-j1').textContent = 'N/A';
+        document.getElementById('kpi-acc-j1').textContent = '—';
         document.getElementById('kpi-acc-j1').className = 'kpi-value';
     }
-    /* J+2→J+5 */
+
+    /* J+2→J+5 : only relevant if we have verified results for these horizons */
     if (j2j5.total > 0) {
         setKpi('kpi-acc-j2j5', j2j5.precision + '%', j2j5.precision);
+        kpiJ2J5Card.style.opacity = '1';
+        document.getElementById('kpi-acc-j2j5').closest('.kpi-card').querySelector('.kpi-label').innerHTML =
+            'Précision J+2→J+5<br><small style="font-weight:400">anticipation 2-5 jours</small>';
     } else {
-        document.getElementById('kpi-acc-j2j5').textContent = 'N/A';
+        document.getElementById('kpi-acc-j2j5').textContent = '—';
         document.getElementById('kpi-acc-j2j5').className = 'kpi-value';
+        kpiJ2J5Card.style.opacity = '0.4';
+        document.getElementById('kpi-acc-j2j5').closest('.kpi-card').querySelector('.kpi-label').innerHTML =
+            'Précision J+2→J+5<br><small style="font-weight:400">pas de résultats vérifiés</small>';
     }
+
     /* All horizons combined */
-    setKpi('kpi-acc', g.total > 0 ? g.precision + '%' : 'N/A', g.precision);
+    if (g.total > 0) {
+        setKpi('kpi-acc', g.precision + '%', g.precision);
+        kpiAllCard.style.opacity = '1';
+    } else {
+        document.getElementById('kpi-acc').textContent = '—';
+        document.getElementById('kpi-acc').className = 'kpi-value';
+        kpiAllCard.style.opacity = '0.4';
+    }
     document.getElementById('kpi-total').textContent = g.total ?? '—';
 
     /* Recall ROUGE global */
@@ -1046,21 +1076,29 @@ function renderPerformanceData(data) {
     ['J+1','J+2','J+3','J+4','J+5'].forEach(k => {
         if (rrh[k]) { totalRouge += rrh[k].rouge_total; totalCaught += rrh[k].rouge_caught; }
     });
-    const rougeRecallGlobal = totalRouge > 0 ? Math.round(totalCaught / totalRouge * 100) : null;
-    setKpi('kpi-rouge-recall',
-        rougeRecallGlobal !== null ? rougeRecallGlobal + '%' : 'N/A',
-        rougeRecallGlobal !== null ? rougeRecallGlobal : 0
-    );
+    if (totalRouge > 0) {
+        const rougeRecallGlobal = Math.round(totalCaught / totalRouge * 100);
+        setKpi('kpi-rouge-recall', rougeRecallGlobal + '%', rougeRecallGlobal);
+        kpiRougeCard.style.opacity = '1';
+        kpiRougeCard.querySelector('.kpi-label').innerHTML =
+            'Détection ROUGE<br><small style="font-weight:400">% jours rouges repérés</small>';
+    } else {
+        document.getElementById('kpi-rouge-recall').textContent = '—';
+        document.getElementById('kpi-rouge-recall').className = 'kpi-value';
+        kpiRougeCard.style.opacity = '0.4';
+        kpiRougeCard.querySelector('.kpi-label').innerHTML =
+            'Détection ROUGE<br><small style="font-weight:400">aucun jour rouge sur la période</small>';
+    }
 
     /* ── SECTION 1 : Nos prévisions sont-elles bonnes ? ── */
     renderBudgetSeason(data.budget_season || {});
     const prf = data.precision_recall_f1 || {};
-    renderPrfTable(prf);
-    renderConfusionMatrix(data.confusion_matrix || {});
+    renderPrfTable(prf, g.total || 0);
+    renderConfusionMatrix(data.confusion_matrix || {}, g.total || 0);
 
     /* ── SECTION 2 : Pourquoi des erreurs ? ── */
-    renderDiagnostic(data.diagnostic || {});
-    renderRougeRecallTable(rrh);
+    renderDiagnostic(data.diagnostic || {}, g.total || 0);
+    renderRougeRecallTable(rrh, totalRouge);
     if (chartAvailable) renderRougeRecallChart(rrh);
     else {
         document.getElementById('chart-rouge-recall').style.display = 'none';
@@ -1107,9 +1145,9 @@ function renderPerformanceData(data) {
 }
 
 /* ── Verdict banner ── */
-function renderVerdict(diag, comp) {
+function renderVerdict(diag, comp, totalEvals) {
     const el = document.getElementById('verdict-banner');
-    if (!diag.verdict) { el.style.display = 'none'; return; }
+    if (!diag.verdict || totalEvals === 0) { el.style.display = 'none'; return; }
     el.style.display = 'block';
 
     const dot = document.getElementById('verdict-dot');
@@ -1126,7 +1164,7 @@ function renderVerdict(diag, comp) {
 
     let detailParts = [];
     if (diag.precision != null) detailParts.push(`Précision ${diag.precision}%`);
-    if (diag.rouge_recall != null) detailParts.push(`Détection ROUGE ${diag.rouge_recall}%`);
+    if (diag.rouge_recall != null && diag.rouge_recall > 0) detailParts.push(`Détection ROUGE ${diag.rouge_recall}%`);
     if (diag.bias && diag.bias !== 'aucun') {
         const biasLabels = { 'sur-prediction': 'tendance à sur-prédire la sévérité', 'sous-prediction': 'tendance à sous-prédire', 'mixte': 'erreurs mixtes' };
         detailParts.push(biasLabels[diag.bias] || diag.bias);
@@ -1143,10 +1181,14 @@ function renderVerdict(diag, comp) {
 }
 
 /* ── Diagnostic ── */
-function renderDiagnostic(diag) {
+function renderDiagnostic(diag, totalEvals) {
     const el = document.getElementById('diagnostic-content');
+    if (totalEvals === 0) {
+        el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Aucune évaluation sur cette période.</p>';
+        return;
+    }
     if (!diag.top_confusions || diag.top_confusions.length === 0) {
-        el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Pas assez de données pour un diagnostic.</p>';
+        el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Aucune erreur détectée sur cette période.</p>';
         return;
     }
 
@@ -1260,15 +1302,28 @@ function renderTrendChart(trend) {
 }
 
 /* ── Rouge recall table ── */
-function renderRougeRecallTable(rrh) {
+function renderRougeRecallTable(rrh, totalRouge) {
     const el = document.getElementById('rouge-recall-table');
+
+    if (totalRouge === 0) {
+        el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Aucun jour ROUGE réel sur cette période — pas de mesure de détection possible.</p>';
+        return;
+    }
+
     const horizons = ['J+1','J+2','J+3','J+4','J+5'];
+    /* Only show horizons that have data */
+    const activeHorizons = horizons.filter(h => rrh[h] && (rrh[h].rouge_total > 0 || rrh[h].false_alarms > 0));
+    if (activeHorizons.length === 0) {
+        el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Pas de données ROUGE par horizon sur cette période.</p>';
+        return;
+    }
+
     let html = `<table class="rouge-table">
         <thead><tr>
-            <th>Horizon</th><th>Recall</th><th>Precision</th>
-            <th>ROUGE détectés</th><th>ROUGE réels</th><th>Fausses alarmes</th>
+            <th>Horizon</th><th>Détection</th><th>Précision</th>
+            <th>Détectés</th><th>Réels</th><th>Fausses alertes</th>
         </tr></thead><tbody>`;
-    horizons.forEach(h => {
+    activeHorizons.forEach(h => {
         const d = rrh[h] || {};
         const recallCls = d.recall == null ? '' : d.recall >= 70 ? 'val-good' : d.recall >= 40 ? 'val-warn' : 'val-bad';
         const precCls = d.precision == null ? '' : d.precision >= 70 ? 'val-good' : d.precision >= 40 ? 'val-warn' : 'val-bad';
@@ -1293,6 +1348,10 @@ function renderRougeRecallChart(rrh) {
     if (!ctx) return;
     if (chartRougeRecall) chartRougeRecall.destroy();
     const horizons = ['J+1','J+2','J+3','J+4','J+5'];
+    /* Skip chart if no rouge data at all */
+    const hasData = horizons.some(h => rrh[h] && (rrh[h].rouge_total > 0 || rrh[h].false_alarms > 0));
+    if (!hasData) { ctx.style.display = 'none'; return; }
+    ctx.style.display = '';
     const recalls = horizons.map(h => rrh[h]?.recall ?? 0);
     const precisions = horizons.map(h => rrh[h]?.precision ?? 0);
     chartRougeRecall = new Chart(ctx, {
@@ -1301,13 +1360,13 @@ function renderRougeRecallChart(rrh) {
             labels: horizons,
             datasets: [
                 {
-                    label: 'Recall (%)',
+                    label: 'Détection (%)',
                     data: recalls,
                     backgroundColor: recalls.map(v => v >= 70 ? '#4CAF50' : v >= 40 ? '#FFC107' : '#F44336'),
                     borderRadius: 4,
                 },
                 {
-                    label: 'Precision (%)',
+                    label: 'Précision (%)',
                     data: precisions,
                     backgroundColor: 'rgba(33,150,243,0.5)',
                     borderRadius: 4,
@@ -1324,8 +1383,14 @@ function renderRougeRecallChart(rrh) {
 }
 
 /* ── Bilan par couleur (plain language) ── */
-function renderPrfTable(prf) {
+function renderPrfTable(prf, totalEvals) {
     const el = document.getElementById('prf-table');
+
+    if (totalEvals === 0) {
+        el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Aucune évaluation sur cette période.</p>';
+        return;
+    }
+
     const colors = [
         { key: 'ROUGE', label: 'ROUGE', dot: '#F44336', bg: '#FFEBEE' },
         { key: 'BLANC', label: 'BLANC', dot: '#757575', bg: '#F5F5F5' },
@@ -1343,6 +1408,23 @@ function renderPrfTable(prf) {
     let html = '<div style="display:flex;flex-direction:column;gap:10px">';
     colors.forEach(c => {
         const d = prf[c.key] || {};
+        const support = d.support ?? 0;
+
+        /* Cas spécial : aucun jour réel de cette couleur sur la période */
+        if (support === 0) {
+            html += `<div style="background:${c.bg};border-radius:var(--radius-sm);padding:12px 14px;opacity:0.6">
+                <div style="display:flex;align-items:center;gap:8px">
+                    <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${c.dot}"></span>
+                    <strong style="font-size:0.9rem">${c.label}</strong>
+                    <span style="margin-left:auto;font-size:0.78rem;color:var(--text-secondary)">0 jour réel</span>
+                </div>
+                <div style="font-size:0.82rem;color:var(--text-secondary);margin-top:6px">
+                    Aucun jour ${c.label} sur cette période — pas de mesure possible.
+                </div>
+            </div>`;
+            return;
+        }
+
         const precV = verdict(d.precision);
         const recV = verdict(d.recall);
 
@@ -1350,7 +1432,7 @@ function renderPrfTable(prf) {
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
                 <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${c.dot}"></span>
                 <strong style="font-size:0.9rem">${c.label}</strong>
-                <span style="margin-left:auto;font-size:0.78rem;color:var(--text-secondary)">${d.support ?? 0} jours réels</span>
+                <span style="margin-left:auto;font-size:0.78rem;color:var(--text-secondary)">${support} jour${support > 1 ? 's' : ''} réel${support > 1 ? 's' : ''}</span>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:0.82rem">
                 <div>
@@ -1419,8 +1501,12 @@ function renderBudgetSeason(bs) {
 }
 
 /* ── Confusion matrix (enhanced with %) ── */
-function renderConfusionMatrix(cm) {
+function renderConfusionMatrix(cm, totalEvals) {
     const el = document.getElementById('confusion-matrix');
+    if (totalEvals === 0) {
+        el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Aucune évaluation sur cette période.</p>';
+        return;
+    }
     const colors = ['BLEU', 'BLANC', 'ROUGE'];
     let html = `<table class="confusion-table">
         <tr><th>Prédit \\ Réel</th>`;
