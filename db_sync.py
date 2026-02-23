@@ -143,10 +143,31 @@ def export_db() -> dict:
                 f"SELECT {', '.join(valid_cols)} FROM {table}"
             ).fetchall()
 
-            dump["tables"][table] = [
-                {c: row[c] for c in valid_cols}
-                for row in rows
-            ]
+            # Convert to dicts, excluding columns that are ALL NULL
+            # (avoids exporting empty columns that may not exist on target)
+            row_dicts = [{c: row[c] for c in valid_cols} for row in rows]
+            if row_dicts:
+                non_null_cols = {
+                    c for c in valid_cols
+                    if any(r[c] is not None for r in row_dicts)
+                }
+                # Always keep conflict/key columns even if NULL
+                conflict_str = CONFLICT_COLS.get(table)
+                if conflict_str:
+                    non_null_cols |= _parse_conflict_cols(conflict_str)
+                # Filter out all-NULL columns
+                if non_null_cols != set(valid_cols):
+                    dropped = set(valid_cols) - non_null_cols
+                    logger.info(
+                        f"[Sync] {table}: colonnes all-NULL exclues du dump: "
+                        f"{', '.join(sorted(dropped))}"
+                    )
+                    row_dicts = [
+                        {c: r[c] for c in valid_cols if c in non_null_cols}
+                        for r in row_dicts
+                    ]
+
+            dump["tables"][table] = row_dicts
 
         return dump
     finally:
