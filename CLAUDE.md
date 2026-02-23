@@ -45,13 +45,14 @@
 - `predictor.py` stores multi-horizon predictions (J+1 through J+5)
 
 ### Database
-- **Dual-mode**: SQLite (`tempo.db`) locally, PostgreSQL on Replit (configured via `DATABASE_URL` env var). Replit migrated to PostgreSQL to avoid SQLite concurrency issues with subscribers. `PgConnectionWrapper` in `database.py` emulates the sqlite3 interface (parameter `?` → `%s`, `AUTOINCREMENT` → `SERIAL`, `INSERT OR IGNORE` → `ON CONFLICT DO NOTHING`, `PRAGMA user_version` → `schema_version` table, `executescript` → split and execute). All existing migration code works unmodified on both backends.
+- **Dual-mode**: SQLite (`tempo.db`) locally, PostgreSQL on Replit (configured via `DATABASE_URL` env var). Replit migrated to PostgreSQL to avoid SQLite concurrency issues with subscribers. `PgConnectionWrapper` in `database.py` emulates the sqlite3 interface (parameter `?` → `%s`, `AUTOINCREMENT` → `SERIAL`, `INSERT OR IGNORE` → `ON CONFLICT DO NOTHING`, `INSERT OR REPLACE` → `ON CONFLICT (...) DO UPDATE SET`, `PRAGMA user_version` → `schema_version` table, `BEGIN/BEGIN EXCLUSIVE` → no-op (PG implicit transactions), `executescript` → split and execute, `lastrowid` → `SELECT lastval()`). Connection pooling via `ThreadedConnectionPool` (minconn=1, maxconn=10). `row_factory` attribute supported (no-op setter). Schema version table initialized once per process. All existing migration code works unmodified on both backends.
 - Migration version 19. Key tables: `predictions`, `actuals`, `weather_cache`, `weather_forecast_log`, `rte_daily`, `weights`, `subscribers`
+- **`_CONFLICT_COLS` mapping**: `_convert_sql()` uses a table→conflict_columns mapping to auto-convert any remaining `INSERT OR REPLACE` (safety net for tests/legacy code). Tables: predictions `(date, horizon)`, weather_cache `(date)`, rte_daily `(date)`, actuals `(date)`, learning_journal `(pattern_type, pattern_key, date_analysis)`, weather_forecast_log `(target_date, forecast_date)`, performance `(date_prediction, date_cible, jours_avance)`.
 - **SQL compatibility rules** (CRITICAL — must work in both SQLite AND PostgreSQL):
   - NEVER use `strftime()` in SQL queries — use `SUBSTR(date_column, 1, 7)` for month extraction (dates are ISO `YYYY-MM-DD` text)
   - NEVER use `GROUP_CONCAT()` in SQL — do string aggregation in Python
   - NEVER use `typeof()`, `TOTAL()`, `julianday()` in SQL — these are SQLite-only
-  - `INSERT OR REPLACE` / `INSERT OR IGNORE` — handled by Replit's DB wrapper, but prefer standard `INSERT ... ON CONFLICT` when possible
+  - **Always use `INSERT ... ON CONFLICT` syntax** — all production code migrated from `INSERT OR REPLACE` / `INSERT OR IGNORE` to standard `ON CONFLICT` (works in both SQLite ≥3.24 and PostgreSQL). `_convert_sql` provides a safety net fallback.
   - Day-of-week calculations: do in Python with `date.weekday()`, not SQL `strftime('%w', ...)`
   - `PRAGMA` and `executescript` only in `database.py` migration code (Replit wrapper handles these)
 
