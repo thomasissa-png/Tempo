@@ -536,15 +536,21 @@ function renderPerformanceData(data) {
     };
     const weights = data.current_weights||{};
     const prevWeights = data.previous_weights||null;
+    console.log('[weights] current:', JSON.stringify(weights), 'previous:', JSON.stringify(prevWeights));
     document.getElementById('current-weights').innerHTML = Object.entries(weights).map(([k,v]) => {
         const cur = (Number(v)*100).toFixed(1);
         let prev = '';
         if (prevWeights && prevWeights[k] != null) {
             const pv = (Number(prevWeights[k])*100).toFixed(1);
-            if (pv !== cur) prev = ` <span style="color:#DC2626;font-size:0.72rem">(${pv}%)</span>`;
+            if (pv !== cur) {
+                prev = ` <span style="color:#DC2626;font-size:0.72rem;font-weight:500">(${pv}%)</span>`;
+            } else {
+                /* Same after rounding — show in gray to confirm comparison works */
+                prev = ` <span style="color:var(--text-secondary);font-size:0.68rem">(=${pv}%)</span>`;
+            }
         }
         return `<div class="metric-row"><span>${escapeHtml(weightLabels[k]||k)}</span><span class="metric-value">${cur}%${prev}</span></div>`;
-    }).join('') + (prevWeights ? '<div style="font-size:0.65rem;color:var(--text-secondary);margin-top:6px"><span style="color:#DC2626">( )</span> = poids précédents</div>' : '');
+    }).join('') + (prevWeights ? '<div style="font-size:0.65rem;color:var(--text-secondary);margin-top:6px"><span style="color:#DC2626">( )</span> = changé · <span style="color:var(--text-secondary)">(= )</span> = identique</div>' : '');
     if (chartAvailable) {
         renderWeightsChart(weights, weightLabels);
     } else {
@@ -564,6 +570,13 @@ function renderPerformanceData(data) {
 /* ══════════════════════════════════ */
 function renderDailyRecap(recap) {
     _recapData = recap; // store for month filtering
+    /* Debug: check weather_observed for dates before 21/02 */
+    const earlyDates = (recap||[]).filter(r => r.date < '2026-02-21');
+    if (earlyDates.length) {
+        console.log('[weather debug] Dates before 21/02:', earlyDates.map(r =>
+            r.date + ': weather_observed=' + JSON.stringify(r.weather_observed)
+        ));
+    }
     _populateMonthFilter(recap);
     /* D5: Apply persisted month filter */
     if (_selectedMonth !== 'all') {
