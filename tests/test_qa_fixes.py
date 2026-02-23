@@ -2831,3 +2831,222 @@ class TestGetAllVersionDates:
                 conn.commit()
             finally:
                 conn.close()
+
+
+# ================================================================
+# SQL PostgreSQL Compatibility — SUBSTR replaces strftime
+# ================================================================
+
+class TestSQLPostgresCompat:
+    """Ensure SQL queries use PostgreSQL-compatible constructs."""
+
+    def test_monthly_performance_uses_substr_not_strftime(self):
+        """get_monthly_performance must use SUBSTR, not strftime, for month extraction."""
+        import inspect
+        from performance_tracker import get_monthly_performance
+        source = inspect.getsource(get_monthly_performance)
+        assert "strftime" not in source, \
+            "get_monthly_performance still uses SQLite-only strftime()"
+        assert "SUBSTR(date_cible, 1, 7)" in source or "SUBSTR(date_cible,1,7)" in source, \
+            "get_monthly_performance should use SUBSTR(date_cible, 1, 7) for month extraction"
+
+    def test_no_sql_strftime_in_runtime_code(self):
+        """Runtime .py files must not use SQLite-only strftime() in SQL queries.
+
+        SQL strftime is detected as strftime( NOT preceded by a dot (Python .strftime
+        is OK). Only checks performance_tracker.py and predictor.py — the main files
+        with runtime SQL queries. Database migration code (database.py) is excluded.
+        """
+        import re
+        runtime_files = [
+            "performance_tracker.py", "predictor.py", "scheduler.py",
+            "tempo_client.py",
+        ]
+        violations = []
+        for fpath in runtime_files:
+            try:
+                with open(fpath) as f:
+                    for i, line in enumerate(f, 1):
+                        # SQL strftime: not preceded by dot, not in a comment
+                        stripped = line.lstrip()
+                        if stripped.startswith("#"):
+                            continue
+                        # Match strftime( that is NOT .strftime( (Python method)
+                        if re.search(r'(?<!\.)strftime\(', line):
+                            violations.append(f"{fpath}:{i}: {stripped.strip()}")
+            except FileNotFoundError:
+                pass
+        assert not violations, \
+            f"SQL strftime() found in runtime code:\n" + "\n".join(violations)
+
+    def test_no_group_concat_in_runtime_queries(self):
+        """GROUP_CONCAT is SQLite-only — must not appear in runtime SQL queries."""
+        import glob
+        violations = []
+        for fpath in glob.glob("*.py"):
+            if fpath.startswith("test_"):
+                continue
+            with open(fpath) as f:
+                content = f.read()
+            if "GROUP_CONCAT(" in content:
+                violations.append(fpath)
+        assert not violations, \
+            f"GROUP_CONCAT() found in: {violations}. Do string aggregation in Python."
+
+    def test_monthly_performance_returns_valid_data(self):
+        """get_monthly_performance should return a list with valid structure."""
+        from performance_tracker import get_monthly_performance
+        result = get_monthly_performance("2025-2026")
+        assert isinstance(result, list)
+        for entry in result:
+            assert "month" in entry
+            assert "month_key" in entry
+            # month_key should be YYYY-MM format (7 chars from SUBSTR)
+            assert len(entry["month_key"]) == 7
+            assert entry["month_key"][4] == "-"
+
+
+# ================================================================
+# Version-Scoped Analysis — pred_since_date / pred_end_date
+# ================================================================
+
+class TestVersionScopedAnalysis:
+    """Each version's analysis must be bounded by date_prediction, not date_cible.
+    This ensures version N's metrics only include predictions MADE with version N's code."""
+
+    def _setup_cross_version_data(self):
+        """Insert test data spanning two versions to verify scoping."""
+        from database import get_db
+        conn = get_db()
+        try:
+            # Version 1 predictions (made on 2099-01-10) for target 2099-01-15
+            conn.execute(
+                "INSERT OR REPLACE INTO performance "
+                "(date_prediction, date_cible, jours_avance, correct, "
+                "couleur_predite, couleur_reelle, timestamp_evaluation) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                ("2099-01-10", "2099-01-15", 5, 1, "BLEU", "BLEU",
+                 "2099-01-15T12:00:00"),
+            )
+            conn.execute(
+                "INSERT OR REPLACE INTO performance "
+                "(date_prediction, date_cible, jours_avance, correct, "
+                "couleur_predite, couleur_reelle, timestamp_evaluation) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                ("2099-01-10", "2099-01-16", 6, 0, "BLEU", "ROUGE",
+                 "2099-01-16T12:00:00"),
+            )
+            # Version 2 predictions (made on 2099-01-20) for target 2099-01-25
+            conn.execute(
+                "INSERT OR REPLACE INTO performance "
+                "(date_prediction, date_cible, jours_avance, correct, "
+                "couleur_predite, couleur_reelle, timestamp_evaluation) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                ("2099-01-20", "2099-01-25", 5, 1, "ROUGE", "ROUGE",
+                 "2099-01-25T12:00:00"),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def _cleanup_test_data(self):
+        from database import get_db
+        conn = get_db()
+        try:
+            conn.execute("DELETE FROM performance WHERE date_cible LIKE '2099-%'")
+            conn.commit()
+        finally:
+            conn.close()
+
+    def test_confusion_matrix_pred_since_date_filters_by_date_prediction(self):
+        """pred_since_date should filter on date_prediction, not date_cible."""
+        self._setup_cross_version_data()
+        try:
+            from performance_tracker import get_confusion_matrix
+            # Only version 2 predictions (made on/after 2099-01-20)
+            cm = get_confusion_matrix(
+                days=9999, since_date="2099-01-01",
+                pred_since_date="2099-01-20")
+            total = sum(
+                cm[p][r] for p in cm for r in cm[p]
+            )
+            assert total == 1, f"Expected 1 prediction from version 2, got {total}"
+            assert cm["ROUGE"]["ROUGE"] == 1
+        finally:
+            self._cleanup_test_data()
+
+    def test_confusion_matrix_pred_end_date_excludes_later_versions(self):
+        """pred_end_date should exclude predictions made after that date."""
+        self._setup_cross_version_data()
+        try:
+            from performance_tracker import get_confusion_matrix
+            # Only version 1 predictions (made before 2099-01-20)
+            cm = get_confusion_matrix(
+                days=9999, since_date="2099-01-01",
+                pred_end_date="2099-01-20")
+            total = sum(
+                cm[p][r] for p in cm for r in cm[p]
+            )
+            assert total == 2, f"Expected 2 predictions from version 1, got {total}"
+        finally:
+            self._cleanup_test_data()
+
+    def test_diagnostic_respects_pred_since_date(self):
+        """Diagnostic scoped to a version only uses that version's predictions."""
+        self._setup_cross_version_data()
+        try:
+            from performance_tracker import get_diagnostic
+            # Diagnostic for version 2 only
+            diag = get_diagnostic(
+                days=9999, since_date="2099-01-01",
+                pred_since_date="2099-01-20")
+            # Should have 100% precision (1 correct out of 1)
+            assert diag["precision"] == 100.0
+        finally:
+            self._cleanup_test_data()
+
+    def test_color_recall_by_horizon_respects_pred_since_date(self):
+        """Color recall should be version-scoped via pred_since_date."""
+        self._setup_cross_version_data()
+        try:
+            from performance_tracker import get_color_recall_by_horizon
+            # ROUGE recall for version 2 only (pred made >= 2099-01-20)
+            result = get_color_recall_by_horizon(
+                "ROUGE", days=9999, since_date="2099-01-01",
+                pred_since_date="2099-01-20")
+            # Version 2 correctly predicted 1 ROUGE day at J-5
+            if "J-5" in result:
+                assert result["J-5"]["recall"] == 100.0
+        finally:
+            self._cleanup_test_data()
+
+    def test_period_comparison_uses_date_prediction_with_pivot(self):
+        """When pivot_date is set, period_comparison filters on date_prediction."""
+        self._setup_cross_version_data()
+        try:
+            from performance_tracker import get_period_comparison
+            result = get_period_comparison(days=30, pivot_date="2099-01-15")
+            assert result["pivot_date"] == "2099-01-15"
+            # Current period (after pivot) should include version 2 data
+            assert result["current"]["total"] >= 1
+        finally:
+            self._cleanup_test_data()
+
+    def test_performance_summary_per_version_data_uses_pred_boundaries(self):
+        """per_version_data in summary must pass pred_since_date/pred_end_date."""
+        import inspect
+        from performance_tracker import get_performance_summary
+        source = inspect.getsource(get_performance_summary)
+        # Verify the function passes pred_since_date and pred_end_date
+        assert "pred_since_date=td" in source or "pred_since_date = td" in source, \
+            "get_performance_summary must pass pred_since_date for version scoping"
+        assert "pred_end_date=v_pred_end" in source or "pred_end_date = v_pred_end" in source, \
+            "get_performance_summary must pass pred_end_date for version scoping"
+
+    def test_version_performance_filters_by_date_prediction(self):
+        """get_version_performance uses date_prediction for version boundaries."""
+        import inspect
+        from performance_tracker import get_version_performance
+        source = inspect.getsource(get_version_performance)
+        assert "date_prediction" in source, \
+            "get_version_performance must filter by date_prediction, not date_cible"

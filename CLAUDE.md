@@ -45,8 +45,15 @@
 - `predictor.py` stores multi-horizon predictions (J+1 through J+5)
 
 ### Database
-- SQLite (`tempo.db`), currently at migration version 19
-- Key tables: `predictions`, `actuals`, `weather_cache`, `weather_forecast_log`, `rte_daily`, `weights`, `subscribers`
+- **Dual-mode**: SQLite (`tempo.db`) locally, PostgreSQL on Replit (configured via `DATABASE_URL` env var). Replit migrated to PostgreSQL to avoid SQLite concurrency issues with subscribers.
+- Migration version 19. Key tables: `predictions`, `actuals`, `weather_cache`, `weather_forecast_log`, `rte_daily`, `weights`, `subscribers`
+- **SQL compatibility rules** (CRITICAL — must work in both SQLite AND PostgreSQL):
+  - NEVER use `strftime()` in SQL queries — use `SUBSTR(date_column, 1, 7)` for month extraction (dates are ISO `YYYY-MM-DD` text)
+  - NEVER use `GROUP_CONCAT()` in SQL — do string aggregation in Python
+  - NEVER use `typeof()`, `TOTAL()`, `julianday()` in SQL — these are SQLite-only
+  - `INSERT OR REPLACE` / `INSERT OR IGNORE` — handled by Replit's DB wrapper, but prefer standard `INSERT ... ON CONFLICT` when possible
+  - Day-of-week calculations: do in Python with `date.weekday()`, not SQL `strftime('%w', ...)`
+  - `PRAGMA` and `executescript` only in `database.py` migration code (Replit wrapper handles these)
 
 ### ML Model
 - GradientBoosting, 33 features, trained on 1827 samples (seasons 2019-2026)
@@ -157,9 +164,12 @@
 - **`_enforce_start_date(since)`**: All queries clamp to `PREDICTION_START_DATE` to ignore pre-tool data.
 - **B2**: `get_color_recall_by_horizon()` uses single `GROUP BY jours_avance` query (not N individual queries per horizon).
 - **B7**: `get_performance_summary()` has 5-minute TTL cache (`_perf_summary_cache`). Invalidated on season change.
-- **`get_confusion_matrix(days, since_date, end_date, min_horizon, max_horizon)`**: Fully parameterized. Default in summary: min_horizon=2, max_horizon=5.
-- **`get_diagnostic(days, since_date, end_date, min_horizon, max_horizon)`**: Computes accuracy from confusion matrix internally (A3/B6). No separate `get_accuracy_global()` call. Returns `has_rouge_days` boolean — when False, `rouge_recall` is None and verdict is based only on precision (prevents false "insuffisante" diagnosis).
-- **`get_period_comparison(days, pivot_date)`**: When `pivot_date` set, compares after vs before that date (same window size).
+- **Version-scoped analysis (A5, CRITICAL)**: Each version's analysis is based ONLY on predictions made WITH that version's code. Uses `pred_since_date` and `pred_end_date` parameters that filter on `date_prediction` (when prediction was MADE), NOT `date_cible` (what date it predicted). This ensures version N's metrics are not contaminated by version N-1's predictions. `get_performance_summary()` builds version boundaries from `_get_all_version_dates()` and passes them as `pred_since_date=version_start, pred_end_date=next_version_start`.
+- **`get_confusion_matrix(days, since_date, end_date, min_horizon, max_horizon, pred_since_date, pred_end_date)`**: Fully parameterized. `pred_since_date`/`pred_end_date` filter on `date_prediction` for version scoping. Default in summary: min_horizon=2, max_horizon=5.
+- **`get_diagnostic(days, since_date, end_date, min_horizon, max_horizon, pred_since_date, pred_end_date)`**: Computes accuracy from confusion matrix internally (A3/B6). Passes version params through. Returns `has_rouge_days` boolean — when False, `rouge_recall` is None and verdict is based only on precision (prevents false "insuffisante" diagnosis).
+- **`get_color_recall_by_horizon(color, days, max_horizon, since_date, end_date, pred_since_date, pred_end_date)`**: Per-horizon recall with version filtering via `pred_since_date`/`pred_end_date`.
+- **`get_period_comparison(days, pivot_date)`**: When `pivot_date` set, compares predictions MADE after vs before that date using `date_prediction` (not `date_cible`).
+- **`get_monthly_performance(season)`**: Uses `SUBSTR(date_cible, 1, 7)` for month grouping (PostgreSQL-compatible, NOT strftime). Season-scoped only, no version filtering.
 - **`get_budget_season()`**: Returns `rouge_predicted_confidence` and `blanc_predicted_confidence` (A7: average max probability of future predictions).
 - **`get_weather_reliability(days)`**: JOIN weather_forecast_log + weather_cache to compute avg absolute error and bias per horizon.
 - **`get_rouge_postmortem(season)`**: Per ROUGE day: predictions at each horizon, caught/missed lists, temperature, version.
@@ -184,10 +194,13 @@
 - **Weather insert**: `fetched_at` column is NOT NULL — always include it in INSERT statements
 - **DB migrations**: Always update version assertions in tests when adding new migrations
 - **Dependencies**: `fastapi` requires `python-multipart` for Form data — ensure both are installed
+- **SQL portability**: Never use SQLite-specific functions (`strftime`, `GROUP_CONCAT`, `typeof`, `julianday`) in SQL queries — see Database section for compatible alternatives
+- **Admin password diagnostic**: At startup, the lifespan logs the password source (`ADMIN_PASSWORD` env, `SESSION_SECRET`, or generated random) and length. Failed login attempts log length mismatch. Check Replit logs if login fails after changing the Secret.
 - **EDF confirmation propagation**: API endpoints (`/api/today`, `/api/tomorrow`) must call `store_actual()` + `confirm_prediction()` when they detect fresh EDF colors — don't rely solely on the 15-min polling scheduler
+- **Frontend MUST call /api/today and /api/tomorrow**: Even though today/tomorrow cards were removed from the dashboard, the JS must still call these endpoints to trigger `_propagate_edf_confirmation()`. Without these calls, EDF confirmations are never written to the DB from the frontend path. `loadAllData()` calls them before `loadPredictions()`, and the 5-min auto-refresh also calls them.
 
 ### EDF Confirmation & Caching Strategy
-- **Two-layer confirmation**: Scheduler polls EDF every 15min (6h-11h15) AND API endpoints propagate confirmations on each request via `_propagate_edf_confirmation()` (idempotent INSERT OR REPLACE)
+- **Three-layer confirmation**: (1) Scheduler polls EDF every 15min (6h-11h15), (2) Frontend JS calls `/api/today` + `/api/tomorrow` on page load and every 5 min, (3) `/api/predictions` cross-checks with EDF live cache
 - **In-memory EDF cache**: 2-minute TTL for `/api/today`, `/api/tomorrow`, `/api/remaining` (external EDF API is slow ~200-600ms but data changes 1-2x/day max)
 - Cache invalidated by `invalidate_predictions_cache()` when scheduler detects a new confirmation
 - **Cold start resilience**: After restart, in-memory cache is empty; API endpoints re-fetch from EDF and propagate confirmations immediately instead of waiting for next polling cycle
@@ -199,7 +212,7 @@
 - **Color-probability coherence**: Predicted color is always guaranteed to be the highest probability; if classical/ML scoring disagrees with probability ranking, probability is adjusted minimally (max+5%) to prevent UI contradictions
 
 ### API Performance
-- **Frontend parallelization**: 5 API calls (today, tomorrow, remaining, predictions, badge) fire simultaneously via `Promise.all()` instead of sequentially
+- **Frontend load sequence**: `loadAllData()` first calls `/api/today` (blocking, for cold-start detection + EDF propagation), then fire-and-forget `/api/tomorrow` (EDF propagation), then `Promise.all([loadRemaining, loadPredictions, loadBadge])` in parallel. EDF calls MUST precede predictions to propagate confirmations to DB.
 - **Cache-Control headers**: `/static/` 1h + stale-while-revalidate; `/api/today|tomorrow|remaining` 2min; `/api/predictions|performance/badge` 5min; `/calendrier` 10min + stale-while-revalidate
 - **Cold start UX**: During FastAPI startup, ASGI proxy serves real `dashboard.html` + CSS + JS (not a loading placeholder). JS detects 503 responses and retries with exponential backoff (2-4s) via `loadAllData()`
 
