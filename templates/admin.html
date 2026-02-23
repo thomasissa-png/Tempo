@@ -9,10 +9,6 @@
     <link rel="icon" href="/static/icon-192.svg" type="image/svg+xml">
     <link rel="apple-touch-icon" href="/static/favicon-180.png">
     <link rel="stylesheet" href="/static/css/style.min.css">
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"
-            crossorigin="anonymous"
-            onerror="window._chartJsFailed=true;console.warn('Chart.js CDN unavailable')"></script>
     <style>
         .admin-login { max-width:400px; margin:60px auto; text-align:center; }
         .admin-login h2 { font-size:1.25rem; font-weight:700; margin-bottom:8px; }
@@ -327,8 +323,6 @@
                     <h4>Poids de l'algorithme</h4>
                     <p class="card-hint">Importance de chaque facteur. Recalculés tous les 15 jours.</p>
                     <div id="current-weights"></div>
-                    <div class="chart-container" style="height:220px"><canvas id="chart-weights"></canvas></div>
-                    <div id="chart-weights-fallback" class="chart-fallback" style="display:none">Chart.js non disponible.</div>
                 </div>
                 <div class="flat-card">
                     <h4>Recommandations</h4>
@@ -422,13 +416,11 @@
 <script>
 let adminPassword = '';
 let currentSeason = '2025-2026';
-let chartWeights = null;
 let _recapData = []; // cached for month filter
 let _selectedMonth = 'all'; // D5: persist month filter across reloads
 let _perfData = null; // cached full performance data for version filtering
 let _selectedVersion = 'all'; // persisted version filter
 let _versionFilterInitialized = false; // auto-select latest version on first load
-const chartAvailable = typeof Chart !== 'undefined' && !window._chartJsFailed;
 
 function escapeHtml(s) {
     if (!s) return '';
@@ -529,7 +521,7 @@ function renderPerformanceData(data) {
         "temperature": "Température moyenne",
         "jours_restants": "Pression budgétaire",
         "jour_semaine": "Jour de la semaine",
-        "gradient_thermique": "Évolution des températures",
+        "gradient_thermique": "Gradient thermique",
         "clustering": "Similitude historique",
         "consommation_rte": "Consommation électrique nationale",
         "pression": "Pression atmosphérique",
@@ -550,13 +542,6 @@ function renderPerformanceData(data) {
         }
         return `<div class="metric-row"><span>${escapeHtml(weightLabels[k]||k)}</span><span class="metric-value">${cur}%${prev}</span></div>`;
     }).join('') + (prevWeights ? '<div style="font-size:0.65rem;color:var(--text-secondary);margin-top:6px"><span style="color:#DC2626">( )</span> = changé · <span style="color:var(--text-secondary)">(= )</span> = identique</div>' : '');
-    if (chartAvailable) {
-        renderWeightsChart(weights, weightLabels);
-    } else {
-        document.getElementById('chart-weights').style.display='none';
-        document.getElementById('chart-weights-fallback').style.display='flex';
-    }
-
     /* C4: Scope label on recommendations */
     renderRecommendations(data.diagnostic||{}, data.last_tool_update, data.last_tool_update_label, data.period_comparison);
 
@@ -1082,16 +1067,6 @@ function renderRecommendations(diag, lastUpdate, lastUpdateLabel, periodComp) {
 /* ══════════════════════════════════ */
 /* CHARTS                            */
 /* ══════════════════════════════════ */
-function renderWeightsChart(weights, labels) {
-    if (!chartAvailable) return;
-    const ctx = document.getElementById('chart-weights'); if (!ctx) return;
-    if (chartWeights) chartWeights.destroy();
-    chartWeights = new Chart(ctx, {
-        type:'doughnut', data:{ labels:Object.keys(weights).map(k=>(labels&&labels[k])||k.replace('_',' ')),
-            datasets:[{ data:Object.values(weights).map(v=>v*100), backgroundColor:['#F44336','#FF9800','#2196F3','#4CAF50','#9C27B0','#795548','#607D8B'] }] },
-        options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{position:'bottom',labels:{font:{size:11}}}} }
-    });
-}
 
 /* ══════════════════════════════════ */
 /* D6: WEATHER RELIABILITY           */

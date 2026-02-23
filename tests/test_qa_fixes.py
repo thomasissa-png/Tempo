@@ -2705,11 +2705,11 @@ class TestAdminHTMLStructure:
         assert 'id="cm-scope-label"' in html
         assert 'id="diag-scope-label"' in html
 
-    def test_admin_has_chartjs_onerror(self):
-        """B5: Chart.js script has onerror handler."""
+    def test_admin_no_chartjs(self):
+        """Donut chart removed — Chart.js CDN should not be loaded."""
         with open("templates/admin.html") as f:
             html = f.read()
-        assert 'onerror="window._chartJsFailed=true' in html
+        assert 'chart.js' not in html.lower()
 
     def test_admin_js_renderWeatherReliability_function(self):
         """D6: renderWeatherReliability function exists."""

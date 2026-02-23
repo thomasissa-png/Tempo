@@ -94,7 +94,7 @@ def _get_all_version_dates() -> dict[str, str]:
                 # Extract F1 from commentaire if available
                 comm = r["commentaire"] or ""
                 prec = r["precision_avant"] or 0
-                label = f"Recalibration poids (préc. {prec:.0f}%)"
+                label = "Recalibration des poids"
             versions[d] = label
     finally:
         conn.close()
