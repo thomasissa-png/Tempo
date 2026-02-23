@@ -581,7 +581,14 @@ def get_budget_season() -> dict:
                 """SELECT couleur_predite, COUNT(DISTINCT date) as cnt,
                           AVG(CASE WHEN probabilite_rouge > 0 OR probabilite_blanc > 0
                               OR probabilite_bleu > 0
-                              THEN MAX(probabilite_rouge, probabilite_blanc, probabilite_bleu)
+                              THEN CASE
+                                  WHEN probabilite_rouge >= probabilite_blanc
+                                       AND probabilite_rouge >= probabilite_bleu
+                                      THEN probabilite_rouge
+                                  WHEN probabilite_blanc >= probabilite_bleu
+                                      THEN probabilite_blanc
+                                  ELSE probabilite_bleu
+                              END
                               ELSE NULL END) as avg_confidence
                    FROM predictions
                    WHERE date > ? AND confirmed = 0
@@ -1443,9 +1450,11 @@ def get_weather_reliability(days: int = 90) -> dict:
                       AVG(wf.temp_moy - wc.temp_moy) as avg_bias,
                       COUNT(*) as cnt
                FROM weather_forecast_log wf
-               JOIN (SELECT date, temp_moy FROM weather_cache
-                     WHERE temp_moy IS NOT NULL
-                     GROUP BY date HAVING MAX(fetched_at)) wc
+               JOIN (SELECT wc1.date, wc1.temp_moy FROM weather_cache wc1
+                     WHERE wc1.temp_moy IS NOT NULL
+                       AND wc1.fetched_at = (SELECT MAX(wc2.fetched_at)
+                                              FROM weather_cache wc2
+                                              WHERE wc2.date = wc1.date)) wc
                  ON wf.target_date = wc.date
                WHERE wf.target_date >= ?
                  AND wf.temp_moy IS NOT NULL

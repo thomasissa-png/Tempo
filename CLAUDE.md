@@ -54,6 +54,8 @@
   - NEVER use `strftime()` in SQL queries — use `SUBSTR(date_column, 1, 7)` for month extraction (dates are ISO `YYYY-MM-DD` text)
   - NEVER use `GROUP_CONCAT()` in SQL — do string aggregation in Python
   - NEVER use `typeof()`, `TOTAL()`, `julianday()` in SQL — these are SQLite-only
+  - NEVER use `MAX(a, b, c)` with multiple columns in SQL — SQLite-only multi-arg MAX. Use nested `CASE WHEN a >= b AND a >= c THEN a WHEN b >= c THEN b ELSE c END` (works in both). PostgreSQL uses `GREATEST()` but SQLite <3.34 doesn't support it.
+  - NEVER use `GROUP BY col HAVING MAX(other_col)` without comparison — SQLite-only trick. Use correlated subquery: `WHERE col = (SELECT MAX(col) FROM t2 WHERE t2.key = t1.key)`
   - **Always use `INSERT ... ON CONFLICT` syntax** — all production code migrated from `INSERT OR REPLACE` / `INSERT OR IGNORE` to standard `ON CONFLICT` (works in both SQLite ≥3.24 and PostgreSQL). `_convert_sql` provides a safety net fallback.
   - Day-of-week calculations: do in Python with `date.weekday()`, not SQL `strftime('%w', ...)`
   - `PRAGMA` and `executescript` only in `database.py` migration code (Replit wrapper handles these)

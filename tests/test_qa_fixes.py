@@ -3837,3 +3837,55 @@ class TestDdlSavepointProtection:
         assert "int(row[0])" in source or "int(row" in source, (
             "init_db must cast version to int for PG compatibility"
         )
+
+
+class TestPgCrossplatformSql:
+    """SQL must work in both SQLite and PostgreSQL."""
+
+    def test_no_multi_arg_max_in_sql(self):
+        """MAX(a, b, c) is SQLite-only. Use nested CASE or GREATEST."""
+        import inspect
+        import performance_tracker
+        source = inspect.getsource(performance_tracker.get_budget_season)
+        assert "MAX(probabilite_rouge, probabilite_blanc" not in source, (
+            "MAX(col1, col2, col3) is SQLite-only — use nested CASE WHEN"
+        )
+
+    def test_budget_season_uses_case_for_max_prob(self):
+        """get_budget_season must use CASE WHEN for cross-platform max of 3 columns."""
+        import inspect
+        import performance_tracker
+        source = inspect.getsource(performance_tracker.get_budget_season)
+        assert "CASE" in source and "probabilite_rouge >= probabilite_blanc" in source, (
+            "get_budget_season must use nested CASE WHEN for max probability"
+        )
+
+    def test_no_having_max_without_comparison(self):
+        """HAVING MAX(col) without comparison is SQLite-only."""
+        import inspect
+        import performance_tracker
+        source = inspect.getsource(performance_tracker.get_weather_reliability)
+        assert "GROUP BY date HAVING MAX(fetched_at)" not in source, (
+            "HAVING MAX(col) without = is SQLite-only — use correlated subquery"
+        )
+
+    def test_weather_reliability_uses_correlated_subquery(self):
+        """get_weather_reliability uses correlated subquery for latest fetched_at."""
+        import inspect
+        import performance_tracker
+        source = inspect.getsource(performance_tracker.get_weather_reliability)
+        assert "MAX(wc2.fetched_at)" in source, (
+            "Must use correlated subquery: fetched_at = (SELECT MAX(...) FROM ... WHERE date = date)"
+        )
+
+    def test_budget_season_functional(self):
+        """get_budget_season runs without SQL error on SQLite."""
+        from performance_tracker import get_budget_season
+        result = get_budget_season()
+        assert isinstance(result, dict)
+
+    def test_weather_reliability_functional(self):
+        """get_weather_reliability runs without SQL error on SQLite."""
+        from performance_tracker import get_weather_reliability
+        result = get_weather_reliability(30)
+        assert isinstance(result, dict)
