@@ -526,12 +526,12 @@ function renderPerformanceData(data) {
     renderMonthlyPerfTable(data.monthly_performance||[], _selectedVersion);
 
     const weightLabels = {
-        "temperature": "Température",
+        "temperature": "Température moyenne",
         "jours_restants": "Pression budgétaire",
         "jour_semaine": "Jour de la semaine",
-        "gradient_thermique": "Gradient thermique",
-        "clustering": "Clustering",
-        "consommation_rte": "Consommation nette (C_nette)",
+        "gradient_thermique": "Évolution des températures",
+        "clustering": "Similitude historique",
+        "consommation_rte": "Consommation électrique nationale",
         "pression": "Pression atmosphérique",
     };
     const weights = data.current_weights||{};
