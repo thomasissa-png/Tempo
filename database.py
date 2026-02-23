@@ -416,7 +416,10 @@ class PgConnectionWrapper:
             try:
                 self._conn.rollback()
             except Exception:
-                pass
+                # Connection is broken (TCP timeout, etc.) — discard it
+                # instead of returning a dead connection to the pool.
+                self._pool.putconn(self._conn, close=True)
+                return
             self._pool.putconn(self._conn)
         else:
             self._conn.close()
@@ -1290,6 +1293,19 @@ def init_db():
         conn.execute("PRAGMA user_version = 19")
         conn.commit()
         logger.info("Migration v19 appliquee (humidity_prevue + wind_speed_prevue)")
+
+    if version < 20:
+        # Migration v20 — index sur performance(date_prediction)
+        # Toutes les requêtes version-scoped filtrent sur date_prediction >= ?
+        # (confusion matrix, recall par horizon, diagnostic, comparaison périodes).
+        # Sans index, c'est un full table scan à chaque appel du dashboard admin.
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_performance_date_prediction "
+            "ON performance(date_prediction)"
+        )
+        conn.execute("PRAGMA user_version = 20")
+        conn.commit()
+        logger.info("Migration v20 appliquee (index performance.date_prediction)")
 
     # Poids initiaux si vide
     existing = conn.execute("SELECT COUNT(*) as c FROM weights_history").fetchone()

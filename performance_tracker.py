@@ -36,10 +36,18 @@ import json
 import math
 import logging
 from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 from database import get_db, get_current_weights, get_previous_weights
 from config import Config
 
 logger = logging.getLogger(__name__)
+
+_PARIS_TZ = ZoneInfo("Europe/Paris")
+
+
+def _now_paris() -> datetime:
+    """Current datetime in Europe/Paris timezone."""
+    return datetime.now(tz=_PARIS_TZ)
 
 
 def _enforce_start_date(since: str) -> str:
@@ -186,7 +194,7 @@ def evaluate_predictions_for_date(target_date: date, couleur_reelle: str):
                  jours_avance, correct,
                  couleur_pred, couleur_reelle,
                  score_predit, ecart,
-                 pred["raison"] or "", datetime.now().isoformat()),
+                 pred["raison"] or "", _now_paris().isoformat()),
             )
             nb_stored += 1
 
@@ -2104,12 +2112,12 @@ def _store_weights_entry(weights: dict, precision_avant: float,
                (date_update, weights_json, precision_avant, precision_apres,
                 nb_predictions, commentaire, model_version, timestamp_update)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            (datetime.now().strftime("%Y-%m-%d"),
+            (_now_paris().strftime("%Y-%m-%d"),
              json.dumps(weights),
              precision_avant, precision_apres, nb_predictions,
              commentaire,
              "logreg_v5_audit_ml",
-             datetime.now().isoformat()),
+             _now_paris().isoformat()),
         )
         conn.commit()
     finally:
@@ -2160,14 +2168,14 @@ def _update_previous_precision_apres(conn):
                         nb_predictions, commentaire, model_version,
                         timestamp_update, rollback_of)
                        VALUES (?, ?, ?, 0, 0, ?, ?, ?, ?)""",
-                    (datetime.now().strftime("%Y-%m-%d"),
+                    (_now_paris().strftime("%Y-%m-%d"),
                      prev["weights_json"],
                      current_precision,
                      f"AUTO-ROLLBACK (precision {precision_avant:.1f}% → "
                      f"{current_precision:.1f}%, delta="
                      f"{current_precision - precision_avant:.1f}%)",
                      "rollback_v9",
-                     datetime.now().isoformat(),
+                     _now_paris().isoformat(),
                      last_entry["id"]),
                 )
                 logger.warning(
@@ -2410,7 +2418,7 @@ def analyze_error_patterns(days: int = 90, force: bool = False) -> list[dict]:
         # A-5 : Désactiver les anciennes corrections du même type
         # (elles restent en DB pour l'historique, mais active=0)
         today_iso = date.today().isoformat()
-        now = datetime.now().isoformat()
+        now = _now_paris().isoformat()
         conn.execute(
             """UPDATE learning_journal SET active = 0
                WHERE active = 1 AND date_analysis < ?""",
@@ -2986,7 +2994,7 @@ def validate_correction_impact() -> dict | None:
         if acc_with < acc_without - 3:
             conn.execute(
                 "UPDATE learning_journal SET active = 0, disabled_at = ? WHERE active = 1",
-                (datetime.now().isoformat(),)
+                (_now_paris().isoformat(),)
             )
             conn.commit()
             logger.warning(
@@ -3039,7 +3047,7 @@ def killswitch_harmful_corrections() -> list[dict]:
             for c in strongest:
                 conn.execute(
                     "UPDATE learning_journal SET active = 0, disabled_at = ? WHERE id = ?",
-                    (datetime.now().isoformat(), c["id"])
+                    (_now_paris().isoformat(), c["id"])
                 )
                 entry = {
                     "pattern": f"{c['pattern_type']}:{c['pattern_key']}",
