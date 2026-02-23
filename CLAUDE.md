@@ -146,7 +146,7 @@
 - **No separate today/tomorrow block**: Removed by user to avoid redundancy with 10-day summary dots.
 
 #### Section 2: Analyse des erreurs
-- **Version filter**: Dropdown filters the ENTIRE error section (detection tables, confusion matrix, diagnostic). **Pre-selects latest version** on first load.
+- **Version filter**: Dropdown filters the ENTIRE error section (detection tables, confusion matrix, diagnostic). **Defaults to "Toutes les versions"** on first load (shows maximum data). User can manually select a specific version.
 - **A5**: Per-version data is **bounded by end_date** — version N's data stops where version N+1 starts. Prevents data contamination.
 - **Detection tables** (3 cards: ROUGE/BLANC/BLEU): Recall/precision by horizon J-1→J-10. J-6+ shown at opacity 0.6 marked "(indicatif)". When 0 actual days: shows "Aucun jour réel de cette couleur — rien à évaluer" (not misleading 0%).
 - **D9**: Summary row "Total J-2→J-5" inserted after J-5 in each detection table — shows aggregated recall/precision for the value zone.
@@ -187,11 +187,11 @@
 - **Single API call**: All performance data loaded in one `GET /api/performance`. No per-section API calls.
 - **Version filter rerenders**: Changes to version filter call `renderErrorSection()`, `renderMonthlyPerfTable()` — all from cached `_perfData`.
 - **Chart.js**: Loaded with `onerror` handler on script tag. `chartAvailable` checks both `typeof Chart` and `!window._chartJsFailed`.
-- **State variables**: `_perfData` (cached API response), `_selectedVersion` (version filter, auto-selects latest on first load via `_versionFilterInitialized`), `_selectedMonth` (month filter), `_recapData` (recap for filtering).
+- **State variables**: `_perfData` (cached API response), `_selectedVersion` (version filter, defaults to `'all'` on first load), `_selectedMonth` (month filter), `_recapData` (recap for filtering).
 - **No KPI/exec-summary elements**: KPI strip and executive summary banner removed from performance tab — data available in analysis tables below.
 - **No `data-range`/`low-data-banner`**: Removed — redundant with executive summary and section-level scope labels.
 - **Season selector**: Only shows seasons with non-simulated predictions after `PREDICTION_START_DATE`.
-- **Staircase version boundaries**: `_renderRecapTable()` computes for each cell (date, J-N) which version was active when the prediction was made (`_getActiveVersion(targetDate, horizon)` = latest version deployed ≤ target_date - N days). Borders appear where adjacent cells (above or left) belong to different versions: `border-top` for horizontal steps, `border-left` for vertical connectors. This creates a continuous staircase contour that clearly separates data from each tool version. Color: `#7B1FA2` (purple), 2px solid.
+- **Staircase version boundaries**: `_renderRecapTable()` computes for each cell (date, J-N) which version was active when the prediction was made (`_getActiveVersion(targetDate, horizon)` = latest version deployed ≤ target_date - N days). Borders appear where adjacent cells (above or left) belong to different versions: `border-top` for horizontal steps, `border-left` for vertical connectors. **Latest version**: solid 2px `#7B1FA2` (purple). **Older versions**: dashed 1px `#B39DDB` (light purple). This visually emphasizes the current version boundary while keeping historical boundaries visible but non-distracting.
 
 ## Common Pitfalls
 - **Data leakage**: Never use same-day RTE consumption for predictions (only lag features D-1+)

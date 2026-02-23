@@ -648,9 +648,11 @@ function _renderRecapTable(recap) {
        For each cell (date, J-N), the prediction was made on (date - N days).
        The active version is the latest version deployed <= prediction date.
        Borders appear where adjacent cells (above / left) belong to different
-       versions, producing a continuous staircase contour. */
+       versions, producing a continuous staircase contour.
+       Latest version boundary = solid 2px, older = dashed 1px (readability). */
     const toolVersions = (_perfData && _perfData.tool_versions) || [];
     const versionDates = toolVersions.map(v => v.date).sort();
+    const latestVersion = versionDates.length ? versionDates[versionDates.length - 1] : null;
     function _getActiveVersion(targetDateStr, horizon) {
         const td = new Date(targetDateStr + 'T12:00:00');
         td.setDate(td.getDate() - horizon);
@@ -658,6 +660,13 @@ function _renderRecapTable(recap) {
         let ver = null;
         for (const vd of versionDates) { if (vd <= predStr) ver = vd; else break; }
         return ver;
+    }
+    /* Determine the border style for a version boundary.
+       The "newer" side of the boundary determines the style:
+       latest version = solid 2px purple, older versions = dashed 1px light purple */
+    function _versionBorderStyle(newerVer, direction) {
+        if (newerVer === latestVersion) return `border-${direction}:2px solid #7B1FA2`;
+        return `border-${direction}:1px dashed #B39DDB`;
     }
     let _prevRowDate = null;
 
@@ -682,8 +691,16 @@ function _renderRecapTable(recap) {
             const leftVer = hNum < 15 ? _getActiveVersion(row.date, hNum + 1) : myVer;
             let parts = [];
             if (indicative) parts.push('opacity:0.65');
-            if (myVer !== aboveVer) parts.push('border-top:2px solid #7B1FA2');
-            if (myVer !== leftVer) parts.push('border-left:2px solid #7B1FA2');
+            if (myVer !== aboveVer) {
+                /* The cell above belongs to a different (older) version;
+                   "newer" side = current cell's version */
+                parts.push(_versionBorderStyle(myVer, 'top'));
+            }
+            if (myVer !== leftVer) {
+                /* The cell to the left belongs to a different version;
+                   "newer" side = current cell's version (lower horizon = more recent prediction) */
+                parts.push(_versionBorderStyle(myVer, 'left'));
+            }
             const tdStyle = parts.join(';');
             h += `<td${tdStyle?' style="'+tdStyle+'"':''}>${dot(row.predictions?row.predictions[hz]:null, isFuture)}</td>`;
         });
@@ -723,7 +740,8 @@ function _renderRecapTable(recap) {
         <span><span class="recap-dot rouge incorrect" style="width:12px;height:12px;border-width:2px"></span> Faux</span>
         <span><span class="recap-dot blanc pending" style="width:12px;height:12px;border-width:2px"></span> En attente</span>
         <span><span class="recap-dot empty" style="width:6px;height:6px;margin:3px"></span> Pas de prévision</span>
-        <span style="display:inline-block;width:18px;height:2px;background:#7B1FA2;vertical-align:middle;margin-right:2px"></span> <span style="color:#7B1FA2">Limite version</span> (en escalier : J-1 dès le lendemain, J-5 après 5j)
+        <span style="display:inline-block;width:18px;height:2px;background:#7B1FA2;vertical-align:middle;margin-right:2px"></span> <span style="color:#7B1FA2">Version actuelle</span>
+        <span style="display:inline-block;width:18px;height:0;border-top:1px dashed #B39DDB;vertical-align:middle;margin-right:2px"></span> <span style="color:#B39DDB">Versions précédentes</span>
         <span style="font-style:italic">Température = prévision météo à cet horizon</span>
         <span><strong>✓ consec.</strong> = nb de jours consécutifs corrects en remontant depuis J-1</span>
     </div>`;
@@ -840,10 +858,11 @@ function _clickMonth(monthKey) {
 function _populateVersionFilter(versions) {
     const sel = document.getElementById('version-filter');
     if (!sel || !versions || !versions.length) return;
-    /* Default to latest version on first load */
-    if (_selectedVersion === 'all' && !_versionFilterInitialized) {
-        _selectedVersion = versions[versions.length - 1].date;
+    /* Default to "Toutes les versions" on first load — shows maximum data.
+       User can manually select a version to scope the error section. */
+    if (!_versionFilterInitialized) {
         _versionFilterInitialized = true;
+        /* _selectedVersion stays 'all' by default */
     }
     sel.innerHTML = '<option value="all">Toutes les versions</option>' +
         versions.map(v =>
