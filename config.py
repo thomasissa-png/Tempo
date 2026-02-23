@@ -8,6 +8,7 @@ load_dotenv()
 
 class Config:
     # --- Base de donnees ---
+    DATABASE_URL = os.getenv("DATABASE_URL", "")
     DATABASE_PATH = os.getenv("DATABASE_PATH", "tempo.db")
 
     # --- API Tempo officielle ---

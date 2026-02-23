@@ -583,7 +583,7 @@ async def page_dashboard(request: Request):
 
 
 @app.get("/calendrier", response_class=HTMLResponse)
-async def page_calendrier(request: Request, month: int = None, year: int = None):
+async def page_calendrier(request: Request, month: int | None = None, year: int | None = None):
     """Page calendrier Tempo EDF — vue mensuelle avec couleurs passées et prévisions.
 
     Cible SEO : 'calendrier tempo', 'calendrier tempo edf'.
@@ -1073,7 +1073,7 @@ async def indexnow_key_file():
 
 
 @app.get("/api/indexnow/ping")
-async def indexnow_ping(url: str = None):
+async def indexnow_ping(url: str | None = None):
     """Ping IndexNow pour notifier Bing/Yandex d'une mise à jour.
 
     Usage admin : GET /api/indexnow/ping?url=https://www.calendrier-tempo.fr/blog/slug
@@ -1528,7 +1528,7 @@ async def api_performance_badge():
 
 
 @app.get("/api/performance/csv")
-async def api_performance_csv(request: Request, month: int = None, year: int = None,
+async def api_performance_csv(request: Request, month: int | None = None, year: int | None = None,
                                authorization: str | None = Header(None)):
     """Export CSV des performances mensuelles (admin only)."""
     verify_admin(authorization, request.client.host if request.client else "unknown")
@@ -1682,8 +1682,8 @@ async def api_sms_incoming(request: Request):
             logger.warning(f"[SMS IN] Erreur vérification signature: {e}")
 
     form = await request.form()
-    from_number = form.get("From", "")
-    body = form.get("Body", "")
+    from_number = str(form.get("From", ""))
+    body = str(form.get("Body", ""))
 
     if not from_number or not body:
         raise HTTPException(status_code=400, detail="Missing From or Body")
