@@ -152,9 +152,9 @@
 - **Removed sections**: P/R/F1 table (A9), trend chart (B8), data coverage (D12), ROUGE post-mortem (D10), data-range/low-data-banner — removed to simplify dashboard.
 
 #### Section 3: Progresse-t-on ?
+- **Version table first** (D8): Displayed BEFORE monthly table (most actionable). Same columns + "Jours" column showing `days_count` (calendar days) and `dates_with_data` (days with evaluations). **Latest version shown first** (reversed order). Helps relativize percentages based on small samples.
 - **Monthly table**: Accuracy per horizon per month. **D11**: Clickable rows → filters the recap table to that month and scrolls up.
-- **C5**: When version filter is active, shows a note that monthly data covers all versions (use version table below for per-version view).
-- **Version table** (D8): Same columns + "Jours" column showing `days_count` (calendar days) and `dates_with_data` (days with evaluations). **Latest version shown first** (reversed order). Helps relativize percentages based on small samples.
+- **C5**: When version filter is active, shows a note that monthly data covers all versions (use version table above for per-version view).
 
 #### Section 4: Learnings
 - **Weights donut chart**: Algorithm weight distribution (Chart.js). Fallback if CDN unavailable (B5).
@@ -186,7 +186,7 @@
 - **No KPI/exec-summary elements**: KPI strip and executive summary banner removed from performance tab — data available in analysis tables below.
 - **No `data-range`/`low-data-banner`**: Removed — redundant with executive summary and section-level scope labels.
 - **Season selector**: Only shows seasons with non-simulated predictions after `PREDICTION_START_DATE`.
-- **Staircase version boundaries**: `_renderRecapTable()` builds version boundary markers by processing `tool_versions` in **reverse chronological order** (`toolVersions.slice().reverse()`). This ensures that when two versions are close together, each J-N cell keeps the label of the version that actually produced its prediction (older version's boundaries are not overwritten). Boundaries styled with `border-top:2px solid #7B1FA2` applied in JS (no CSS class).
+- **Staircase version boundaries**: `_renderRecapTable()` computes for each cell (date, J-N) which version was active when the prediction was made (`_getActiveVersion(targetDate, horizon)` = latest version deployed ≤ target_date - N days). Borders appear where adjacent cells (above or left) belong to different versions: `border-top` for horizontal steps, `border-left` for vertical connectors. This creates a continuous staircase contour that clearly separates data from each tool version. Color: `#7B1FA2` (purple), 2px solid.
 
 ## Common Pitfalls
 - **Data leakage**: Never use same-day RTE consumption for predictions (only lag features D-1+)
