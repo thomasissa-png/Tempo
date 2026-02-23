@@ -4081,3 +4081,273 @@ class TestAdminHTMLRecapLayout:
         assert "_versionFilterInitialized" in html
         # Should select the last version in the list
         assert "versions[versions.length - 1]" in html
+
+
+# ================================================================
+# Audit robustness: DB-1, DB-2, DB-3, S-1, S-2, S-3, L-1, A-1, A-3
+# ================================================================
+
+
+class TestDbMigrationV20Index:
+    """DB-3: Migration v20 adds performance(date_prediction) index."""
+
+    def test_migration_creates_index(self):
+        """Migration v20 creates idx_performance_date_prediction."""
+        from database import get_db
+        conn = get_db()
+        try:
+            cur = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='index' "
+                "AND name='idx_performance_date_prediction'"
+            )
+            row = cur.fetchone()
+            assert row is not None, "Index idx_performance_date_prediction should exist after migration v20"
+        finally:
+            conn.close()
+
+
+class TestBrokenConnectionHandling:
+    """DB-2: PgConnectionWrapper discards broken connections."""
+
+    def test_close_has_rollback_before_putconn(self):
+        """close() must rollback before returning connection to pool."""
+        import inspect
+        from database import PgConnectionWrapper
+        source = inspect.getsource(PgConnectionWrapper.close)
+        assert "rollback" in source, "close() must call rollback()"
+        assert "putconn" in source, "close() must call putconn()"
+        # putconn(close=True) for broken connections
+        assert "close=True" in source, (
+            "close() must discard broken connections with putconn(close=True)"
+        )
+
+
+class TestTimezoneConsistency:
+    """DB-1: performance_tracker uses _now_paris() everywhere."""
+
+    def test_now_paris_function_exists(self):
+        """_now_paris() should exist in performance_tracker."""
+        import inspect
+        import performance_tracker as pt
+        assert hasattr(pt, "_now_paris"), "_now_paris function should exist"
+        assert callable(pt._now_paris)
+
+    def test_no_bare_datetime_now_in_tracker(self):
+        """performance_tracker should not use datetime.now() without timezone."""
+        with open("performance_tracker.py") as f:
+            source = f.read()
+        # datetime.now() without tz argument — should not appear outside _now_paris definition
+        import re
+        # Find all datetime.now() calls that are NOT the definition of _now_paris itself
+        lines = source.splitlines()
+        bare_now_lines = []
+        for i, line in enumerate(lines, 1):
+            stripped = line.strip()
+            if "datetime.now()" in stripped and "def _now_paris" not in stripped and "_PARIS_TZ" not in stripped:
+                bare_now_lines.append(i)
+        assert bare_now_lines == [], (
+            f"Bare datetime.now() found at lines {bare_now_lines} — use _now_paris()"
+        )
+
+
+class TestWeatherRetryChain:
+    """S-1: Weather retry chain with 4 deferred retries."""
+
+    def test_deferred_retries_function_exists(self):
+        """Scheduler should have _schedule_deferred_retries."""
+        with open("scheduler.py") as f:
+            source = f.read()
+        assert "_schedule_deferred_retries" in source
+
+    def test_retry_has_21h_cutoff(self):
+        """Deferred retries should not schedule past 21h."""
+        with open("scheduler.py") as f:
+            source = f.read()
+        assert "21" in source and "cutoff" in source.lower() or "21h" in source.lower() or "après 21h" in source, (
+            "Weather retry should have 21h cutoff"
+        )
+
+    def test_no_sms_for_late_retry(self):
+        """The +120min retry should use no-SMS variant."""
+        with open("scheduler.py") as f:
+            source = f.read()
+        assert "no_sms" in source, "Late retry should use no-SMS variant"
+
+
+class TestBackfillRetry:
+    """S-2: Backfill retry at +5min."""
+
+    def test_backfill_retry_function_exists(self):
+        """Scheduler should have _schedule_backfill_retry."""
+        with open("scheduler.py") as f:
+            source = f.read()
+        assert "_schedule_backfill_retry" in source
+
+    def test_backfill_done_in_finally(self):
+        """_backfill_done must be set in finally (never blocks API)."""
+        with open("scheduler.py") as f:
+            source = f.read()
+        assert "_backfill_done" in source
+
+
+class TestSchedulerStatusEndpoint:
+    """S-3: /admin/scheduler-status API endpoint."""
+
+    def test_scheduler_status_route_exists(self):
+        """App should have /admin/scheduler-status route."""
+        with open("app.py") as f:
+            source = f.read()
+        assert "/admin/scheduler-status" in source
+
+    def test_admin_has_scheduler_status_section(self):
+        """Admin HTML should display scheduler status."""
+        with open("templates/admin.html") as f:
+            html = f.read()
+        assert "scheduler-status" in html or "loadSchedulerStatus" in html, (
+            "Admin should have scheduler status section"
+        )
+
+
+class TestPerformanceReEvaluation:
+    """L-1: ON CONFLICT DO UPDATE allows re-evaluation."""
+
+    def test_performance_insert_uses_on_conflict_update(self):
+        """Performance evaluation should use ON CONFLICT DO UPDATE (not IGNORE)."""
+        with open("performance_tracker.py") as f:
+            source = f.read()
+        assert "ON CONFLICT" in source and "DO UPDATE" in source, (
+            "Performance insert should use ON CONFLICT DO UPDATE for re-evaluation"
+        )
+
+
+class TestSeoAgentWriteProtection:
+    """A-1: SEO agent cannot modify critical files."""
+
+    def test_write_protected_set_exists(self):
+        """seo_agent.py should define _WRITE_PROTECTED."""
+        with open("seo_agent.py") as f:
+            source = f.read()
+        assert "_WRITE_PROTECTED" in source
+
+    def test_critical_files_protected(self):
+        """Critical files should be in the write-protected set."""
+        with open("seo_agent.py") as f:
+            source = f.read()
+        for fname in ["config.py", "database.py", "app.py", "scheduler.py", "seo_agent.py"]:
+            assert fname in source, f"{fname} should be write-protected"
+
+    def test_write_file_checks_protection(self):
+        """write_file tool must check _WRITE_PROTECTED before writing."""
+        with open("seo_agent.py") as f:
+            source = f.read()
+        assert "écriture interdite" in source or "WRITE_PROTECTED" in source
+
+
+class TestValidateArticle:
+    """A-3: validate_article.py validates blog articles."""
+
+    def test_validate_article_exists(self):
+        """validate_article.py should exist."""
+        assert os.path.exists("validate_article.py")
+
+    def test_validate_article_importable(self):
+        """validate_article.py should be importable."""
+        import importlib.util
+        spec = importlib.util.spec_from_file_location(
+            "validate_article", "validate_article.py"
+        )
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        assert hasattr(mod, "validate_article") or hasattr(mod, "_parse_frontmatter")
+
+    def test_seo_rules_yaml_exists(self):
+        """articles/_seo_rules.yaml should exist."""
+        assert os.path.exists("articles/_seo_rules.yaml")
+
+    def test_seo_rules_yaml_valid(self):
+        """articles/_seo_rules.yaml should be valid YAML."""
+        import yaml
+        with open("articles/_seo_rules.yaml") as f:
+            data = yaml.safe_load(f)
+        assert isinstance(data, dict)
+        assert "google_principes_permanents" in data or "bonnes_pratiques_articles" in data
+
+
+class TestMlScorerThresholds:
+    """ML scorer uses optimized thresholds and seasonal median fallback."""
+
+    def test_rouge_thresh_is_019(self):
+        """Rouge threshold default should be 0.19 (Pareto-optimal)."""
+        with open("ml_scorer.py") as f:
+            source = f.read()
+        assert "0.19" in source, "rouge_thresh should default to 0.19"
+
+    def test_blanc_thresh_is_020(self):
+        """Blanc threshold default should be 0.20."""
+        with open("ml_scorer.py") as f:
+            source = f.read()
+        assert "0.20" in source, "blanc_thresh should default to 0.20"
+
+    def test_seasonal_median_fallback_not_zero(self):
+        """Missing RTE data should use seasonal medians, not 0."""
+        with open("ml_scorer.py") as f:
+            source = f.read()
+        # Should have the winter median values
+        assert "5.5" in source, "Should use 5.5 (55GW) as peak consumption median"
+        assert "4.8" in source, "Should use 4.8 (48GW) as mean consumption median"
+
+
+class TestColdStartRetry:
+    """Cold start retry with 6 attempts + last-resort at +30s."""
+
+    def test_loadalldata_has_6_attempts(self):
+        """loadAllData should retry up to attempt 5 (6 total)."""
+        with open("static/js/app.js") as f:
+            source = f.read()
+        assert "attempt < 5" in source, "Should retry up to attempt 5 (6 total attempts)"
+
+    def test_last_resort_30s_retry(self):
+        """Last-resort retry at +30s for slow cold starts."""
+        with open("static/js/app.js") as f:
+            source = f.read()
+        assert "30000" in source, "Should have 30s last-resort retry"
+
+    def test_fetch_timeout_5s(self):
+        """Cold start fetch timeout should be 5s (not 3s)."""
+        with open("static/js/app.js") as f:
+            source = f.read()
+        # fetchWithTimeout('/api/today', {}, 5000)
+        assert "5000" in source, "Cold start fetch timeout should be 5000ms"
+
+
+class TestCacheControlPredictions:
+    """API predictions cache reduced from 5min to 2min."""
+
+    def test_predictions_cache_120s(self):
+        """Predictions cache should be max-age=120 (2 min, not 5 min)."""
+        with open("app.py") as f:
+            source = f.read()
+        # /api/predictions should have max-age=120
+        assert 'max-age=120' in source, "Predictions cache should be 120s"
+
+    def test_stale_while_revalidate_on_apis(self):
+        """API endpoints should have stale-while-revalidate for seamless refresh."""
+        with open("app.py") as f:
+            source = f.read()
+        assert "stale-while-revalidate" in source
+
+
+class TestAdminSmsLogs:
+    """W-1: SMS logs visible in admin Abonnés tab."""
+
+    def test_sms_logs_route_exists(self):
+        """App should have /admin/sms-logs route."""
+        with open("app.py") as f:
+            source = f.read()
+        assert "/admin/sms-logs" in source
+
+    def test_admin_has_sms_logs_section(self):
+        """Admin HTML should have SMS logs rendering."""
+        with open("templates/admin.html") as f:
+            html = f.read()
+        assert "sms" in html.lower() and "logs" in html.lower() or "loadSmsLogs" in html

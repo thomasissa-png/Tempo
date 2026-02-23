@@ -48,7 +48,7 @@
 - **Dual-mode**: SQLite (`tempo.db`) locally, PostgreSQL on Replit (configured via `DATABASE_URL` env var). Replit migrated to PostgreSQL to avoid SQLite concurrency issues with subscribers. `PgConnectionWrapper` in `database.py` emulates the sqlite3 interface (parameter `?` → `%s`, `AUTOINCREMENT` → `SERIAL`, `INSERT OR IGNORE` → `ON CONFLICT DO NOTHING`, `INSERT OR REPLACE` → `ON CONFLICT (...) DO UPDATE SET`, `PRAGMA user_version` → `schema_version` table, `BEGIN/BEGIN EXCLUSIVE` → no-op (PG implicit transactions), `executescript` → split and execute, `lastrowid` → `SELECT lastval()`). Connection pooling via `ThreadedConnectionPool` (minconn=1, maxconn=10). `row_factory` attribute supported (no-op setter). Schema version table initialized once per process. All existing migration code works unmodified on both backends.
 - **DDL SAVEPOINT protection**: In PostgreSQL, a failed query aborts the ENTIRE transaction (unlike SQLite where only the statement fails). `execute()` auto-wraps `ALTER TABLE` and `DROP` statements in `SAVEPOINT/RELEASE`, and `executescript()` wraps the entire script. This allows migration `try/except` blocks to catch expected errors (e.g. "column already exists") without poisoning the transaction.
 - **Literal `%` escaping**: `execute()` escapes `%` → `%%` in SQL strings when params are present (psycopg2 interprets `%` as format specifiers). `LIKE 'backtest%'` with params becomes `'backtest%%'` for psycopg2, then PostgreSQL receives `'backtest%'`. Without params, no escaping (psycopg2 skips `%` processing).
-- Migration version 19. Key tables: `predictions`, `actuals`, `weather_cache`, `weather_forecast_log`, `rte_daily`, `weights`, `subscribers`
+- Migration version 20. Key tables: `predictions`, `actuals`, `weather_cache`, `weather_forecast_log`, `rte_daily`, `weights`, `subscribers`
 - **`_CONFLICT_COLS` mapping**: `_convert_sql()` uses a table→conflict_columns mapping to auto-convert any remaining `INSERT OR REPLACE` (safety net for tests/legacy code). Tables: predictions `(date, horizon)`, weather_cache `(date)`, rte_daily `(date)`, actuals `(date)`, learning_journal `(pattern_type, pattern_key, date_analysis)`, weather_forecast_log `(target_date, forecast_date)`, performance `(date_prediction, date_cible, jours_avance)`.
 - **SQL compatibility rules** (CRITICAL — must work in both SQLite AND PostgreSQL):
   - NEVER use `strftime()` in SQL queries — use `SUBSTR(date_column, 1, 7)` for month extraction (dates are ISO `YYYY-MM-DD` text)
@@ -63,8 +63,8 @@
 ### ML Model
 - GradientBoosting, 33 features, trained on 1827 samples (seasons 2019-2026)
 - Cost-sensitive: ROUGE weight=25, BLANC=3, BLEU=1
-- Thresholds: rouge_thresh=0.07, blanc_thresh=0.15
-- Test accuracy: 83.4%, ROUGE recall: 23.3%
+- Thresholds: rouge_thresh=0.19, blanc_thresh=0.20 (Pareto-optimal from backtest on 2364 real days: F1=83.1%, precision=85.4%, recall=81.0%, accuracy=94.1%)
+- **Seasonal median fallback for missing RTE**: When no RTE lag data available, uses winter medians (cp=5.5, cm=4.8, nuc=3.5, gaz=0.5, renew=1.0, nuc_ratio=0.73) instead of 0 (which is an impossible outlier that biases toward BLEU)
 - Model file: `ml_model.pkl`
 
 ### Configuration
@@ -92,6 +92,11 @@
 - **`temp_moy_prevue`** column added to `predictions` table (v18): stores the 9-city weighted average temperature used for scoring each prediction
 - **`humidity_prevue`** + **`wind_speed_prevue`** columns added to `predictions` (v19): stores humidity and wind speed used in C_nette proxy scoring
 - `weather_cache` continues to store the latest forecast per date (used by current scoring pipeline)
+
+### Database Robustness
+- **DB-2: Broken PostgreSQL connection handling**: `PgConnectionWrapper.close()` calls `rollback()` before returning connection to pool. If rollback fails (TCP timeout), uses `putconn(conn, close=True)` to discard the broken connection instead of returning it — next `getconn()` creates a fresh one.
+- **Migration v20**: Index `idx_performance_date_prediction` on `performance(date_prediction)`. All version-scoped admin queries filter on this column — without the index, every dashboard load does a full table scan.
+- **DB-1: Timezone consistency**: All `datetime.now()` calls in `performance_tracker.py` replaced with `_now_paris()` (`datetime.now(tz=ZoneInfo("Europe/Paris"))`). Timestamps were stored as naive UTC on Replit while predictor.py stores Paris-aware timestamps.
 
 ### Weather Fallback Chain
 - Primary: Meteo France via meteole (AROME + ARPEGE, 9 cities)
@@ -127,9 +132,17 @@
 - `post_startup` (deferred 90s): backfill + ML evaluation + predictions
 - `seo_agent_seasonal` (Tuesday 9h, seasonal frequency): autonomous SEO blog agent (requires ANTHROPIC_API_KEY)
 
+### Scheduler Robustness
+- **S-1: Weather retry chain**: If `_refresh_predictions()` returns 0 forecasts, `_schedule_deferred_retries()` schedules 4 deferred retries at +10min, +30min, +60min, +120min. Hard cutoff: retries past 21h are skipped. The 4th retry (+120min) uses `_task_deferred_retry_no_sms` (no SMS alerts) to avoid alarming users late at night.
+- **S-2: Backfill retry**: If startup backfill fails, `_schedule_backfill_retry()` schedules a single retry at +5min. `_backfill_done` flag is set in `finally` so the API is never blocked waiting for backfill.
+- **S-3: Scheduler status monitoring**: `GET /admin/scheduler-status` returns running state + all jobs with next_run times. Displayed in admin Actions tab as a table (Tâche, Prochaine exécution, Etat).
+- **L-1: Performance evaluation re-evaluation**: `INSERT ... ON CONFLICT DO UPDATE` in performance evaluation allows re-evaluation when EDF corrects a color mid-day (previously `INSERT OR IGNORE` would skip the correction).
+
 ### Admin Dashboard (`/admin`, `performance_tracker.py`, `templates/admin.html`)
 - **Authentication**: Bearer token via `Config.ADMIN_PASSWORD`. All API calls include `Authorization: Bearer <pw>`.
 - **5 tabs**: Performance (default), SEO, Backlinks, Abonnés, Actions.
+- **Abonnés tab**: Subscriber list + SMS logs table (last 50 messages). Failed SMS highlighted in red (#FEF2F2). Columns: Date, Type, Couleur, Statut, Erreur. Loads via `/admin/sms-logs?limit=50`.
+- **Actions tab**: Manual task triggers + scheduler status monitoring (running state, job list with next_run times).
 - **Performance tab architecture**: Single API call `GET /api/performance?season=YYYY-YYYY` returns all data. Frontend caches in `_perfData` and re-renders sections on filter changes (no additional API calls).
 
 - **Removed sections**: KPI strip (4 cards) and Executive Summary Banner — redundant with analysis tables below. Recap starts directly under season filter.
@@ -224,8 +237,8 @@
 
 ### API Performance
 - **Frontend load sequence**: `loadAllData()` first calls `/api/today` (blocking, for cold-start detection + EDF propagation), then fire-and-forget `/api/tomorrow` (EDF propagation), then `Promise.all([loadRemaining, loadPredictions, loadBadge])` in parallel. EDF calls MUST precede predictions to propagate confirmations to DB.
-- **Cache-Control headers**: `/static/` 1h + stale-while-revalidate; `/api/today|tomorrow|remaining` 2min; `/api/predictions|performance/badge` 5min; `/calendrier` 10min + stale-while-revalidate
-- **Cold start UX**: During FastAPI startup, ASGI proxy serves real `dashboard.html` + CSS + JS (not a loading placeholder). JS detects 503 responses and retries with exponential backoff (2-4s) via `loadAllData()`
+- **Cache-Control headers**: `/static/` 1h + SWR 24h; `/api/today|tomorrow|remaining` 2min + SWR 1min; `/api/predictions` 2min + SWR 2min; `/api/performance/badge` 5min + SWR 5min; `/calendrier` 10min + SWR 30min; `/` 5min + SWR 10min. All API endpoints use `stale-while-revalidate` for seamless background refresh (visitor sees cached version immediately, browser updates silently).
+- **Cold start UX**: During FastAPI startup, ASGI proxy serves real `dashboard.html` + CSS + JS (not a loading placeholder). JS `loadAllData()` retries with backoff: 6 attempts (0-5) at 2s/4s/6s/8s/10s intervals (30s total), plus a last-resort retry at +30s for slow Replit cold starts. Total coverage: ~60s. Timeout per request: 5s.
 
 ### SEO & Server-Side Rendering
 - **SSR on homepage**: `_get_ssr_data()` pre-loads today/tomorrow colors, remaining counters, first 10 predictions, and last update timestamp from DB. Jinja2 renders real content instead of JS placeholders. JS takes over on client-side. Best-effort: if DB not ready, falls back to empty placeholders.
@@ -273,8 +286,14 @@
 - **Refresh cycle**: 3 new articles + 1 refresh per 4-week cycle. Refreshes update `updated_date` frontmatter for Google freshness signal.
 - **Bidirectional linking**: Step 5 adds links FROM existing articles TO the new one (retroactive mesh). Max 5 articles modified per week.
 - **Self-updating**: Step 0 checks for Google algorithm updates and AI search changes. SEO rules split into PERMANENT (E-E-A-T, no keyword stuffing) vs MODIFIABLE (structured data formats, Core Web Vitals thresholds). Guard-fous prevent modifying fundamental principles.
+- **SEO rules file**: `articles/_seo_rules.yaml` — externalized SEO rules (Google permanent principles, technical practices, AI engine practices, article best practices). Updated by SEO agent step 0. Historique section tracks changes.
+- **Write-protected files**: Agent cannot modify `.claude/seo-agent-prompt.md`, `seo_agent.py`, `config.py`, `database.py`, `app.py`, `scheduler.py`. Prevents agent from accidentally altering critical infrastructure.
+- **Article validation**: `validate_article.py` script validates blog articles programmatically (frontmatter fields, word count >=800, min 2 H2, min 3 blog links, mandatory `/calendrier` + `/#subscribe` links, FAQ section, keyword in title/description). Returns errors + warnings. Used by SEO agent step 4.
 - **Blog article fields**: `updated_date` (optional, for refreshed articles) and `cluster` (topic cluster name) in frontmatter. `blog.py` Article dataclass supports both.
 - **Publishing**: Articles auto-appear on `/blog/`, `/sitemap.xml`, `/feed.xml` when `publish_date <= today`
 - **Style**: Vouvoiement, expert accessible tone, 1200-2000 words per article
 - **SEO requirements**: Min 5 internal links per article (3 blog + /calendrier + /#subscribe + pillar). Keyword in title/description/H1/intro. FAQ section (2-3 PAA questions). 1+ featured snippet element per H2.
 - **Existing coverage**: 8 articles through March 24, 2026. Calendar planned through June 2, 2026.
+
+### Admin Page Harmonization
+- **Header/footer**: Admin page uses the same footer structure as the rest of the site (Calendrier, Blog, Alertes, Mentions légales links). Consistent visual identity across all pages.
