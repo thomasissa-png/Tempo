@@ -150,16 +150,22 @@ async def _task_post_startup():
     loop = asyncio.get_running_loop()
 
     # 1. Backfill actuals EDF
+    _backfill_ok = False
     try:
         from tempo_client import backfill_season_actuals
         await backfill_season_actuals()
         logger.info("[Post-startup] Backfill actuals terminé")
+        _backfill_ok = True
     except Exception as e:
         logger.error(f"[Post-startup] Erreur backfill: {e}")
     finally:
         # Signaler que le backfill est terminé (même en erreur)
         # pour débloquer le fallback de /api/predictions
         _backfill_done.set()
+
+    # S-2 : si le backfill a échoué, planifier un retry en background
+    if not _backfill_ok:
+        _schedule_backfill_retry()
 
     # 2. Recalcul ML complet (CPU/DB local)
     try:
@@ -195,6 +201,35 @@ async def _task_post_startup():
         logger.error(f"[Post-startup] Erreur prédictions: {e}")
 
     logger.info("[Post-startup] Toutes les tâches différées terminées")
+
+
+def _schedule_backfill_retry():
+    """S-2 : planifie un retry du backfill EDF 5 min plus tard.
+
+    Le flag _backfill_done est déjà set (API non bloquée).
+    Ce retry tente silencieusement de compléter les actuals manquants.
+    """
+    from apscheduler.triggers.date import DateTrigger
+
+    run_at = datetime.now() + timedelta(minutes=5)
+    scheduler.add_job(
+        _task_backfill_retry,
+        DateTrigger(run_date=run_at),
+        id=f"backfill_retry_{date.today().isoformat()}",
+        name="Retry backfill EDF (+5min)",
+        replace_existing=True,
+    )
+    logger.info(f"[Scheduler] Retry backfill planifié à {run_at.strftime('%H:%M:%S')}")
+
+
+async def _task_backfill_retry():
+    """Retry silencieux du backfill EDF après échec au startup."""
+    try:
+        from tempo_client import backfill_season_actuals
+        await backfill_season_actuals()
+        logger.info("[Backfill-retry] Backfill actuals récupéré avec succès")
+    except Exception as e:
+        logger.error(f"[Backfill-retry] Échec du retry backfill: {e}")
 
 
 # ================================================================
@@ -655,24 +690,34 @@ async def task_daily_predictions():
 def _schedule_deferred_retries():
     """Planifie des retries one-shot pour récupérer les prédictions manquantes.
 
-    Délais : 10 min, 30 min, 60 min après maintenant.
+    Délais : 10 min, 30 min, 60 min, 120 min après maintenant.
     Les circuit breakers MF (2 min) et Open-Meteo (5 min) auront eu le temps
     de se réinitialiser. Chaque retry vérifie si des prédictions existent déjà
     pour aujourd'hui avant de relancer.
+
+    S-1 : borne horaire — aucun retry après 21h (évite les SMS à des heures indues).
+    Le 4e retry (+120 min) désactive les SMS (send_sms=False).
     """
     from apscheduler.triggers.date import DateTrigger
 
-    for i, delay_min in enumerate([10, 30, 60]):
-        run_at = datetime.now() + timedelta(minutes=delay_min)
+    now = datetime.now()
+    scheduled = 0
+    for delay_min in [10, 30, 60, 120]:
+        run_at = now + timedelta(minutes=delay_min)
+        # S-1 : ne pas planifier de retry après 21h
+        if run_at.hour >= 21:
+            logger.info(f"[Scheduler] Retry +{delay_min}min ignoré (après 21h)")
+            continue
         job_id = f"deferred_retry_{date.today().isoformat()}_{delay_min}m"
         scheduler.add_job(
-            _task_deferred_retry,
+            _task_deferred_retry_no_sms if delay_min >= 120 else _task_deferred_retry,
             DateTrigger(run_date=run_at),
             id=job_id,
             name=f"Retry prédictions (+{delay_min}min)",
             replace_existing=True,
         )
-    logger.info("[Scheduler] 3 retries différés planifiés (+10/+30/+60 min)")
+        scheduled += 1
+    logger.info(f"[Scheduler] {scheduled} retries différés planifiés")
 
 
 async def _task_deferred_retry():
@@ -704,6 +749,32 @@ async def _task_deferred_retry():
         logger.info(f"[Retry] Récupération réussie — {count} prédictions générées")
     else:
         logger.warning("[Retry] Météo toujours indisponible")
+
+
+async def _task_deferred_retry_no_sms():
+    """Retry tardif (S-1) : re-tente sans SMS pour ne pas déranger les utilisateurs."""
+    from database import get_db
+
+    conn = get_db()
+    try:
+        today_str = date.today().isoformat()
+        row = conn.execute(
+            "SELECT COUNT(*) as c FROM predictions "
+            "WHERE timestamp_prediction >= ? AND simulated = 0",
+            (today_str,)
+        ).fetchone()
+        if row and row["c"] > 0:
+            logger.info(f"[Retry-late] {row['c']} prédictions existent déjà, skip")
+            return
+    finally:
+        conn.close()
+
+    logger.info("[Retry-late] Aucune prédiction — re-tentative sans SMS")
+    count = await _refresh_predictions("retry_late", send_sms=False)
+    if count:
+        logger.info(f"[Retry-late] Récupération réussie — {count} prédictions (sans SMS)")
+    else:
+        logger.warning("[Retry-late] Météo toujours indisponible après 4 tentatives")
 
 
 # ================================================================

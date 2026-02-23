@@ -1823,6 +1823,25 @@ async def admin_run_task(request: Request, task: str = Form(...)):
         return {"status": "error", "result": f"Erreur d'exécution: {e}"}
 
 
+@app.get("/admin/scheduler-status")
+async def admin_scheduler_status(request: Request, authorization: str | None = Header(None)):
+    """Etat des taches planifiees du scheduler."""
+    verify_admin(authorization, request.client.host if request.client else "unknown")
+    from scheduler import scheduler as _scheduler
+
+    jobs = []
+    for job in _scheduler.get_jobs():
+        next_run = job.next_run_time
+        jobs.append({
+            "id": job.id,
+            "name": job.name or job.id,
+            "next_run": next_run.isoformat() if next_run else None,
+            "pending": next_run is not None,
+        })
+    jobs.sort(key=lambda j: j["next_run"] or "9999")
+    return {"status": "ok", "jobs": jobs, "running": _scheduler.running}
+
+
 @app.get("/admin/weights-history")
 async def admin_weights_history(request: Request, authorization: str | None = Header(None)):
     """Historique des versions de poids."""

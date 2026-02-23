@@ -67,8 +67,8 @@ Exécutez les 8 étapes dans l'ordre. Chaque étape doit être complétée avant
 4. `tempo edf site:reddit.com OR site:forum-photovoltaique.fr {année}` (découverte de nouvelles questions utilisateurs)
 
 **Si des règles SEO ont évolué** de manière significative :
-- Mettez à jour la section "Règles SEO en vigueur" ci-dessous
-- Documentez le changement avec la date et la source dans "Historique des mises à jour"
+- Mettez à jour le fichier `articles/_seo_rules.yaml` (les règles SEO sont stockées dans ce fichier séparé, PAS dans ce prompt)
+- Documentez le changement avec la date et la source dans la section `historique` du YAML
 - **Garde-fou** : ne modifiez JAMAIS les règles fondamentales (E-E-A-T, pas de bourrage, liens internes) — seulement les pratiques techniques qui évoluent
 
 **Vérifiez les tendances** : nouveaux mots-clés, questions émergentes, sujets d'actualité Tempo. Ajustez le calendrier éditorial si pertinent.
@@ -362,45 +362,8 @@ Toutes les 4 semaines, au lieu d'écrire un nouvel article, rafraîchissez un ar
 
 ## Règles SEO en vigueur
 
-> Cette section est mise à jour automatiquement par l'agent lors de l'Étape 0.
-> Dernière vérification : 2026-02-19
+> **IMPORTANT** : Les règles SEO sont stockées dans le fichier `articles/_seo_rules.yaml`.
+> Lisez ce fichier au début de l'Étape 0 pour connaître les règles en vigueur.
+> Mettez-le à jour si des règles SEO ont évolué (cf. Étape 0).
 >
-> **Garde-fou** : les règles fondamentales ci-dessous ne peuvent PAS être supprimées.
-> Seules les pratiques techniques (structured data, formats, outils) peuvent être mises à jour.
-> Les principes (E-E-A-T, contenu utile, pas de bourrage, liens internes) sont permanents.
-
-### Google (février 2026) — PRINCIPES PERMANENTS
-- **E-E-A-T** (Experience, Expertise, Authoritativeness, Trustworthiness) : priorité au contenu démontrant une expertise réelle
-- **Helpful Content System** : pénalise le contenu créé pour le SEO sans valeur utilisateur
-- **AI-generated content** : accepté tant qu'il est utile, original et de qualité
-
-### Google (février 2026) — PRATIQUES TECHNIQUES (modifiables)
-- **Structured Data** : JSON-LD recommandé pour Article, FAQPage, BreadcrumbList, HowTo
-- **Core Web Vitals** : LCP < 2.5s, FID < 100ms, CLS < 0.1
-- **Mobile-first indexing** : 100% des sites indexés en mobile-first
-- **Featured Snippets** : paragraphes 40-60 mots, listes, tableaux
-- **dateModified** : signal de fraîcheur important — mettre à jour quand le contenu change
-
-### Moteurs IA (février 2026) — PRATIQUES TECHNIQUES (modifiables)
-- **llms.txt** : standard émergent pour les crawlers IA
-- **Structured data** : les moteurs IA s'appuient fortement sur JSON-LD et FAQ
-- **Contenu factuel** : données chiffrées vérifiables privilégiées
-- **Fraîcheur** : contenus récemment mis à jour favorisés
-- **Citations** : les moteurs IA citent les sources avec des réponses complètes et directes
-
-### Bonnes pratiques articles
-- H1 unique par page
-- Hiérarchie H1 > H2 > H3 stricte
-- Liens internes contextuels (min 3 + pilier)
-- Meta description unique et actionnable
-- URL courte en kebab-case
-- Contenu > 1200 mots pour les piliers, > 800 pour les satellites
-- FAQ pour featured snippets
-- Optimisation featured snippet sur chaque H2
-
-## Historique des mises à jour SEO
-
-| Date | Changement | Source |
-|------|-----------|--------|
-| 2026-02-19 | Création initiale des règles | Audit SEO complet du site |
-| 2026-02-19 | Ajout topic clusters, featured snippets, maillage bidirectionnel, PAA | Audit agent v2 |
+> Ce prompt (`seo-agent-prompt.md`) est en **lecture seule** — ne le modifiez pas.

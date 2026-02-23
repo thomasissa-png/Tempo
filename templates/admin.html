@@ -164,8 +164,7 @@
         .quick-month-btn:hover { background:var(--accent); color:#fff; }
         .scope-label { font-size:0.72rem; color:var(--text-secondary); font-weight:400; background:var(--bg); padding:2px 8px; border-radius:999px; }
         .summary-total-row { font-weight:700; background:var(--bg); border-top:2px solid var(--border); }
-        .admin-footer { margin-top:40px; padding:20px 0; text-align:center; font-size:0.85rem; color:var(--text-secondary); }
-        .admin-footer a { color:var(--accent); text-decoration:none; }
+        /* footer uses site-wide styles from style.min.css */
     </style>
 </head>
 <body>
@@ -386,31 +385,59 @@
                     </div>
                 </div>
             </div>
+            <div class="panel-grid full">
+                <div class="flat-card">
+                    <h4>Derniers SMS envoyés</h4>
+                    <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:12px">50 derniers messages (alertes et récaps).</p>
+                    <div id="sms-logs-container">Chargement...</div>
+                </div>
+            </div>
         </div>
 
         <!-- ═══════ TAB 5 : Actions ═══════ -->
         <div id="panel-actions" class="tab-panel" role="tabpanel">
-            <div class="flat-card">
-                <h4>Tâches manuelles</h4>
-                <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:14px">Exécuter les tâches du scheduler manuellement.</p>
-                <div class="action-grid">
-                    <button class="action-btn blue" onclick="runTask('verification')">Vérification EDF</button>
-                    <button class="action-btn blue" onclick="runTask('predictions')">Prédictions + Alertes</button>
-                    <button class="action-btn green" onclick="runTask('weights')">Recalcul poids</button>
-                    <button class="action-btn gray" onclick="runTask('recap')">Récap hebdo</button>
-                    <button class="action-btn gray" onclick="runTask('backfill')">Backfill saison</button>
-                    <button class="action-btn purple" onclick="runTask('seo_agent')">Agent SEO</button>
-                    <button class="action-btn teal" onclick="runTask('backlinks_agent')">Agent Backlinks</button>
+            <div class="panel-grid">
+                <div class="flat-card">
+                    <h4>Tâches manuelles</h4>
+                    <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:14px">Exécuter les tâches du scheduler manuellement.</p>
+                    <div class="action-grid">
+                        <button class="action-btn blue" onclick="runTask('verification')">Vérification EDF</button>
+                        <button class="action-btn blue" onclick="runTask('predictions')">Prédictions + Alertes</button>
+                        <button class="action-btn green" onclick="runTask('weights')">Recalcul poids</button>
+                        <button class="action-btn gray" onclick="runTask('recap')">Récap hebdo</button>
+                        <button class="action-btn gray" onclick="runTask('backfill')">Backfill saison</button>
+                        <button class="action-btn purple" onclick="runTask('seo_agent')">Agent SEO</button>
+                        <button class="action-btn teal" onclick="runTask('backlinks_agent')">Agent Backlinks</button>
+                    </div>
+                    <div id="task-result" style="margin-top:12px;font-size:0.85rem;padding:10px;border-radius:var(--radius-sm);display:none"></div>
                 </div>
-                <div id="task-result" style="margin-top:12px;font-size:0.85rem;padding:10px;border-radius:var(--radius-sm);display:none"></div>
+                <div class="flat-card">
+                    <h4>État du scheduler</h4>
+                    <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:14px">Prochaines exécutions planifiées.</p>
+                    <div id="scheduler-status">Chargement...</div>
+                </div>
             </div>
         </div>
 
     </div>
 </main>
 
-<footer class="admin-footer">
-    <a href="/">Accueil</a> · <a href="/calendrier">Calendrier</a> · <a href="/blog/">Blog</a> · <a href="/alertes">Alertes</a>
+<footer role="contentinfo">
+    <div class="footer-inner">
+        <div class="footer-brand">Calendrier Tempo EDF</div>
+        <div class="footer-tagline">Service ind&eacute;pendant et gratuit pour anticiper les jours Tempo.</div>
+        <div class="footer-links">
+            <a href="/">Accueil</a>
+            <a href="/calendrier">Calendrier</a>
+            <a href="/alertes">Alertes</a>
+            <a href="/blog/">Blog</a>
+            <a href="/a-propos">&Agrave; propos</a>
+            <a href="/mentions-legales">Mentions l&eacute;gales</a>
+        </div>
+        <div class="footer-legal">
+            Seule la couleur officielle annonc&eacute;e par EDF fait foi. Nos pr&eacute;visions sont indicatives.
+        </div>
+    </div>
 </footer>
 
 <script>
@@ -469,7 +496,9 @@ async function loadAdminData() {
 
         renderPerformanceData(data);
         loadSubscribers();
+        loadSmsLogs();
         loadAgentReports();
+        loadSchedulerStatus();
     } catch (e) { alert('Erreur : ' + e.message); }
 }
 
@@ -1145,6 +1174,68 @@ async function loadSubscribers() {
                 <td>${escapeHtml(u.created_at?.substring(0,10)||'—')}</td></tr>`).join('');
             document.getElementById('subscribers-table').style.display = 'table';
         }
+    } catch {}
+}
+
+async function loadSmsLogs() {
+    try {
+        const resp = await fetch('/admin/sms-logs?limit=50', { headers:{'Authorization':`Bearer ${adminPassword}`} });
+        const data = await resp.json(); if (data.status!=='ok') return;
+        const container = document.getElementById('sms-logs-container');
+        if (!data.logs || data.logs.length === 0) {
+            container.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Aucun SMS envoy&eacute;.</p>';
+            return;
+        }
+        const failed = data.logs.filter(l => l.statut !== 'sent' && l.statut !== 'delivered');
+        let html = '';
+        if (failed.length > 0) {
+            html += `<div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:14px;font-size:0.85rem">
+                <strong style="color:#991B1B">${failed.length} &eacute;chec(s)</strong> sur les ${data.logs.length} derniers messages</div>`;
+        }
+        html += '<div style="overflow-x:auto"><table class="sub-table"><thead><tr><th>Date</th><th>Type</th><th>Couleur</th><th>Statut</th><th>Erreur</th></tr></thead><tbody>';
+        for (const l of data.logs) {
+            const isFail = l.statut !== 'sent' && l.statut !== 'delivered';
+            const statusHtml = isFail
+                ? `<span style="color:#DC2626;font-weight:600">${escapeHtml(l.statut)}</span>`
+                : `<span style="color:#16A34A">${escapeHtml(l.statut)}</span>`;
+            const errHtml = l.erreur ? `<span style="color:#DC2626;font-size:0.78rem">${escapeHtml(l.erreur.substring(0,80))}</span>` : '—';
+            html += `<tr style="${isFail?'background:#FEF2F2':''}">
+                <td style="white-space:nowrap">${escapeHtml(l.date_envoi||'—')}</td>
+                <td>${escapeHtml(l.type_alerte||'—')}</td>
+                <td>${escapeHtml(l.couleur||'—')}</td>
+                <td>${statusHtml}</td>
+                <td>${errHtml}</td></tr>`;
+        }
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+    } catch {}
+}
+
+async function loadSchedulerStatus() {
+    try {
+        const resp = await fetch('/admin/scheduler-status', { headers:{'Authorization':`Bearer ${adminPassword}`} });
+        const data = await resp.json(); if (data.status!=='ok') return;
+        const container = document.getElementById('scheduler-status');
+        if (!data.jobs || data.jobs.length === 0) {
+            container.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Aucune t&acirc;che planifi&eacute;e.</p>';
+            return;
+        }
+        const runningHtml = data.running
+            ? '<span style="color:#16A34A;font-weight:600">Actif</span>'
+            : '<span style="color:#DC2626;font-weight:600">Arr&ecirc;t&eacute;</span>';
+        let html = `<div class="metric-row" style="margin-bottom:12px"><span>Scheduler</span><span class="metric-value">${runningHtml}</span></div>`;
+        html += '<div style="overflow-x:auto"><table class="sub-table"><thead><tr><th>T&acirc;che</th><th>Prochaine ex&eacute;cution</th><th>&Eacute;tat</th></tr></thead><tbody>';
+        for (const j of data.jobs) {
+            const nextStr = j.next_run
+                ? new Date(j.next_run).toLocaleString('fr-FR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})
+                : '—';
+            const stateHtml = j.pending
+                ? '<span style="color:#16A34A">Planifi&eacute;</span>'
+                : '<span style="color:var(--text-secondary)">Termin&eacute;</span>';
+            html += `<tr><td>${escapeHtml(j.name)}</td><td>${nextStr}</td><td>${stateHtml}</td></tr>`;
+        }
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
     } catch {}
 }
 

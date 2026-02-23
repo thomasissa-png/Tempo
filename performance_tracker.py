@@ -185,11 +185,19 @@ def evaluate_predictions_for_date(target_date: date, couleur_reelle: str):
             ecart = abs(score_predit - seuil_reel)
 
             conn.execute(
-                """INSERT OR IGNORE INTO performance
+                """INSERT INTO performance
                    (date_prediction, date_cible, jours_avance, correct,
                     couleur_predite, couleur_reelle, score_risque_predit,
                     ecart_score, contexte_meteo, timestamp_evaluation)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT (date_prediction, date_cible, jours_avance)
+                   DO UPDATE SET correct = excluded.correct,
+                                 couleur_predite = excluded.couleur_predite,
+                                 couleur_reelle = excluded.couleur_reelle,
+                                 score_risque_predit = excluded.score_risque_predit,
+                                 ecart_score = excluded.ecart_score,
+                                 contexte_meteo = excluded.contexte_meteo,
+                                 timestamp_evaluation = excluded.timestamp_evaluation""",
                 (ts.date().isoformat(), target_date.isoformat(),
                  jours_avance, correct,
                  couleur_pred, couleur_reelle,

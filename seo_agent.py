@@ -132,6 +132,16 @@ _BASH_BLOCKLIST = re.compile(
     re.IGNORECASE,
 )
 
+# Fichiers protégés en écriture (A-1 : l'agent ne doit pas modifier son propre prompt)
+_WRITE_PROTECTED = {
+    ".claude/seo-agent-prompt.md",
+    "seo_agent.py",
+    "config.py",
+    "database.py",
+    "app.py",
+    "scheduler.py",
+}
+
 
 def _resolve_path(path: str) -> Path:
     """Résout un chemin relatif depuis la racine du projet."""
@@ -157,12 +167,20 @@ def _exec_tool(name: str, input_data: dict) -> str:
 
         elif name == "write_file":
             p = _resolve_path(input_data["path"])
+            # A-1 : protection en écriture des fichiers critiques
+            rel = str(p.relative_to(_PROJECT_ROOT))
+            if rel in _WRITE_PROTECTED:
+                return f"ERREUR : écriture interdite sur {rel} (fichier protégé)"
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text(input_data["content"], encoding="utf-8")
             return f"OK : {p} écrit ({len(input_data['content'])} caractères)"
 
         elif name == "edit_file":
             p = _resolve_path(input_data["path"])
+            # A-1 : protection en écriture des fichiers critiques
+            rel = str(p.relative_to(_PROJECT_ROOT))
+            if rel in _WRITE_PROTECTED:
+                return f"ERREUR : écriture interdite sur {rel} (fichier protégé)"
             if not p.exists():
                 return f"ERREUR : fichier introuvable : {p}"
             content = p.read_text(encoding="utf-8")
