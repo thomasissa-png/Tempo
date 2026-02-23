@@ -117,7 +117,7 @@
 - `daily_validation` (23h): evaluates prediction accuracy for the day
 - `bimonthly_weights` (1st/15th): recalculates scoring weights
 - `weekly_recap` (Sunday 20h): sends weekly summary
-- `edf_polling` (6h-11h15, every 15min): polls EDF for J+1 color
+- `edf_polling` (6h-11h15, every 15min): polls EDF for today/tomorrow colors, evaluates predictions via `evaluate_predictions_for_date()` before `confirm_prediction()` for robustness if 11h30 scheduler fails
 - `post_startup` (deferred 90s): backfill + ML evaluation + predictions
 - `seo_agent_seasonal` (Tuesday 9h, seasonal frequency): autonomous SEO blog agent (requires ANTHROPIC_API_KEY)
 
@@ -147,7 +147,7 @@
 - **D9**: Summary row "Total J-2→J-5" inserted after J-5 in each detection table — shows aggregated recall/precision for the value zone.
 - **Confusion matrix** (A1/A6): Filtered to **J-2→J-5 only** by default. Scope label visible. Prevents J-1 (trivial) and J-6+ (unreliable) from diluting metrics. 0/0 rows show "—" instead of "0%".
 - **Diagnostic** (A3/B6/C1): Precision computed **directly from confusion matrix** (same scope), not from separate `get_accuracy_global()` call. Verdict (bon/moyen/insuffisant) is now coherent. **Zero ROUGE days**: when no ROUGE days exist in the period, diagnostic does NOT say "detection insuffisante" — instead says "non évaluable" and judges only on precision.
-- **C4**: All sections display explicit scope labels (e.g., "J-2→J-5", "version 2026-02-20", "depuis 2026-02-21").
+- **C4**: All sections display explicit scope labels. Labels ALWAYS include "J-2→J-5" even when version filter is active (e.g., "version 2026-02-20, J-2→J-5" instead of just "version 2026-02-20").
 - **D6**: Weather reliability table: Average absolute forecast error and systematic bias per horizon. Helps distinguish "algo wrong" from "weather wrong".
 - **Removed sections**: P/R/F1 table (A9), trend chart (B8), data coverage (D12), ROUGE post-mortem (D10), data-range/low-data-banner — removed to simplify dashboard.
 
@@ -158,17 +158,17 @@
 
 #### Section 4: Learnings
 - **Weights donut chart**: Algorithm weight distribution (Chart.js). Fallback if CDN unavailable (B5).
-- **Recommendations** (C4): Scoped explicitly to "Prédictions J-2→J-5 depuis la MAJ [date]". Shows evaluation count in scope. **Based on latest version data** — not polluted by older versions' errors.
+- **Recommendations** (C4): Scoped explicitly to "Prédictions J-2→J-5 depuis la MAJ [date]". Shows evaluation count in scope (from `get_period_comparison()` with `min_horizon=2, max_horizon=5`). **Based on latest version data** — not polluted by older versions' errors.
 
 #### Backend Design Principles (`performance_tracker.py`)
 - **`_enforce_start_date(since)`**: All queries clamp to `PREDICTION_START_DATE` to ignore pre-tool data.
 - **B2**: `get_color_recall_by_horizon()` uses single `GROUP BY jours_avance` query (not N individual queries per horizon).
-- **B7**: `get_performance_summary()` has 5-minute TTL cache (`_perf_summary_cache`). Invalidated on season change.
+- **B7**: `get_performance_summary()` has 5-minute TTL cache (`_perf_summary_cache`). Invalidated on season change or explicitly via `invalidate_perf_summary_cache()` (called by `invalidate_predictions_cache()` after EDF confirmation/evaluation). Dashboard reflects new evaluations immediately.
 - **Version-scoped analysis (A5, CRITICAL)**: Each version's analysis is based ONLY on predictions made WITH that version's code. Uses `pred_since_date` and `pred_end_date` parameters that filter on `date_prediction` (when prediction was MADE), NOT `date_cible` (what date it predicted). This ensures version N's metrics are not contaminated by version N-1's predictions. `get_performance_summary()` builds version boundaries from `_get_all_version_dates()` and passes them as `pred_since_date=version_start, pred_end_date=next_version_start`.
 - **`get_confusion_matrix(days, since_date, end_date, min_horizon, max_horizon, pred_since_date, pred_end_date)`**: Fully parameterized. `pred_since_date`/`pred_end_date` filter on `date_prediction` for version scoping. Default in summary: min_horizon=2, max_horizon=5.
-- **`get_diagnostic(days, since_date, end_date, min_horizon, max_horizon, pred_since_date, pred_end_date)`**: Computes accuracy from confusion matrix internally (A3/B6). Passes version params through. Returns `has_rouge_days` boolean — when False, `rouge_recall` is None and verdict is based only on precision (prevents false "insuffisante" diagnosis).
+- **`get_diagnostic(days, since_date, end_date, min_horizon, max_horizon, pred_since_date, pred_end_date)`**: Computes accuracy from confusion matrix internally (A3/B6). Passes version params through. Returns `has_rouge_days` boolean — when False, `rouge_recall` is None and verdict is based only on precision (prevents false "insuffisante" diagnosis). **Adaptive confusion threshold**: reports confusion pairs with `count >= 2` normally, but `count >= 1` when `total_all < 10` (recent versions with few evaluations) to avoid hiding real errors.
 - **`get_color_recall_by_horizon(color, days, max_horizon, since_date, end_date, pred_since_date, pred_end_date)`**: Per-horizon recall with version filtering via `pred_since_date`/`pred_end_date`.
-- **`get_period_comparison(days, pivot_date)`**: When `pivot_date` set, compares predictions MADE after vs before that date using `date_prediction` (not `date_cible`).
+- **`get_period_comparison(days, pivot_date, min_horizon, max_horizon)`**: When `pivot_date` set, compares predictions MADE after vs before that date using `date_prediction` (not `date_cible`). Optional `min_horizon`/`max_horizon` restrict to a horizon range (called with 2-5 in recommendations for J-2→J-5 scope).
 - **`get_monthly_performance(season)`**: Uses `SUBSTR(date_cible, 1, 7)` for month grouping (PostgreSQL-compatible, NOT strftime). Season-scoped only, no version filtering.
 - **`get_budget_season()`**: Returns `rouge_predicted_confidence` and `blanc_predicted_confidence` (A7: average max probability of future predictions).
 - **`get_weather_reliability(days)`**: JOIN weather_forecast_log + weather_cache to compute avg absolute error and bias per horizon.
@@ -186,6 +186,7 @@
 - **No KPI/exec-summary elements**: KPI strip and executive summary banner removed from performance tab — data available in analysis tables below.
 - **No `data-range`/`low-data-banner`**: Removed — redundant with executive summary and section-level scope labels.
 - **Season selector**: Only shows seasons with non-simulated predictions after `PREDICTION_START_DATE`.
+- **Staircase version boundaries**: `_renderRecapTable()` builds version boundary markers by processing `tool_versions` in **reverse chronological order** (`toolVersions.slice().reverse()`). This ensures that when two versions are close together, each J-N cell keeps the label of the version that actually produced its prediction (older version's boundaries are not overwritten). Boundaries styled with `border-top:2px solid #7B1FA2` applied in JS (no CSS class).
 
 ## Common Pitfalls
 - **Data leakage**: Never use same-day RTE consumption for predictions (only lag features D-1+)
@@ -196,7 +197,7 @@
 - **Dependencies**: `fastapi` requires `python-multipart` for Form data — ensure both are installed
 - **SQL portability**: Never use SQLite-specific functions (`strftime`, `GROUP_CONCAT`, `typeof`, `julianday`) in SQL queries — see Database section for compatible alternatives
 - **Admin password diagnostic**: At startup, the lifespan logs the password source (`ADMIN_PASSWORD` env, `SESSION_SECRET`, or generated random) and length. Failed login attempts log length mismatch. Check Replit logs if login fails after changing the Secret.
-- **EDF confirmation propagation**: API endpoints (`/api/today`, `/api/tomorrow`) must call `store_actual()` + `confirm_prediction()` when they detect fresh EDF colors — don't rely solely on the 15-min polling scheduler
+- **EDF confirmation propagation**: API endpoints (`/api/today`, `/api/tomorrow`) call `store_actual()` + `evaluate_predictions_for_date()` + `confirm_prediction()` via `_propagate_edf_confirmation()`. Evaluation is called BEFORE confirmation (same order as scheduler) to ensure predictions are evaluated even if the 11h30 scheduler fails. Also invalidates `_perf_summary_cache`.
 - **Frontend MUST call /api/today and /api/tomorrow**: Even though today/tomorrow cards were removed from the dashboard, the JS must still call these endpoints to trigger `_propagate_edf_confirmation()`. Without these calls, EDF confirmations are never written to the DB from the frontend path. `loadAllData()` calls them before `loadPredictions()`, and the 5-min auto-refresh also calls them.
 
 ### EDF Confirmation & Caching Strategy

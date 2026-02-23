@@ -3050,3 +3050,282 @@ class TestVersionScopedAnalysis:
         source = inspect.getsource(get_version_performance)
         assert "date_prediction" in source, \
             "get_version_performance must filter by date_prediction, not date_cible"
+
+
+# ================================================================
+# Audit fixes — evaluation pipeline robustness (2026-02-23)
+# ================================================================
+
+
+class TestPeriodComparisonHorizonFilter:
+    """get_period_comparison must support min_horizon/max_horizon params."""
+
+    def _setup_data(self):
+        from database import get_db
+        conn = get_db()
+        try:
+            # J-1 prediction (should be excluded by min_horizon=2)
+            conn.execute(
+                """INSERT OR IGNORE INTO performance
+                   (date_prediction, date_cible, jours_avance, correct,
+                    couleur_predite, couleur_reelle, score_risque_predit,
+                    ecart_score, contexte_meteo, timestamp_evaluation)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                ("2099-03-01", "2099-03-02", 1, 1, "BLEU", "BLEU",
+                 50, 10, "", "2099-03-02T12:00:00"),
+            )
+            # J-3 prediction (should be included)
+            conn.execute(
+                """INSERT OR IGNORE INTO performance
+                   (date_prediction, date_cible, jours_avance, correct,
+                    couleur_predite, couleur_reelle, score_risque_predit,
+                    ecart_score, contexte_meteo, timestamp_evaluation)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                ("2099-03-01", "2099-03-04", 3, 0, "BLEU", "ROUGE",
+                 50, 10, "", "2099-03-04T12:00:00"),
+            )
+            # J-7 prediction (should be excluded by max_horizon=5)
+            conn.execute(
+                """INSERT OR IGNORE INTO performance
+                   (date_prediction, date_cible, jours_avance, correct,
+                    couleur_predite, couleur_reelle, score_risque_predit,
+                    ecart_score, contexte_meteo, timestamp_evaluation)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                ("2099-03-01", "2099-03-08", 7, 1, "BLEU", "BLEU",
+                 50, 10, "", "2099-03-08T12:00:00"),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def _cleanup(self):
+        from database import get_db
+        conn = get_db()
+        try:
+            conn.execute("DELETE FROM performance WHERE date_cible LIKE '2099-03-%'")
+            conn.commit()
+        finally:
+            conn.close()
+
+    def test_horizon_filter_restricts_results(self):
+        """min_horizon/max_horizon should filter out J-1 and J-7."""
+        self._setup_data()
+        try:
+            from performance_tracker import get_period_comparison
+            # Without filter: should see all 3
+            all_comp = get_period_comparison(9999, pivot_date="2099-02-28")
+            # With filter: should see only J-3
+            filtered = get_period_comparison(
+                9999, pivot_date="2099-02-28",
+                min_horizon=2, max_horizon=5)
+            assert filtered["current"]["total"] == 1, (
+                f"Expected 1 result (J-3 only), got {filtered['current']['total']}"
+            )
+            assert all_comp["current"]["total"] == 3, (
+                f"Expected 3 results without filter, got {all_comp['current']['total']}"
+            )
+        finally:
+            self._cleanup()
+
+    def test_horizon_filter_params_accepted(self):
+        """Function signature accepts min_horizon/max_horizon without error."""
+        from performance_tracker import get_period_comparison
+        comp = get_period_comparison(7, min_horizon=2, max_horizon=5)
+        assert "current" in comp
+        assert "previous" in comp
+
+
+class TestAdaptiveConfusionThreshold:
+    """Diagnostic should use adaptive threshold for top confusions."""
+
+    def _setup_small_dataset(self):
+        """Insert < 10 evaluations with 1 confusion."""
+        from database import get_db
+        conn = get_db()
+        try:
+            # 4 correct BLEU predictions
+            for i in range(4):
+                conn.execute(
+                    """INSERT OR IGNORE INTO performance
+                       (date_prediction, date_cible, jours_avance, correct,
+                        couleur_predite, couleur_reelle, score_risque_predit,
+                        ecart_score, contexte_meteo, timestamp_evaluation)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    ("2099-04-01", f"2099-04-{3+i:02d}", 3, 1, "BLEU", "BLEU",
+                     50, 10, "", f"2099-04-{3+i:02d}T12:00:00"),
+                )
+            # 1 confusion: predicted BLANC, actual ROUGE (count=1)
+            conn.execute(
+                """INSERT OR IGNORE INTO performance
+                   (date_prediction, date_cible, jours_avance, correct,
+                    couleur_predite, couleur_reelle, score_risque_predit,
+                    ecart_score, contexte_meteo, timestamp_evaluation)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                ("2099-04-01", "2099-04-07", 3, 0, "BLANC", "ROUGE",
+                 50, 10, "", "2099-04-07T12:00:00"),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def _setup_large_dataset(self):
+        """Insert >= 10 evaluations with 1 confusion."""
+        from database import get_db
+        conn = get_db()
+        try:
+            # 12 correct BLEU predictions
+            for i in range(12):
+                conn.execute(
+                    """INSERT OR IGNORE INTO performance
+                       (date_prediction, date_cible, jours_avance, correct,
+                        couleur_predite, couleur_reelle, score_risque_predit,
+                        ecart_score, contexte_meteo, timestamp_evaluation)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    ("2099-05-01", f"2099-05-{3+i:02d}", 3, 1, "BLEU", "BLEU",
+                     50, 10, "", f"2099-05-{3+i:02d}T12:00:00"),
+                )
+            # 1 confusion: predicted BLANC, actual ROUGE (count=1)
+            conn.execute(
+                """INSERT OR IGNORE INTO performance
+                   (date_prediction, date_cible, jours_avance, correct,
+                    couleur_predite, couleur_reelle, score_risque_predit,
+                    ecart_score, contexte_meteo, timestamp_evaluation)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                ("2099-05-01", "2099-05-20", 3, 0, "BLANC", "ROUGE",
+                 50, 10, "", "2099-05-20T12:00:00"),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def _cleanup(self):
+        from database import get_db
+        conn = get_db()
+        try:
+            conn.execute("DELETE FROM performance WHERE date_cible LIKE '2099-04-%'")
+            conn.execute("DELETE FROM performance WHERE date_cible LIKE '2099-05-%'")
+            conn.commit()
+        finally:
+            conn.close()
+
+    def test_shows_single_count_with_low_data(self):
+        """When total < 10, confusions with count=1 should appear."""
+        self._setup_small_dataset()
+        try:
+            from performance_tracker import get_diagnostic
+            diag = get_diagnostic(
+                9999, since_date="2099-04-01", end_date="2099-04-30")
+            # Should have 1 confusion (BLANC→ROUGE) despite count=1
+            assert diag["total_errors"] >= 1, "Should detect at least 1 error"
+            blanc_rouge = [p for p in diag["top_confusions"]
+                           if p["predicted"] == "BLANC" and p["actual"] == "ROUGE"]
+            assert len(blanc_rouge) == 1, (
+                f"BLANC→ROUGE confusion (count=1) should appear with small dataset, "
+                f"got top_confusions={diag['top_confusions']}"
+            )
+        finally:
+            self._cleanup()
+
+    def test_hides_single_count_with_large_data(self):
+        """When total >= 10, confusions with count=1 should be hidden."""
+        self._setup_large_dataset()
+        try:
+            from performance_tracker import get_diagnostic
+            diag = get_diagnostic(
+                9999, since_date="2099-05-01", end_date="2099-05-31")
+            # count=1 confusion should NOT appear (threshold is >= 2)
+            blanc_rouge = [p for p in diag["top_confusions"]
+                           if p["predicted"] == "BLANC" and p["actual"] == "ROUGE"]
+            assert len(blanc_rouge) == 0, (
+                f"BLANC→ROUGE confusion (count=1) should be hidden with large dataset, "
+                f"got top_confusions={diag['top_confusions']}"
+            )
+        finally:
+            self._cleanup()
+
+
+class TestPerfSummaryCacheInvalidation:
+    """Performance cache should be invalidated via invalidate_perf_summary_cache."""
+
+    def test_invalidate_function_exists(self):
+        """invalidate_perf_summary_cache should be importable."""
+        from performance_tracker import invalidate_perf_summary_cache
+        assert callable(invalidate_perf_summary_cache)
+
+    def test_cache_cleared_after_invalidation(self):
+        """Cache should be empty after invalidation."""
+        from performance_tracker import (
+            _perf_summary_cache, invalidate_perf_summary_cache
+        )
+        # Simulate cached data
+        _perf_summary_cache["data"] = {"test": True}
+        _perf_summary_cache["ts"] = 999999999
+        # Invalidate
+        invalidate_perf_summary_cache()
+        # Verify
+        assert _perf_summary_cache["data"] is None
+        assert _perf_summary_cache["ts"] == 0
+
+    def test_invalidate_predictions_cache_calls_perf_invalidation(self):
+        """invalidate_predictions_cache should also clear perf cache."""
+        import inspect
+        try:
+            import app
+        except ImportError:
+            import pytest
+            pytest.skip("fastapi not available in this environment")
+        source = inspect.getsource(app.invalidate_predictions_cache)
+        assert "invalidate_perf_summary_cache" in source, (
+            "invalidate_predictions_cache must call invalidate_perf_summary_cache"
+        )
+
+
+class TestPropagateEdfEvaluation:
+    """_propagate_edf_confirmation must call evaluate_predictions_for_date."""
+
+    def test_propagate_includes_evaluate_call(self):
+        """Verify evaluate_predictions_for_date is called in propagation code."""
+        import inspect
+        try:
+            import app
+        except ImportError:
+            import pytest
+            pytest.skip("fastapi not available in this environment")
+        source = inspect.getsource(app._propagate_edf_confirmation)
+        assert "evaluate_predictions_for_date" in source, (
+            "_propagate_edf_confirmation must call evaluate_predictions_for_date "
+            "to ensure predictions are evaluated even if scheduler fails"
+        )
+
+    def test_evaluate_called_before_confirm(self):
+        """evaluate must be called BEFORE confirm_prediction in propagation."""
+        import inspect
+        try:
+            import app
+        except ImportError:
+            import pytest
+            pytest.skip("fastapi not available in this environment")
+        source = inspect.getsource(app._propagate_edf_confirmation)
+        eval_pos = source.index("evaluate_predictions_for_date")
+        confirm_pos = source.index("confirm_prediction")
+        assert eval_pos < confirm_pos, (
+            "evaluate_predictions_for_date must be called BEFORE confirm_prediction"
+        )
+
+
+class TestPollingEdfEvaluation:
+    """EDF polling task must include evaluate_predictions_for_date calls."""
+
+    def test_polling_task_includes_evaluate(self):
+        """Verify polling task source calls evaluate_predictions_for_date."""
+        import inspect
+        try:
+            import scheduler
+        except ImportError:
+            import pytest
+            pytest.skip("scheduler dependencies not available")
+        source = inspect.getsource(scheduler.task_edf_polling)
+        assert "evaluate_predictions_for_date" in source, (
+            "task_edf_polling must call evaluate_predictions_for_date "
+            "for robustness if 11h30 scheduler fails"
+        )
