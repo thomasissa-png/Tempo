@@ -28,14 +28,6 @@
         .tab-panel { display:none; }
         .tab-panel.active { display:block; }
 
-        .kpi-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:24px; }
-        @media(max-width:768px){ .kpi-strip{grid-template-columns:repeat(2,1fr);gap:10px;} }
-        .kpi-card { background:var(--surface); border-radius:var(--radius); padding:16px 12px; box-shadow:var(--shadow); text-align:center; }
-        .kpi-card .kpi-value { font-size:1.75rem; font-weight:800; line-height:1.1; color:var(--text); }
-        .kpi-card .kpi-value.green { color:#16A34A; }
-        .kpi-card .kpi-value.orange { color:#D97706; }
-        .kpi-card .kpi-value.red { color:#DC2626; }
-        .kpi-card .kpi-label { font-size:0.75rem; color:var(--text-secondary); margin-top:6px; font-weight:500; line-height:1.3; }
 
         .section-title { font-size:0.92rem; font-weight:700; color:var(--text); margin:8px 0 12px 0; display:flex; align-items:center; gap:8px; }
         .section-title:first-child { margin-top:0; }
@@ -208,29 +200,6 @@
                 <select id="season-select" class="season-select" aria-label="Saison">
                     <option value="2025-2026">2025-2026</option>
                 </select>
-            </div>
-
-            <!-- E1: Executive summary banner -->
-            <div id="exec-summary" style="display:none;padding:14px 18px;border-radius:var(--radius);margin-bottom:16px;font-size:0.88rem;line-height:1.5"></div>
-
-            <!-- KPI strip (C2: removed abonnés, A2: added J-6→J-15) -->
-            <div class="kpi-strip">
-                <div class="kpi-card">
-                    <div class="kpi-value" id="kpi-acc-j1">—</div>
-                    <div class="kpi-label">Précision J-1<br><small style="font-weight:400">prédiction de la veille</small></div>
-                </div>
-                <div class="kpi-card">
-                    <div class="kpi-value" id="kpi-acc-j2j5">—</div>
-                    <div class="kpi-label">Précision J-2→J-5<br><small style="font-weight:400">anticipation 2-5 jours</small></div>
-                </div>
-                <div class="kpi-card">
-                    <div class="kpi-value" id="kpi-rouge-recall">—</div>
-                    <div class="kpi-label">Détection ROUGE<br><small style="font-weight:400">% jours rouges repérés</small></div>
-                </div>
-                <div class="kpi-card">
-                    <div class="kpi-value" id="kpi-acc-j6j15">—</div>
-                    <div class="kpi-label">Précision J-6→J-15<br><small style="font-weight:400">indicatif (météo imprécise)</small></div>
-                </div>
             </div>
 
             <!-- SECTION 1 : Récap jour par jour -->
@@ -518,12 +487,6 @@ function renderPerformanceData(data) {
     /* Populate version filter */
     _populateVersionFilter(data.tool_versions||[]);
 
-    /* KPIs (version-aware: A2/B4/C2) */
-    _renderKPIs(data, _selectedVersion);
-
-    /* E1: Executive summary (C3: consistent with diagnostic scope) */
-    renderExecSummary(data, _selectedVersion);
-
     /* Sections */
     renderDailyRecap(data.daily_recap||[]);
     renderErrorSection(data, _selectedVersion);
@@ -555,89 +518,6 @@ function renderPerformanceData(data) {
 
     /* Weather reliability */
     renderWeatherReliability(data.weather_reliability||{});
-}
-
-/* B4/C2: Extract KPI rendering to reuse when version changes */
-function _renderKPIs(data, version) {
-    const j1 = data.accuracy_j1||{}, j2j5 = data.accuracy_j2_j5||{};
-    const j6j15 = data.accuracy_j6_j15||{};
-    const kpiJ2J5Card = document.getElementById('kpi-acc-j2j5').closest('.kpi-card');
-    const kpiRougeCard = document.getElementById('kpi-rouge-recall').closest('.kpi-card');
-    const kpiJ6J15Card = document.getElementById('kpi-acc-j6j15').closest('.kpi-card');
-
-    if (j1.total > 0) setKpi('kpi-acc-j1', j1.precision+'%', j1.precision);
-    else { document.getElementById('kpi-acc-j1').textContent = '—'; document.getElementById('kpi-acc-j1').className = 'kpi-value'; }
-
-    if (j2j5.total > 0) { setKpi('kpi-acc-j2j5', j2j5.precision+'%', j2j5.precision); kpiJ2J5Card.style.opacity='1'; }
-    else { document.getElementById('kpi-acc-j2j5').textContent='—'; document.getElementById('kpi-acc-j2j5').className='kpi-value'; kpiJ2J5Card.style.opacity='0.4'; }
-
-    if (j6j15.total > 0) { setKpi('kpi-acc-j6j15', j6j15.precision+'%', j6j15.precision); kpiJ6J15Card.style.opacity='0.7'; }
-    else { document.getElementById('kpi-acc-j6j15').textContent='—'; document.getElementById('kpi-acc-j6j15').className='kpi-value'; kpiJ6J15Card.style.opacity='0.4'; }
-
-    /* A2: ROUGE recall on J-2→J-5 only (not J-1 which is EDF-provided) */
-    let rrh = data.rouge_recall_by_horizon||{};
-    if (version !== 'all' && data.per_version_data && data.per_version_data[version]) {
-        rrh = data.per_version_data[version].rouge_recall_by_horizon || {};
-    }
-    let totalRouge=0, totalCaught=0;
-    ['J-2','J-3','J-4','J-5'].forEach(k => { if(rrh[k]){totalRouge+=rrh[k].total_actual||0;totalCaught+=rrh[k].caught||0;} });
-    if (totalRouge > 0) { const rr=Math.round(totalCaught/totalRouge*100); setKpi('kpi-rouge-recall',rr+'%',rr); kpiRougeCard.style.opacity='1'; }
-    else { document.getElementById('kpi-rouge-recall').textContent='—'; document.getElementById('kpi-rouge-recall').className='kpi-value'; kpiRougeCard.style.opacity='0.4'; }
-}
-
-/* E1: Executive summary banner (C3: consistent with diagnostic) */
-function renderExecSummary(data, version) {
-    const el = document.getElementById('exec-summary');
-    if (!el) return;
-    const j2j5 = data.accuracy_j2_j5||{};
-    let diag = data.diagnostic||{};
-    if (version && version !== 'all' && data.per_version_data && data.per_version_data[version]) {
-        diag = data.per_version_data[version].diagnostic || {};
-    }
-    const comp = data.period_comparison||{};
-    const budget = data.budget_season||{};
-
-    if (j2j5.total < 5) { el.style.display='none'; return; }
-
-    const pct = j2j5.precision;
-    const bgColor = pct>=75?'#F0FDF4':pct>=55?'#FEF3C7':'#FEF2F2';
-    const txtColor = pct>=75?'#166534':pct>=55?'#92400E':'#991B1B';
-
-    let parts = [`<strong>Fiabilité J+2→J+5 : ${pct}%</strong> sur ${j2j5.total} évaluations`];
-
-    /* A4: Period comparison with label */
-    if (comp.delta != null) {
-        const arrow = comp.delta > 0 ? '\u25B2' : comp.delta < 0 ? '\u25BC' : '\u25CF';
-        const sign = comp.delta > 0 ? '+' : '';
-        const lbl = comp.label ? ` (${escapeHtml(comp.label)})` : ' vs semaine précédente';
-        parts.push(`<span style="font-weight:600">${arrow} ${sign}${comp.delta} pts</span>${lbl}`);
-    }
-
-    /* Rouge recall from diagnostic */
-    if (diag.rouge_recall != null && diag.rouge_recall > 0) {
-        parts.push(`Détection ROUGE : ${diag.rouge_recall}%`);
-    }
-
-    /* Budget remaining */
-    if (budget.rouge_remaining != null) {
-        parts.push(`Budget : ${budget.rouge_remaining}R / ${budget.blanc_remaining}B restants`);
-    }
-
-    /* Diagnostic action */
-    if (diag.action) {
-        parts.push(`<br><span style="font-size:0.82rem">${escapeHtml(diag.action)}</span>`);
-    }
-
-    el.innerHTML = parts.join(' · ');
-    el.style.background = bgColor;
-    el.style.color = txtColor;
-    el.style.display = 'block';
-}
-
-function setKpi(id, text, value) {
-    const el = document.getElementById(id);
-    el.textContent = text;
-    if (typeof value === 'number') { el.classList.remove('green','orange','red'); el.classList.add(value>=75?'green':value>=55?'orange':'red'); }
 }
 
 /* ══════════════════════════════════ */
@@ -917,9 +797,7 @@ function _populateVersionFilter(versions) {
 document.getElementById('version-filter')?.addEventListener('change', e => {
     _selectedVersion = e.target.value;
     if (_perfData) {
-        /* B4/C2: Version filter updates KPIs + exec summary + errors + monthly */
-        _renderKPIs(_perfData, _selectedVersion);
-        renderExecSummary(_perfData, _selectedVersion);
+        /* Version filter updates errors + monthly */
         renderErrorSection(_perfData, _selectedVersion);
         renderMonthlyPerfTable(_perfData.monthly_performance||[], _selectedVersion);
     }

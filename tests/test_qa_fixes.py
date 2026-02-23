@@ -2711,20 +2711,6 @@ class TestAdminHTMLStructure:
             html = f.read()
         assert 'onerror="window._chartJsFailed=true' in html
 
-    def test_admin_kpi_rouge_label_j2_j5(self):
-        """A2: ROUGE recall KPI label mentions detection, not J-1."""
-        with open("templates/admin.html") as f:
-            html = f.read()
-        assert 'Détection ROUGE' in html
-        # The JS should use J-2→J-5 for ROUGE recall (not J-1)
-        assert "['J-2','J-3','J-4','J-5']" in html
-
-    def test_admin_js_renderKPIs_function(self):
-        """B4: _renderKPIs function exists for version-aware KPIs."""
-        with open("templates/admin.html") as f:
-            html = f.read()
-        assert 'function _renderKPIs(' in html
-
     def test_admin_js_renderWeatherReliability_function(self):
         """D6: renderWeatherReliability function exists."""
         with open("templates/admin.html") as f:
@@ -2743,13 +2729,6 @@ class TestAdminHTMLStructure:
             html = f.read()
         assert 'Matrice de confusion' in html
         assert 'J-2→J-5' in html
-
-    def test_admin_version_filter_updates_kpis(self):
-        """B4/C2: Version filter change triggers _renderKPIs."""
-        with open("templates/admin.html") as f:
-            html = f.read()
-        # The change handler should call _renderKPIs
-        assert '_renderKPIs(_perfData' in html
 
     def test_admin_rattrap_warning_style(self):
         """A8: Rattrapé lines styled with warning color."""

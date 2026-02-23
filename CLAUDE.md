@@ -119,17 +119,7 @@
 - **5 tabs**: Performance (default), SEO, Backlinks, Abonnés, Actions.
 - **Performance tab architecture**: Single API call `GET /api/performance?season=YYYY-YYYY` returns all data. Frontend caches in `_perfData` and re-renders sections on filter changes (no additional API calls).
 
-#### KPI Strip (4 cards)
-- **Précision J-1**: Accuracy at 1-day horizon (EDF-provided, reference only).
-- **Précision J-2→J-5**: Our primary success metric. Accuracy of anticipation predictions.
-- **Détection ROUGE (J-2→J-5 only)**: Recall computed from J-2 to J-5 horizons. **J-1 is excluded** because EDF provides it — including it would inflate the number artificially.
-- **Précision J-6→J-15**: Indicative (weather unreliable). Shown at reduced opacity (0.7).
-- All KPIs update when the version filter changes (B4/C2 fix).
-
-#### Executive Summary Banner
-- Shows fiabilité J+2→J+5, period delta, ROUGE recall, budget remaining.
-- Based on **latest version** data by default (not global). When version filter active, uses that version's diagnostic.
-- Period comparison (A4): anchored on last `TOOL_UPDATE_DATE` via `pivot_date` — compares "since MAJ" vs "same period before MAJ".
+- **Removed sections**: KPI strip (4 cards) and Executive Summary Banner — redundant with analysis tables below. Recap starts directly under season filter.
 
 #### Section 1: Récapitulatif jour par jour
 - 15-horizon grid (J-15 to J-1) with colored dots (correct=green border, incorrect=red border, pending=transparent).
@@ -144,7 +134,7 @@
 - **No separate today/tomorrow block**: Removed by user to avoid redundancy with 10-day summary dots.
 
 #### Section 2: Analyse des erreurs
-- **Version filter**: Dropdown filters the ENTIRE error section (detection tables, confusion matrix, diagnostic). **Pre-selects latest version** on first load. When a version is selected, KPIs and exec summary also update (B4).
+- **Version filter**: Dropdown filters the ENTIRE error section (detection tables, confusion matrix, diagnostic). **Pre-selects latest version** on first load.
 - **A5**: Per-version data is **bounded by end_date** — version N's data stops where version N+1 starts. Prevents data contamination.
 - **Detection tables** (3 cards: ROUGE/BLANC/BLEU): Recall/precision by horizon J-1→J-10. J-6+ shown at opacity 0.6 marked "(indicatif)". When 0 actual days: shows "Aucun jour réel de cette couleur — rien à évaluer" (not misleading 0%).
 - **D9**: Summary row "Total J-2→J-5" inserted after J-5 in each detection table — shows aggregated recall/precision for the value zone.
@@ -180,10 +170,10 @@
 
 #### Frontend Design Principles (`templates/admin.html`)
 - **Single API call**: All performance data loaded in one `GET /api/performance`. No per-section API calls.
-- **Version filter rerenders**: Changes to version filter call `_renderKPIs()`, `renderExecSummary()`, `renderErrorSection()`, `renderMonthlyPerfTable()` — all from cached `_perfData`.
+- **Version filter rerenders**: Changes to version filter call `renderErrorSection()`, `renderMonthlyPerfTable()` — all from cached `_perfData`.
 - **Chart.js**: Loaded with `onerror` handler on script tag. `chartAvailable` checks both `typeof Chart` and `!window._chartJsFailed`.
 - **State variables**: `_perfData` (cached API response), `_selectedVersion` (version filter, auto-selects latest on first load via `_versionFilterInitialized`), `_selectedMonth` (month filter), `_recapData` (recap for filtering).
-- **No `kpi-subs` element**: Subscriber count KPI was removed from performance tab (C2). `loadSubscribers()` has null-check for the element.
+- **No KPI/exec-summary elements**: KPI strip and executive summary banner removed from performance tab — data available in analysis tables below.
 - **No `data-range`/`low-data-banner`**: Removed — redundant with executive summary and section-level scope labels.
 - **Season selector**: Only shows seasons with non-simulated predictions after `PREDICTION_START_DATE`.
 
