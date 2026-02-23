@@ -110,6 +110,7 @@
 - **Weight recalculation**: LogisticRegression multinomial, cost-sensitive (ROUGE=25, BLANC=3, BLEU=1)
 - Uses **raw sub-scores** (C-1, before corrections) to avoid feedback loops
 - Guards: F1-macro >= 45%, ROUGE recall >= 30%, holdout temporal >= 65%
+- **No-change guard**: If max weight diff < 1% (0.01), recalibration is skipped (`return None`) and no new `weights_history` entry is created. Prevents spurious version entries from identical recalibrations.
 - Holdout: trains on 80% oldest data, validates on 20% newest (temporal direction)
 - Auto-rollback (W-5): if precision drops > 5 points after weight update
 - Kill-switch (C-3): disables top 3 corrections if 14-day accuracy < 50%
@@ -135,18 +136,20 @@
 
 #### Section 1: Récapitulatif jour par jour
 - 15-horizon grid (J-15 to J-1) with colored dots (correct=green border, incorrect=red border, pending=transparent).
+- **Column order**: Date | J-15…J-1 | Résultat | ✓ consec. | Météo obs. | Analyse erreur. Résultat is placed after J-1 (not after Date) for visual proximity with the dots.
 - Temperatures shown under all dots (forecast temperature at that horizon).
 - Confidence percentage only in tooltip on hover (not visible under dots — user explicitly requested this).
 - **Quick month button** (D4): "Ce mois" button auto-selects current month in filter.
 - **Month filter persisted** (D5): `_selectedMonth` variable survives season changes.
-- **Tool update markers**: Purple dot + description when tool version matches (code updates from `TOOL_UPDATE_DATES` + automatic weight recalculations from `weights_history`).
-- **Diagnostic column**: Shows error analysis for J-1→J-5. "Rattrapé J-1 (erreur J-2, J-3)" shown in **orange/warning** (A8) — not green, because failing J-2→J-5 is an anticipation failure even if J-1 is correct.
+- **Tool update markers**: Purple dot + description in the Analyse erreur column when tool version matches (code updates from `TOOL_UPDATE_DATES` + automatic weight recalculations from `weights_history`). Version labels shown in comment column, NOT date column.
+- **CONSEC column**: Shows consecutive correct horizons from J-1 backwards. Shows "0j" in red when actual is confirmed but zero horizons were correct. Shows "—" only for pending/future days.
+- **Diagnostic column**: Shows error analysis for J-1→J-5, **scoped to version active at confirmation date** — predictions made before the version that was active when EDF confirmed are skipped (irrelevant to current code quality). "Rattrapé J-1 (erreur J-2, J-3)" shown in **orange/warning** (A8) — not green, because failing J-2→J-5 is an anticipation failure even if J-1 is correct.
 - **A11**: Past days without EDF actual yet show "en attente EDF" (not misleading "—").
 - **D5**: Error diagnostics include ΔT (temperature deviation: observed - forecast) when available.
 - **No separate today/tomorrow block**: Removed by user to avoid redundancy with 10-day summary dots.
 
 #### Section 2: Analyse des erreurs
-- **Version filter**: Dropdown filters the ENTIRE error section (detection tables, confusion matrix, diagnostic). **Defaults to "Toutes les versions"** on first load (shows maximum data). User can manually select a specific version.
+- **Version filter**: Dropdown filters the ENTIRE error section (detection tables, confusion matrix, diagnostic). **Defaults to latest version** on first load (`_versionFilterInitialized` flag ensures this only happens once). User can manually select "Toutes les versions" or a specific version.
 - **A5**: Per-version data is **bounded by end_date** — version N's data stops where version N+1 starts. Prevents data contamination.
 - **Detection tables** (3 cards: ROUGE/BLANC/BLEU): Recall/precision by horizon J-1→J-10. J-6+ shown at opacity 0.6 marked "(indicatif)". When 0 actual days: shows "Aucun jour réel de cette couleur — rien à évaluer" (not misleading 0%).
 - **D9**: Summary row "Total J-2→J-5" inserted after J-5 in each detection table — shows aggregated recall/precision for the value zone.
@@ -163,6 +166,7 @@
 
 #### Section 4: Learnings
 - **Weights donut chart**: Algorithm weight distribution (Chart.js). Fallback if CDN unavailable (B5).
+- **Previous weights comparison**: Each weight shows the previous value in parentheses — red `(X%)` if changed, gray `(=X%)` if identical. Uses `get_previous_weights()` from `database.py`. Legend below explains red = changed, gray = identical.
 - **Recommendations** (C4): Scoped explicitly to "Prédictions J-2→J-5 depuis la MAJ [date]". Shows evaluation count in scope (from `get_period_comparison()` with `min_horizon=2, max_horizon=5`). **Based on latest version data** — not polluted by older versions' errors.
 
 #### Backend Design Principles (`performance_tracker.py`)
@@ -181,17 +185,18 @@
 - **`get_data_coverage(season)`**: Per horizon: prediction count, evaluation count, coverage percentage.
 - **`_get_all_version_dates()`**: Merges `Config.TOOL_UPDATE_DATES` (manual code changes) with successful weight recalculations from `weights_history` DB table. Excludes rejected entries (`REJETE%`). Code versions take precedence on same date. Returns sorted dict.
 - **`get_version_performance()`**: Per version: total, accuracy, days_count, dates_with_data, per-horizon accuracy. **Latest version first** (reversed chronological order). Uses `_get_all_version_dates()` so weight recalculations automatically appear as new versions.
-- **`get_daily_recap(season)`**: Returns `actual_status` (confirmed/pending/future), `temp_deviation`, `tool_update`.
+- **`get_daily_recap(season)`**: Returns `actual_status` (confirmed/pending/future), `temp_deviation`, `tool_update`. Diagnostic scoping uses `confirm_version` (version active at confirmation date) — skips horizons whose predictions predate that version.
+- **`get_previous_weights()`** (in `database.py`): Returns the second-latest weights from `weights_history`. Falls back to `Config.DEFAULT_WEIGHTS` when only one entry exists. Returns `None` if no entries.
 
 #### Frontend Design Principles (`templates/admin.html`)
 - **Single API call**: All performance data loaded in one `GET /api/performance`. No per-section API calls.
 - **Version filter rerenders**: Changes to version filter call `renderErrorSection()`, `renderMonthlyPerfTable()` — all from cached `_perfData`.
 - **Chart.js**: Loaded with `onerror` handler on script tag. `chartAvailable` checks both `typeof Chart` and `!window._chartJsFailed`.
-- **State variables**: `_perfData` (cached API response), `_selectedVersion` (version filter, defaults to `'all'` on first load), `_selectedMonth` (month filter), `_recapData` (recap for filtering).
+- **State variables**: `_perfData` (cached API response), `_selectedVersion` (version filter, defaults to latest version on first load via `_versionFilterInitialized` flag), `_selectedMonth` (month filter), `_recapData` (recap for filtering).
 - **No KPI/exec-summary elements**: KPI strip and executive summary banner removed from performance tab — data available in analysis tables below.
 - **No `data-range`/`low-data-banner`**: Removed — redundant with executive summary and section-level scope labels.
 - **Season selector**: Only shows seasons with non-simulated predictions after `PREDICTION_START_DATE`.
-- **Staircase version boundaries**: `_renderRecapTable()` computes for each cell (date, J-N) which version was active when the prediction was made (`_getActiveVersion(targetDate, horizon)` = latest version deployed ≤ target_date - N days). Borders appear where adjacent cells (above or left) belong to different versions: `border-top` for horizontal steps, `border-left` for vertical connectors. **Latest version**: solid 2px `#7B1FA2` (purple). **Older versions**: dashed 1px `#B39DDB` (light purple). This visually emphasizes the current version boundary while keeping historical boundaries visible but non-distracting.
+- **Staircase version boundaries**: `_renderRecapTable()` computes for each cell (date, J-N) which version was active when the prediction was made (`_getActiveVersion(targetDate, horizon)` = latest version deployed ≤ target_date - N days). Borders appear where adjacent cells (above or left) belong to different versions: `border-top` for horizontal steps, `border-left` for vertical connectors. **Latest version**: solid 2px `#7B1FA2` (purple). **Older versions**: dashed **2px** `#B39DDB` (light purple). Both solid and dashed must be 2px because CSS `border-collapse: collapse` makes solid win over dashed at the same width — at 1px, dashed borders would disappear.
 
 ## Common Pitfalls
 - **Data leakage**: Never use same-day RTE consumption for predictions (only lag features D-1+)

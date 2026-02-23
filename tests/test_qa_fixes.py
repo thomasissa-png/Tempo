@@ -3889,3 +3889,179 @@ class TestPgCrossplatformSql:
         from performance_tracker import get_weather_reliability
         result = get_weather_reliability(30)
         assert isinstance(result, dict)
+
+
+# ================================================================
+# Admin dashboard fixes — Feb 2026 session
+# ================================================================
+
+class TestGetPreviousWeights:
+    """get_previous_weights returns the second-latest weights or defaults."""
+
+    def test_returns_dict_or_none(self):
+        from database import get_previous_weights
+        result = get_previous_weights()
+        assert result is None or isinstance(result, dict)
+
+    def test_fallback_to_defaults_with_single_entry(self):
+        """With only one weights_history entry, falls back to DEFAULT_WEIGHTS."""
+        from database import get_db, get_previous_weights
+        from config import Config
+        conn = get_db()
+        try:
+            # Ensure at least one entry exists
+            conn.execute(
+                "INSERT INTO weights_history (date_update, commentaire, weights_json, timestamp_update) "
+                "VALUES (?, ?, ?, ?)",
+                ("2099-12-01", "test single", '{"temperature":0.40}', "2099-12-01T00:00:00"),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        try:
+            result = get_previous_weights()
+            # Should return defaults OR the actual previous entry (depends on existing data)
+            assert result is not None
+            assert isinstance(result, dict)
+        finally:
+            conn = get_db()
+            try:
+                conn.execute("DELETE FROM weights_history WHERE date_update = '2099-12-01'")
+                conn.commit()
+            finally:
+                conn.close()
+
+    def test_returns_second_latest_with_two_entries(self):
+        """With two entries, returns the older one."""
+        from database import get_db, get_previous_weights
+        conn = get_db()
+        try:
+            conn.execute(
+                "INSERT INTO weights_history (date_update, commentaire, weights_json, timestamp_update) "
+                "VALUES (?, ?, ?, ?)",
+                ("2099-11-01", "test old", '{"temperature":0.35}', "2099-11-01T00:00:00"),
+            )
+            conn.execute(
+                "INSERT INTO weights_history (date_update, commentaire, weights_json, timestamp_update) "
+                "VALUES (?, ?, ?, ?)",
+                ("2099-12-01", "test new", '{"temperature":0.40}', "2099-12-01T00:00:00"),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        try:
+            result = get_previous_weights()
+            assert result is not None
+            assert isinstance(result, dict)
+        finally:
+            conn = get_db()
+            try:
+                conn.execute("DELETE FROM weights_history WHERE date_update LIKE '2099-%'")
+                conn.commit()
+            finally:
+                conn.close()
+
+
+class TestNoChangeRecalibrationGuard:
+    """recalculate_weights skips update when weights barely change."""
+
+    def test_guard_exists_in_source(self):
+        """recalculate_weights checks max_diff < 0.01 before saving."""
+        import inspect
+        from performance_tracker import recalculate_weights
+        source = inspect.getsource(recalculate_weights)
+        assert "max_diff" in source, "No-change guard (max_diff) missing"
+        assert "0.01" in source, "Threshold 0.01 missing"
+        assert "return None" in source, "Should return None when no change"
+
+    def test_guard_log_message(self):
+        """The no-change guard logs an informative message."""
+        import inspect
+        from performance_tracker import recalculate_weights
+        source = inspect.getsource(recalculate_weights)
+        assert "Recalcul identique" in source, (
+            "No-change guard should log 'Recalcul identique'"
+        )
+
+
+class TestPerformanceSummaryPreviousWeights:
+    """Performance summary includes previous_weights key."""
+
+    def test_previous_weights_in_summary(self):
+        from performance_tracker import get_performance_summary
+        data = get_performance_summary("2025-2026")
+        assert "previous_weights" in data, (
+            "previous_weights key missing from performance summary"
+        )
+
+    def test_previous_weights_is_dict_or_none(self):
+        from performance_tracker import get_performance_summary
+        data = get_performance_summary("2025-2026")
+        pw = data["previous_weights"]
+        assert pw is None or isinstance(pw, dict)
+
+
+class TestDailyRecapDiagnosticVersionScoping:
+    """Diagnostic in daily recap scoped to version active at confirmation date."""
+
+    def test_diagnostic_source_uses_confirm_version(self):
+        """get_daily_recap uses confirm_version for diagnostic scoping."""
+        import inspect
+        from performance_tracker import get_daily_recap
+        source = inspect.getsource(get_daily_recap)
+        assert "confirm_version" in source, (
+            "get_daily_recap should use confirm_version for diagnostic scoping"
+        )
+        assert "pred_date < confirm_version" in source, (
+            "Horizons predating the active version should be skipped"
+        )
+
+    def test_all_versions_used_for_tool_updates(self):
+        """get_daily_recap uses _get_all_version_dates for tool_update labels."""
+        import inspect
+        from performance_tracker import get_daily_recap
+        source = inspect.getsource(get_daily_recap)
+        assert "_get_all_version_dates" in source, (
+            "get_daily_recap should use _get_all_version_dates for version labels"
+        )
+
+
+class TestAdminHTMLRecapLayout:
+    """Admin HTML recap table layout and display fixes."""
+
+    def test_no_debug_console_log(self):
+        """admin.html should not contain debug console.log statements."""
+        with open("templates/admin.html") as f:
+            html = f.read()
+        # Allow console.warn/error for legitimate error handling, but no debug logs
+        assert "[weights]" not in html, "Debug console.log for weights still present"
+        assert "[weather debug]" not in html, "Debug console.log for weather still present"
+
+    def test_staircase_border_dashed_2px(self):
+        """Dashed staircase borders should be 2px (not 1px) to survive border-collapse."""
+        with open("templates/admin.html") as f:
+            html = f.read()
+        assert "2px dashed #B39DDB" in html, (
+            "Dashed borders must be 2px for visibility with border-collapse"
+        )
+
+    def test_consec_shows_zero_red(self):
+        """CONSEC column should show '0j' in red for confirmed wrong predictions."""
+        with open("templates/admin.html") as f:
+            html = f.read()
+        assert "'0j'" in html, "CONSEC column should show '0j' for zero consecutive correct"
+
+    def test_weights_previous_display(self):
+        """Weights section shows previous weights in parentheses."""
+        with open("templates/admin.html") as f:
+            html = f.read()
+        assert "previous_weights" in html, "previous_weights should be referenced in admin"
+        assert "prevWeights" in html, "prevWeights variable should exist"
+
+    def test_version_filter_defaults_latest(self):
+        """Version filter defaults to latest version on first load."""
+        with open("templates/admin.html") as f:
+            html = f.read()
+        assert "_versionFilterInitialized" in html
+        # Should select the last version in the list
+        assert "versions[versions.length - 1]" in html

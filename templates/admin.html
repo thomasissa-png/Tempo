@@ -536,7 +536,6 @@ function renderPerformanceData(data) {
     };
     const weights = data.current_weights||{};
     const prevWeights = data.previous_weights||null;
-    console.log('[weights] current:', JSON.stringify(weights), 'previous:', JSON.stringify(prevWeights));
     document.getElementById('current-weights').innerHTML = Object.entries(weights).map(([k,v]) => {
         const cur = (Number(v)*100).toFixed(1);
         let prev = '';
@@ -570,13 +569,6 @@ function renderPerformanceData(data) {
 /* ══════════════════════════════════ */
 function renderDailyRecap(recap) {
     _recapData = recap; // store for month filtering
-    /* Debug: check weather_observed for dates before 21/02 */
-    const earlyDates = (recap||[]).filter(r => r.date < '2026-02-21');
-    if (earlyDates.length) {
-        console.log('[weather debug] Dates before 21/02:', earlyDates.map(r =>
-            r.date + ': weather_observed=' + JSON.stringify(r.weather_observed)
-        ));
-    }
     _populateMonthFilter(recap);
     /* D5: Apply persisted month filter */
     if (_selectedMonth !== 'all') {
