@@ -797,9 +797,15 @@ function _populateVersionFilter(versions) {
 document.getElementById('version-filter')?.addEventListener('change', e => {
     _selectedVersion = e.target.value;
     if (_perfData) {
-        /* Version filter updates errors + monthly */
+        /* Version filter updates errors + monthly + recommendations */
         renderErrorSection(_perfData, _selectedVersion);
         renderMonthlyPerfTable(_perfData.monthly_performance||[], _selectedVersion);
+        /* Re-render recommendations with version-scoped diagnostic */
+        const isV = _selectedVersion !== 'all' && _perfData.per_version_data && _perfData.per_version_data[_selectedVersion];
+        const diagForRecs = isV ? (_perfData.per_version_data[_selectedVersion].diagnostic||{}) : (_perfData.diagnostic||{});
+        const recUpdate = isV ? _selectedVersion : _perfData.last_tool_update;
+        const recLabel = isV ? (_perfData.tool_versions||[]).find(v=>v.date===_selectedVersion)?.label||'' : _perfData.last_tool_update_label;
+        renderRecommendations(diagForRecs, recUpdate, recLabel, _perfData.period_comparison);
     }
 });
 

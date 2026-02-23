@@ -383,14 +383,18 @@ def get_accuracy_by_horizon(days: int = 60) -> list[dict]:
 def get_confusion_matrix(days: int = 60, since_date: str | None = None,
                          end_date: str | None = None,
                          min_horizon: int | None = None,
-                         max_horizon: int | None = None) -> dict:
+                         max_horizon: int | None = None,
+                         pred_since_date: str | None = None,
+                         pred_end_date: str | None = None) -> dict:
     """Matrice de confusion 3×3 (BLEU/BLANC/ROUGE prédit vs réel).
 
     Args:
-        since_date: if provided, overrides the days-based calculation.
+        since_date: if provided, overrides the days-based calculation (filters on date_cible).
         end_date: if provided, upper bound on date_cible (exclusive).
         min_horizon: minimum jours_avance (inclusive). A1/A6: filter by horizon.
         max_horizon: maximum jours_avance (inclusive). A1/A6: filter by horizon.
+        pred_since_date: filter on date_prediction >= (for version filtering).
+        pred_end_date: filter on date_prediction < (for version filtering).
     """
     conn = get_db()
     try:
@@ -401,6 +405,12 @@ def get_confusion_matrix(days: int = 60, since_date: str | None = None,
         if end_date:
             conditions.append("date_cible < ?")
             params.append(end_date)
+        if pred_since_date:
+            conditions.append("date_prediction >= ?")
+            params.append(pred_since_date)
+        if pred_end_date:
+            conditions.append("date_prediction < ?")
+            params.append(pred_end_date)
         if min_horizon is not None:
             conditions.append("jours_avance >= ?")
             params.append(min_horizon)
@@ -432,12 +442,16 @@ def get_confusion_matrix(days: int = 60, since_date: str | None = None,
 def get_precision_recall_f1(days: int = 60, since_date: str | None = None,
                             end_date: str | None = None,
                             min_horizon: int | None = None,
-                            max_horizon: int | None = None) -> dict:
+                            max_horizon: int | None = None,
+                            pred_since_date: str | None = None,
+                            pred_end_date: str | None = None) -> dict:
     """Fix ML-4 : Precision, Recall et F1 par classe sur les N derniers jours."""
     matrix = get_confusion_matrix(days, since_date=since_date,
                                   end_date=end_date,
                                   min_horizon=min_horizon,
-                                  max_horizon=max_horizon)
+                                  max_horizon=max_horizon,
+                                  pred_since_date=pred_since_date,
+                                  pred_end_date=pred_end_date)
     couleurs = ["BLEU", "BLANC", "ROUGE"]
     metrics = {}
 
@@ -687,7 +701,9 @@ def get_period_comparison(days: int = 7, pivot_date: str | None = None) -> dict:
 def get_diagnostic(days: int = 30, since_date: str | None = None,
                    end_date: str | None = None,
                    min_horizon: int | None = None,
-                   max_horizon: int | None = None) -> dict:
+                   max_horizon: int | None = None,
+                   pred_since_date: str | None = None,
+                   pred_end_date: str | None = None) -> dict:
     """Diagnostic synthétique : identifie les causes principales d'erreur.
 
     Retourne un verdict global + les top problèmes + recommandations.
@@ -695,11 +711,14 @@ def get_diagnostic(days: int = 30, since_date: str | None = None,
         since_date: if provided, overrides the days-based calculation.
         end_date: upper bound on date_cible (exclusive). A5: per-version.
         min_horizon/max_horizon: A1/A6: restrict to specific horizon range.
+        pred_since_date/pred_end_date: filter on date_prediction (for version filtering).
     """
     cm = get_confusion_matrix(days, since_date=since_date, end_date=end_date,
-                              min_horizon=min_horizon, max_horizon=max_horizon)
+                              min_horizon=min_horizon, max_horizon=max_horizon,
+                              pred_since_date=pred_since_date, pred_end_date=pred_end_date)
     prf = get_precision_recall_f1(days, since_date=since_date, end_date=end_date,
-                                  min_horizon=min_horizon, max_horizon=max_horizon)
+                                  min_horizon=min_horizon, max_horizon=max_horizon,
+                                  pred_since_date=pred_since_date, pred_end_date=pred_end_date)
     # A3/B6: Compute accuracy directly from confusion matrix (consistent scope)
     couleurs = ["BLEU", "BLANC", "ROUGE"]
     total_all = sum(cm.get(p, {}).get(a, 0) for p in couleurs for a in couleurs)
@@ -870,12 +889,15 @@ def get_diagnostic(days: int = 30, since_date: str | None = None,
 def get_color_recall_by_horizon(color: str, days: int = 90,
                                 max_horizon: int = 10,
                                 since_date: str | None = None,
-                                end_date: str | None = None) -> dict:
+                                end_date: str | None = None,
+                                pred_since_date: str | None = None,
+                                pred_end_date: str | None = None) -> dict:
     """Recall/precision for a specific color by horizon J-1..J-N.
 
     B2: Single GROUP BY query instead of N individual queries.
     A3: Extended from J-5 to J-10 for consistency with recap table.
     A5: end_date support for per-version filtering.
+    pred_since_date/pred_end_date: filter on date_prediction (for version filtering).
     """
     conn = get_db()
     try:
@@ -886,6 +908,12 @@ def get_color_recall_by_horizon(color: str, days: int = 90,
         if end_date:
             conditions.insert(1, "date_cible < ?")
             params.insert(1, end_date)
+        if pred_since_date:
+            conditions.append("date_prediction >= ?")
+            params.append(pred_since_date)
+        if pred_end_date:
+            conditions.append("date_prediction < ?")
+            params.append(pred_end_date)
 
         rows = conn.execute(
             f"""SELECT jours_avance,
@@ -1002,8 +1030,9 @@ def get_version_performance() -> list[dict]:
 
     Uses _get_all_version_dates() to segment performance data by version
     (code changes + weight recalculations).
-    Each version's data starts at its release date and ends the day before
-    the next version release (or today for the latest).
+    Each version's data includes predictions MADE during that version's period
+    (filters on date_prediction, not date_cible) — so only predictions actually
+    produced with that version's code are attributed to it.
     """
     tool_dates = _get_all_version_dates()
     if not tool_dates:
@@ -1025,7 +1054,7 @@ def get_version_performance() -> list[dict]:
                        COUNT(*) as total,
                        SUM(correct) as corrects
                    FROM performance
-                   WHERE date_cible >= ? AND date_cible < ?
+                   WHERE date_prediction >= ? AND date_prediction < ?
                    GROUP BY jours_avance
                    ORDER BY jours_avance""",
                 (start, end),
@@ -1056,7 +1085,7 @@ def get_version_performance() -> list[dict]:
             # D12: Count distinct dates with evaluations (coverage)
             distinct_dates_row = conn.execute(
                 """SELECT COUNT(DISTINCT date_cible) as cnt
-                   FROM performance WHERE date_cible >= ? AND date_cible < ?""",
+                   FROM performance WHERE date_prediction >= ? AND date_prediction < ?""",
                 (start, end),
             ).fetchone()
             dates_with_data = distinct_dates_row["cnt"] if distinct_dates_row else 0
@@ -1585,24 +1614,25 @@ def get_performance_summary(season: str = "2025-2026") -> dict:
     for td in tool_dates:
         tool_versions.append({"date": td, "label": all_versions.get(td, td)})
 
-    # A5: Pre-compute per-version data with proper end_date bounding
+    # A5: Pre-compute per-version data — filter by date_prediction (not date_cible)
+    # so only predictions actually made WITH that version's code are attributed to it
     per_version_data = {}
     for i, td in enumerate(tool_dates):
-        v_end = tool_dates[i + 1] if i + 1 < len(tool_dates) else None
+        v_pred_end = tool_dates[i + 1] if i + 1 < len(tool_dates) else None
         v_days = max(1, (date.today() - date.fromisoformat(td)).days)
         per_version_data[td] = {
             "confusion_matrix": get_confusion_matrix(
-                v_days, since_date=td, end_date=v_end),
+                v_days, pred_since_date=td, pred_end_date=v_pred_end),
             "diagnostic": get_diagnostic(
-                v_days, since_date=td, end_date=v_end),
+                v_days, pred_since_date=td, pred_end_date=v_pred_end),
             "precision_recall_f1": get_precision_recall_f1(
-                v_days, since_date=td, end_date=v_end),
+                v_days, pred_since_date=td, pred_end_date=v_pred_end),
             "rouge_recall_by_horizon": get_color_recall_by_horizon(
-                "ROUGE", v_days, since_date=td, end_date=v_end),
+                "ROUGE", v_days, pred_since_date=td, pred_end_date=v_pred_end),
             "blanc_recall_by_horizon": get_color_recall_by_horizon(
-                "BLANC", v_days, since_date=td, end_date=v_end),
+                "BLANC", v_days, pred_since_date=td, pred_end_date=v_pred_end),
             "bleu_recall_by_horizon": get_color_recall_by_horizon(
-                "BLEU", v_days, since_date=td, end_date=v_end),
+                "BLEU", v_days, pred_since_date=td, pred_end_date=v_pred_end),
         }
 
     # A4: Period comparison anchored on last tool update
@@ -1629,9 +1659,10 @@ def get_performance_summary(season: str = "2025-2026") -> dict:
         "monthly_performance": get_monthly_performance(season),
         "version_performance": get_version_performance(),
         "current_weights": get_current_weights(),
-        # Diagnostic scoped to latest version (since_date=last_update, J-2→J-5)
+        # Diagnostic scoped to latest version (pred_since_date=last_update, J-2→J-5)
+        # Uses pred_since_date to only include predictions MADE with the latest version
         "diagnostic": get_diagnostic(
-            days_since_update, since_date=last_update,
+            days_since_update, pred_since_date=last_update,
             min_horizon=2, max_horizon=5),
         "period_comparison": period_comp,
         "budget_season": get_budget_season(),
