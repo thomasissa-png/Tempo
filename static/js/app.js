@@ -40,10 +40,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // Fix #31 : auto-refresh toutes les 5 min pour refléter
     // les confirmations EDF sans recharger la page manuellement
     setInterval(() => {
-        Promise.all([
-            loadRemaining(),
-            loadPredictions(),
-        ]);
+        // Propager confirmations EDF avant de recharger les prédictions
+        fetchWithTimeout('/api/today', {}, 3000).catch(() => {});
+        fetchWithTimeout('/api/tomorrow', {}, 3000).catch(() => {});
+        setTimeout(() => {
+            Promise.all([
+                loadRemaining(),
+                loadPredictions(),
+            ]);
+        }, 1000); // laisser 1s aux appels EDF pour propager
     }, 5 * 60 * 1000);
 });
 
@@ -53,27 +58,32 @@ document.addEventListener('DOMContentLoaded', () => {
  * dès que le serveur est opérationnel, sans attendre le refresh de 5 min.
  */
 async function loadAllData(attempt = 0) {
-    const results = await Promise.all([
+    // Étape 1 : Appeler /api/today et /api/tomorrow pour propager les confirmations EDF
+    // vers la DB (store_actual + confirm_prediction). Ces appels DOIVENT précéder
+    // loadPredictions() pour que les prédictions reflètent les couleurs confirmées.
+    try {
+        const todayResp = await fetchWithTimeout('/api/today', {}, 3000);
+        if (todayResp.status === 503 && attempt < 3) {
+            const delay = (attempt + 1) * 2000;
+            setTimeout(() => loadAllData(attempt + 1), delay);
+            return;
+        }
+    } catch {
+        if (attempt < 3) {
+            const delay = (attempt + 1) * 2000;
+            setTimeout(() => loadAllData(attempt + 1), delay);
+            return;
+        }
+    }
+    // /api/tomorrow : propage la confirmation EDF demain (non bloquant)
+    fetchWithTimeout('/api/tomorrow', {}, 3000).catch(() => {});
+
+    // Étape 2 : Charger les données d'affichage en parallèle
+    await Promise.all([
         loadRemaining(),
         loadPredictions(),
         loadBadge(),
     ]);
-
-    // Détecter si l'API est en cold start (les fonctions load* ne retournent
-    // pas de valeur, on vérifie via un appel léger)
-    if (attempt < 3) {
-        try {
-            const resp = await fetchWithTimeout('/api/today', {}, 3000);
-            if (resp.status === 503) {
-                const delay = (attempt + 1) * 2000; // 2s, 4s, 6s
-                setTimeout(() => loadAllData(attempt + 1), delay);
-            }
-        } catch {
-            // Erreur réseau — retenter aussi
-            const delay = (attempt + 1) * 2000;
-            setTimeout(() => loadAllData(attempt + 1), delay);
-        }
-    }
 }
 
 // ================================================================

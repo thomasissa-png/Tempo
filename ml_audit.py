@@ -254,17 +254,24 @@ for f in features:
 # 13. Weekday analysis
 print("\n### 13. PERFORMANCE PAR JOUR DE SEMAINE")
 rows = conn.execute("""
-    SELECT CAST(strftime('%w', date_cible) AS INTEGER) as dow,
-           COUNT(*) as total, SUM(correct) as correct
+    SELECT date_cible, correct
     FROM performance WHERE jours_avance <= 1
-    GROUP BY dow ORDER BY dow
 """).fetchall()
-dow_names = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"]
+dow_names = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"]
+from collections import Counter
+dow_total = Counter()
+dow_correct = Counter()
 for r in rows:
-    pct = r["correct"] / r["total"] * 100 if r["total"] else 0
-    name = dow_names[r["dow"]]
+    d = date.fromisoformat(r["date_cible"])
+    dow = d.weekday()  # 0=Monday, 6=Sunday
+    dow_total[dow] += 1
+    dow_correct[dow] += r["correct"]
+for dow in range(7):
+    total = dow_total[dow]
+    correct = dow_correct[dow]
+    pct = correct / total * 100 if total else 0
     bar = "#" * int(pct / 2)
-    print(f"  {name}: {r['correct']:3d}/{r['total']:3d} = {pct:5.1f}% {bar}")
+    print(f"  {dow_names[dow]}: {correct:3d}/{total:3d} = {pct:5.1f}% {bar}")
 
 conn.close()
 print(f"\n{SEP}")

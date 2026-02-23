@@ -240,6 +240,20 @@ async def lifespan(app: FastAPI):
     logger.info("=== TempoForecast démarrage ===")
 
     # Fix audit v6 : avertir si le mot de passe admin n'est pas configuré
+    # Diagnostic : log la source du mot de passe pour faciliter le debug
+    _pw_from_admin = os.getenv("ADMIN_PASSWORD", "")
+    _pw_from_session = os.getenv("SESSION_SECRET", "")
+    if _pw_from_admin:
+        logger.info(
+            "[Admin] Mot de passe source: ADMIN_PASSWORD env var (longueur=%d)",
+            len(_pw_from_admin),
+        )
+    elif _pw_from_session:
+        logger.info(
+            "[Admin] Mot de passe source: SESSION_SECRET env var (longueur=%d)",
+            len(_pw_from_session),
+        )
+
     if not Config.ADMIN_PASSWORD:
         import secrets
         Config.ADMIN_PASSWORD = secrets.token_urlsafe(24)
@@ -383,6 +397,10 @@ def verify_admin(authorization: str | None, client_ip: str = "unknown"):
     # Fix #15 : constant-time comparison to prevent timing attacks
     if not hmac.compare_digest(password, Config.ADMIN_PASSWORD):
         _admin_rate_limit_store[client_ip].append(now)
+        logger.warning(
+            "[Admin] Échec login depuis %s (longueur saisie=%d, longueur attendue=%d)",
+            client_ip, len(password), len(Config.ADMIN_PASSWORD),
+        )
         raise HTTPException(status_code=403, detail="Mot de passe admin incorrect")
 
 

@@ -981,7 +981,7 @@ def get_monthly_performance(season: str = "2025-2026") -> list[dict]:
 
         rows = conn.execute(
             """SELECT
-                   strftime('%Y-%m', date_cible) as month_key,
+                   SUBSTR(date_cible, 1, 7) as month_key,
                    jours_avance,
                    COUNT(*) as total,
                    SUM(correct) as corrects
@@ -2660,8 +2660,7 @@ def _analyze_prediction_volatility(conn, since: str) -> list[dict]:
     """
     try:
         changes = conn.execute(
-            """SELECT date, COUNT(*) as nb_changes,
-                      GROUP_CONCAT(couleur_avant || '->' || couleur_apres) as transitions
+            """SELECT date, COUNT(*) as nb_changes
                FROM prediction_changes
                WHERE date >= ?
                GROUP BY date
@@ -2674,6 +2673,21 @@ def _analyze_prediction_volatility(conn, since: str) -> list[dict]:
 
     if not changes:
         return []
+
+    # Build transitions per date in Python (avoids GROUP_CONCAT which is SQLite-only)
+    transitions_map = {}
+    try:
+        for ch in changes:
+            ch_date = ch["date"]
+            trans_rows = conn.execute(
+                "SELECT couleur_avant, couleur_apres FROM prediction_changes WHERE date = ?",
+                (ch_date,)
+            ).fetchall()
+            transitions_map[ch_date] = ",".join(
+                f"{t['couleur_avant']}->{t['couleur_apres']}" for t in trans_rows
+            )
+    except Exception:
+        pass
 
     total_volatile_dates = len(changes)
     avg_changes = sum(r["nb_changes"] for r in changes) / total_volatile_dates
