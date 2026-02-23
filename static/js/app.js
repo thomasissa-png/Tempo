@@ -54,29 +54,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /**
  * Charge toutes les données. Si l'API n'est pas encore prête (cold start),
- * retente automatiquement après 2s puis 4s pour que les données apparaissent
- * dès que le serveur est opérationnel, sans attendre le refresh de 5 min.
+ * retente avec backoff exponentiel : 2s, 4s, 6s, 8s, 10s (= 30s max).
+ * Si toutes les tentatives échouent, planifie un dernier essai à 30s
+ * pour couvrir les cold starts lents (Replit free tier).
  */
 async function loadAllData(attempt = 0) {
     // Étape 1 : Appeler /api/today et /api/tomorrow pour propager les confirmations EDF
     // vers la DB (store_actual + confirm_prediction). Ces appels DOIVENT précéder
     // loadPredictions() pour que les prédictions reflètent les couleurs confirmées.
     try {
-        const todayResp = await fetchWithTimeout('/api/today', {}, 3000);
-        if (todayResp.status === 503 && attempt < 3) {
+        const todayResp = await fetchWithTimeout('/api/today', {}, 5000);
+        if (todayResp.status === 503 && attempt < 5) {
             const delay = (attempt + 1) * 2000;
             setTimeout(() => loadAllData(attempt + 1), delay);
             return;
         }
     } catch {
-        if (attempt < 3) {
+        if (attempt < 5) {
             const delay = (attempt + 1) * 2000;
             setTimeout(() => loadAllData(attempt + 1), delay);
             return;
         }
+        // Dernier recours : un retry isolé à 30s pour les cold starts très lents
+        if (attempt === 5) {
+            setTimeout(() => loadAllData(6), 30000);
+            return;
+        }
     }
     // /api/tomorrow : propage la confirmation EDF demain (non bloquant)
-    fetchWithTimeout('/api/tomorrow', {}, 3000).catch(() => {});
+    fetchWithTimeout('/api/tomorrow', {}, 5000).catch(() => {});
 
     // Étape 2 : Charger les données d'affichage en parallèle
     await Promise.all([

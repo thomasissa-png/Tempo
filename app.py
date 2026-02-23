@@ -337,14 +337,14 @@ _CACHE_RULES: list[tuple[str, str]] = [
     ("/static/", "public, max-age=3600, stale-while-revalidate=86400"),
     # Blog articles : cache 10min (contenu statique, change rarement)
     ("/blog/", "public, max-age=600, stale-while-revalidate=1800"),
-    # API données EDF (cache serveur 2 min → idem côté client)
-    ("/api/today", "public, max-age=120"),
-    ("/api/tomorrow", "public, max-age=120"),
-    ("/api/remaining", "public, max-age=120"),
-    # Prédictions (cache serveur 15 min → 5 min côté client)
-    ("/api/predictions", "public, max-age=300"),
+    # API données EDF (cache serveur 2 min → idem côté client, SWR pour UX)
+    ("/api/today", "public, max-age=120, stale-while-revalidate=60"),
+    ("/api/tomorrow", "public, max-age=120, stale-while-revalidate=60"),
+    ("/api/remaining", "public, max-age=120, stale-while-revalidate=60"),
+    # Prédictions : 2 min cache + SWR pour fraîcheur (couleurs changent après confirmation EDF)
+    ("/api/predictions", "public, max-age=120, stale-while-revalidate=120"),
     # Badge performance (change rarement)
-    ("/api/performance/badge", "public, max-age=300"),
+    ("/api/performance/badge", "public, max-age=300, stale-while-revalidate=300"),
 ]
 
 
