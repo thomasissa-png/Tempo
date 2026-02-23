@@ -1235,7 +1235,8 @@ def get_daily_recap(season: str = "2025-2026") -> list[dict]:
         pred_rows = conn.execute(
             """SELECT date, horizon, couleur_predite, couleur_originale,
                       score_risque, confirmed, raison,
-                      probabilite_bleu, probabilite_blanc, probabilite_rouge
+                      probabilite_bleu, probabilite_blanc, probabilite_rouge,
+                      temp_moy_prevue, timestamp_prediction
                FROM predictions
                WHERE date >= ? AND date <= ? AND simulated = 0
                ORDER BY date, timestamp_prediction""",
@@ -1310,6 +1311,7 @@ def get_daily_recap(season: str = "2025-2026") -> list[dict]:
                 score = round(r["score_risque"], 1)
 
             # Get weather forecast temp for this horizon from weather_forecast_log
+            # Fallback to temp_moy_prevue from predictions table (stored since v18)
             temp_prevue = None
             if horizon and horizon.startswith("J-"):
                 try:
@@ -1320,6 +1322,9 @@ def get_daily_recap(season: str = "2025-2026") -> list[dict]:
                             temp_prevue = round(temp_prevue, 1)
                 except ValueError:
                     pass
+            # Fallback: use temp_moy_prevue from prediction row itself
+            if temp_prevue is None and r["temp_moy_prevue"] is not None:
+                temp_prevue = round(r["temp_moy_prevue"], 1)
 
             # C8: include max probability as confidence indicator
             prob_values = [
@@ -1329,12 +1334,22 @@ def get_daily_recap(season: str = "2025-2026") -> list[dict]:
             ]
             confidence = round(max(prob_values)) if any(p > 0 for p in prob_values) else None
 
+            # Extract actual date prediction was made (for version scoping)
+            pred_made_date = None
+            ts_pred = r["timestamp_prediction"]
+            if ts_pred:
+                try:
+                    pred_made_date = ts_pred[:10]  # "YYYY-MM-DD" from ISO timestamp
+                except (TypeError, IndexError):
+                    pass
+
             dates_data[dt][horizon] = {
                 "couleur": couleur,
                 "score": score,
                 "correct": correct,
                 "temp_prevue": temp_prevue,
                 "confidence": confidence,
+                "pred_made_date": pred_made_date,
             }
 
             # Keep raison from J-1 (or lowest horizon) for diagnostic
@@ -1381,14 +1396,16 @@ def get_daily_recap(season: str = "2025-2026") -> list[dict]:
             if actual:
                 # Check J-1 first (most important), then J-2→J-5
                 for h in range(1, 6):
-                    # Skip horizons where prediction was made before the
-                    # version that was active at confirmation
-                    if confirm_version:
-                        pred_date = (date.fromisoformat(dt) - timedelta(days=h)).isoformat()
-                        if pred_date < confirm_version:
-                            continue
                     jh = preds.get(f"J-{h}")
-                    if jh and jh.get("correct") is False:
+                    if not jh:
+                        continue
+                    # Skip horizons where prediction was actually made before
+                    # the version active at confirmation (use real pred_made_date)
+                    if confirm_version:
+                        actual_pred_date = jh.get("pred_made_date")
+                        if actual_pred_date and actual_pred_date < confirm_version:
+                            continue
+                    if jh.get("correct") is False:
                         raison_text = dates_raison.get(dt, (None,))[0]
                         diag = _build_error_diagnostic(
                             jh["couleur"], actual, jh.get("score"), raison_text
@@ -1408,17 +1425,20 @@ def get_daily_recap(season: str = "2025-2026") -> list[dict]:
                 # A8: If J-1 correct but J-2→J-5 had errors, show as WARNING
                 j1 = preds.get("J-1")
                 j1_valid = True
-                if confirm_version:
-                    j1_pred = (date.fromisoformat(dt) - timedelta(days=1)).isoformat()
-                    j1_valid = j1_pred >= confirm_version
+                if confirm_version and j1:
+                    j1_pred_date = j1.get("pred_made_date")
+                    j1_valid = not j1_pred_date or j1_pred_date >= confirm_version
                 if j1 and j1.get("correct") is True and diagnostic is None and j1_valid:
                     wrong_horizons = []
                     for h in range(2, 6):
+                        jh2 = preds.get(f"J-{h}")
+                        if not jh2:
+                            continue
                         if confirm_version:
-                            pred_dt = (date.fromisoformat(dt) - timedelta(days=h)).isoformat()
-                            if pred_dt < confirm_version:
+                            h_pred_date = jh2.get("pred_made_date")
+                            if h_pred_date and h_pred_date < confirm_version:
                                 continue
-                        if preds.get(f"J-{h}") and preds[f"J-{h}"].get("correct") is False:
+                        if jh2.get("correct") is False:
                             wrong_horizons.append(f"J-{h}")
                     if wrong_horizons:
                         diagnostic = f"⚠ Rattrapé J-1 (erreur {', '.join(wrong_horizons)})"

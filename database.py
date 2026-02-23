@@ -1314,11 +1314,13 @@ def init_db():
 # ================================================================
 
 def get_current_weights() -> dict:
-    """Récupérer les poids les plus récents de l'algorithme."""
+    """Récupérer les poids les plus récents (non rejetés) de l'algorithme."""
     conn = get_db()
     try:
         row = conn.execute(
-            "SELECT weights_json FROM weights_history ORDER BY id DESC LIMIT 1"
+            "SELECT weights_json FROM weights_history "
+            "WHERE commentaire NOT LIKE 'REJETE%' "
+            "ORDER BY id DESC LIMIT 1"
         ).fetchone()
         if row:
             return json.loads(row["weights_json"])
@@ -1328,19 +1330,21 @@ def get_current_weights() -> dict:
 
 
 def get_previous_weights() -> dict | None:
-    """Récupérer les poids précédents (avant-dernière entrée).
+    """Récupérer les poids précédents (avant-dernière entrée non rejetée).
 
-    Falls back to DEFAULT_WEIGHTS if only one entry exists (first recalibration).
+    Falls back to DEFAULT_WEIGHTS if only one accepted entry exists.
     """
     conn = get_db()
     try:
         rows = conn.execute(
-            "SELECT weights_json FROM weights_history ORDER BY id DESC LIMIT 2"
+            "SELECT weights_json FROM weights_history "
+            "WHERE commentaire NOT LIKE 'REJETE%' "
+            "ORDER BY id DESC LIMIT 2"
         ).fetchall()
         if len(rows) >= 2:
             return json.loads(rows[1]["weights_json"])
         if len(rows) == 1:
-            # First recalibration: previous weights were the defaults
+            # First accepted recalibration: previous weights were the defaults
             return Config.DEFAULT_WEIGHTS.copy()
         return None
     finally:

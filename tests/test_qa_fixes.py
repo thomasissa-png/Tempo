@@ -4012,8 +4012,14 @@ class TestDailyRecapDiagnosticVersionScoping:
         assert "confirm_version" in source, (
             "get_daily_recap should use confirm_version for diagnostic scoping"
         )
-        assert "pred_date < confirm_version" in source, (
-            "Horizons predating the active version should be skipped"
+
+    def test_uses_actual_pred_made_date(self):
+        """Diagnostic scoping uses actual pred_made_date, not computed date."""
+        import inspect
+        from performance_tracker import get_daily_recap
+        source = inspect.getsource(get_daily_recap)
+        assert "pred_made_date" in source, (
+            "get_daily_recap should use actual pred_made_date for version scoping"
         )
 
     def test_all_versions_used_for_tool_updates(self):
@@ -4024,6 +4030,16 @@ class TestDailyRecapDiagnosticVersionScoping:
         assert "_get_all_version_dates" in source, (
             "get_daily_recap should use _get_all_version_dates for version labels"
         )
+
+    def test_recap_predictions_include_pred_made_date(self):
+        """Each prediction in recap includes pred_made_date for version attribution."""
+        from performance_tracker import get_daily_recap
+        result = get_daily_recap("2025-2026")
+        for entry in result:
+            for hz, pred in (entry.get("predictions") or {}).items():
+                assert "pred_made_date" in pred, (
+                    f"prediction {hz} for {entry['date']} missing pred_made_date"
+                )
 
 
 class TestAdminHTMLRecapLayout:

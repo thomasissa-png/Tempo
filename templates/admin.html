@@ -663,10 +663,18 @@ function _renderRecapTable(recap) {
     const toolVersions = (_perfData && _perfData.tool_versions) || [];
     const versionDates = toolVersions.map(v => v.date).sort();
     const latestVersion = versionDates.length ? versionDates[versionDates.length - 1] : null;
-    function _getActiveVersion(targetDateStr, horizon) {
-        const td = new Date(targetDateStr + 'T12:00:00');
-        td.setDate(td.getDate() - horizon);
-        const predStr = td.toISOString().split('T')[0];
+    function _getActiveVersion(targetDateStr, horizon, row) {
+        /* Use actual pred_made_date from DB when available (accurate),
+           otherwise fall back to target_date - horizon (approximate) */
+        let predStr;
+        const hz = 'J-' + horizon;
+        if (row && row.predictions && row.predictions[hz] && row.predictions[hz].pred_made_date) {
+            predStr = row.predictions[hz].pred_made_date;
+        } else {
+            const td = new Date(targetDateStr + 'T12:00:00');
+            td.setDate(td.getDate() - horizon);
+            predStr = td.toISOString().split('T')[0];
+        }
         let ver = null;
         for (const vd of versionDates) { if (vd <= predStr) ver = vd; else break; }
         return ver;
@@ -682,6 +690,7 @@ function _renderRecapTable(recap) {
         return `border-${direction}:2px dashed #B39DDB`;
     }
     let _prevRowDate = null;
+    let _prevRow = null;
 
     recap.forEach(row => {
         const isToday = row.date === todayISO;
@@ -697,9 +706,9 @@ function _renderRecapTable(recap) {
         HORIZONS.forEach(hz => {
             const hNum = parseInt(hz.split('-')[1]);
             const indicative = hNum >= 6;
-            const myVer = _getActiveVersion(row.date, hNum);
-            const aboveVer = _prevRowDate ? _getActiveVersion(_prevRowDate, hNum) : myVer;
-            const leftVer = hNum < 15 ? _getActiveVersion(row.date, hNum + 1) : myVer;
+            const myVer = _getActiveVersion(row.date, hNum, row);
+            const aboveVer = _prevRow ? _getActiveVersion(_prevRowDate, hNum, _prevRow) : myVer;
+            const leftVer = hNum < 15 ? _getActiveVersion(row.date, hNum + 1, row) : myVer;
             let parts = [];
             if (indicative) parts.push('opacity:0.65');
             if (myVer !== aboveVer) {
@@ -752,6 +761,7 @@ function _renderRecapTable(recap) {
         h += `<td class="diag-text">${diagHtml}</td>`;
         h += '</tr>';
         _prevRowDate = row.date;
+        _prevRow = row;
     });
 
     h += '</tbody></table></div>';
