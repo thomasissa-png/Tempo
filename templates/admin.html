@@ -252,7 +252,6 @@
                         </select>
                         <button class="quick-month-btn" id="btn-current-month" title="Filtrer sur le mois en cours">Ce mois</button>
                     </div>
-                    <div id="recap-debug" style="background:#FFF3CD;padding:6px 12px;border-radius:6px;font-size:0.75rem;margin-bottom:8px;display:none"></div>
                     <div id="daily-recap">Chargement...</div>
                 </div>
             </div>
@@ -511,10 +510,6 @@ async function loadPerformanceData(season) {
 /* RENDER PERFORMANCE                */
 /* ══════════════════════════════════ */
 function renderPerformanceData(data) {
-    /* DEBUG: log daily_recap to console */
-    console.log('[DEBUG] daily_recap length:', (data.daily_recap||[]).length,
-        'dates:', (data.daily_recap||[]).map(r=>r.date).join(', '));
-
     const g = data.global||{}, j1 = data.accuracy_j1||{}, j2j5 = data.accuracy_j2_j5||{};
     const j6j15 = data.accuracy_j6_j15||{};
 
@@ -540,9 +535,16 @@ function renderPerformanceData(data) {
         "pression": "Pression atmosphérique",
     };
     const weights = data.current_weights||{};
-    document.getElementById('current-weights').innerHTML = Object.entries(weights).map(([k,v]) =>
-        `<div class="metric-row"><span>${escapeHtml(weightLabels[k]||k)}</span><span class="metric-value">${(Number(v)*100).toFixed(1)}%</span></div>`
-    ).join('');
+    const prevWeights = data.previous_weights||null;
+    document.getElementById('current-weights').innerHTML = Object.entries(weights).map(([k,v]) => {
+        const cur = (Number(v)*100).toFixed(1);
+        let prev = '';
+        if (prevWeights && prevWeights[k] != null) {
+            const pv = (Number(prevWeights[k])*100).toFixed(1);
+            if (pv !== cur) prev = ` <span style="color:#DC2626;font-size:0.72rem">(${pv}%)</span>`;
+        }
+        return `<div class="metric-row"><span>${escapeHtml(weightLabels[k]||k)}</span><span class="metric-value">${cur}%${prev}</span></div>`;
+    }).join('') + (prevWeights ? '<div style="font-size:0.65rem;color:var(--text-secondary);margin-top:6px"><span style="color:#DC2626">( )</span> = poids précédents</div>' : '');
     if (chartAvailable) {
         renderWeightsChart(weights, weightLabels);
     } else {
@@ -562,19 +564,6 @@ function renderPerformanceData(data) {
 /* ══════════════════════════════════ */
 function renderDailyRecap(recap) {
     _recapData = recap; // store for month filtering
-
-    /* DEBUG: Show data received count + date range */
-    const dbgEl = document.getElementById('recap-debug');
-    if (dbgEl && recap && recap.length) {
-        const dates = recap.map(r => r.date).sort();
-        const withPreds = recap.filter(r => r.predictions && Object.keys(r.predictions).length > 0);
-        dbgEl.style.display = 'block';
-        dbgEl.innerHTML = `🔍 DEBUG: ${recap.length} dates reçues (${dates[0]} → ${dates[dates.length-1]}), ` +
-            `${withPreds.length} avec prédictions. ` +
-            `Filtre mois: "${_selectedMonth}". ` +
-            `Dates avant 23/02: ${dates.filter(d => d < '2026-02-23').join(', ') || 'aucune'}`;
-    }
-
     _populateMonthFilter(recap);
     /* D5: Apply persisted month filter */
     if (_selectedMonth !== 'all') {
@@ -698,7 +687,6 @@ function _renderRecapTable(recap) {
         h += `<tr class="${cls}">`;
         h += `<td class="sticky sticky-date" style="white-space:nowrap">${dayLabel(row.date)}`;
         if (isToday) h += ' <span style="font-size:0.6rem;color:var(--accent);font-weight:700">AUJ.</span>';
-        if (row.tool_update) h += `<div style="font-size:0.55rem;color:#7B1FA2;font-weight:600;line-height:1.1;margin-top:2px;max-width:90px;white-space:normal">${escapeHtml(row.tool_update)}</div>`;
         h += '</td>';
 
         HORIZONS.forEach(hz => {
@@ -749,6 +737,10 @@ function _renderRecapTable(recap) {
             diagHtml = '<span style="color:var(--text-secondary);font-style:italic">en attente EDF</span>';
         } else {
             diagHtml = '—';
+        }
+        /* Tool version label in comment column (purple) */
+        if (row.tool_update) {
+            diagHtml += `<div style="font-size:0.55rem;color:#7B1FA2;font-weight:600;line-height:1.1;margin-top:2px">${escapeHtml(row.tool_update)}</div>`;
         }
         h += `<td class="diag-text">${diagHtml}</td>`;
         h += '</tr>';
@@ -879,11 +871,10 @@ function _clickMonth(monthKey) {
 function _populateVersionFilter(versions) {
     const sel = document.getElementById('version-filter');
     if (!sel || !versions || !versions.length) return;
-    /* Default to "Toutes les versions" on first load — shows maximum data.
-       User can manually select a version to scope the error section. */
+    /* Default to latest version on first load — most actionable view. */
     if (!_versionFilterInitialized) {
         _versionFilterInitialized = true;
-        /* _selectedVersion stays 'all' by default */
+        _selectedVersion = versions[versions.length - 1].date;
     }
     sel.innerHTML = '<option value="all"' + (_selectedVersion==='all'?' selected':'') + '>Toutes les versions</option>' +
         versions.map(v =>

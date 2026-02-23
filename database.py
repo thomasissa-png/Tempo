@@ -1325,3 +1325,17 @@ def get_current_weights() -> dict:
         return Config.DEFAULT_WEIGHTS.copy()
     finally:
         conn.close()
+
+
+def get_previous_weights() -> dict | None:
+    """Récupérer les poids précédents (avant-dernière entrée)."""
+    conn = get_db()
+    try:
+        rows = conn.execute(
+            "SELECT weights_json FROM weights_history ORDER BY id DESC LIMIT 2"
+        ).fetchall()
+        if len(rows) >= 2:
+            return json.loads(rows[1]["weights_json"])
+        return None
+    finally:
+        conn.close()

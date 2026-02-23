@@ -36,7 +36,7 @@ import json
 import math
 import logging
 from datetime import date, datetime, timedelta
-from database import get_db, get_current_weights
+from database import get_db, get_current_weights, get_previous_weights
 from config import Config
 
 logger = logging.getLogger(__name__)
@@ -1339,9 +1339,9 @@ def get_daily_recap(season: str = "2025-2026") -> list[dict]:
                 dates_raison[dt] = (r["raison"], couleur, score)
 
         # 6) Assemble — only dates with predictions (skip backfill-only dates)
-        tool_updates = Config.TOOL_UPDATE_DATES
-        # Determine latest version date for diagnostic scoping
+        # Use all versions (code + weight recalibrations) for tool_update labels
         all_versions = _get_all_version_dates()
+        tool_updates = all_versions
         version_dates_sorted = sorted(all_versions.keys()) if all_versions else []
 
         result = []
@@ -1361,15 +1361,29 @@ def get_daily_recap(season: str = "2025-2026") -> list[dict]:
                         break
                 consec_correct = count if count > 0 else None
 
-            # A4: Diagnostic for J-1 to J-5 errors (not just J-1)
-            # Shows errors regardless of version — staircase borders already
-            # indicate which version made the prediction.
+            # A4: Diagnostic for J-1 to J-5 errors
+            # Only consider horizons whose prediction was made under the
+            # version active at confirmation time (= version active on dt).
+            # Predictions from before that version are irrelevant.
             diagnostic = None
             # D5: Temperature deviation info for error context
             temp_deviation = None
+            # Find version active on confirmation date
+            confirm_version = None
+            for vd in version_dates_sorted:
+                if vd <= dt:
+                    confirm_version = vd
+                else:
+                    break
             if actual:
                 # Check J-1 first (most important), then J-2→J-5
                 for h in range(1, 6):
+                    # Skip horizons where prediction was made before the
+                    # version that was active at confirmation
+                    if confirm_version:
+                        pred_date = (date.fromisoformat(dt) - timedelta(days=h)).isoformat()
+                        if pred_date < confirm_version:
+                            continue
                     jh = preds.get(f"J-{h}")
                     if jh and jh.get("correct") is False:
                         raison_text = dates_raison.get(dt, (None,))[0]
@@ -1386,14 +1400,21 @@ def get_daily_recap(season: str = "2025-2026") -> list[dict]:
                         if h == 1:
                             diagnostic = diag
                         else:
-                            # For J-2→J-5 errors, prefix with horizon
                             diagnostic = f"J-{h}: {diag}"
                         break  # Show first error (closest horizon)
                 # A8: If J-1 correct but J-2→J-5 had errors, show as WARNING
                 j1 = preds.get("J-1")
-                if j1 and j1.get("correct") is True and diagnostic is None:
+                j1_valid = True
+                if confirm_version:
+                    j1_pred = (date.fromisoformat(dt) - timedelta(days=1)).isoformat()
+                    j1_valid = j1_pred >= confirm_version
+                if j1 and j1.get("correct") is True and diagnostic is None and j1_valid:
                     wrong_horizons = []
                     for h in range(2, 6):
+                        if confirm_version:
+                            pred_dt = (date.fromisoformat(dt) - timedelta(days=h)).isoformat()
+                            if pred_dt < confirm_version:
+                                continue
                         if preds.get(f"J-{h}") and preds[f"J-{h}"].get("correct") is False:
                             wrong_horizons.append(f"J-{h}")
                     if wrong_horizons:
@@ -1717,6 +1738,7 @@ def get_performance_summary(season: str = "2025-2026") -> dict:
         "monthly_performance": get_monthly_performance(season),
         "version_performance": get_version_performance(),
         "current_weights": get_current_weights(),
+        "previous_weights": get_previous_weights(),
         # Diagnostic scoped to latest version (pred_since_date=last_update, J-2→J-5)
         # Uses pred_since_date to only include predictions MADE with the latest version
         "diagnostic": get_diagnostic(

@@ -1232,6 +1232,7 @@ async def api_debug_recap_check():
     for r in feb_dates:
         preds = r.get("predictions", {})
         horizons_with_data = [hz for hz, data in preds.items() if data.get("couleur")]
+        w_obs = r.get("weather_observed")
         summary.append({
             "date": r["date"],
             "actual": r.get("actual"),
@@ -1239,6 +1240,8 @@ async def api_debug_recap_check():
             "nb_horizons": len(preds),
             "horizons_with_data": horizons_with_data,
             "sample_prediction": preds.get("J-1") or preds.get("J-2") or preds.get("J-3"),
+            "weather_observed": w_obs,
+            "diagnostic": r.get("diagnostic"),
         })
 
     # Also check weather_cache for these dates
