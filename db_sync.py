@@ -220,7 +220,8 @@ def import_from_file(path: Path | None = None, force: bool = False) -> str:
                 sql = f"INSERT INTO {table} ({col_list}) VALUES ({placeholders})"
 
             count = 0
-            for row in rows:
+            batch_size = 500  # Commit every N rows to avoid long PG transactions
+            for i, row in enumerate(rows):
                 try:
                     values = [row.get(c) for c in cols]
                     conn.execute(sql, values)
@@ -229,6 +230,9 @@ def import_from_file(path: Path | None = None, force: bool = False) -> str:
                     # Log but continue — don't abort entire import
                     if count == 0:
                         logger.warning(f"[Sync] {table}: erreur ligne 1: {e}")
+                # Intermediate commits to avoid blocking PostgreSQL
+                if (i + 1) % batch_size == 0:
+                    conn.commit()
 
             conn.commit()
             total_imported += count

@@ -1068,16 +1068,21 @@ async def run_task_now(task_name: str) -> str:
 
     if task_name == "evaluate_missed":
         from performance_tracker import evaluate_missed_days
-        missed = evaluate_missed_days(lookback=30)
+        loop = asyncio.get_running_loop()
+        missed = await loop.run_in_executor(
+            None, lambda: evaluate_missed_days(lookback=30))
         return f"Réévaluation terminée : {missed} jour(s) manquant(s) rattrapé(s) (lookback=30j)"
 
     if task_name == "db_export":
         from db_sync import export_to_file
-        return export_to_file()
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, export_to_file)
 
     if task_name == "db_import":
         from db_sync import import_from_file
-        return import_from_file(force=False)
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None, lambda: import_from_file(force=False))
 
     # Agents SEO/Backlinks : exécution directe (bypass gate saisonnière)
     # avec remontée du vrai résultat/erreur à l'admin
