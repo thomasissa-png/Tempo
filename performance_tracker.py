@@ -1312,6 +1312,10 @@ def get_daily_recap(season: str = "2025-2026") -> list[dict]:
 
         # 6) Assemble — only dates with predictions (skip backfill-only dates)
         tool_updates = Config.TOOL_UPDATE_DATES
+        # Determine latest version date for diagnostic scoping
+        all_versions = _get_all_version_dates()
+        version_dates_sorted = sorted(all_versions.keys()) if all_versions else []
+
         result = []
         for dt in sorted(dates_data.keys(), reverse=True):
             preds = dates_data[dt]
@@ -1330,12 +1334,21 @@ def get_daily_recap(season: str = "2025-2026") -> list[dict]:
                 consec_correct = count if count > 0 else None
 
             # A4: Diagnostic for J-1 to J-5 errors (not just J-1)
+            # Scoped to latest version: only consider horizons where the
+            # prediction was made under the current version
             diagnostic = None
             # D5: Temperature deviation info for error context
             temp_deviation = None
+            # Find the version active for this target date's predictions
+            latest_v = version_dates_sorted[-1] if version_dates_sorted else None
             if actual:
                 # Check J-1 first (most important), then J-2→J-5
                 for h in range(1, 6):
+                    # Skip horizons where prediction was made before latest version
+                    if latest_v:
+                        pred_date = (date.fromisoformat(dt) - timedelta(days=h)).isoformat()
+                        if pred_date < latest_v:
+                            continue
                     jh = preds.get(f"J-{h}")
                     if jh and jh.get("correct") is False:
                         raison_text = dates_raison.get(dt, (None,))[0]
@@ -1356,13 +1369,21 @@ def get_daily_recap(season: str = "2025-2026") -> list[dict]:
                             diagnostic = f"J-{h}: {diag}"
                         break  # Show first error (closest horizon)
                 # A8: If J-1 correct but J-2→J-5 had errors, show as WARNING
+                # Only consider horizons under the latest version
                 j1 = preds.get("J-1")
-                if j1 and j1.get("correct") is True and diagnostic is None:
-                    wrong_horizons = [
-                        f"J-{h}" for h in range(2, 6)
-                        if preds.get(f"J-{h}") and
-                        preds[f"J-{h}"].get("correct") is False
-                    ]
+                j1_under_version = True
+                if latest_v:
+                    j1_pred_date = (date.fromisoformat(dt) - timedelta(days=1)).isoformat()
+                    j1_under_version = j1_pred_date >= latest_v
+                if j1 and j1.get("correct") is True and diagnostic is None and j1_under_version:
+                    wrong_horizons = []
+                    for h in range(2, 6):
+                        if latest_v:
+                            pred_dt = (date.fromisoformat(dt) - timedelta(days=h)).isoformat()
+                            if pred_dt < latest_v:
+                                continue
+                        if preds.get(f"J-{h}") and preds[f"J-{h}"].get("correct") is False:
+                            wrong_horizons.append(f"J-{h}")
                     if wrong_horizons:
                         diagnostic = f"⚠ Rattrapé J-1 (erreur {', '.join(wrong_horizons)})"
 
@@ -1634,12 +1655,17 @@ def get_performance_summary(season: str = "2025-2026") -> dict:
         v_pred_end = tool_dates[i + 1] if i + 1 < len(tool_dates) else None
         v_days = max(1, (date.today() - date.fromisoformat(td)).days)
         per_version_data[td] = {
+            # A1/A6: CM and diagnostic scoped to J-2→J-5 (consistent with main data)
             "confusion_matrix": get_confusion_matrix(
-                v_days, pred_since_date=td, pred_end_date=v_pred_end),
+                v_days, pred_since_date=td, pred_end_date=v_pred_end,
+                min_horizon=2, max_horizon=5),
             "diagnostic": get_diagnostic(
-                v_days, pred_since_date=td, pred_end_date=v_pred_end),
+                v_days, pred_since_date=td, pred_end_date=v_pred_end,
+                min_horizon=2, max_horizon=5),
             "precision_recall_f1": get_precision_recall_f1(
-                v_days, pred_since_date=td, pred_end_date=v_pred_end),
+                v_days, pred_since_date=td, pred_end_date=v_pred_end,
+                min_horizon=2, max_horizon=5),
+            # Recall tables need all horizons (J-1 through J-10)
             "rouge_recall_by_horizon": get_color_recall_by_horizon(
                 "ROUGE", v_days, pred_since_date=td, pred_end_date=v_pred_end),
             "blanc_recall_by_horizon": get_color_recall_by_horizon(
@@ -3014,6 +3040,9 @@ def evaluate_missed_days(lookback: int = 7) -> int:
     conn = get_db()
     try:
         since = (date.today() - timedelta(days=lookback)).isoformat()
+        # Include tomorrow: if EDF confirmed tomorrow's color, evaluate predictions
+        # for it too (our J-2→J-5 predictions can already be measured)
+        upper_bound = (date.today() + timedelta(days=2)).isoformat()
 
         rows = conn.execute(
             """SELECT a.date, a.couleur_reelle
@@ -3022,7 +3051,7 @@ def evaluate_missed_days(lookback: int = 7) -> int:
                AND NOT EXISTS (
                    SELECT 1 FROM performance p WHERE p.date_cible = a.date
                )""",
-            (since, date.today().isoformat())
+            (since, upper_bound)
         ).fetchall()
 
         evaluated = 0

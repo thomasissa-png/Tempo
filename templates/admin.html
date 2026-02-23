@@ -610,11 +610,25 @@ function _renderRecapTable(recap) {
     h += '<th>&#10003; consec.</th><th>Météo obs.</th><th style="text-align:left">Analyse erreur</th>';
     h += '</tr></thead><tbody>';
 
+    /* Build staircase version boundary map: {date: {horizon: versionLabel}} */
+    const versionBoundaries = {};
+    const toolVersions = (_perfData && _perfData.tool_versions) || [];
+    toolVersions.forEach(v => {
+        const vDate = new Date(v.date + 'T12:00:00');
+        for (let n = 1; n <= 15; n++) {
+            const boundaryDate = new Date(vDate);
+            boundaryDate.setDate(boundaryDate.getDate() + n);
+            const bKey = boundaryDate.toISOString().split('T')[0];
+            if (!versionBoundaries[bKey]) versionBoundaries[bKey] = {};
+            versionBoundaries[bKey][`J-${n}`] = v.label || v.date;
+        }
+    });
+
     recap.forEach(row => {
         const isToday = row.date === todayISO;
-        const isFuture = row.date > todayISO;
+        /* Fix: confirmed future dates (e.g. tomorrow confirmed by EDF) are not grayed */
+        const isFuture = row.date > todayISO && row.actual_status !== 'confirmed';
         let cls = isToday ? 'today-row' : isFuture ? 'future-row' : '';
-        if (row.tool_update) cls += ' update-row';
 
         h += `<tr class="${cls}">`;
         h += `<td class="sticky sticky-date" style="white-space:nowrap">${dayLabel(row.date)}`;
@@ -623,10 +637,16 @@ function _renderRecapTable(recap) {
         h += '</td>';
         h += `<td class="sticky sticky-result">${pill(row.actual)}</td>`;
 
+        const rowBoundaries = versionBoundaries[row.date] || {};
         HORIZONS.forEach(hz => {
             const hNum = parseInt(hz.split('-')[1]);
             const indicative = hNum >= 6;
-            h += `<td${indicative?' style="opacity:0.65"':''}>${dot(row.predictions?row.predictions[hz]:null, isFuture)}</td>`;
+            const isBoundary = !!rowBoundaries[hz];
+            let tdStyle = '';
+            if (indicative && isBoundary) tdStyle = 'opacity:0.65;border-top:2px solid #7B1FA2';
+            else if (indicative) tdStyle = 'opacity:0.65';
+            else if (isBoundary) tdStyle = 'border-top:2px solid #7B1FA2';
+            h += `<td${tdStyle?' style="'+tdStyle+'"':''}>${dot(row.predictions?row.predictions[hz]:null, isFuture)}</td>`;
         });
 
         const cc = row.consec_correct;
@@ -640,12 +660,13 @@ function _renderRecapTable(recap) {
         } else h += '<td style="font-size:0.7rem;color:var(--text-secondary)">—</td>';
 
         /* A8: "Rattrapé J-1" shown as warning (orange), not neutral. A11: show "en attente" for past without actual */
+        const isConfirmed = row.actual_status === 'confirmed';
         let diagHtml;
         if (row.diagnostic) {
             const isRattrape = row.diagnostic.startsWith('\u26A0');
             const diagColor = isRattrape ? 'color:#D97706' : '';
             diagHtml = `<span style="${diagColor}">${escapeHtml(row.diagnostic)}</span>`;
-        } else if (row.actual && !isFuture) {
+        } else if (isConfirmed && row.actual) {
             diagHtml = '<span style="color:#16A34A">OK</span>';
         } else if (!isFuture && !row.actual && row.actual_status === 'pending') {
             diagHtml = '<span style="color:var(--text-secondary);font-style:italic">en attente EDF</span>';
@@ -662,7 +683,7 @@ function _renderRecapTable(recap) {
         <span><span class="recap-dot rouge incorrect" style="width:12px;height:12px;border-width:2px"></span> Faux</span>
         <span><span class="recap-dot blanc pending" style="width:12px;height:12px;border-width:2px"></span> En attente</span>
         <span><span class="recap-dot empty" style="width:6px;height:6px;margin:3px"></span> Pas de prévision</span>
-        <span><span class="update-marker"></span> <span style="color:#7B1FA2">MAJ outil</span> (description affichée sous la date)</span>
+        <span style="display:inline-block;width:18px;height:2px;background:#7B1FA2;vertical-align:middle;margin-right:2px"></span> <span style="color:#7B1FA2">Limite version</span> (en escalier : J-1 dès le lendemain, J-5 après 5j)
         <span style="font-style:italic">Température = prévision météo à cet horizon</span>
         <span><strong>✓ consec.</strong> = nb de jours consécutifs corrects en remontant depuis J-1</span>
     </div>`;

@@ -565,6 +565,13 @@ async def task_daily_verification():
                 store_actual(tomorrow_data["date"], tomorrow_data["couleur"])
                 logger.info(f"[Task 11h30] Demain: {tomorrow_data['couleur']}")
 
+                # Évaluer les prédictions faites pour demain (J-2, J-3, etc.)
+                # Dès que EDF confirme, on peut mesurer la qualité de nos anticipations
+                tomorrow_date = date.fromisoformat(tomorrow_data["date"])
+                evaluate_predictions_for_date(
+                    tomorrow_date, tomorrow_data["couleur"]
+                )
+
                 # Mettre à jour les prédictions en DB avec la couleur officielle
                 updated = confirm_prediction(tomorrow_data["date"], tomorrow_data["couleur"])
                 if updated:
@@ -572,7 +579,6 @@ async def task_daily_verification():
                     invalidate_predictions_cache()
 
                 # Envoyer alerte officielle si rouge ou blanc
-                tomorrow_date = date.fromisoformat(tomorrow_data["date"])
                 # Fix audit DB : run blocking SMS in thread pool
                 await asyncio.to_thread(
                     send_official_alerts, tomorrow_date, tomorrow_data["couleur"]
