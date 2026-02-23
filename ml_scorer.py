@@ -280,11 +280,18 @@ def _build_features(
         renew_d1 = (r["eolien"] + r["solaire"] + r["hydraulique"]) / 10000
         nuc_ratio = r["nucleaire"] / max(r["conso_mean"], 1)
     else:
-        cp_d1 = cm_d1 = nuc_d1 = gaz_d1 = renew_d1 = nuc_ratio = 0.0
+        # Seasonal median fallback (winter ~55 GW peak, ~48 GW mean)
+        # 0 is an impossible outlier that biases toward BLEU
+        cp_d1 = 5.5   # 55000 MW / 10000
+        cm_d1 = 4.8   # 48000 MW / 10000
+        nuc_d1 = 3.5   # 35000 MW / 10000
+        gaz_d1 = 0.5   # 5000 MW / 10000
+        renew_d1 = 1.0  # 10000 MW / 10000
+        nuc_ratio = 0.73  # ~35000/48000
 
-    cp_3d = (sum(r["conso_peak"] for r in rte_3d) / len(rte_3d) / 10000) if rte_3d else 0
-    cm_3d = (sum(r["conso_mean"] for r in rte_3d) / len(rte_3d) / 10000) if rte_3d else 0
-    cp_7d = (sum(r["conso_peak"] for r in rte_7d) / len(rte_7d) / 10000) if rte_7d else 0
+    cp_3d = (sum(r["conso_peak"] for r in rte_3d) / len(rte_3d) / 10000) if rte_3d else cp_d1
+    cm_3d = (sum(r["conso_mean"] for r in rte_3d) / len(rte_3d) / 10000) if rte_3d else cm_d1
+    cp_7d = (sum(r["conso_peak"] for r in rte_7d) / len(rte_7d) / 10000) if rte_7d else cp_d1
 
     return [
         temp_moy, temp_min, temp_max,
