@@ -718,9 +718,11 @@ function _renderRecapTable(recap) {
         h += `<td style="font-size:0.7rem;font-weight:600;color:${ccColor}" title="${ccTitle}">${ccText}</td>`;
 
         const w = row.weather_observed;
-        if (w && w.temp_moy != null) {
-            h += `<td style="font-size:0.7rem;white-space:nowrap"><strong>${w.temp_moy.toFixed(1)}°C</strong>`;
-            if (w.humidity != null) h += ` ${Math.round(w.humidity)}%`;
+        const tempVal = w ? Number(w.temp_moy) : NaN;
+        if (w && !isNaN(tempVal)) {
+            h += `<td style="font-size:0.7rem;white-space:nowrap"><strong>${tempVal.toFixed(1)}°C</strong>`;
+            const humVal = w.humidity != null ? Number(w.humidity) : NaN;
+            if (!isNaN(humVal)) h += ` ${Math.round(humVal)}%`;
             h += '</td>';
         } else h += '<td style="font-size:0.7rem;color:var(--text-secondary)">—</td>';
 

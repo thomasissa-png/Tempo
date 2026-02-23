@@ -1266,9 +1266,12 @@ def get_daily_recap(season: str = "2025-2026") -> list[dict]:
             weather_evo[td][r["horizon_days"]] = r["temp_moy"]
 
         # 4) Observed weather (J-0 from weather_cache, latest per date)
+        # Filter out NULL temp_moy entries that could shadow good data
         weather_obs = conn.execute(
             """SELECT date, temp_moy, humidity, wind_speed
-               FROM weather_cache WHERE date >= ? AND date <= ?
+               FROM weather_cache
+               WHERE date >= ? AND date <= ?
+                 AND temp_moy IS NOT NULL
                ORDER BY fetched_at DESC""",
             (since, until),
         ).fetchall()
@@ -2025,6 +2028,18 @@ def recalculate_weights():
         new_weights = {
             k: round(v / total_smooth, 4) for k, v in smoothed.items()
         }
+
+        # Skip if weights barely changed (max diff < 1%)
+        max_diff = max(
+            abs(new_weights.get(k, 0) - old_weights.get(k, 0))
+            for k in set(new_weights) | set(old_weights)
+        )
+        if max_diff < 0.01:
+            logger.info(
+                f"[Poids] Recalcul identique aux poids actuels "
+                f"(max diff {max_diff:.4f}), pas de mise à jour"
+            )
+            return None
 
     except Exception as e:
         logger.error(f"[Poids] Erreur recalcul : {e}")

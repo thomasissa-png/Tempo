@@ -1328,7 +1328,10 @@ def get_current_weights() -> dict:
 
 
 def get_previous_weights() -> dict | None:
-    """Récupérer les poids précédents (avant-dernière entrée)."""
+    """Récupérer les poids précédents (avant-dernière entrée).
+
+    Falls back to DEFAULT_WEIGHTS if only one entry exists (first recalibration).
+    """
     conn = get_db()
     try:
         rows = conn.execute(
@@ -1336,6 +1339,9 @@ def get_previous_weights() -> dict | None:
         ).fetchall()
         if len(rows) >= 2:
             return json.loads(rows[1]["weights_json"])
+        if len(rows) == 1:
+            # First recalibration: previous weights were the defaults
+            return Config.DEFAULT_WEIGHTS.copy()
         return None
     finally:
         conn.close()
