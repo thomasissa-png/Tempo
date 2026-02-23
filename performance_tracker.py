@@ -645,13 +645,15 @@ def get_accuracy_trend(days: int = 14) -> list[dict]:
 def get_period_comparison(days: int = 7, pivot_date: str | None = None) -> dict:
     """Compare current period vs previous period.
 
-    A4: If pivot_date is provided, compares after pivot vs before pivot
-    (same number of days). Otherwise falls back to rolling N-day comparison.
+    A4: If pivot_date is provided, compares predictions MADE after pivot vs
+    predictions MADE before pivot (same number of days).
+    Uses date_prediction (not date_cible) so version comparison is correct.
+    Otherwise falls back to rolling N-day comparison on date_cible.
     """
     conn = get_db()
     try:
         if pivot_date:
-            # A4: Compare after vs before the last tool update
+            # A4: Compare predictions MADE after vs before the last tool update
             pivot = date.fromisoformat(pivot_date)
             days_after = max(1, (date.today() - pivot).days)
             days_before = days_after  # same window size for fair comparison
@@ -659,21 +661,32 @@ def get_period_comparison(days: int = 7, pivot_date: str | None = None) -> dict:
             prev_start = _enforce_start_date(
                 (pivot - timedelta(days=days_before)).isoformat())
             prev_end = pivot_date
+
+            current = conn.execute(
+                """SELECT COUNT(*) as total, SUM(correct) as corrects
+                   FROM performance WHERE date_prediction >= ?""",
+                (now_start,),
+            ).fetchone()
+            previous = conn.execute(
+                """SELECT COUNT(*) as total, SUM(correct) as corrects
+                   FROM performance WHERE date_prediction >= ? AND date_prediction < ?""",
+                (prev_start, prev_end),
+            ).fetchone()
         else:
             now_start = (date.today() - timedelta(days=days)).isoformat()
             prev_start = (date.today() - timedelta(days=days * 2)).isoformat()
             prev_end = now_start
 
-        current = conn.execute(
-            """SELECT COUNT(*) as total, SUM(correct) as corrects
-               FROM performance WHERE date_cible >= ?""",
-            (now_start,),
-        ).fetchone()
-        previous = conn.execute(
-            """SELECT COUNT(*) as total, SUM(correct) as corrects
-               FROM performance WHERE date_cible >= ? AND date_cible < ?""",
-            (prev_start, prev_end),
-        ).fetchone()
+            current = conn.execute(
+                """SELECT COUNT(*) as total, SUM(correct) as corrects
+                   FROM performance WHERE date_cible >= ?""",
+                (now_start,),
+            ).fetchone()
+            previous = conn.execute(
+                """SELECT COUNT(*) as total, SUM(correct) as corrects
+                   FROM performance WHERE date_cible >= ? AND date_cible < ?""",
+                (prev_start, prev_end),
+            ).fetchone()
 
         c_total = current["total"] or 0
         c_correct = current["corrects"] or 0
