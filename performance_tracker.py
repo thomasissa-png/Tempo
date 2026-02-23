@@ -196,17 +196,19 @@ def evaluate_predictions_for_date(target_date: date, couleur_reelle: str):
         # Un ROUGE raté est très coûteux (0.7562€/kWh). On log un WARNING
         # spécifique pour faciliter le monitoring et le post-mortem.
         if couleur_reelle == "ROUGE":
-            missed_rouge = conn.execute(
+            row = conn.execute(
                 """SELECT COUNT(*) as cnt FROM performance
                    WHERE date_cible = ? AND couleur_reelle = 'ROUGE'
                    AND couleur_predite != 'ROUGE'""",
                 (target_date.isoformat(),)
-            ).fetchone()["cnt"]
-            total_preds = conn.execute(
+            ).fetchone()
+            missed_rouge = row["cnt"] if row else 0
+            row = conn.execute(
                 """SELECT COUNT(*) as cnt FROM performance
                    WHERE date_cible = ? AND couleur_reelle = 'ROUGE'""",
                 (target_date.isoformat(),)
-            ).fetchone()["cnt"]
+            ).fetchone()
+            total_preds = row["cnt"] if row else 0
             if missed_rouge > 0:
                 logger.warning(
                     f"[ROUGE RATÉ] {target_date}: {missed_rouge}/{total_preds} "
@@ -1772,9 +1774,10 @@ def recalculate_weights():
         conn.commit()
 
         # Verifier qu'on a assez de donnees evaluees
-        count = conn.execute(
+        row = conn.execute(
             "SELECT COUNT(*) as c FROM performance WHERE jours_avance <= 5"
-        ).fetchone()["c"]
+        ).fetchone()
+        count = row["c"] if row else 0
 
         # Fix ML-7 : minimum 60 données (au lieu de 30)
         if count < 60:
@@ -3028,9 +3031,10 @@ def get_learning_health() -> dict:
         last_analysis = lj_stats["last_analysis"]
 
         # Nombre de rollbacks de poids
-        rollbacks = conn.execute(
+        row = conn.execute(
             "SELECT COUNT(*) as c FROM weights_history WHERE rollback_of IS NOT NULL"
-        ).fetchone()["c"]
+        ).fetchone()
+        rollbacks = row["c"] if row else 0
 
         # Précision récente (14j)
         since_14 = _enforce_start_date((date.today() - timedelta(days=14)).isoformat())

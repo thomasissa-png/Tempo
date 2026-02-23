@@ -88,6 +88,8 @@ def _get_pg_pool():
     with _pg_pool_lock:
         if _pg_pool is not None:
             return _pg_pool
+        if psycopg2 is None:
+            raise RuntimeError("psycopg2 not installed but DATABASE_URL is set")
         _pg_pool = psycopg2.pool.ThreadedConnectionPool(
             minconn=1, maxconn=10, dsn=Config.DATABASE_URL
         )
@@ -143,16 +145,16 @@ class _PgCursorWrapper:
 class _DictRow(dict):
     """Dict that also supports integer index access like sqlite3.Row."""
 
-    def __init__(self, data):
+    def __init__(self, data: dict):
         super().__init__(data)
-        self._keys = list(data.keys())
+        self._keys: list[str] = list(data.keys())
 
     def __getitem__(self, key):
         if isinstance(key, int):
             return super().__getitem__(self._keys[key])
         return super().__getitem__(key)
 
-    def keys(self):
+    def keys(self) -> list[str]:  # type: ignore[override]
         return self._keys
 
 
@@ -290,7 +292,13 @@ class PgConnectionWrapper:
         self._row_factory = value
 
     def execute(self, sql, params=None):
-        """Execute SQL with automatic translation."""
+        """Execute SQL with automatic translation.
+
+        DDL statements (ALTER TABLE, DROP) get automatic SAVEPOINT protection
+        on PostgreSQL: if they fail (e.g. column already exists), the savepoint
+        is rolled back so the transaction isn't aborted. This matches SQLite
+        behavior where failed statements don't poison the transaction.
+        """
         sql_stripped = sql.strip()
         upper = sql_stripped.upper()
 
@@ -305,21 +313,43 @@ class PgConnectionWrapper:
 
         converted = _convert_sql(sql_stripped)
 
+        # Auto-savepoint for DDL on PostgreSQL: ALTER TABLE / DROP may fail
+        # expectedly (e.g. column already exists), and PostgreSQL aborts the
+        # ENTIRE transaction on error (unlike SQLite). Savepoints allow the
+        # caller's try/except to recover without poisoning the transaction.
+        use_savepoint = upper.startswith(('ALTER ', 'DROP '))
+        sp_cur = None
+        if use_savepoint:
+            sp_cur = self._conn.cursor()
+            sp_cur.execute("SAVEPOINT _ddl_sp")
+
         cur = self._conn.cursor()
-        if params:
-            # Escape literal % to %% so psycopg2 doesn't interpret them
-            # as format specifiers (e.g. LIKE 'backtest%' → 'backtest%%').
-            # Only needed when params exist (psycopg2 skips % processing
-            # when execute() is called without params).
-            # Strategy: protect %s placeholders, escape %, restore %s.
-            _ph = '\x00PH\x00'
-            safe = converted.replace('%s', _ph)
-            safe = safe.replace('%', '%%')
-            safe = safe.replace(_ph, '%s')
-            cur.execute(safe, params)
-        else:
-            cur.execute(converted)
-        return _PgCursorWrapper(cur)
+        try:
+            if params:
+                # Escape literal % to %% so psycopg2 doesn't interpret them
+                # as format specifiers (e.g. LIKE 'backtest%' → 'backtest%%').
+                # Only needed when params exist (psycopg2 skips % processing
+                # when execute() is called without params).
+                # Strategy: protect %s placeholders, escape %, restore %s.
+                _ph = '\x00PH\x00'
+                safe = converted.replace('%s', _ph)
+                safe = safe.replace('%', '%%')
+                safe = safe.replace(_ph, '%s')
+                cur.execute(safe, params)
+            else:
+                cur.execute(converted)
+            if use_savepoint:
+                sp_cur.execute("RELEASE SAVEPOINT _ddl_sp")
+            return _PgCursorWrapper(cur)
+        except Exception:
+            if use_savepoint:
+                try:
+                    self._conn.cursor().execute(
+                        "ROLLBACK TO SAVEPOINT _ddl_sp"
+                    )
+                except Exception:
+                    pass
+            raise
 
     def _handle_pragma(self, sql, params):
         """Handle PRAGMA statements by emulating them for PostgreSQL."""
@@ -348,15 +378,29 @@ class PgConnectionWrapper:
         return _PgCursorWrapper(_FakeResultCursor([], []))
 
     def executescript(self, sql):
-        """Execute multiple SQL statements (PostgreSQL doesn't have executescript)."""
-        # Split on semicolons, filter empty, execute each
+        """Execute multiple SQL statements (PostgreSQL doesn't have executescript).
+
+        Uses SAVEPOINT so that if any statement fails, the caller's try/except
+        can recover without poisoning the PostgreSQL transaction.
+        """
         statements = [s.strip() for s in sql.split(';') if s.strip()]
         cur = self._conn.cursor()
-        for stmt in statements:
-            converted = _convert_sql(stmt)
-            if converted:
-                cur.execute(converted)
-        return _PgCursorWrapper(cur)
+        cur.execute("SAVEPOINT _script_sp")
+        try:
+            for stmt in statements:
+                converted = _convert_sql(stmt)
+                if converted:
+                    cur.execute(converted)
+            cur.execute("RELEASE SAVEPOINT _script_sp")
+            return _PgCursorWrapper(cur)
+        except Exception:
+            try:
+                self._conn.cursor().execute(
+                    "ROLLBACK TO SAVEPOINT _script_sp"
+                )
+            except Exception:
+                pass
+            raise
 
     def commit(self):
         self._conn.commit()
@@ -690,7 +734,8 @@ def init_db():
     # Fix audit DB : verrou exclusif pour eviter les race conditions.
     # PgConnectionWrapper handles BEGIN as no-op (PG uses implicit transactions).
     conn.execute("BEGIN EXCLUSIVE")
-    version = conn.execute("PRAGMA user_version").fetchone()[0]
+    row = conn.execute("PRAGMA user_version").fetchone()
+    version = int(row[0]) if row else 0
 
     if version < 3:
         # Migrations v3 — Système d'apprentissage
@@ -1248,7 +1293,7 @@ def init_db():
 
     # Poids initiaux si vide
     existing = conn.execute("SELECT COUNT(*) as c FROM weights_history").fetchone()
-    if existing["c"] == 0:
+    if not existing or existing["c"] == 0:
         conn.execute(
             """INSERT INTO weights_history
                (date_update, weights_json, precision_avant, precision_apres,

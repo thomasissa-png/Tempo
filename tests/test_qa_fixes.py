@@ -3803,3 +3803,37 @@ class TestPoolRollbackOnClose:
             "close() must rollback before putconn to avoid "
             "returning a connection in failed transaction state"
         )
+
+
+class TestDdlSavepointProtection:
+    """PgConnectionWrapper.execute() must use SAVEPOINT for DDL statements."""
+
+    def test_alter_table_gets_savepoint(self):
+        """ALTER TABLE statements must be protected by SAVEPOINT on PG."""
+        import inspect
+        import database
+        source = inspect.getsource(database.PgConnectionWrapper.execute)
+        assert "SAVEPOINT" in source, (
+            "execute() must use SAVEPOINT for DDL on PostgreSQL"
+        )
+        assert "ALTER" in source or "alter" in source, (
+            "execute() must detect ALTER TABLE statements"
+        )
+
+    def test_executescript_gets_savepoint(self):
+        """executescript() must use SAVEPOINT on PG."""
+        import inspect
+        import database
+        source = inspect.getsource(database.PgConnectionWrapper.executescript)
+        assert "SAVEPOINT" in source, (
+            "executescript() must use SAVEPOINT on PostgreSQL"
+        )
+
+    def test_init_db_version_is_int(self):
+        """init_db must cast PRAGMA user_version to int."""
+        import inspect
+        import database
+        source = inspect.getsource(database.init_db)
+        assert "int(row[0])" in source or "int(row" in source, (
+            "init_db must cast version to int for PG compatibility"
+        )
