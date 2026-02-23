@@ -1216,6 +1216,40 @@ async def api_debug_data_check():
         conn.close()
 
 
+@app.get("/api/debug/recap-check")
+async def api_debug_recap_check():
+    """Diagnostic : vérifie ce que get_daily_recap retourne pour les dates 15-22/02."""
+    from performance_tracker import get_daily_recap
+    recap = get_daily_recap("2025-2026")
+
+    # Filter to dates 15-22/02
+    feb_dates = [r for r in recap if r["date"] >= "2026-02-15" and r["date"] <= "2026-02-22"]
+
+    summary = []
+    for r in feb_dates:
+        preds = r.get("predictions", {})
+        horizons_with_data = [hz for hz, data in preds.items() if data.get("couleur")]
+        summary.append({
+            "date": r["date"],
+            "actual": r.get("actual"),
+            "actual_status": r.get("actual_status"),
+            "nb_horizons": len(preds),
+            "horizons_with_data": horizons_with_data,
+            "sample_prediction": preds.get("J-1") or preds.get("J-2") or preds.get("J-3"),
+        })
+
+    return {
+        "status": "ok",
+        "total_recap_dates": len(recap),
+        "feb15_22_dates": len(feb_dates),
+        "all_recap_date_range": {
+            "first": recap[0]["date"] if recap else None,
+            "last": recap[-1]["date"] if recap else None,
+        },
+        "feb15_22_detail": summary,
+    }
+
+
 # ================================================================
 # API : DONNÉES TEMPO
 # ================================================================
