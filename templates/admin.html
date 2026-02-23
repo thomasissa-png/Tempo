@@ -679,7 +679,7 @@ function _renderRecapTable(recap) {
             const indicative = hNum >= 6;
             const myVer = _getActiveVersion(row.date, hNum);
             const aboveVer = _prevRowDate ? _getActiveVersion(_prevRowDate, hNum) : myVer;
-            const leftVer = hNum > 1 ? _getActiveVersion(row.date, hNum - 1) : myVer;
+            const leftVer = hNum < 15 ? _getActiveVersion(row.date, hNum + 1) : myVer;
             let parts = [];
             if (indicative) parts.push('opacity:0.65');
             if (myVer !== aboveVer) parts.push('border-top:2px solid #7B1FA2');
