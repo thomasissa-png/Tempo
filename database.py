@@ -307,7 +307,16 @@ class PgConnectionWrapper:
 
         cur = self._conn.cursor()
         if params:
-            cur.execute(converted, params)
+            # Escape literal % to %% so psycopg2 doesn't interpret them
+            # as format specifiers (e.g. LIKE 'backtest%' → 'backtest%%').
+            # Only needed when params exist (psycopg2 skips % processing
+            # when execute() is called without params).
+            # Strategy: protect %s placeholders, escape %, restore %s.
+            _ph = '\x00PH\x00'
+            safe = converted.replace('%s', _ph)
+            safe = safe.replace('%', '%%')
+            safe = safe.replace(_ph, '%s')
+            cur.execute(safe, params)
         else:
             cur.execute(converted)
         return _PgCursorWrapper(cur)

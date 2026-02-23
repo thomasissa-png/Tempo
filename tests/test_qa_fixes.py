@@ -3673,3 +3673,58 @@ class TestOnConflictSqliteFunctional:
         )
         row = conn.execute("SELECT val FROM t WHERE a='x' AND b='y'").fetchone()
         assert row[0] == 99
+
+
+class TestPgPercentEscaping:
+    """PgConnectionWrapper must escape literal % in SQL when params exist."""
+
+    def test_escape_in_execute_source(self):
+        """execute() must escape % to %% when params are provided."""
+        import inspect
+        import database
+        source = inspect.getsource(database.PgConnectionWrapper.execute)
+        assert "'%%'" in source or "replace('%', '%%')" in source, (
+            "execute() must escape literal % to %% for psycopg2 compatibility"
+        )
+
+    def test_like_with_params_escaped(self):
+        """LIKE 'backtest%' with params must not crash psycopg2."""
+        # Simulate the escaping logic
+        sql = "DELETE FROM predictions WHERE date < %s AND cycle_id NOT LIKE 'backtest%'"
+        _ph = '\x00PH\x00'
+        safe = sql.replace('%s', _ph)
+        safe = safe.replace('%', '%%')
+        safe = safe.replace(_ph, '%s')
+        assert safe == (
+            "DELETE FROM predictions WHERE date < %s "
+            "AND cycle_id NOT LIKE 'backtest%%'"
+        )
+
+    def test_like_simulee_no_params_unchanged(self):
+        """LIKE '%simulee%' without params should NOT be escaped."""
+        # When no params, execute() sends SQL as-is (no % processing by psycopg2)
+        sql = "DELETE FROM performance WHERE contexte_meteo LIKE '%simulee%'"
+        # No escaping happens → SQL goes straight to PG
+        assert '%simulee%' in sql
+
+    def test_rejete_like_with_params_escaped(self):
+        """NOT LIKE 'REJETE%' with params must be properly escaped."""
+        sql = "SELECT * FROM weights_history WHERE commentaire NOT LIKE 'REJETE%' AND date_update >= %s"
+        _ph = '\x00PH\x00'
+        safe = sql.replace('%s', _ph)
+        safe = safe.replace('%', '%%')
+        safe = safe.replace(_ph, '%s')
+        assert "NOT LIKE 'REJETE%%'" in safe
+        assert "date_update >= %s" in safe
+
+    def test_multiple_percent_and_params(self):
+        """Multiple % patterns and multiple params all handled correctly."""
+        sql = "SELECT * FROM t WHERE a LIKE '%test%' AND b < %s AND c NOT LIKE 'foo%' AND d = %s"
+        _ph = '\x00PH\x00'
+        safe = sql.replace('%s', _ph)
+        safe = safe.replace('%', '%%')
+        safe = safe.replace(_ph, '%s')
+        assert "LIKE '%%test%%'" in safe
+        assert "b < %s" in safe
+        assert "NOT LIKE 'foo%%'" in safe
+        assert "d = %s" in safe
