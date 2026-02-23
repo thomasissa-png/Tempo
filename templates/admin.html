@@ -662,10 +662,11 @@ function _renderRecapTable(recap) {
         return ver;
     }
     /* Determine the border style for a version boundary.
-       The "newer" side of the boundary determines the style:
-       latest version = solid 2px purple, older versions = dashed 1px light purple */
-    function _versionBorderStyle(newerVer, direction) {
-        if (newerVer === latestVersion) return `border-${direction}:2px solid #7B1FA2`;
+       If either side is the latest version → solid 2px (prominent).
+       Otherwise → dashed 1px light purple (subtle for old boundaries). */
+    function _versionBorderStyle(verA, verB, direction) {
+        if (verA === latestVersion || verB === latestVersion)
+            return `border-${direction}:2px solid #7B1FA2`;
         return `border-${direction}:1px dashed #B39DDB`;
     }
     let _prevRowDate = null;
@@ -692,14 +693,10 @@ function _renderRecapTable(recap) {
             let parts = [];
             if (indicative) parts.push('opacity:0.65');
             if (myVer !== aboveVer) {
-                /* The cell above belongs to a different (older) version;
-                   "newer" side = current cell's version */
-                parts.push(_versionBorderStyle(myVer, 'top'));
+                parts.push(_versionBorderStyle(myVer, aboveVer, 'top'));
             }
             if (myVer !== leftVer) {
-                /* The cell to the left belongs to a different version;
-                   "newer" side = current cell's version (lower horizon = more recent prediction) */
-                parts.push(_versionBorderStyle(myVer, 'left'));
+                parts.push(_versionBorderStyle(myVer, leftVer, 'left'));
             }
             const tdStyle = parts.join(';');
             h += `<td${tdStyle?' style="'+tdStyle+'"':''}>${dot(row.predictions?row.predictions[hz]:null, isFuture)}</td>`;

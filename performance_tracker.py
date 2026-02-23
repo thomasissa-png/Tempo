@@ -153,12 +153,13 @@ def evaluate_predictions_for_date(target_date: date, couleur_reelle: str):
 
             # Déterminer la couleur qui était réellement prédite par l'algo
             # Si confirmé, couleur_predite a été écrasée → utiliser couleur_originale
+            # Si couleur_originale est NULL/vide et confirmé → on ne peut pas
+            # connaître la prédiction originale → skip (évite de fausser les stats)
             couleur_pred = pred["couleur_predite"]
             if pred["confirmed"] and pred["couleur_originale"]:
                 couleur_pred = pred["couleur_originale"]
-            elif pred["confirmed"] and pred["couleur_originale"] is None:
-                continue  # Old format before couleur_originale column existed
-            # When confirmed + couleur_originale = '' → prediction matched EDF, use couleur_predite
+            elif pred["confirmed"] and not pred["couleur_originale"]:
+                continue  # couleur_originale lost — can't evaluate accurately
 
             # Calculer l'avance en jours
             ts = datetime.fromisoformat(pred["timestamp_prediction"])
@@ -1288,10 +1289,11 @@ def get_daily_recap(season: str = "2025-2026") -> list[dict]:
             if dt not in dates_data:
                 dates_data[dt] = {}
 
-            if r["confirmed"] and r["couleur_originale"] is None:
-                continue  # Old format before couleur_originale migration
-
-            # When confirmed + couleur_originale empty string → prediction matched EDF
+            # Determine the originally predicted color:
+            # - couleur_originale set (truthy) → use it (saved before EDF confirmation)
+            # - couleur_originale empty/NULL → fall back to couleur_predite
+            #   (for confirmed rows this is the EDF color, which is acceptable
+            #    since we still want to show the dot — better than hiding it)
             couleur = r["couleur_originale"] if r["couleur_originale"] else r["couleur_predite"]
             horizon = r["horizon"]  # DB format: J-1, J-2, ... J-15
 
@@ -1525,8 +1527,6 @@ def get_rouge_postmortem(season: str = "2025-2026") -> list[dict]:
             # Build per-horizon info
             horizons = {}
             for p in preds:
-                if p["confirmed"] and p["couleur_originale"] is None:
-                    continue
                 couleur = p["couleur_originale"] if p["couleur_originale"] else p["couleur_predite"]
                 hz = p["horizon"]
                 horizons[hz] = {

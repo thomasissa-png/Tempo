@@ -1139,6 +1139,83 @@ async def health():
     return {"status": status, "db": db_ok, "timestamp": datetime.now().isoformat()}
 
 
+@app.get("/api/debug/data-check")
+async def api_debug_data_check():
+    """Diagnostic temporaire : vérifie la présence de données dans les tables clés."""
+    from database import get_db
+    conn = get_db()
+    try:
+        result = {}
+
+        # Predictions count + date range
+        row = conn.execute(
+            "SELECT COUNT(*) as cnt, MIN(date) as min_d, MAX(date) as max_d FROM predictions WHERE simulated = 0"
+        ).fetchone()
+        result["predictions"] = {"count": row["cnt"], "min_date": row["min_d"], "max_date": row["max_d"]}
+
+        # Predictions per date (first 20 dates)
+        rows = conn.execute(
+            """SELECT date, COUNT(*) as cnt, SUM(CASE WHEN confirmed = 1 THEN 1 ELSE 0 END) as confirmed_cnt
+               FROM predictions WHERE simulated = 0
+               GROUP BY date ORDER BY date LIMIT 20"""
+        ).fetchall()
+        result["predictions_by_date"] = [
+            {"date": r["date"], "count": r["cnt"], "confirmed": r["confirmed_cnt"]}
+            for r in rows
+        ]
+
+        # Predictions with couleur_originale NULL
+        row = conn.execute(
+            "SELECT COUNT(*) as cnt FROM predictions WHERE couleur_originale IS NULL"
+        ).fetchone()
+        result["predictions_null_originale"] = row["cnt"]
+
+        # Actuals count + date range
+        row = conn.execute(
+            "SELECT COUNT(*) as cnt, MIN(date) as min_d, MAX(date) as max_d FROM actuals WHERE synthetic = 0"
+        ).fetchone()
+        result["actuals"] = {"count": row["cnt"], "min_date": row["min_d"], "max_date": row["max_d"]}
+
+        # Performance table
+        row = conn.execute(
+            "SELECT COUNT(*) as cnt, MIN(date_cible) as min_d, MAX(date_cible) as max_d FROM performance"
+        ).fetchone()
+        result["performance"] = {"count": row["cnt"], "min_date": row["min_d"], "max_date": row["max_d"]}
+
+        # Weather forecast log
+        row = conn.execute(
+            "SELECT COUNT(*) as cnt, MIN(target_date) as min_d, MAX(target_date) as max_d FROM weather_forecast_log"
+        ).fetchone()
+        result["weather_forecast_log"] = {"count": row["cnt"], "min_date": row["min_d"], "max_date": row["max_d"]}
+
+        # Weather cache
+        row = conn.execute(
+            "SELECT COUNT(*) as cnt, MIN(date) as min_d, MAX(date) as max_d FROM weather_cache"
+        ).fetchone()
+        result["weather_cache"] = {"count": row["cnt"], "min_date": row["min_d"], "max_date": row["max_d"]}
+
+        # Check a specific date that should exist (2026-02-18 = mid-range)
+        rows = conn.execute(
+            """SELECT date, horizon, couleur_predite, confirmed, simulated,
+                      couleur_originale
+               FROM predictions
+               WHERE date BETWEEN '2026-02-15' AND '2026-02-22'
+               ORDER BY date, horizon
+               LIMIT 30"""
+        ).fetchall()
+        result["sample_predictions_feb15_22"] = [
+            {"date": r["date"], "horizon": r["horizon"],
+             "couleur": r["couleur_predite"], "confirmed": r["confirmed"],
+             "simulated": r["simulated"],
+             "couleur_originale": r["couleur_originale"]}
+            for r in rows
+        ]
+
+        return {"status": "ok", **result}
+    finally:
+        conn.close()
+
+
 # ================================================================
 # API : DONNÉES TEMPO
 # ================================================================
