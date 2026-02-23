@@ -297,3 +297,12 @@
 
 ### Admin Page Harmonization
 - **Header/footer**: Admin page uses the same footer structure as the rest of the site (Calendrier, Blog, Alertes, Mentions légales links). Consistent visual identity across all pages.
+
+### Database Sync (`db_sync.py`)
+- **Purpose**: Synchronizes data between environments (dev/preview → production) when production PostgreSQL has missing data.
+- **Export**: `python db_sync.py export` → dumps predictions, actuals, performance, weather_cache, weather_forecast_log, rte_daily, weights_history to `db_dump.json` (commited in repo).
+- **Import**: `python db_sync.py import` → inserts missing rows via `ON CONFLICT DO NOTHING` (safe merge, never overwrites). `--force` flag uses `ON CONFLICT DO UPDATE` to overwrite.
+- **Auto-import on startup**: `auto_import_if_empty()` called in `post_startup`. Compares DB prediction count with dump — if DB has <90% of dump data, auto-imports missing rows + runs `evaluate_missed_days(lookback=30)`.
+- **Admin buttons**: "Exporter DB → dump" and "Importer dump → DB" in Actions tab. Also "Lancer le diagnostic" shows predictions/actuals/performance counts per date.
+- **Tables synced**: predictions, actuals, performance, weather_cache, weather_forecast_log, rte_daily, weights_history. Does NOT sync users/sms_logs (personal data).
+- **Workflow**: Before deploying to production, run export in dev → commit `db_dump.json` → deploy → auto-import fills missing data on startup.

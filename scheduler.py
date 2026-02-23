@@ -149,6 +149,15 @@ async def _task_post_startup():
     """
     loop = asyncio.get_running_loop()
 
+    # 0. Auto-import si la DB production est vide (sync depuis db_dump.json)
+    try:
+        from db_sync import auto_import_if_empty
+        sync_result = await loop.run_in_executor(None, auto_import_if_empty)
+        if sync_result:
+            logger.info(f"[Post-startup] DB sync: {sync_result}")
+    except Exception as e:
+        logger.warning(f"[Post-startup] DB sync ignoré: {e}")
+
     # 1. Backfill actuals EDF
     _backfill_ok = False
     try:
@@ -1062,6 +1071,14 @@ async def run_task_now(task_name: str) -> str:
         missed = evaluate_missed_days(lookback=30)
         return f"Réévaluation terminée : {missed} jour(s) manquant(s) rattrapé(s) (lookback=30j)"
 
+    if task_name == "db_export":
+        from db_sync import export_to_file
+        return export_to_file()
+
+    if task_name == "db_import":
+        from db_sync import import_from_file
+        return import_from_file(force=False)
+
     # Agents SEO/Backlinks : exécution directe (bypass gate saisonnière)
     # avec remontée du vrai résultat/erreur à l'admin
     if task_name in ("seo_agent", "backlinks_agent"):
@@ -1100,7 +1117,11 @@ async def run_task_now(task_name: str) -> str:
         "validation": task_daily_validation,
     }
     if task_name not in tasks:
-        available = list(tasks.keys()) + ["backfill", "analyze", "evaluate_missed", "seo_agent", "backlinks_agent"]
+        available = list(tasks.keys()) + [
+            "backfill", "analyze", "evaluate_missed",
+            "db_export", "db_import",
+            "seo_agent", "backlinks_agent",
+        ]
         return f"Tâche inconnue: {task_name}. Disponibles: {available}"
 
     await tasks[task_name]()

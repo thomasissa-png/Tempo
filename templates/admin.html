@@ -422,6 +422,8 @@
                     <div class="action-grid">
                         <button class="action-btn blue" onclick="loadDbDiagnostic()">Lancer le diagnostic</button>
                         <button class="action-btn green" onclick="runTask('evaluate_missed')">Réévaluer jours manquants</button>
+                        <button class="action-btn gray" onclick="runTask('db_export')">Exporter DB &rarr; dump</button>
+                        <button class="action-btn gray" onclick="runTask('db_import')">Importer dump &rarr; DB</button>
                     </div>
                     <div id="db-diagnostic" style="margin-top:12px;font-size:0.8rem;display:none"></div>
                 </div>

@@ -4351,3 +4351,68 @@ class TestAdminSmsLogs:
         with open("templates/admin.html") as f:
             html = f.read()
         assert "sms" in html.lower() and "logs" in html.lower() or "loadSmsLogs" in html
+
+
+class TestDbSync:
+    """DB sync: export/import between environments."""
+
+    def test_db_sync_module_exists(self):
+        """db_sync.py should exist."""
+        assert os.path.exists("db_sync.py")
+
+    def test_db_sync_importable(self):
+        """db_sync.py should be importable with key functions."""
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("db_sync", "db_sync.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        assert hasattr(mod, "export_db")
+        assert hasattr(mod, "export_to_file")
+        assert hasattr(mod, "import_from_file")
+        assert hasattr(mod, "auto_import_if_empty")
+
+    def test_sync_tables_defined(self):
+        """All critical tables should be in SYNC_TABLES."""
+        with open("db_sync.py") as f:
+            source = f.read()
+        for table in ["predictions", "actuals", "performance", "weather_cache", "rte_daily"]:
+            assert table in source, f"{table} should be in SYNC_TABLES"
+
+    def test_db_dump_exists(self):
+        """db_dump.json should exist after export."""
+        assert os.path.exists("db_dump.json"), "db_dump.json should exist (run db_sync.py export)"
+
+    def test_db_dump_valid_json(self):
+        """db_dump.json should be valid JSON with expected structure."""
+        import json
+        with open("db_dump.json") as f:
+            data = json.load(f)
+        assert "tables" in data
+        assert "exported_at" in data
+        assert isinstance(data["tables"], dict)
+
+    def test_scheduler_has_db_export_task(self):
+        """Scheduler should support db_export and db_import tasks."""
+        with open("scheduler.py") as f:
+            source = f.read()
+        assert "db_export" in source
+        assert "db_import" in source
+
+    def test_startup_auto_import(self):
+        """Post-startup should include auto-import."""
+        with open("scheduler.py") as f:
+            source = f.read()
+        assert "auto_import_if_empty" in source
+
+    def test_admin_has_db_buttons(self):
+        """Admin should have DB export/import buttons."""
+        with open("templates/admin.html") as f:
+            html = f.read()
+        assert "db_export" in html
+        assert "db_import" in html
+
+    def test_admin_has_diagnostic_endpoint(self):
+        """App should have /admin/db-diagnostic endpoint."""
+        with open("app.py") as f:
+            source = f.read()
+        assert "/admin/db-diagnostic" in source
