@@ -1362,21 +1362,14 @@ def get_daily_recap(season: str = "2025-2026") -> list[dict]:
                 consec_correct = count if count > 0 else None
 
             # A4: Diagnostic for J-1 to J-5 errors (not just J-1)
-            # Scoped to latest version: only consider horizons where the
-            # prediction was made under the current version
+            # Shows errors regardless of version — staircase borders already
+            # indicate which version made the prediction.
             diagnostic = None
             # D5: Temperature deviation info for error context
             temp_deviation = None
-            # Find the version active for this target date's predictions
-            latest_v = version_dates_sorted[-1] if version_dates_sorted else None
             if actual:
                 # Check J-1 first (most important), then J-2→J-5
                 for h in range(1, 6):
-                    # Skip horizons where prediction was made before latest version
-                    if latest_v:
-                        pred_date = (date.fromisoformat(dt) - timedelta(days=h)).isoformat()
-                        if pred_date < latest_v:
-                            continue
                     jh = preds.get(f"J-{h}")
                     if jh and jh.get("correct") is False:
                         raison_text = dates_raison.get(dt, (None,))[0]
@@ -1397,19 +1390,10 @@ def get_daily_recap(season: str = "2025-2026") -> list[dict]:
                             diagnostic = f"J-{h}: {diag}"
                         break  # Show first error (closest horizon)
                 # A8: If J-1 correct but J-2→J-5 had errors, show as WARNING
-                # Only consider horizons under the latest version
                 j1 = preds.get("J-1")
-                j1_under_version = True
-                if latest_v:
-                    j1_pred_date = (date.fromisoformat(dt) - timedelta(days=1)).isoformat()
-                    j1_under_version = j1_pred_date >= latest_v
-                if j1 and j1.get("correct") is True and diagnostic is None and j1_under_version:
+                if j1 and j1.get("correct") is True and diagnostic is None:
                     wrong_horizons = []
                     for h in range(2, 6):
-                        if latest_v:
-                            pred_dt = (date.fromisoformat(dt) - timedelta(days=h)).isoformat()
-                            if pred_dt < latest_v:
-                                continue
                         if preds.get(f"J-{h}") and preds[f"J-{h}"].get("correct") is False:
                             wrong_horizons.append(f"J-{h}")
                     if wrong_horizons:

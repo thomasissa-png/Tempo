@@ -1177,10 +1177,13 @@ async def api_debug_data_check():
         result["actuals"] = {"count": row["cnt"], "min_date": row["min_d"], "max_date": row["max_d"]}
 
         # Performance table
-        row = conn.execute(
-            "SELECT COUNT(*) as cnt, MIN(date_cible) as min_d, MAX(date_cible) as max_d FROM performance"
-        ).fetchone()
-        result["performance"] = {"count": row["cnt"], "min_date": row["min_d"], "max_date": row["max_d"]}
+        perf_rows = conn.execute(
+            "SELECT date_cible FROM performance ORDER BY date_cible"
+        ).fetchall()
+        if perf_rows:
+            result["performance"] = {"count": len(perf_rows), "min_date": perf_rows[0]["date_cible"], "max_date": perf_rows[-1]["date_cible"]}
+        else:
+            result["performance"] = {"count": 0, "min_date": None, "max_date": None}
 
         # Weather forecast log
         row = conn.execute(
@@ -1238,6 +1241,24 @@ async def api_debug_recap_check():
             "sample_prediction": preds.get("J-1") or preds.get("J-2") or preds.get("J-3"),
         })
 
+    # Also check weather_cache for these dates
+    from database import get_db as _get_db
+    conn2 = _get_db()
+    try:
+        weather_rows = conn2.execute(
+            """SELECT date, temp_moy, humidity, wind_speed, fetched_at
+               FROM weather_cache
+               WHERE date BETWEEN '2026-02-15' AND '2026-02-22'
+               ORDER BY date, fetched_at DESC""",
+        ).fetchall()
+        weather_info = [
+            {"date": r["date"], "temp_moy": r["temp_moy"],
+             "humidity": r["humidity"], "fetched_at": r["fetched_at"]}
+            for r in weather_rows
+        ]
+    finally:
+        conn2.close()
+
     return {
         "status": "ok",
         "total_recap_dates": len(recap),
@@ -1247,6 +1268,7 @@ async def api_debug_recap_check():
             "last": recap[-1]["date"] if recap else None,
         },
         "feb15_22_detail": summary,
+        "weather_cache_feb15_22": weather_info,
     }
 
 

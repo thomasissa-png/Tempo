@@ -52,7 +52,6 @@
             .recap-table td{padding:2px 1px;}
             .recap-dot{width:13px;height:13px;}
             .recap-table .sticky-date{min-width:60px;font-size:0.6rem;}
-            .recap-table .sticky-result{left:60px;min-width:45px;}
             .diag-text{max-width:120px;font-size:0.58rem;}
             .prf-table th,.prf-table td{padding:6px 4px;font-size:0.72rem;}
             .rouge-table th,.rouge-table td{padding:6px 4px;font-size:0.72rem;}
@@ -70,7 +69,6 @@
             .recap-table{min-width:750px;}
             .recap-dot{width:11px;height:11px;border-width:1.5px;}
             .recap-table .sticky-date{min-width:52px;font-size:0.55rem;}
-            .recap-table .sticky-result{left:52px;min-width:38px;}
             .recap-actual{font-size:0.6rem;padding:1px 6px;}
             .prf-table th,.prf-table td{padding:4px 3px;font-size:0.65rem;}
             .rouge-table th,.rouge-table td{padding:4px 3px;font-size:0.65rem;}
@@ -143,7 +141,7 @@
         .recap-table th.sticky { background:var(--bg); }
         .recap-table tr:hover td.sticky { background:var(--bg); }
         .recap-table .sticky-date { left:0; min-width:75px; text-align:left; padding-left:6px; }
-        .recap-table .sticky-result { left:75px; min-width:55px; }
+        /* Résultat column is no longer sticky — positioned after J-1 */
 
         .recap-dot { display:inline-block; width:16px; height:16px; border-radius:50%; border:2px solid transparent; vertical-align:middle; }
         .recap-dot.correct { border-color:#16A34A; }
@@ -653,13 +651,13 @@ function _renderRecapTable(recap) {
     }
 
     let h = '<div class="recap-wrapper"><table class="recap-table"><thead><tr>';
-    h += '<th class="sticky sticky-date">Date</th><th class="sticky sticky-result">Résultat</th>';
+    h += '<th class="sticky sticky-date">Date</th>';
     HORIZONS.forEach(hz => {
         const hNum = parseInt(hz.split('-')[1]);
         if (hNum >= 6) h += `<th style="opacity:0.5;font-size:0.58rem" title="Indicatif — météo imprécise à cet horizon">${hz}</th>`;
         else h += `<th>${hz}</th>`;
     });
-    h += '<th>&#10003; consec.</th><th>Météo obs.</th><th style="text-align:left">Analyse erreur</th>';
+    h += '<th>Résultat</th><th>&#10003; consec.</th><th>Météo obs.</th><th style="text-align:left">Analyse erreur</th>';
     h += '</tr></thead><tbody>';
 
     /* Staircase version boundaries: continuous border between versions.
@@ -685,7 +683,9 @@ function _renderRecapTable(recap) {
     function _versionBorderStyle(verA, verB, direction) {
         if (verA === latestVersion || verB === latestVersion)
             return `border-${direction}:2px solid #7B1FA2`;
-        return `border-${direction}:1px dashed #B39DDB`;
+        /* 2px needed: border-collapse makes solid>dashed at same width,
+           so 1px dashed loses against default 1px solid border-bottom */
+        return `border-${direction}:2px dashed #B39DDB`;
     }
     let _prevRowDate = null;
 
@@ -700,7 +700,6 @@ function _renderRecapTable(recap) {
         if (isToday) h += ' <span style="font-size:0.6rem;color:var(--accent);font-weight:700">AUJ.</span>';
         if (row.tool_update) h += `<div style="font-size:0.55rem;color:#7B1FA2;font-weight:600;line-height:1.1;margin-top:2px;max-width:90px;white-space:normal">${escapeHtml(row.tool_update)}</div>`;
         h += '</td>';
-        h += `<td class="sticky sticky-result">${pill(row.actual)}</td>`;
 
         HORIZONS.forEach(hz => {
             const hNum = parseInt(hz.split('-')[1]);
@@ -720,8 +719,15 @@ function _renderRecapTable(recap) {
             h += `<td${tdStyle?' style="'+tdStyle+'"':''}>${dot(row.predictions?row.predictions[hz]:null, isFuture)}</td>`;
         });
 
+        /* Résultat (after J-1, before CONSEC) */
+        h += `<td>${pill(row.actual)}</td>`;
+
         const cc = row.consec_correct;
-        h += `<td style="font-size:0.7rem;font-weight:600;color:${cc?'#16A34A':'var(--text-secondary)'}" title="${cc?cc+' horizon(s) consécutif(s) correct(s) depuis J-1':''}">${cc?cc+'j':'—'}</td>`;
+        const isConfirmedDay = row.actual_status === 'confirmed' && row.actual;
+        const ccColor = cc ? '#16A34A' : isConfirmedDay ? '#DC2626' : 'var(--text-secondary)';
+        const ccText = cc ? cc+'j' : isConfirmedDay ? '0j' : '—';
+        const ccTitle = cc ? cc+' horizon(s) consécutif(s) correct(s) depuis J-1' : isConfirmedDay ? 'Aucun horizon correct consécutif' : '';
+        h += `<td style="font-size:0.7rem;font-weight:600;color:${ccColor}" title="${ccTitle}">${ccText}</td>`;
 
         const w = row.weather_observed;
         if (w && w.temp_moy != null) {
@@ -879,14 +885,15 @@ function _populateVersionFilter(versions) {
         _versionFilterInitialized = true;
         /* _selectedVersion stays 'all' by default */
     }
-    sel.innerHTML = '<option value="all">Toutes les versions</option>' +
+    sel.innerHTML = '<option value="all"' + (_selectedVersion==='all'?' selected':'') + '>Toutes les versions</option>' +
         versions.map(v =>
             `<option value="${escapeHtml(v.date)}"${v.date===_selectedVersion?' selected':''}>${escapeHtml(v.date)} — ${escapeHtml(v.label)}</option>`
         ).join('');
     if (_selectedVersion !== 'all' && !versions.some(v => v.date === _selectedVersion)) {
-        _selectedVersion = versions[versions.length - 1].date;
-        sel.value = _selectedVersion;
+        _selectedVersion = 'all';
     }
+    /* Ensure visual state matches variable */
+    sel.value = _selectedVersion;
 }
 
 document.getElementById('version-filter')?.addEventListener('change', e => {
