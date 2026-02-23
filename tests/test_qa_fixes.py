@@ -3728,3 +3728,78 @@ class TestPgPercentEscaping:
         assert "b < %s" in safe
         assert "NOT LIKE 'foo%%'" in safe
         assert "d = %s" in safe
+
+
+class TestFakeResultCursorNoDoubleWrap:
+    """_FakeResultCursor must return raw tuples to avoid double-wrapping."""
+
+    def test_pragma_user_version_returns_int(self):
+        """PRAGMA user_version via PgConnectionWrapper must return an integer.
+
+        Bug: _FakeResultCursor.fetchone() returned _DictRow, then
+        _PgCursorWrapper.fetchone() wrapped it again. Iterating a dict yields
+        keys (strings), not values → version = 'user_version' (str) instead
+        of 0 (int) → TypeError: '<' not supported between 'str' and 'int'.
+        """
+        from database import _FakeResultCursor, _PgCursorWrapper
+
+        # Simulate what _handle_pragma returns for PRAGMA user_version
+        fake = _FakeResultCursor([(19,)], [("user_version",)])
+        wrapper = _PgCursorWrapper(fake)
+
+        row = wrapper.fetchone()
+        # row[0] must be the integer 19, not the string 'user_version'
+        assert row[0] == 19, f"Expected 19, got {row[0]!r}"
+        assert isinstance(row[0], int), f"Expected int, got {type(row[0])}"
+        # Dict-style access must also work
+        assert row["user_version"] == 19
+
+    def test_fake_cursor_fetchone_returns_tuple(self):
+        """_FakeResultCursor.fetchone() must return a raw tuple."""
+        from database import _FakeResultCursor, _DictRow
+
+        fake = _FakeResultCursor([(42,)], [("val",)])
+        row = fake.fetchone()
+        # Must be a tuple, NOT a _DictRow
+        assert not isinstance(row, _DictRow), (
+            "_FakeResultCursor.fetchone() must return raw tuple, not _DictRow"
+        )
+        assert row == (42,)
+
+    def test_fake_cursor_fetchall_returns_tuples(self):
+        """_FakeResultCursor.fetchall() must return raw tuples."""
+        from database import _FakeResultCursor, _DictRow
+
+        fake = _FakeResultCursor([(1,), (2,), (3,)], [("n",)])
+        rows = fake.fetchall()
+        for r in rows:
+            assert not isinstance(r, _DictRow)
+        assert rows == [(1,), (2,), (3,)]
+
+    def test_wrapper_fetchall_wraps_correctly(self):
+        """_PgCursorWrapper.fetchall() wraps _FakeResultCursor tuples into _DictRow."""
+        from database import _FakeResultCursor, _PgCursorWrapper, _DictRow
+
+        fake = _FakeResultCursor([(10, "a"), (20, "b")], [("id", ), ("name",)])
+        wrapper = _PgCursorWrapper(fake)
+        rows = wrapper.fetchall()
+        assert len(rows) == 2
+        assert isinstance(rows[0], _DictRow)
+        assert rows[0]["id"] == 10
+        assert rows[0]["name"] == "a"
+        assert rows[0][0] == 10
+        assert rows[1][1] == "b"
+
+
+class TestPoolRollbackOnClose:
+    """PgConnectionWrapper.close() must rollback before returning to pool."""
+
+    def test_close_calls_rollback(self):
+        """close() must call rollback() to prevent failed transaction leakage."""
+        import inspect
+        import database
+        source = inspect.getsource(database.PgConnectionWrapper.close)
+        assert "rollback" in source, (
+            "close() must rollback before putconn to avoid "
+            "returning a connection in failed transaction state"
+        )

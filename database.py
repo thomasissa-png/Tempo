@@ -362,8 +362,17 @@ class PgConnectionWrapper:
         self._conn.commit()
 
     def close(self):
-        """Close or return connection to pool."""
+        """Close or return connection to pool.
+
+        Always rollback before returning to pool to avoid leaving the
+        connection in a failed transaction state (psycopg2 does NOT
+        auto-rollback on putconn).
+        """
         if self._pool:
+            try:
+                self._conn.rollback()
+            except Exception:
+                pass
             self._pool.putconn(self._conn)
         else:
             self._conn.close()
@@ -380,7 +389,12 @@ class PgConnectionWrapper:
 
 
 class _FakeResultCursor:
-    """Fake cursor for PRAGMA emulation and no-op results."""
+    """Fake cursor for PRAGMA emulation and no-op results.
+
+    Returns RAW tuples from fetchone/fetchall — the wrapping into _DictRow
+    is done by _PgCursorWrapper (avoids double-wrapping bug where iterating
+    a _DictRow yields keys instead of values).
+    """
 
     def __init__(self, rows, description):
         self._rows = rows
@@ -394,19 +408,13 @@ class _FakeResultCursor:
         if self._idx < len(self._rows):
             row = self._rows[self._idx]
             self._idx += 1
-            if self.description:
-                cols = [d[0] for d in self.description]
-                return _DictRow(dict(zip(cols, row)))
-            return row
+            return row  # Raw tuple — _PgCursorWrapper wraps it
         return None
 
     def fetchall(self):
         rows = self._rows[self._idx:]
         self._idx = len(self._rows)
-        if self.description:
-            cols = [d[0] for d in self.description]
-            return [_DictRow(dict(zip(cols, r))) for r in rows]
-        return rows
+        return rows  # Raw tuples — _PgCursorWrapper wraps them
 
     def __iter__(self):
         return iter(self.fetchall())
