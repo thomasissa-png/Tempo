@@ -1,4 +1,8 @@
-"""Gestion de la base de données SQLite — 10 tables.
+"""Gestion de la base de données — SQLite (local) / PostgreSQL (Replit).
+
+Dual-mode : détecte DATABASE_URL pour PostgreSQL, sinon SQLite (tempo.db).
+Le wrapper PgConnectionWrapper émule l'interface sqlite3.Connection pour que
+tout le code existant (migrations, queries) fonctionne sans modification.
 
 Tables :
   - predictions         : prédictions générées par l'algorithme (+ raw sub-scores v9)
@@ -30,12 +34,249 @@ import sqlite3
 import hashlib
 import base64
 import logging
+import os
+import re
 import threading
 from datetime import datetime
 from config import Config
 import json
 
 logger = logging.getLogger(__name__)
+
+# ================================================================
+# PostgreSQL compatibility layer
+# ================================================================
+
+_USE_POSTGRES = bool(Config.DATABASE_URL)
+
+# Exception alias: catches both SQLite and PostgreSQL operational errors
+# so migration try/except blocks work with either backend.
+if _USE_POSTGRES:
+    try:
+        import psycopg2
+        _DbOperationalError = (sqlite3.OperationalError, psycopg2.Error)
+    except ImportError:
+        _DbOperationalError = (sqlite3.OperationalError, Exception)
+else:
+    _DbOperationalError = (sqlite3.OperationalError,)
+
+
+class _PgCursorWrapper:
+    """Wraps a psycopg2 cursor to behave like sqlite3.Cursor."""
+
+    def __init__(self, pg_cursor):
+        self._cursor = pg_cursor
+
+    @property
+    def rowcount(self):
+        return self._cursor.rowcount
+
+    @property
+    def lastrowid(self):
+        return self._cursor.fetchone()[0] if self._cursor.description else None
+
+    @property
+    def description(self):
+        return self._cursor.description
+
+    def fetchone(self):
+        row = self._cursor.fetchone()
+        if row is None:
+            return None
+        if self._cursor.description:
+            cols = [d[0] for d in self._cursor.description]
+            return _DictRow(dict(zip(cols, row)))
+        return row
+
+    def fetchall(self):
+        rows = self._cursor.fetchall()
+        if not rows or not self._cursor.description:
+            return rows
+        cols = [d[0] for d in self._cursor.description]
+        return [_DictRow(dict(zip(cols, r))) for r in rows]
+
+    def __iter__(self):
+        return iter(self.fetchall())
+
+
+class _DictRow(dict):
+    """Dict that also supports integer index access like sqlite3.Row."""
+
+    def __init__(self, data):
+        super().__init__(data)
+        self._keys = list(data.keys())
+
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return super().__getitem__(self._keys[key])
+        return super().__getitem__(key)
+
+    def keys(self):
+        return self._keys
+
+
+def _convert_sql(sql):
+    """Convert SQLite SQL to PostgreSQL-compatible SQL.
+
+    - ? → %s parameter placeholders
+    - INTEGER PRIMARY KEY AUTOINCREMENT → SERIAL PRIMARY KEY
+    - Remove CHECK constraints with IN lists (PG syntax differs)
+    - PRAGMA → handled separately
+    """
+    if not _USE_POSTGRES:
+        return sql
+    # Parameter placeholders: ? → %s (but not inside strings)
+    result = re.sub(r'\?', '%s', sql)
+    # AUTOINCREMENT → SERIAL
+    result = re.sub(
+        r'INTEGER\s+PRIMARY\s+KEY\s+AUTOINCREMENT',
+        'SERIAL PRIMARY KEY',
+        result,
+        flags=re.IGNORECASE,
+    )
+    # INSERT OR IGNORE → INSERT INTO ... ON CONFLICT DO NOTHING
+    if re.search(r'INSERT\s+OR\s+IGNORE\s+INTO', result, re.IGNORECASE):
+        result = re.sub(
+            r'INSERT\s+OR\s+IGNORE\s+INTO',
+            'INSERT INTO',
+            result,
+            flags=re.IGNORECASE,
+        )
+        # Append ON CONFLICT DO NOTHING at end (before trailing whitespace/semicolons)
+        result = result.rstrip().rstrip(';')
+        result += ' ON CONFLICT DO NOTHING'
+    return result
+
+
+class PgConnectionWrapper:
+    """Wraps a psycopg2 connection to emulate sqlite3.Connection interface.
+
+    Handles:
+    - SQL translation (?, AUTOINCREMENT, INSERT OR IGNORE)
+    - executescript() → individual execute() calls
+    - PRAGMA user_version → schema_version table
+    - Dict-like row access via _DictRow
+    """
+
+    def __init__(self, pg_conn):
+        self._conn = pg_conn
+        self._ensure_schema_version_table()
+
+    def _ensure_schema_version_table(self):
+        """Create schema_version table if it doesn't exist (replaces PRAGMA user_version)."""
+        cur = self._conn.cursor()
+        cur.execute(
+            "CREATE TABLE IF NOT EXISTS schema_version "
+            "(id INTEGER PRIMARY KEY DEFAULT 1, version INTEGER NOT NULL DEFAULT 0, "
+            "CHECK (id = 1))"
+        )
+        cur.execute(
+            "INSERT INTO schema_version (id, version) VALUES (1, 0) "
+            "ON CONFLICT (id) DO NOTHING"
+        )
+        self._conn.commit()
+
+    def execute(self, sql, params=None):
+        """Execute SQL with automatic translation."""
+        sql_stripped = sql.strip()
+
+        # Handle PRAGMA user_version
+        if sql_stripped.upper().startswith("PRAGMA"):
+            return self._handle_pragma(sql_stripped, params)
+
+        # Handle PRAGMA foreign_keys, busy_timeout, journal_mode — ignore on PG
+        converted = _convert_sql(sql_stripped)
+
+        cur = self._conn.cursor()
+        if params:
+            cur.execute(converted, params)
+        else:
+            cur.execute(converted)
+        return _PgCursorWrapper(cur)
+
+    def _handle_pragma(self, sql, params):
+        """Handle PRAGMA statements by emulating them for PostgreSQL."""
+        upper = sql.upper().replace(" ", "")
+
+        # PRAGMA user_version (read)
+        if "USER_VERSION" in upper and "=" not in upper:
+            cur = self._conn.cursor()
+            cur.execute("SELECT version FROM schema_version WHERE id = 1")
+            row = cur.fetchone()
+            version = row[0] if row else 0
+            return _PgCursorWrapper(_FakeResultCursor([(version,)], [("user_version",)]))
+
+        # PRAGMA user_version = N (write)
+        match = re.search(r'user_version\s*=\s*(\d+)', sql, re.IGNORECASE)
+        if match:
+            version = int(match.group(1))
+            cur = self._conn.cursor()
+            cur.execute(
+                "UPDATE schema_version SET version = %s WHERE id = 1",
+                (version,),
+            )
+            return _PgCursorWrapper(cur)
+
+        # Other PRAGMAs (journal_mode, foreign_keys, busy_timeout) — no-op on PG
+        return _PgCursorWrapper(_FakeResultCursor([], []))
+
+    def executescript(self, sql):
+        """Execute multiple SQL statements (PostgreSQL doesn't have executescript)."""
+        # Split on semicolons, filter empty, execute each
+        statements = [s.strip() for s in sql.split(';') if s.strip()]
+        cur = self._conn.cursor()
+        for stmt in statements:
+            converted = _convert_sql(stmt)
+            if converted:
+                cur.execute(converted)
+        return _PgCursorWrapper(cur)
+
+    def commit(self):
+        self._conn.commit()
+
+    def close(self):
+        self._conn.close()
+
+    def cursor(self):
+        return _PgCursorWrapper(self._conn.cursor())
+
+    # Support 'with' statement
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+
+class _FakeResultCursor:
+    """Fake cursor for PRAGMA emulation results."""
+
+    def __init__(self, rows, description):
+        self._rows = rows
+        self._idx = 0
+        self.description = [(d[0], None, None, None, None, None, None) for d in description] if description else None
+        self.rowcount = len(rows)
+
+    def fetchone(self):
+        if self._idx < len(self._rows):
+            row = self._rows[self._idx]
+            self._idx += 1
+            if self.description:
+                cols = [d[0] for d in self.description]
+                return _DictRow(dict(zip(cols, row)))
+            return row
+        return None
+
+    def fetchall(self):
+        rows = self._rows[self._idx:]
+        self._idx = len(self._rows)
+        if self.description:
+            cols = [d[0] for d in self.description]
+            return [_DictRow(dict(zip(cols, r))) for r in rows]
+        return rows
+
+    def __iter__(self):
+        return iter(self.fetchall())
 
 # ================================================================
 # Chiffrement téléphone (Fix #1 — Fernet réversible pour SMS)
@@ -155,12 +396,20 @@ def hash_phone(phone: str) -> str:
 # Connexion DB
 # ================================================================
 
-def get_db() -> sqlite3.Connection:
+def get_db():
     """Obtenir une connexion à la base de données.
+
+    - Si DATABASE_URL est défini : PostgreSQL via psycopg2 + PgConnectionWrapper.
+    - Sinon : SQLite classique (tempo.db).
 
     Note: PRAGMA journal_mode=WAL est défini une seule fois dans init_db()
     car il persiste au niveau du fichier (pas besoin de le répéter).
     """
+    if _USE_POSTGRES:
+        import psycopg2
+        pg_conn = psycopg2.connect(Config.DATABASE_URL)
+        return PgConnectionWrapper(pg_conn)
+
     conn = sqlite3.connect(Config.DATABASE_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys=ON")
@@ -297,7 +546,10 @@ def init_db():
 
     # === Fix #14 audit v4 : migrations conditionnelles via PRAGMA user_version ===
     # Fix audit DB : verrou exclusif pour eviter les race conditions
-    conn.execute("BEGIN EXCLUSIVE")
+    if _USE_POSTGRES:
+        conn.execute("BEGIN")
+    else:
+        conn.execute("BEGIN EXCLUSIVE")
     version = conn.execute("PRAGMA user_version").fetchone()[0]
 
     if version < 3:
@@ -306,7 +558,7 @@ def init_db():
                     "score_gradient", "score_clustering", "score_rte"]:
             try:
                 conn.execute(f"ALTER TABLE predictions ADD COLUMN {col} REAL DEFAULT 0")
-            except sqlite3.OperationalError:
+            except _DbOperationalError:
                 logger.debug(f"Migration v3: colonne {col} existe deja")
 
         conn.execute("""DELETE FROM predictions WHERE id NOT IN
@@ -337,7 +589,7 @@ def init_db():
         ]:
             try:
                 conn.execute(f"ALTER TABLE predictions ADD COLUMN {col} {coltype}")
-            except sqlite3.OperationalError:
+            except _DbOperationalError:
                 logger.debug(f"Migration v4: colonne {col} existe deja")
 
         conn.executescript("""
@@ -386,14 +638,14 @@ def init_db():
                 CREATE INDEX IF NOT EXISTS idx_performance_avance
                     ON performance(jours_avance);
             """)
-        except sqlite3.OperationalError as e:
+        except _DbOperationalError as e:
             logger.warning(f"Migration v5 performance: {e}")
 
         try:
             conn.execute(
                 "ALTER TABLE weights_history ADD COLUMN model_version TEXT DEFAULT ''"
             )
-        except sqlite3.OperationalError:
+        except _DbOperationalError:
             logger.debug("Migration v5: colonne model_version existe deja")
 
         conn.execute("PRAGMA user_version = 5")
@@ -408,7 +660,7 @@ def init_db():
             conn.execute(
                 "ALTER TABLE actuals ADD COLUMN synthetic INTEGER DEFAULT 0"
             )
-        except sqlite3.OperationalError:
+        except _DbOperationalError:
             logger.debug("Migration v6: colonne synthetic existe deja")
 
         conn.execute("PRAGMA user_version = 6")
@@ -472,7 +724,7 @@ def init_db():
             conn.execute(
                 "ALTER TABLE predictions ADD COLUMN couleur_originale TEXT DEFAULT ''"
             )
-        except sqlite3.OperationalError:
+        except _DbOperationalError:
             logger.debug("Migration v8: colonne couleur_originale existe deja")
 
         conn.execute("PRAGMA user_version = 8")
@@ -487,7 +739,7 @@ def init_db():
                      "score_gradient_raw", "score_clustering_raw", "score_rte_raw"]:
             try:
                 conn.execute(f"ALTER TABLE predictions ADD COLUMN {col} REAL DEFAULT 0")
-            except sqlite3.OperationalError:
+            except _DbOperationalError:
                 logger.debug(f"Migration v9: colonne {col} existe deja")
 
         # D-1: Fix performance UNIQUE to include jours_avance for multi-horizon evals
@@ -516,7 +768,7 @@ def init_db():
                 CREATE INDEX IF NOT EXISTS idx_performance_avance
                     ON performance(jours_avance);
             """)
-        except sqlite3.OperationalError as e:
+        except _DbOperationalError as e:
             logger.warning(f"Migration v9 performance: {e}")
 
         # A-5: Learning journal history — versioned by date_analysis
@@ -555,7 +807,7 @@ def init_db():
                 CREATE INDEX IF NOT EXISTS idx_learning_date
                     ON learning_journal(date_analysis);
             """)
-        except sqlite3.OperationalError as e:
+        except _DbOperationalError as e:
             logger.warning(f"Migration v9 learning_journal: {e}")
 
         # W-5: Rollback tracking in weights_history
@@ -563,7 +815,7 @@ def init_db():
             conn.execute(
                 "ALTER TABLE weights_history ADD COLUMN rollback_of INTEGER DEFAULT NULL"
             )
-        except sqlite3.OperationalError:
+        except _DbOperationalError:
             logger.debug("Migration v9: colonne rollback_of existe deja")
 
         conn.execute("PRAGMA user_version = 9")
@@ -679,7 +931,7 @@ def init_db():
                 CREATE INDEX IF NOT EXISTS idx_sms_logs_user_date
                     ON sms_logs(user_id, date_envoi);
             """)
-        except sqlite3.OperationalError as e:
+        except _DbOperationalError as e:
             logger.warning(f"Migration v13 sms_logs CASCADE: {e}")
 
         # Index composites sur colonnes ajoutees en v4
@@ -692,7 +944,7 @@ def init_db():
                 "CREATE INDEX IF NOT EXISTS idx_predictions_horizon_sim "
                 "ON predictions(horizon, simulated)"
             )
-        except sqlite3.OperationalError:
+        except _DbOperationalError:
             logger.debug("Migration v13: index predictions skip (colonnes v4 absentes)")
 
         conn.execute("PRAGMA user_version = 13")
@@ -763,7 +1015,7 @@ def init_db():
             conn.execute(
                 "ALTER TABLE users ADD COLUMN manage_token TEXT DEFAULT ''"
             )
-        except sqlite3.OperationalError:
+        except _DbOperationalError:
             logger.debug("Migration v16: colonne manage_token existe deja")
 
         # Générer un token pour les users existants
@@ -830,7 +1082,7 @@ def init_db():
             conn.execute(
                 "ALTER TABLE predictions ADD COLUMN temp_moy_prevue REAL"
             )
-        except sqlite3.OperationalError:
+        except _DbOperationalError:
             logger.debug("Migration v18: colonne temp_moy_prevue existe deja")
 
         conn.execute("PRAGMA user_version = 18")
@@ -847,7 +1099,7 @@ def init_db():
                 conn.execute(
                     f"ALTER TABLE predictions ADD COLUMN {col} REAL"
                 )
-            except sqlite3.OperationalError:
+            except _DbOperationalError:
                 logger.debug(f"Migration v19: colonne {col} existe deja")
 
         conn.execute("PRAGMA user_version = 19")
