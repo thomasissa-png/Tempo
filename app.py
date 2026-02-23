@@ -94,6 +94,13 @@ def invalidate_predictions_cache():
     for key in _edf_cache:
         _edf_cache[key]["data"] = None
         _edf_cache[key]["expires"] = 0
+    # Invalider le cache performance pour que le dashboard reflète
+    # immédiatement les nouvelles évaluations
+    try:
+        from performance_tracker import invalidate_perf_summary_cache
+        invalidate_perf_summary_cache()
+    except Exception:
+        pass
 
 # === Fix #16 : Rate limiting simple pour /api/subscribe ===
 _rate_limit_store: dict[str, list[float]] = defaultdict(list)
@@ -1153,8 +1160,19 @@ def _propagate_edf_confirmation(date_str: str | None, couleur: str | None):
     try:
         from tempo_client import store_actual
         from predictor import confirm_prediction
+        from performance_tracker import evaluate_predictions_for_date
 
         store_actual(date_str, couleur)
+
+        # Évaluer AVANT la confirmation (même ordre que le scheduler 11h30)
+        # Garantit que les prédictions sont évaluées même si le scheduler échoue
+        try:
+            evaluate_predictions_for_date(
+                date.fromisoformat(date_str), couleur
+            )
+        except Exception as e:
+            logger.warning(f"[API→DB] Évaluation échouée pour {date_str}: {e}")
+
         updated = confirm_prediction(date_str, couleur)
         if updated:
             invalidate_predictions_cache()

@@ -642,16 +642,30 @@ def get_accuracy_trend(days: int = 14) -> list[dict]:
         conn.close()
 
 
-def get_period_comparison(days: int = 7, pivot_date: str | None = None) -> dict:
+def get_period_comparison(days: int = 7, pivot_date: str | None = None,
+                          min_horizon: int | None = None,
+                          max_horizon: int | None = None) -> dict:
     """Compare current period vs previous period.
 
     A4: If pivot_date is provided, compares predictions MADE after pivot vs
     predictions MADE before pivot (same number of days).
     Uses date_prediction (not date_cible) so version comparison is correct.
     Otherwise falls back to rolling N-day comparison on date_cible.
+
+    min_horizon/max_horizon: optionally restrict to a horizon range (e.g. 2-5).
     """
     conn = get_db()
     try:
+        # Build optional horizon filter clause
+        horizon_clause = ""
+        horizon_params: list = []
+        if min_horizon is not None:
+            horizon_clause += " AND jours_avance >= ?"
+            horizon_params.append(min_horizon)
+        if max_horizon is not None:
+            horizon_clause += " AND jours_avance <= ?"
+            horizon_params.append(max_horizon)
+
         if pivot_date:
             # A4: Compare predictions MADE after vs before the last tool update
             pivot = date.fromisoformat(pivot_date)
@@ -663,14 +677,14 @@ def get_period_comparison(days: int = 7, pivot_date: str | None = None) -> dict:
             prev_end = pivot_date
 
             current = conn.execute(
-                """SELECT COUNT(*) as total, SUM(correct) as corrects
-                   FROM performance WHERE date_prediction >= ?""",
-                (now_start,),
+                f"""SELECT COUNT(*) as total, SUM(correct) as corrects
+                   FROM performance WHERE date_prediction >= ?{horizon_clause}""",
+                [now_start] + horizon_params,
             ).fetchone()
             previous = conn.execute(
-                """SELECT COUNT(*) as total, SUM(correct) as corrects
-                   FROM performance WHERE date_prediction >= ? AND date_prediction < ?""",
-                (prev_start, prev_end),
+                f"""SELECT COUNT(*) as total, SUM(correct) as corrects
+                   FROM performance WHERE date_prediction >= ? AND date_prediction < ?{horizon_clause}""",
+                [prev_start, prev_end] + horizon_params,
             ).fetchone()
         else:
             now_start = (date.today() - timedelta(days=days)).isoformat()
@@ -678,14 +692,14 @@ def get_period_comparison(days: int = 7, pivot_date: str | None = None) -> dict:
             prev_end = now_start
 
             current = conn.execute(
-                """SELECT COUNT(*) as total, SUM(correct) as corrects
-                   FROM performance WHERE date_cible >= ?""",
-                (now_start,),
+                f"""SELECT COUNT(*) as total, SUM(correct) as corrects
+                   FROM performance WHERE date_cible >= ?{horizon_clause}""",
+                [now_start] + horizon_params,
             ).fetchone()
             previous = conn.execute(
-                """SELECT COUNT(*) as total, SUM(correct) as corrects
-                   FROM performance WHERE date_cible >= ? AND date_cible < ?""",
-                (prev_start, prev_end),
+                f"""SELECT COUNT(*) as total, SUM(correct) as corrects
+                   FROM performance WHERE date_cible >= ? AND date_cible < ?{horizon_clause}""",
+                [prev_start, prev_end] + horizon_params,
             ).fetchone()
 
         c_total = current["total"] or 0
@@ -740,6 +754,9 @@ def get_diagnostic(days: int = 30, since_date: str | None = None,
          "total": total_all}
 
     # Calculer les confusions dominantes
+    # Seuil adaptatif : count >= 2 normalement, mais count >= 1 quand peu de données
+    # (< 10 évaluations) pour ne pas masquer les erreurs d'une version récente
+    min_count = 1 if total_all < 10 else 2
     problems = []
     total_errors = 0
     for predicted in ("BLEU", "BLANC", "ROUGE"):
@@ -747,7 +764,7 @@ def get_diagnostic(days: int = 30, since_date: str | None = None,
             if predicted != actual:
                 count = cm.get(predicted, {}).get(actual, 0)
                 total_errors += count
-                if count >= 2:
+                if count >= min_count:
                     problems.append({
                         "predicted": predicted,
                         "actual": actual,
@@ -1615,6 +1632,12 @@ _perf_summary_cache: dict = {"data": None, "season": None, "ts": 0}
 _CACHE_TTL_SECONDS = 300  # 5 minutes
 
 
+def invalidate_perf_summary_cache():
+    """Invalide le cache performance (appelé après évaluation/confirmation)."""
+    _perf_summary_cache["data"] = None
+    _perf_summary_cache["ts"] = 0
+
+
 def get_performance_summary(season: str = "2025-2026") -> dict:
     """Résumé complet des performances pour le dashboard admin.
 
@@ -1674,8 +1697,9 @@ def get_performance_summary(season: str = "2025-2026") -> dict:
                 "BLEU", v_days, pred_since_date=td, pred_end_date=v_pred_end),
         }
 
-    # A4: Period comparison anchored on last tool update
-    period_comp = get_period_comparison(7, pivot_date=last_update)
+    # A4: Period comparison anchored on last tool update, scoped to J-2→J-5
+    period_comp = get_period_comparison(7, pivot_date=last_update,
+                                        min_horizon=2, max_horizon=5)
 
     result = {
         "season": season,

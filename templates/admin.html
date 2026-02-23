@@ -104,7 +104,6 @@
         .recap-table tr:hover { background:var(--bg); }
         .recap-table tr.today-row { background:#EFF6FF; }
         .recap-table tr.future-row { opacity:0.5; }
-        .recap-table tr.update-row { border-top:2px solid #7B1FA2; }
         .recap-table th.sticky,.recap-table td.sticky { position:sticky; z-index:2; background:var(--surface); }
         .recap-table th.sticky { background:var(--bg); }
         .recap-table tr:hover td.sticky { background:var(--bg); }
@@ -610,10 +609,14 @@ function _renderRecapTable(recap) {
     h += '<th>&#10003; consec.</th><th>Météo obs.</th><th style="text-align:left">Analyse erreur</th>';
     h += '</tr></thead><tbody>';
 
-    /* Build staircase version boundary map: {date: {horizon: versionLabel}} */
+    /* Build staircase version boundary map: {date: {horizon: versionLabel}}
+       Process in reverse chronological order so that when two versions are
+       close together, the OLDEST version's boundary is not overwritten by
+       the newer one — each horizon cell keeps the version that actually
+       produced its prediction. */
     const versionBoundaries = {};
     const toolVersions = (_perfData && _perfData.tool_versions) || [];
-    toolVersions.forEach(v => {
+    toolVersions.slice().reverse().forEach(v => {
         const vDate = new Date(v.date + 'T12:00:00');
         for (let n = 1; n <= 15; n++) {
             const boundaryDate = new Date(vDate);
@@ -852,10 +855,10 @@ function renderErrorSection(data, version) {
         totalEvals = C.reduce((s,p) => s + C.reduce((s2,a) => s2 + ((cm[p]||{})[a]||0), 0), 0);
     }
 
-    /* C4: Scope labels */
-    const scopeText = isVersioned ? `version ${version}` : 'J-2→J-5';
+    /* C4: Scope labels — always mention J-2→J-5 for clarity */
+    const scopeText = isVersioned ? `version ${version}, J-2→J-5` : 'J-2→J-5';
     const diagScopeEl = document.getElementById('diag-scope-label');
-    if (diagScopeEl) diagScopeEl.textContent = isVersioned ? `version ${version}` : `depuis ${data.last_tool_update||'—'}`;
+    if (diagScopeEl) diagScopeEl.textContent = isVersioned ? `version ${version}, J-2→J-5` : `depuis ${data.last_tool_update||'—'}, J-2→J-5`;
     const cmScopeEl = document.getElementById('cm-scope-label');
     if (cmScopeEl) cmScopeEl.textContent = scopeText;
     const totalRouge = Object.values(rrh).reduce((s,v) => s + (v.total_actual||0), 0);

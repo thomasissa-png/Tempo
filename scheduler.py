@@ -456,6 +456,7 @@ async def task_edf_polling():
     try:
         from tempo_client import fetch_tempo_today, fetch_tempo_tomorrow, store_actual
         from predictor import confirm_prediction
+        from performance_tracker import evaluate_predictions_for_date
         from app import invalidate_predictions_cache
 
         predictions_updated = False
@@ -465,6 +466,14 @@ async def task_edf_polling():
             today_data = await fetch_tempo_today()
             if today_data and today_data.get("couleur"):
                 store_actual(today_data["date"], today_data["couleur"])
+                # Évaluer avant confirmation (robustesse si scheduler 11h30 échoue)
+                try:
+                    evaluate_predictions_for_date(
+                        date.fromisoformat(today_data["date"]),
+                        today_data["couleur"]
+                    )
+                except Exception as e:
+                    logger.debug(f"[Polling EDF] Évaluation aujourd'hui échouée: {e}")
                 updated = confirm_prediction(today_data["date"], today_data["couleur"])
                 if updated:
                     predictions_updated = True
@@ -480,6 +489,14 @@ async def task_edf_polling():
             tomorrow_data = await fetch_tempo_tomorrow()
             if tomorrow_data and tomorrow_data.get("couleur"):
                 store_actual(tomorrow_data["date"], tomorrow_data["couleur"])
+                # Évaluer avant confirmation (robustesse si scheduler 11h30 échoue)
+                try:
+                    evaluate_predictions_for_date(
+                        date.fromisoformat(tomorrow_data["date"]),
+                        tomorrow_data["couleur"]
+                    )
+                except Exception as e:
+                    logger.debug(f"[Polling EDF] Évaluation demain échouée: {e}")
                 updated = confirm_prediction(tomorrow_data["date"], tomorrow_data["couleur"])
                 if updated:
                     predictions_updated = True
