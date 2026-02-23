@@ -254,6 +254,7 @@
                         </select>
                         <button class="quick-month-btn" id="btn-current-month" title="Filtrer sur le mois en cours">Ce mois</button>
                     </div>
+                    <div id="recap-debug" style="background:#FFF3CD;padding:6px 12px;border-radius:6px;font-size:0.75rem;margin-bottom:8px;display:none"></div>
                     <div id="daily-recap">Chargement...</div>
                 </div>
             </div>
@@ -512,6 +513,10 @@ async function loadPerformanceData(season) {
 /* RENDER PERFORMANCE                */
 /* ══════════════════════════════════ */
 function renderPerformanceData(data) {
+    /* DEBUG: log daily_recap to console */
+    console.log('[DEBUG] daily_recap length:', (data.daily_recap||[]).length,
+        'dates:', (data.daily_recap||[]).map(r=>r.date).join(', '));
+
     const g = data.global||{}, j1 = data.accuracy_j1||{}, j2j5 = data.accuracy_j2_j5||{};
     const j6j15 = data.accuracy_j6_j15||{};
 
@@ -559,6 +564,19 @@ function renderPerformanceData(data) {
 /* ══════════════════════════════════ */
 function renderDailyRecap(recap) {
     _recapData = recap; // store for month filtering
+
+    /* DEBUG: Show data received count + date range */
+    const dbgEl = document.getElementById('recap-debug');
+    if (dbgEl && recap && recap.length) {
+        const dates = recap.map(r => r.date).sort();
+        const withPreds = recap.filter(r => r.predictions && Object.keys(r.predictions).length > 0);
+        dbgEl.style.display = 'block';
+        dbgEl.innerHTML = `🔍 DEBUG: ${recap.length} dates reçues (${dates[0]} → ${dates[dates.length-1]}), ` +
+            `${withPreds.length} avec prédictions. ` +
+            `Filtre mois: "${_selectedMonth}". ` +
+            `Dates avant 23/02: ${dates.filter(d => d < '2026-02-23').join(', ') || 'aucune'}`;
+    }
+
     _populateMonthFilter(recap);
     /* D5: Apply persisted month filter */
     if (_selectedMonth !== 'all') {
