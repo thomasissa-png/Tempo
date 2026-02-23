@@ -1057,6 +1057,11 @@ async def run_task_now(task_name: str) -> str:
         return (f"Analyse terminée : {missed} jours rattrapés, "
                 f"{len(patterns)} patterns détectés sur {history_days}j")
 
+    if task_name == "evaluate_missed":
+        from performance_tracker import evaluate_missed_days
+        missed = evaluate_missed_days(lookback=30)
+        return f"Réévaluation terminée : {missed} jour(s) manquant(s) rattrapé(s) (lookback=30j)"
+
     # Agents SEO/Backlinks : exécution directe (bypass gate saisonnière)
     # avec remontée du vrai résultat/erreur à l'admin
     if task_name in ("seo_agent", "backlinks_agent"):
@@ -1095,7 +1100,7 @@ async def run_task_now(task_name: str) -> str:
         "validation": task_daily_validation,
     }
     if task_name not in tasks:
-        available = list(tasks.keys()) + ["backfill", "analyze", "seo_agent", "backlinks_agent"]
+        available = list(tasks.keys()) + ["backfill", "analyze", "evaluate_missed", "seo_agent", "backlinks_agent"]
         return f"Tâche inconnue: {task_name}. Disponibles: {available}"
 
     await tasks[task_name]()

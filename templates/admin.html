@@ -416,6 +416,15 @@
                     <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:14px">Prochaines exécutions planifiées.</p>
                     <div id="scheduler-status">Chargement...</div>
                 </div>
+                <div class="flat-card">
+                    <h4>Diagnostic base de données</h4>
+                    <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:14px">Vérifie l'état des données (prédictions, actuals, évaluations) sur les 15 derniers jours.</p>
+                    <div class="action-grid">
+                        <button class="action-btn blue" onclick="loadDbDiagnostic()">Lancer le diagnostic</button>
+                        <button class="action-btn green" onclick="runTask('evaluate_missed')">Réévaluer jours manquants</button>
+                    </div>
+                    <div id="db-diagnostic" style="margin-top:12px;font-size:0.8rem;display:none"></div>
+                </div>
             </div>
         </div>
 
@@ -1237,6 +1246,71 @@ async function loadSchedulerStatus() {
         html += '</tbody></table></div>';
         container.innerHTML = html;
     } catch {}
+}
+
+async function loadDbDiagnostic() {
+    const container = document.getElementById('db-diagnostic');
+    container.style.display = 'block';
+    container.innerHTML = '<p style="color:var(--text-secondary)">Chargement...</p>';
+    try {
+        const resp = await fetch('/admin/db-diagnostic', { headers:{'Authorization':`Bearer ${adminPassword}`} });
+        const data = await resp.json();
+        if (data.status !== 'ok') { container.innerHTML = '<p style="color:#DC2626">Erreur</p>'; return; }
+        const s = data.global_stats;
+        let html = `<div style="margin-bottom:12px;padding:10px;background:var(--card-bg);border-radius:var(--radius-sm);border:1px solid var(--border)">`;
+        html += `<div><strong>PREDICTION_START_DATE:</strong> ${escapeHtml(data.prediction_start_date||'non défini')}</div>`;
+        html += `<div><strong>Prédictions (non simulées):</strong> ${s.pred_total} | ${s.pred_min_date||'—'} → ${s.pred_max_date||'—'}</div>`;
+        html += `<div><strong>Actuals (non synthétiques):</strong> ${s.actual_total} | ${s.actual_min_date||'—'} → ${s.actual_max_date||'—'}</div>`;
+        html += `<div><strong>Évaluations (performance):</strong> ${s.perf_total} | ${s.perf_min_date||'—'} → ${s.perf_max_date||'—'}</div>`;
+        html += '</div>';
+
+        /* Predictions by date */
+        html += '<details open><summary style="cursor:pointer;font-weight:600;margin-bottom:6px">Prédictions par date (15j)</summary>';
+        if (data.predictions_by_date.length === 0) {
+            html += '<p style="color:#DC2626;font-weight:600">Aucune prédiction trouvée !</p>';
+        } else {
+            html += '<table class="sub-table"><thead><tr><th>Date</th><th>Nb</th><th>Horizons</th><th>Confirmé</th><th>Simulé</th></tr></thead><tbody>';
+            for (const r of data.predictions_by_date) {
+                const conf = r.any_confirmed ? '✓' : '—';
+                const sim = r.any_simulated ? '⚠' : '—';
+                html += `<tr><td>${r.date}</td><td>${r.cnt}</td><td>${r.min_h}→${r.max_h}</td><td>${conf}</td><td>${sim}</td></tr>`;
+            }
+            html += '</tbody></table>';
+        }
+        html += '</details>';
+
+        /* Actuals */
+        html += '<details><summary style="cursor:pointer;font-weight:600;margin:8px 0 6px">Actuals récents</summary>';
+        if (data.actuals_recent.length === 0) {
+            html += '<p style="color:#DC2626;font-weight:600">Aucun actual trouvé !</p>';
+        } else {
+            html += '<table class="sub-table"><thead><tr><th>Date</th><th>Couleur</th><th>Synthétique</th></tr></thead><tbody>';
+            for (const r of data.actuals_recent) {
+                const syn = r.synthetic ? '<span style="color:#F59E0B">Oui</span>' : 'Non';
+                html += `<tr><td>${r.date}</td><td>${r.couleur_reelle}</td><td>${syn}</td></tr>`;
+            }
+            html += '</tbody></table>';
+        }
+        html += '</details>';
+
+        /* Performance evaluations */
+        html += '<details><summary style="cursor:pointer;font-weight:600;margin:8px 0 6px">Évaluations performance</summary>';
+        if (data.performance_by_date.length === 0) {
+            html += '<p style="color:#DC2626;font-weight:600">Aucune évaluation trouvée !</p>';
+        } else {
+            html += '<table class="sub-table"><thead><tr><th>Date cible</th><th>Évaluations</th><th>Correctes</th></tr></thead><tbody>';
+            for (const r of data.performance_by_date) {
+                const pct = r.cnt > 0 ? Math.round((r.corrects||0)/r.cnt*100) : 0;
+                html += `<tr><td>${r.date_cible}</td><td>${r.cnt}</td><td>${r.corrects||0} (${pct}%)</td></tr>`;
+            }
+            html += '</tbody></table>';
+        }
+        html += '</details>';
+
+        container.innerHTML = html;
+    } catch (e) {
+        container.innerHTML = `<p style="color:#DC2626">Erreur: ${escapeHtml(String(e))}</p>`;
+    }
 }
 
 async function loadAgentReports() {

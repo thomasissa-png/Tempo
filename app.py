@@ -1883,6 +1883,76 @@ async def admin_sms_logs(request: Request, authorization: str | None = Header(No
         conn.close()
 
 
+@app.get("/admin/db-diagnostic")
+async def admin_db_diagnostic(request: Request, authorization: str | None = Header(None)):
+    """Diagnostic rapide de l'état des données en base.
+
+    Permet de vérifier si les predictions, actuals et performance
+    existent pour les dates récentes. Utile pour déboguer les problèmes
+    de données manquantes en production.
+    """
+    verify_admin(authorization, request.client.host if request.client else "unknown")
+    from database import get_db
+
+    conn = get_db()
+    try:
+        # 1. Predictions: count by date (last 15 days)
+        pred_rows = conn.execute(
+            """SELECT date, COUNT(*) as cnt, MIN(horizon) as min_h, MAX(horizon) as max_h,
+                      MAX(confirmed) as any_confirmed, MAX(simulated) as any_simulated
+               FROM predictions
+               WHERE date >= ? AND date <= ?
+               GROUP BY date ORDER BY date DESC""",
+            ((date.today() - timedelta(days=15)).isoformat(),
+             (date.today() + timedelta(days=15)).isoformat()),
+        ).fetchall()
+
+        # 2. Actuals: recent entries
+        actual_rows = conn.execute(
+            """SELECT date, couleur_reelle, synthetic
+               FROM actuals
+               WHERE date >= ?
+               ORDER BY date DESC""",
+            ((date.today() - timedelta(days=15)).isoformat(),),
+        ).fetchall()
+
+        # 3. Performance: count evaluations
+        perf_rows = conn.execute(
+            """SELECT date_cible, COUNT(*) as cnt,
+                      SUM(correct) as corrects
+               FROM performance
+               WHERE date_cible >= ?
+               GROUP BY date_cible ORDER BY date_cible DESC""",
+            ((date.today() - timedelta(days=15)).isoformat(),),
+        ).fetchall()
+
+        # 4. Global stats
+        stats = conn.execute(
+            """SELECT
+                 (SELECT COUNT(*) FROM predictions WHERE simulated = 0) as pred_total,
+                 (SELECT MIN(date) FROM predictions WHERE simulated = 0) as pred_min_date,
+                 (SELECT MAX(date) FROM predictions WHERE simulated = 0) as pred_max_date,
+                 (SELECT COUNT(*) FROM actuals WHERE synthetic = 0) as actual_total,
+                 (SELECT MIN(date) FROM actuals WHERE synthetic = 0) as actual_min_date,
+                 (SELECT MAX(date) FROM actuals WHERE synthetic = 0) as actual_max_date,
+                 (SELECT COUNT(*) FROM performance) as perf_total,
+                 (SELECT MIN(date_cible) FROM performance) as perf_min_date,
+                 (SELECT MAX(date_cible) FROM performance) as perf_max_date"""
+        ).fetchone()
+
+        return {
+            "status": "ok",
+            "prediction_start_date": Config.PREDICTION_START_DATE,
+            "today": date.today().isoformat(),
+            "global_stats": dict(stats),
+            "predictions_by_date": [dict(r) for r in pred_rows],
+            "actuals_recent": [dict(r) for r in actual_rows],
+            "performance_by_date": [dict(r) for r in perf_rows],
+        }
+    finally:
+        conn.close()
+
+
 @app.get("/admin/agent-reports")
 async def admin_agent_reports(request: Request, authorization: str | None = Header(None)):
     """Rapports des agents SEO et Backlinks."""
