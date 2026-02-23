@@ -54,11 +54,44 @@ _USE_POSTGRES = bool(Config.DATABASE_URL)
 if _USE_POSTGRES:
     try:
         import psycopg2
+        import psycopg2.pool
         _DbOperationalError = (sqlite3.OperationalError, psycopg2.Error)
     except ImportError:
+        psycopg2 = None
         _DbOperationalError = (sqlite3.OperationalError, Exception)
 else:
+    psycopg2 = None
     _DbOperationalError = (sqlite3.OperationalError,)
+
+# Table → conflict columns mapping for INSERT OR REPLACE conversion
+_CONFLICT_COLS = {
+    'predictions': '(date, horizon)',
+    'weather_cache': '(date)',
+    'rte_daily': '(date)',
+    'actuals': '(date)',
+    'learning_journal': '(pattern_type, pattern_key, date_analysis)',
+    'weather_forecast_log': '(target_date, forecast_date)',
+    'performance': '(date_prediction, date_cible, jours_avance)',
+}
+
+# Connection pool for PostgreSQL (lazy-initialized)
+_pg_pool = None
+_pg_pool_lock = threading.Lock()
+_schema_version_ensured = False
+
+
+def _get_pg_pool():
+    """Get or create the PostgreSQL connection pool (thread-safe singleton)."""
+    global _pg_pool
+    if _pg_pool is not None:
+        return _pg_pool
+    with _pg_pool_lock:
+        if _pg_pool is not None:
+            return _pg_pool
+        _pg_pool = psycopg2.pool.ThreadedConnectionPool(
+            minconn=1, maxconn=10, dsn=Config.DATABASE_URL
+        )
+        return _pg_pool
 
 
 class _PgCursorWrapper:
@@ -73,7 +106,15 @@ class _PgCursorWrapper:
 
     @property
     def lastrowid(self):
-        return self._cursor.fetchone()[0] if self._cursor.description else None
+        """Return the last auto-generated id (SERIAL) via PostgreSQL lastval()."""
+        try:
+            cur = self._cursor.connection.cursor()
+            cur.execute("SELECT lastval()")
+            row = cur.fetchone()
+            cur.close()
+            return row[0] if row else None
+        except Exception:
+            return None
 
     @property
     def description(self):
@@ -120,8 +161,9 @@ def _convert_sql(sql):
 
     - ? → %s parameter placeholders
     - INTEGER PRIMARY KEY AUTOINCREMENT → SERIAL PRIMARY KEY
-    - Remove CHECK constraints with IN lists (PG syntax differs)
-    - PRAGMA → handled separately
+    - INSERT OR IGNORE → INSERT ... ON CONFLICT DO NOTHING
+    - INSERT OR REPLACE → INSERT ... ON CONFLICT (...) DO UPDATE SET ...
+    - PRAGMA → handled separately in PgConnectionWrapper
     """
     if not _USE_POSTGRES:
         return sql
@@ -142,9 +184,60 @@ def _convert_sql(sql):
             result,
             flags=re.IGNORECASE,
         )
-        # Append ON CONFLICT DO NOTHING at end (before trailing whitespace/semicolons)
         result = result.rstrip().rstrip(';')
         result += ' ON CONFLICT DO NOTHING'
+        return result
+
+    # INSERT OR REPLACE → INSERT INTO ... ON CONFLICT (...) DO UPDATE SET ...
+    ior_match = re.search(
+        r'INSERT\s+OR\s+REPLACE\s+INTO\s+(\w+)', result, re.IGNORECASE
+    )
+    if ior_match:
+        table = ior_match.group(1).lower()
+        result = re.sub(
+            r'INSERT\s+OR\s+REPLACE\s+INTO',
+            'INSERT INTO',
+            result,
+            flags=re.IGNORECASE,
+        )
+        conflict = _CONFLICT_COLS.get(table)
+        if conflict:
+            # Extract column names from INSERT INTO table (col1, col2, ...) VALUES
+            cols_match = re.search(
+                r'INTO\s+\w+\s*\(\s*([^)]+)\s*\)\s*VALUES',
+                result, re.IGNORECASE
+            )
+            if cols_match:
+                cols = [c.strip() for c in cols_match.group(1).split(',')]
+                conflict_set = {
+                    c.strip().lower()
+                    for c in conflict.strip('()').split(',')
+                }
+                update_cols = [
+                    c for c in cols if c.lower() not in conflict_set
+                ]
+                result = result.rstrip().rstrip(';')
+                if update_cols:
+                    update_clause = ', '.join(
+                        f'{c} = excluded.{c}' for c in update_cols
+                    )
+                    result += f' ON CONFLICT {conflict} DO UPDATE SET {update_clause}'
+                else:
+                    result += f' ON CONFLICT {conflict} DO NOTHING'
+            else:
+                # No column list found — log warning, use DO NOTHING as fallback
+                result = result.rstrip().rstrip(';')
+                result += f' ON CONFLICT {conflict} DO NOTHING'
+                logger.warning(
+                    f"INSERT OR REPLACE for '{table}': "
+                    f"could not parse column list, using DO NOTHING"
+                )
+        else:
+            logger.warning(
+                f"INSERT OR REPLACE for unknown table '{table}', "
+                f"converted to plain INSERT (no ON CONFLICT)"
+            )
+
     return result
 
 
@@ -152,18 +245,27 @@ class PgConnectionWrapper:
     """Wraps a psycopg2 connection to emulate sqlite3.Connection interface.
 
     Handles:
-    - SQL translation (?, AUTOINCREMENT, INSERT OR IGNORE)
+    - SQL translation (?, AUTOINCREMENT, INSERT OR IGNORE/REPLACE)
     - executescript() → individual execute() calls
     - PRAGMA user_version → schema_version table
+    - BEGIN/BEGIN EXCLUSIVE → no-op (PG uses implicit transactions)
     - Dict-like row access via _DictRow
     """
 
-    def __init__(self, pg_conn):
+    def __init__(self, pg_conn, pool=None):
         self._conn = pg_conn
+        self._pool = pool
+        self._row_factory = None
         self._ensure_schema_version_table()
 
     def _ensure_schema_version_table(self):
-        """Create schema_version table if it doesn't exist (replaces PRAGMA user_version)."""
+        """Create schema_version table if it doesn't exist (replaces PRAGMA user_version).
+
+        Only runs once per process to avoid overhead on every get_db() call.
+        """
+        global _schema_version_ensured
+        if _schema_version_ensured:
+            return
         cur = self._conn.cursor()
         cur.execute(
             "CREATE TABLE IF NOT EXISTS schema_version "
@@ -175,16 +277,32 @@ class PgConnectionWrapper:
             "ON CONFLICT (id) DO NOTHING"
         )
         self._conn.commit()
+        _schema_version_ensured = True
+
+    @property
+    def row_factory(self):
+        return self._row_factory
+
+    @row_factory.setter
+    def row_factory(self, value):
+        # No-op: PgConnectionWrapper always returns _DictRow (compatible with
+        # both dict-style and index-style access like sqlite3.Row).
+        self._row_factory = value
 
     def execute(self, sql, params=None):
         """Execute SQL with automatic translation."""
         sql_stripped = sql.strip()
+        upper = sql_stripped.upper()
 
-        # Handle PRAGMA user_version
-        if sql_stripped.upper().startswith("PRAGMA"):
+        # Handle PRAGMA statements
+        if upper.startswith("PRAGMA"):
             return self._handle_pragma(sql_stripped, params)
 
-        # Handle PRAGMA foreign_keys, busy_timeout, journal_mode — ignore on PG
+        # Handle BEGIN/BEGIN EXCLUSIVE — no-op on PG (implicit transactions)
+        if upper in ("BEGIN", "BEGIN EXCLUSIVE", "BEGIN IMMEDIATE",
+                      "BEGIN DEFERRED"):
+            return _PgCursorWrapper(_FakeResultCursor([], []))
+
         converted = _convert_sql(sql_stripped)
 
         cur = self._conn.cursor()
@@ -235,7 +353,11 @@ class PgConnectionWrapper:
         self._conn.commit()
 
     def close(self):
-        self._conn.close()
+        """Close or return connection to pool."""
+        if self._pool:
+            self._pool.putconn(self._conn)
+        else:
+            self._conn.close()
 
     def cursor(self):
         return _PgCursorWrapper(self._conn.cursor())
@@ -249,13 +371,15 @@ class PgConnectionWrapper:
 
 
 class _FakeResultCursor:
-    """Fake cursor for PRAGMA emulation results."""
+    """Fake cursor for PRAGMA emulation and no-op results."""
 
     def __init__(self, rows, description):
         self._rows = rows
         self._idx = 0
         self.description = [(d[0], None, None, None, None, None, None) for d in description] if description else None
         self.rowcount = len(rows)
+        # Provide a connection attribute for lastrowid compatibility
+        self.connection = None
 
     def fetchone(self):
         if self._idx < len(self._rows):
@@ -399,16 +523,17 @@ def hash_phone(phone: str) -> str:
 def get_db():
     """Obtenir une connexion à la base de données.
 
-    - Si DATABASE_URL est défini : PostgreSQL via psycopg2 + PgConnectionWrapper.
+    - Si DATABASE_URL est défini : PostgreSQL via psycopg2 + PgConnectionWrapper
+      avec connection pooling (ThreadedConnectionPool).
     - Sinon : SQLite classique (tempo.db).
 
     Note: PRAGMA journal_mode=WAL est défini une seule fois dans init_db()
     car il persiste au niveau du fichier (pas besoin de le répéter).
     """
     if _USE_POSTGRES:
-        import psycopg2
-        pg_conn = psycopg2.connect(Config.DATABASE_URL)
-        return PgConnectionWrapper(pg_conn)
+        pool = _get_pg_pool()
+        pg_conn = pool.getconn()
+        return PgConnectionWrapper(pg_conn, pool=pool)
 
     conn = sqlite3.connect(Config.DATABASE_PATH)
     conn.row_factory = sqlite3.Row
@@ -545,11 +670,9 @@ def init_db():
     """)
 
     # === Fix #14 audit v4 : migrations conditionnelles via PRAGMA user_version ===
-    # Fix audit DB : verrou exclusif pour eviter les race conditions
-    if _USE_POSTGRES:
-        conn.execute("BEGIN")
-    else:
-        conn.execute("BEGIN EXCLUSIVE")
+    # Fix audit DB : verrou exclusif pour eviter les race conditions.
+    # PgConnectionWrapper handles BEGIN as no-op (PG uses implicit transactions).
+    conn.execute("BEGIN EXCLUSIVE")
     version = conn.execute("PRAGMA user_version").fetchone()[0]
 
     if version < 3:

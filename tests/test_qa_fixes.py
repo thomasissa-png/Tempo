@@ -3329,3 +3329,347 @@ class TestPollingEdfEvaluation:
             "task_edf_polling must call evaluate_predictions_for_date "
             "for robustness if 11h30 scheduler fails"
         )
+
+
+# ================================================================
+# PostgreSQL compatibility layer tests
+# ================================================================
+
+class TestConvertSqlInsertOrReplace:
+    """_convert_sql must convert INSERT OR REPLACE to ON CONFLICT DO UPDATE SET."""
+
+    def test_insert_or_replace_predictions(self):
+        """INSERT OR REPLACE INTO predictions → ON CONFLICT(date, horizon) DO UPDATE SET."""
+        from database import _convert_sql, _USE_POSTGRES
+        if not _USE_POSTGRES:
+            # Force PG mode for testing the conversion logic
+            import database
+            old_flag = database._USE_POSTGRES
+            database._USE_POSTGRES = True
+            try:
+                sql = (
+                    "INSERT OR REPLACE INTO predictions "
+                    "(date, horizon, couleur_predite, score_risque) "
+                    "VALUES (%s, %s, %s, %s)"
+                )
+                result = database._convert_sql(sql)
+                assert "INSERT INTO predictions" in result
+                assert "INSERT OR REPLACE" not in result
+                assert "ON CONFLICT (date, horizon) DO UPDATE SET" in result
+                assert "couleur_predite = excluded.couleur_predite" in result
+                assert "score_risque = excluded.score_risque" in result
+                # Conflict columns should NOT be in the UPDATE SET
+                assert "date = excluded.date" not in result
+                assert "horizon = excluded.horizon" not in result
+            finally:
+                database._USE_POSTGRES = old_flag
+
+    def test_insert_or_replace_weather_cache(self):
+        """INSERT OR REPLACE INTO weather_cache → ON CONFLICT(date) DO UPDATE SET."""
+        import database
+        old_flag = database._USE_POSTGRES
+        database._USE_POSTGRES = True
+        try:
+            sql = (
+                "INSERT OR REPLACE INTO weather_cache "
+                "(date, temp_min, temp_max, fetched_at) "
+                "VALUES (%s, %s, %s, %s)"
+            )
+            result = database._convert_sql(sql)
+            assert "ON CONFLICT (date) DO UPDATE SET" in result
+            assert "temp_min = excluded.temp_min" in result
+            assert "fetched_at = excluded.fetched_at" in result
+            assert "date = excluded.date" not in result
+        finally:
+            database._USE_POSTGRES = old_flag
+
+    def test_insert_or_replace_actuals(self):
+        """INSERT OR REPLACE INTO actuals → ON CONFLICT(date) DO UPDATE SET."""
+        import database
+        old_flag = database._USE_POSTGRES
+        database._USE_POSTGRES = True
+        try:
+            sql = (
+                "INSERT OR REPLACE INTO actuals "
+                "(date, couleur_reelle, synthetic, timestamp_confirmation) "
+                "VALUES (%s, %s, %s, %s)"
+            )
+            result = database._convert_sql(sql)
+            assert "ON CONFLICT (date) DO UPDATE SET" in result
+            assert "couleur_reelle = excluded.couleur_reelle" in result
+        finally:
+            database._USE_POSTGRES = old_flag
+
+    def test_insert_or_replace_learning_journal(self):
+        """INSERT OR REPLACE INTO learning_journal → ON CONFLICT(pattern_type, pattern_key, date_analysis)."""
+        import database
+        old_flag = database._USE_POSTGRES
+        database._USE_POSTGRES = True
+        try:
+            sql = (
+                "INSERT OR REPLACE INTO learning_journal "
+                "(date_analysis, pattern_type, pattern_key, observation, accuracy) "
+                "VALUES (%s, %s, %s, %s, %s)"
+            )
+            result = database._convert_sql(sql)
+            assert "ON CONFLICT (pattern_type, pattern_key, date_analysis) DO UPDATE SET" in result
+            assert "observation = excluded.observation" in result
+            assert "accuracy = excluded.accuracy" in result
+            # Conflict columns should NOT be in the SET
+            assert "pattern_type = excluded.pattern_type" not in result
+            assert "date_analysis = excluded.date_analysis" not in result
+        finally:
+            database._USE_POSTGRES = old_flag
+
+    def test_insert_or_replace_rte_daily(self):
+        """INSERT OR REPLACE INTO rte_daily → ON CONFLICT(date) DO UPDATE SET."""
+        import database
+        old_flag = database._USE_POSTGRES
+        database._USE_POSTGRES = True
+        try:
+            sql = (
+                "INSERT OR REPLACE INTO rte_daily "
+                "(date, conso_peak_mw, conso_mean_mw) "
+                "VALUES (%s, %s, %s)"
+            )
+            result = database._convert_sql(sql)
+            assert "ON CONFLICT (date) DO UPDATE SET" in result
+            assert "conso_peak_mw = excluded.conso_peak_mw" in result
+        finally:
+            database._USE_POSTGRES = old_flag
+
+    def test_insert_or_ignore_still_works(self):
+        """INSERT OR IGNORE conversion should still work."""
+        import database
+        old_flag = database._USE_POSTGRES
+        database._USE_POSTGRES = True
+        try:
+            sql = "INSERT OR IGNORE INTO actuals (date, couleur_reelle) VALUES (%s, %s)"
+            result = database._convert_sql(sql)
+            assert "INSERT INTO actuals" in result
+            assert "ON CONFLICT DO NOTHING" in result
+        finally:
+            database._USE_POSTGRES = old_flag
+
+    def test_no_conversion_when_not_postgres(self):
+        """_convert_sql returns SQL unchanged when not in PG mode."""
+        import database
+        old_flag = database._USE_POSTGRES
+        database._USE_POSTGRES = False
+        try:
+            sql = "INSERT OR REPLACE INTO predictions (date, horizon) VALUES (?, ?)"
+            result = database._convert_sql(sql)
+            assert result == sql
+        finally:
+            database._USE_POSTGRES = old_flag
+
+    def test_unknown_table_no_crash(self):
+        """INSERT OR REPLACE for unknown table should not crash."""
+        import database
+        old_flag = database._USE_POSTGRES
+        database._USE_POSTGRES = True
+        try:
+            sql = (
+                "INSERT OR REPLACE INTO unknown_table "
+                "(col1, col2) VALUES (%s, %s)"
+            )
+            # Should not raise, just convert to plain INSERT
+            result = database._convert_sql(sql)
+            assert "INSERT INTO unknown_table" in result
+            assert "INSERT OR REPLACE" not in result
+        finally:
+            database._USE_POSTGRES = old_flag
+
+
+class TestConflictColsCoverage:
+    """Verify _CONFLICT_COLS covers all tables used with INSERT OR REPLACE."""
+
+    def test_all_tables_covered(self):
+        """All tables that use INSERT OR REPLACE have conflict columns defined."""
+        from database import _CONFLICT_COLS
+        required_tables = [
+            'predictions', 'weather_cache', 'rte_daily', 'actuals',
+            'learning_journal', 'weather_forecast_log', 'performance',
+        ]
+        for table in required_tables:
+            assert table in _CONFLICT_COLS, (
+                f"Table '{table}' missing from _CONFLICT_COLS mapping"
+            )
+
+
+class TestPgBeginHandling:
+    """PgConnectionWrapper must handle BEGIN as no-op."""
+
+    def test_begin_exclusive_handled(self):
+        """BEGIN EXCLUSIVE in init_db should not fail on PG."""
+        # Verify that PgConnectionWrapper.execute detects BEGIN
+        import database
+        # The execute method checks for BEGIN statements
+        wrapper_source = database.PgConnectionWrapper.execute.__doc__ or ""
+        import inspect
+        source = inspect.getsource(database.PgConnectionWrapper.execute)
+        assert "BEGIN" in source, (
+            "PgConnectionWrapper.execute must handle BEGIN statements"
+        )
+
+    def test_begin_variants_detected(self):
+        """All BEGIN variants should be handled."""
+        import inspect
+        import database
+        source = inspect.getsource(database.PgConnectionWrapper.execute)
+        for variant in ["BEGIN EXCLUSIVE", "BEGIN IMMEDIATE", "BEGIN DEFERRED"]:
+            assert variant in source, (
+                f"PgConnectionWrapper.execute must handle '{variant}'"
+            )
+
+
+class TestPgConnectionPooling:
+    """Verify connection pooling infrastructure exists."""
+
+    def test_pool_infrastructure(self):
+        """ThreadedConnectionPool should be used for PG connections."""
+        import inspect
+        import database
+        source = inspect.getsource(database._get_pg_pool)
+        assert "ThreadedConnectionPool" in source, (
+            "get_pg_pool must use ThreadedConnectionPool"
+        )
+
+    def test_close_returns_to_pool(self):
+        """PgConnectionWrapper.close must return connection to pool."""
+        import inspect
+        import database
+        source = inspect.getsource(database.PgConnectionWrapper.close)
+        assert "putconn" in source, (
+            "PgConnectionWrapper.close must return connection to pool via putconn"
+        )
+
+
+class TestPgRowFactory:
+    """PgConnectionWrapper must support row_factory attribute."""
+
+    def test_row_factory_attribute_exists(self):
+        """PgConnectionWrapper has row_factory property."""
+        import database
+        assert hasattr(database.PgConnectionWrapper, 'row_factory'), (
+            "PgConnectionWrapper must have row_factory attribute"
+        )
+
+
+class TestPgLastrowid:
+    """_PgCursorWrapper.lastrowid must use SELECT lastval()."""
+
+    def test_lastrowid_uses_lastval(self):
+        """lastrowid should use SELECT lastval() for PostgreSQL."""
+        import inspect
+        import database
+        source = inspect.getsource(database._PgCursorWrapper.lastrowid.fget)
+        assert "lastval" in source, (
+            "_PgCursorWrapper.lastrowid must use SELECT lastval()"
+        )
+
+
+class TestProductionCodeNoInsertOrReplace:
+    """Production code should use ON CONFLICT instead of INSERT OR REPLACE."""
+
+    def test_predictor_uses_on_conflict(self):
+        """predictor.store_prediction uses ON CONFLICT syntax in SQL."""
+        import inspect
+        import predictor
+        source = inspect.getsource(predictor.store_prediction)
+        assert "ON CONFLICT" in source, (
+            "store_prediction should use ON CONFLICT syntax"
+        )
+        # Check that no actual SQL statement uses INSERT OR REPLACE
+        # (ignore comments/docstrings — only check for actual SQL execution)
+        import re
+        sql_matches = re.findall(r'"""INSERT\s+OR\s+REPLACE', source)
+        assert len(sql_matches) == 0, (
+            "store_prediction should not use INSERT OR REPLACE in SQL statements"
+        )
+
+    def test_tempo_client_uses_on_conflict(self):
+        """tempo_client.store_actual uses ON CONFLICT syntax in SQL."""
+        import inspect
+        import tempo_client
+        source = inspect.getsource(tempo_client.store_actual)
+        assert "ON CONFLICT" in source, (
+            "store_actual should use ON CONFLICT syntax"
+        )
+        import re
+        sql_matches = re.findall(r'"""INSERT\s+OR\s+REPLACE', source)
+        assert len(sql_matches) == 0, (
+            "store_actual should not use INSERT OR REPLACE in SQL statements"
+        )
+
+    def test_scheduler_weather_cache_uses_on_conflict(self):
+        """scheduler._store_weather_cache uses ON CONFLICT syntax."""
+        import inspect
+        try:
+            import scheduler
+        except ImportError:
+            pytest.skip("scheduler dependencies not available")
+        source = inspect.getsource(scheduler._store_weather_cache)
+        assert "ON CONFLICT" in source, (
+            "_store_weather_cache should use ON CONFLICT syntax"
+        )
+
+    def test_performance_tracker_uses_on_conflict(self):
+        """performance_tracker.analyze_error_patterns uses ON CONFLICT syntax."""
+        import inspect
+        import performance_tracker
+        source = inspect.getsource(performance_tracker.analyze_error_patterns)
+        assert "ON CONFLICT" in source, (
+            "analyze_error_patterns should use ON CONFLICT syntax"
+        )
+
+
+class TestOnConflictSqliteFunctional:
+    """ON CONFLICT syntax must work with SQLite (>= 3.24)."""
+
+    def test_on_conflict_do_update_set_works(self):
+        """ON CONFLICT DO UPDATE SET works in SQLite."""
+        conn = sqlite3.connect(":memory:")
+        conn.execute("CREATE TABLE t (key TEXT PRIMARY KEY, val INTEGER)")
+        conn.execute(
+            "INSERT INTO t (key, val) VALUES ('a', 1) "
+            "ON CONFLICT(key) DO UPDATE SET val = excluded.val"
+        )
+        conn.execute(
+            "INSERT INTO t (key, val) VALUES ('a', 2) "
+            "ON CONFLICT(key) DO UPDATE SET val = excluded.val"
+        )
+        row = conn.execute("SELECT val FROM t WHERE key = 'a'").fetchone()
+        assert row[0] == 2, "ON CONFLICT DO UPDATE SET should have updated val to 2"
+
+    def test_on_conflict_do_nothing_works(self):
+        """ON CONFLICT DO NOTHING works in SQLite."""
+        conn = sqlite3.connect(":memory:")
+        conn.execute("CREATE TABLE t (key TEXT PRIMARY KEY, val INTEGER)")
+        conn.execute(
+            "INSERT INTO t (key, val) VALUES ('a', 1) "
+            "ON CONFLICT(key) DO NOTHING"
+        )
+        conn.execute(
+            "INSERT INTO t (key, val) VALUES ('a', 2) "
+            "ON CONFLICT(key) DO NOTHING"
+        )
+        row = conn.execute("SELECT val FROM t WHERE key = 'a'").fetchone()
+        assert row[0] == 1, "ON CONFLICT DO NOTHING should have kept val at 1"
+
+    def test_on_conflict_multi_column_unique(self):
+        """ON CONFLICT with multi-column unique works in SQLite."""
+        conn = sqlite3.connect(":memory:")
+        conn.execute(
+            "CREATE TABLE t (a TEXT, b TEXT, val INTEGER, UNIQUE(a, b))"
+        )
+        conn.execute(
+            "INSERT INTO t (a, b, val) VALUES ('x', 'y', 1) "
+            "ON CONFLICT(a, b) DO UPDATE SET val = excluded.val"
+        )
+        conn.execute(
+            "INSERT INTO t (a, b, val) VALUES ('x', 'y', 99) "
+            "ON CONFLICT(a, b) DO UPDATE SET val = excluded.val"
+        )
+        row = conn.execute("SELECT val FROM t WHERE a='x' AND b='y'").fetchone()
+        assert row[0] == 99

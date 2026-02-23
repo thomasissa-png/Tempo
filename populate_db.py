@@ -439,11 +439,21 @@ def store_rte(rte_data: dict[str, dict]) -> int:
         inserted = 0
         for d_str, vals in sorted(rte_data.items()):
             cursor = conn.execute(
-                """INSERT OR REPLACE INTO rte_daily
+                """INSERT INTO rte_daily
                    (date, conso_peak_mw, conso_mean_mw, prevision_j1_peak_mw,
                     nucleaire_mean_mw, eolien_mean_mw, solaire_mean_mw,
                     gaz_mean_mw, hydraulique_mean_mw, taux_co2_mean)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(date) DO UPDATE SET
+                       conso_peak_mw = excluded.conso_peak_mw,
+                       conso_mean_mw = excluded.conso_mean_mw,
+                       prevision_j1_peak_mw = excluded.prevision_j1_peak_mw,
+                       nucleaire_mean_mw = excluded.nucleaire_mean_mw,
+                       eolien_mean_mw = excluded.eolien_mean_mw,
+                       solaire_mean_mw = excluded.solaire_mean_mw,
+                       gaz_mean_mw = excluded.gaz_mean_mw,
+                       hydraulique_mean_mw = excluded.hydraulique_mean_mw,
+                       taux_co2_mean = excluded.taux_co2_mean""",
                 (d_str,
                  vals.get("conso_peak_mw"),
                  vals.get("conso_mean_mw"),

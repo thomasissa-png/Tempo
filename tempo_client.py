@@ -84,12 +84,23 @@ def store_actual(date_str: str, couleur: str, overwrite: bool = True,
     """
     conn = get_db()
     try:
-        mode = "INSERT OR REPLACE" if overwrite else "INSERT OR IGNORE"
-        conn.execute(
-            f"""{mode} INTO actuals (date, couleur_reelle, synthetic, timestamp_confirmation)
-               VALUES (?, ?, ?, ?)""",
-            (date_str, couleur, 1 if synthetic else 0, datetime.now().isoformat()),
-        )
+        if overwrite:
+            conn.execute(
+                """INSERT INTO actuals (date, couleur_reelle, synthetic, timestamp_confirmation)
+                   VALUES (?, ?, ?, ?)
+                   ON CONFLICT(date) DO UPDATE SET
+                       couleur_reelle = excluded.couleur_reelle,
+                       synthetic = excluded.synthetic,
+                       timestamp_confirmation = excluded.timestamp_confirmation""",
+                (date_str, couleur, 1 if synthetic else 0, datetime.now().isoformat()),
+            )
+        else:
+            conn.execute(
+                """INSERT INTO actuals (date, couleur_reelle, synthetic, timestamp_confirmation)
+                   VALUES (?, ?, ?, ?)
+                   ON CONFLICT(date) DO NOTHING""",
+                (date_str, couleur, 1 if synthetic else 0, datetime.now().isoformat()),
+            )
         conn.commit()
         tag = " [SYNTHETIQUE]" if synthetic else ""
         logger.info(f"[Tempo] Couleur enregistrée : {date_str} = {couleur}{tag}")

@@ -306,10 +306,19 @@ def _store_weather_cache(forecasts: list[dict]) -> None:
             if not d:
                 continue
             conn.execute(
-                "INSERT OR REPLACE INTO weather_cache "
-                "(date, temp_min, temp_max, temp_moy, pressure, humidity, "
-                " wind_speed, description, fetched_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                """INSERT INTO weather_cache
+                   (date, temp_min, temp_max, temp_moy, pressure, humidity,
+                    wind_speed, description, fetched_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(date) DO UPDATE SET
+                       temp_min = excluded.temp_min,
+                       temp_max = excluded.temp_max,
+                       temp_moy = excluded.temp_moy,
+                       pressure = excluded.pressure,
+                       humidity = excluded.humidity,
+                       wind_speed = excluded.wind_speed,
+                       description = excluded.description,
+                       fetched_at = excluded.fetched_at""",
                 (d, f.get("temp_min"), f.get("temp_max"), f.get("temp_moy"),
                  f.get("pressure"), f.get("humidity"), f.get("wind_speed"),
                  f.get("source", "api"), now_iso),
@@ -393,20 +402,12 @@ async def _store_rte_daily(rte_score: dict | None) -> None:
             conn = get_db()
             try:
                 conn.execute(
-                    """INSERT OR REPLACE INTO rte_daily
-                       (date, conso_peak_mw, conso_mean_mw,
-                        prevision_j1_peak_mw, nucleaire_mean_mw,
-                        eolien_mean_mw, solaire_mean_mw,
-                        gaz_mean_mw, hydraulique_mean_mw)
-                       VALUES (?, ?, ?,
-                               COALESCE((SELECT prevision_j1_peak_mw FROM rte_daily WHERE date=?), NULL),
-                               COALESCE((SELECT nucleaire_mean_mw FROM rte_daily WHERE date=?), NULL),
-                               COALESCE((SELECT eolien_mean_mw FROM rte_daily WHERE date=?), NULL),
-                               COALESCE((SELECT solaire_mean_mw FROM rte_daily WHERE date=?), NULL),
-                               COALESCE((SELECT gaz_mean_mw FROM rte_daily WHERE date=?), NULL),
-                               COALESCE((SELECT hydraulique_mean_mw FROM rte_daily WHERE date=?), NULL))""",
-                    (yesterday, realised["conso_peak_mw"], realised["conso_mean_mw"],
-                     yesterday, yesterday, yesterday, yesterday, yesterday, yesterday),
+                    """INSERT INTO rte_daily (date, conso_peak_mw, conso_mean_mw)
+                       VALUES (?, ?, ?)
+                       ON CONFLICT(date) DO UPDATE SET
+                           conso_peak_mw = excluded.conso_peak_mw,
+                           conso_mean_mw = excluded.conso_mean_mw""",
+                    (yesterday, realised["conso_peak_mw"], realised["conso_mean_mw"]),
                 )
                 conn.commit()
                 logger.info(f"[RTE Daily] Stocke {yesterday}: "

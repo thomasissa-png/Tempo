@@ -2368,11 +2368,21 @@ def analyze_error_patterns(days: int = 90, force: bool = False) -> list[dict]:
         stored = 0
         for p in all_patterns:
             conn.execute(
-                """INSERT OR REPLACE INTO learning_journal
+                """INSERT INTO learning_journal
                    (date_analysis, pattern_type, pattern_key, observation,
                     accuracy, bias_direction, bias_magnitude,
                     sample_size, correction_score, confidence, active, created_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)""",
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)
+                   ON CONFLICT(pattern_type, pattern_key, date_analysis) DO UPDATE SET
+                       observation = excluded.observation,
+                       accuracy = excluded.accuracy,
+                       bias_direction = excluded.bias_direction,
+                       bias_magnitude = excluded.bias_magnitude,
+                       sample_size = excluded.sample_size,
+                       correction_score = excluded.correction_score,
+                       confidence = excluded.confidence,
+                       active = excluded.active,
+                       created_at = excluded.created_at""",
                 (today_iso, p["type"], p["key"],
                  p["observation"], p["accuracy"], p["bias_direction"],
                  p["bias_magnitude"], p["sample_size"],
