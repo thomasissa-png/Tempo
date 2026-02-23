@@ -102,12 +102,11 @@ def compute_ml_score(
         p_bleu = float(proba[classes.index("BLEU")])
 
         # Threshold-based prediction (from model metadata)
-        # Audit DS : seuil ROUGE abaissé de 0.10 à 0.07 pour augmenter le
-        # recall ROUGE. Avec prevalence 12%, un seuil plus bas capture plus
-        # de vrais ROUGE au prix de quelques fausses alarmes acceptables.
-        # Seuil BLANC abaissé de 0.20 à 0.15 pour cohérence.
-        rouge_thresh = (_METADATA or {}).get("rouge_threshold", 0.07)
-        blanc_thresh = (_METADATA or {}).get("blanc_threshold", 0.15)
+        # Backtest 2364 jours (2019-2026) : seuil 0.19 optimal
+        # F1=83.1 (+3.7 vs 0.10), precision=85.4% (+9.4), recall=81.0% (-2.2)
+        # Moins de fausses alertes ROUGE, perte minimale de recall.
+        rouge_thresh = (_METADATA or {}).get("rouge_threshold", 0.19)
+        blanc_thresh = (_METADATA or {}).get("blanc_threshold", 0.20)
 
         if p_rouge >= rouge_thresh:
             pred = "ROUGE"
