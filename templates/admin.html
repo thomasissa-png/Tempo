@@ -39,7 +39,42 @@
         .panel-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:24px; }
         .panel-grid.full { grid-template-columns:1fr; }
         @media(max-width:900px){ .detection-grid-3{grid-template-columns:1fr !important;} }
-        @media(max-width:768px){ .panel-grid{grid-template-columns:1fr;} }
+        @media(max-width:768px){
+            .panel-grid{grid-template-columns:1fr;}
+            .admin-tabs{gap:0;padding:0 4px;}
+            .admin-tab{padding:8px 10px;font-size:0.72rem;letter-spacing:0;}
+            .section-title{font-size:0.84rem;flex-wrap:wrap;}
+            .flat-card{padding:14px 12px;}
+            .flat-card h4{font-size:0.82rem;}
+            .recap-wrapper{margin:0 -12px;padding:0 12px;}
+            .recap-table{min-width:900px;font-size:0.65rem;}
+            .recap-table th{padding:4px 2px;font-size:0.58rem;}
+            .recap-table td{padding:2px 1px;}
+            .recap-dot{width:13px;height:13px;}
+            .recap-table .sticky-date{min-width:60px;font-size:0.6rem;}
+            .recap-table .sticky-result{left:60px;min-width:45px;}
+            .diag-text{max-width:120px;font-size:0.58rem;}
+            .prf-table th,.prf-table td{padding:6px 4px;font-size:0.72rem;}
+            .rouge-table th,.rouge-table td{padding:6px 4px;font-size:0.72rem;}
+            .sub-table th,.sub-table td{padding:6px 6px;font-size:0.75rem;}
+            .action-grid{gap:6px;}
+            .action-btn{padding:8px 12px;font-size:0.75rem;}
+            .confusion-table th,.confusion-table td{font-size:0.72rem;padding:6px 4px;}
+            .scope-label{font-size:0.65rem;}
+            .season-select{font-size:0.78rem;padding:6px 8px;}
+            .log-viewer{font-size:0.7rem;max-height:250px;padding:10px;}
+        }
+        @media(max-width:480px){
+            .admin-tab{padding:7px 8px;font-size:0.65rem;}
+            .flat-card{padding:10px 8px;}
+            .recap-table{min-width:750px;}
+            .recap-dot{width:11px;height:11px;border-width:1.5px;}
+            .recap-table .sticky-date{min-width:52px;font-size:0.55rem;}
+            .recap-table .sticky-result{left:52px;min-width:38px;}
+            .recap-actual{font-size:0.6rem;padding:1px 6px;}
+            .prf-table th,.prf-table td{padding:4px 3px;font-size:0.65rem;}
+            .rouge-table th,.rouge-table td{padding:4px 3px;font-size:0.65rem;}
+        }
 
         .flat-card { background:var(--surface); border-radius:var(--radius); padding:20px; box-shadow:var(--shadow); }
         .flat-card h4 { font-size:0.88rem; font-weight:700; margin-bottom:10px; color:var(--text); }
@@ -274,16 +309,16 @@
             <div class="section-title">Progresse-t-on ?</div>
             <div class="panel-grid full">
                 <div class="flat-card">
-                    <h4>Bilan mois par mois</h4>
-                    <p class="card-hint">Précision par horizon de prédiction (J-1 = veille, J-15 = 15 jours avant), mois après mois.</p>
-                    <div id="monthly-perf-table">Chargement...</div>
+                    <h4>Bilan par version de l'outil</h4>
+                    <p class="card-hint">Précision segmentée par version de l'algorithme. Permet de mesurer l'impact de chaque mise à jour.</p>
+                    <div id="version-perf-table">Chargement...</div>
                 </div>
             </div>
             <div class="panel-grid full">
                 <div class="flat-card">
-                    <h4>Bilan par version de l'outil</h4>
-                    <p class="card-hint">Même vue que ci-dessus mais segmentée par version de l'algorithme. Permet de mesurer l'impact de chaque mise à jour.</p>
-                    <div id="version-perf-table">Chargement...</div>
+                    <h4>Bilan mois par mois</h4>
+                    <p class="card-hint">Précision par horizon de prédiction (J-1 = veille, J-15 = 15 jours avant), mois après mois.</p>
+                    <div id="monthly-perf-table">Chargement...</div>
                 </div>
             </div>
 
@@ -489,8 +524,8 @@ function renderPerformanceData(data) {
     /* Sections */
     renderDailyRecap(data.daily_recap||[]);
     renderErrorSection(data, _selectedVersion);
-    renderMonthlyPerfTable(data.monthly_performance||[], _selectedVersion);
     renderVersionPerfTable(data.version_performance||[]);
+    renderMonthlyPerfTable(data.monthly_performance||[], _selectedVersion);
 
     const weightLabels = {
         "temperature": "Température",
@@ -609,23 +644,22 @@ function _renderRecapTable(recap) {
     h += '<th>&#10003; consec.</th><th>Météo obs.</th><th style="text-align:left">Analyse erreur</th>';
     h += '</tr></thead><tbody>';
 
-    /* Build staircase version boundary map: {date: {horizon: versionLabel}}
-       Process in reverse chronological order so that when two versions are
-       close together, the OLDEST version's boundary is not overwritten by
-       the newer one — each horizon cell keeps the version that actually
-       produced its prediction. */
-    const versionBoundaries = {};
+    /* Staircase version boundaries: continuous border between versions.
+       For each cell (date, J-N), the prediction was made on (date - N days).
+       The active version is the latest version deployed <= prediction date.
+       Borders appear where adjacent cells (above / left) belong to different
+       versions, producing a continuous staircase contour. */
     const toolVersions = (_perfData && _perfData.tool_versions) || [];
-    toolVersions.slice().reverse().forEach(v => {
-        const vDate = new Date(v.date + 'T12:00:00');
-        for (let n = 1; n <= 15; n++) {
-            const boundaryDate = new Date(vDate);
-            boundaryDate.setDate(boundaryDate.getDate() + n);
-            const bKey = boundaryDate.toISOString().split('T')[0];
-            if (!versionBoundaries[bKey]) versionBoundaries[bKey] = {};
-            versionBoundaries[bKey][`J-${n}`] = v.label || v.date;
-        }
-    });
+    const versionDates = toolVersions.map(v => v.date).sort();
+    function _getActiveVersion(targetDateStr, horizon) {
+        const td = new Date(targetDateStr + 'T12:00:00');
+        td.setDate(td.getDate() - horizon);
+        const predStr = td.toISOString().split('T')[0];
+        let ver = null;
+        for (const vd of versionDates) { if (vd <= predStr) ver = vd; else break; }
+        return ver;
+    }
+    let _prevRowDate = null;
 
     recap.forEach(row => {
         const isToday = row.date === todayISO;
@@ -640,15 +674,17 @@ function _renderRecapTable(recap) {
         h += '</td>';
         h += `<td class="sticky sticky-result">${pill(row.actual)}</td>`;
 
-        const rowBoundaries = versionBoundaries[row.date] || {};
         HORIZONS.forEach(hz => {
             const hNum = parseInt(hz.split('-')[1]);
             const indicative = hNum >= 6;
-            const isBoundary = !!rowBoundaries[hz];
-            let tdStyle = '';
-            if (indicative && isBoundary) tdStyle = 'opacity:0.65;border-top:2px solid #7B1FA2';
-            else if (indicative) tdStyle = 'opacity:0.65';
-            else if (isBoundary) tdStyle = 'border-top:2px solid #7B1FA2';
+            const myVer = _getActiveVersion(row.date, hNum);
+            const aboveVer = _prevRowDate ? _getActiveVersion(_prevRowDate, hNum) : myVer;
+            const leftVer = hNum > 1 ? _getActiveVersion(row.date, hNum - 1) : myVer;
+            let parts = [];
+            if (indicative) parts.push('opacity:0.65');
+            if (myVer !== aboveVer) parts.push('border-top:2px solid #7B1FA2');
+            if (myVer !== leftVer) parts.push('border-left:2px solid #7B1FA2');
+            const tdStyle = parts.join(';');
             h += `<td${tdStyle?' style="'+tdStyle+'"':''}>${dot(row.predictions?row.predictions[hz]:null, isFuture)}</td>`;
         });
 
@@ -678,6 +714,7 @@ function _renderRecapTable(recap) {
         }
         h += `<td class="diag-text">${diagHtml}</td>`;
         h += '</tr>';
+        _prevRowDate = row.date;
     });
 
     h += '</tbody></table></div>';
@@ -756,7 +793,7 @@ function renderMonthlyPerfTable(monthly, version) {
     /* C5: If version filter is active, show notice */
     let versionNote = '';
     if (version && version !== 'all') {
-        versionNote = `<div style="font-size:0.75rem;color:#D97706;margin-bottom:6px">Note : le tableau mensuel couvre toutes les versions. Utilisez le tableau par version ci-dessous pour une vue par version.</div>`;
+        versionNote = `<div style="font-size:0.75rem;color:#D97706;margin-bottom:6px">Note : le tableau mensuel couvre toutes les versions. Utilisez le tableau par version ci-dessus pour une vue par version.</div>`;
     }
 
     let h = versionNote + '<div style="overflow-x:auto"><table class="rouge-table" style="font-size:0.78rem"><thead><tr>';
@@ -1074,8 +1111,12 @@ async function loadSubscribers() {
             <div class="metric-row"><span>Désinscrits</span><span class="metric-value" style="color:#DC2626">${escapeHtml(String(data.total-data.actifs))}</span></div>`;
         if (data.users.length > 0) {
             document.getElementById('subscribers-body').innerHTML = data.users.map(u => `<tr style="${u.actif?'':'opacity:0.5'}">
-                <td>${escapeHtml(String(u.id))}</td><td>***${escapeHtml(u.phone_last4)}</td><td>${escapeHtml(String(u.seuil_alerte_rouge))}%</td>
-                <td>J-${escapeHtml(String(u.delai_alerte))}</td><td>${u.alerte_blanc?'Oui':'Non'}</td><td>${u.recap_hebdo?'Oui':'Non'}</td>
+                <td>${escapeHtml(String(u.id))}</td>
+                <td style="font-family:monospace">***${escapeHtml(String(u.phone_last4||'????'))}</td>
+                <td>${escapeHtml(String(u.seuil_alerte_rouge))}%</td>
+                <td>J-${escapeHtml(String(u.delai_alerte))}</td>
+                <td>${u.alerte_blanc?'Oui':'Non'}</td>
+                <td>${u.recap_hebdo?'Oui':'Non'}</td>
                 <td>${u.actif?'<span style="color:#16A34A">Actif</span>':'<span style="color:#DC2626">Inactif</span>'}</td>
                 <td>${escapeHtml(u.created_at?.substring(0,10)||'—')}</td></tr>`).join('');
             document.getElementById('subscribers-table').style.display = 'table';
