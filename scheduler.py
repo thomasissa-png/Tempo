@@ -1084,6 +1084,17 @@ async def run_task_now(task_name: str) -> str:
         return await loop.run_in_executor(
             None, lambda: import_from_file(force=False))
 
+    if task_name == "db_import_force":
+        from db_sync import import_from_file
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None, lambda: import_from_file(force=True))
+
+    if task_name == "backfill_temps":
+        from db_sync import backfill_temp_moy_prevue
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, backfill_temp_moy_prevue)
+
     # Agents SEO/Backlinks : exécution directe (bypass gate saisonnière)
     # avec remontée du vrai résultat/erreur à l'admin
     if task_name in ("seo_agent", "backlinks_agent"):

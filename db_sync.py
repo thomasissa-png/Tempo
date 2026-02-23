@@ -97,6 +97,18 @@ CONFLICT_COLS = {
 }
 
 
+# Dedup columns for tables without natural UNIQUE keys
+# Used to avoid inserting duplicate rows on repeated imports
+_DEDUP_COLS = {
+    "weights_history": ["date_update", "model_version", "commentaire"],
+}
+
+
+def _get_dedup_cols(table: str) -> list[str] | None:
+    """Return dedup columns for tables without ON CONFLICT keys."""
+    return _DEDUP_COLS.get(table)
+
+
 def export_db() -> dict:
     """Exporte toutes les tables sync vers un dict."""
     from database import get_db
@@ -160,6 +172,20 @@ def export_to_file(path: Path | None = None) -> str:
     return f"Export terminé : {total} rows ({size_kb:.0f}KB). {summary}"
 
 
+def _parse_conflict_cols(conflict_str: str) -> set[str]:
+    """Parse '(date, horizon)' → {'date', 'horizon'}."""
+    return {c.strip() for c in conflict_str.strip("()").split(",")}
+
+
+def _get_available_cols(conn, table: str) -> set[str]:
+    """Get columns that actually exist in the target DB table."""
+    try:
+        info = conn.execute(f"SELECT * FROM {table} LIMIT 0").description
+        return {d[0] for d in info} if info else set()
+    except Exception:
+        return set()
+
+
 def import_from_file(path: Path | None = None, force: bool = False) -> str:
     """Importe un dump JSON dans la DB courante.
 
@@ -179,6 +205,7 @@ def import_from_file(path: Path | None = None, force: bool = False) -> str:
     conn = get_db()
     try:
         total_imported = 0
+        total_errors = 0
         results = []
 
         for table in SYNC_TABLES:
@@ -186,7 +213,23 @@ def import_from_file(path: Path | None = None, force: bool = False) -> str:
             if not rows:
                 continue
 
-            cols = list(rows[0].keys())
+            # Filter dump columns to only those that exist in the target DB
+            dump_cols = list(rows[0].keys())
+            available = _get_available_cols(conn, table)
+            if not available:
+                logger.warning(f"[Sync] Table {table} introuvable, skip")
+                continue
+            cols = [c for c in dump_cols if c in available]
+            if not cols:
+                logger.warning(f"[Sync] {table}: aucune colonne commune, skip")
+                continue
+            dropped = set(dump_cols) - set(cols)
+            if dropped:
+                logger.info(
+                    f"[Sync] {table}: colonnes ignorées (absentes en DB): "
+                    f"{', '.join(sorted(dropped))}"
+                )
+
             conflict = CONFLICT_COLS.get(table)
 
             # Build the SQL
@@ -194,53 +237,89 @@ def import_from_file(path: Path | None = None, force: bool = False) -> str:
             col_list = ", ".join(cols)
 
             if conflict and force:
-                # ON CONFLICT DO UPDATE — écrase
-                update_cols = [c for c in cols if c not in (conflict or "")]
-                update_set = ", ".join(f"{c} = excluded.{c}" for c in update_cols)
+                # ON CONFLICT DO UPDATE — overwrite existing
+                conflict_set = _parse_conflict_cols(conflict)
+                update_cols = [c for c in cols if c not in conflict_set]
+                update_set = ", ".join(
+                    f"{c} = excluded.{c}" for c in update_cols
+                )
                 sql = (
                     f"INSERT INTO {table} ({col_list}) VALUES ({placeholders}) "
                     f"ON CONFLICT {conflict} DO UPDATE SET {update_set}"
                 )
             elif conflict:
-                # ON CONFLICT DO NOTHING — skip si existe
+                # ON CONFLICT DO NOTHING — skip existing
                 sql = (
                     f"INSERT INTO {table} ({col_list}) VALUES ({placeholders}) "
                     f"ON CONFLICT {conflict} DO NOTHING"
                 )
             else:
-                # Pas de conflit naturel (weights_history) — toujours insérer
-                # Mais skip si la table a déjà des données et pas en mode force
+                # No natural conflict key (e.g. weights_history).
+                # Dedup by checking if an identical row already exists.
                 if not force:
-                    existing = conn.execute(
-                        f"SELECT COUNT(*) as c FROM {table}"
-                    ).fetchone()
-                    if existing and existing["c"] > 0:
-                        results.append(f"{table}: skip ({existing['c']} existants)")
-                        continue
+                    dedup_cols = _get_dedup_cols(table)
+                    if dedup_cols:
+                        dedup_where = " AND ".join(
+                            f"{c} = ?" for c in dedup_cols
+                        )
+                        dedup_sql = (
+                            f"SELECT COUNT(*) as c FROM {table} "
+                            f"WHERE {dedup_where}"
+                        )
+                        filtered_rows = []
+                        for row in rows:
+                            dedup_vals = [row.get(c) for c in dedup_cols]
+                            try:
+                                existing = conn.execute(
+                                    dedup_sql, dedup_vals
+                                ).fetchone()
+                                if not existing or existing["c"] == 0:
+                                    filtered_rows.append(row)
+                            except Exception:
+                                filtered_rows.append(row)
+                        skipped = len(rows) - len(filtered_rows)
+                        rows = filtered_rows
+                        if skipped:
+                            logger.info(
+                                f"[Sync] {table}: {skipped} doublons ignorés"
+                            )
                 sql = f"INSERT INTO {table} ({col_list}) VALUES ({placeholders})"
 
             count = 0
-            batch_size = 500  # Commit every N rows to avoid long PG transactions
+            errors = 0
+            first_error = None
+            batch_size = 500
             for i, row in enumerate(rows):
                 try:
                     values = [row.get(c) for c in cols]
                     conn.execute(sql, values)
                     count += 1
                 except Exception as e:
-                    # Log but continue — don't abort entire import
-                    if count == 0:
-                        logger.warning(f"[Sync] {table}: erreur ligne 1: {e}")
-                # Intermediate commits to avoid blocking PostgreSQL
+                    errors += 1
+                    if first_error is None:
+                        first_error = str(e)
                 if (i + 1) % batch_size == 0:
                     conn.commit()
 
             conn.commit()
             total_imported += count
-            results.append(f"{table}: {count}/{len(rows)}")
+            total_errors += errors
+
+            status = f"{table}: {count}/{len(rows)}"
+            if errors:
+                status += f" ({errors} erreurs)"
+                logger.warning(
+                    f"[Sync] {table}: {errors} erreurs. "
+                    f"Première: {first_error}"
+                )
+            results.append(status)
 
         summary = ", ".join(results)
         mode = "force" if force else "safe"
-        msg = f"Import ({mode}) terminé : {total_imported} rows. {summary}"
+        msg = f"Import ({mode}) terminé : {total_imported} rows"
+        if total_errors:
+            msg += f" ({total_errors} erreurs)"
+        msg += f". {summary}"
         logger.info(f"[Sync] {msg}")
         return msg
     finally:
@@ -296,6 +375,14 @@ def auto_import_if_empty() -> str | None:
     )
     result = import_from_file(force=False)
 
+    # Backfill missing temperatures from weather_cache
+    try:
+        bf = backfill_temp_moy_prevue()
+        if "0/" not in bf:
+            result += f" | {bf}"
+    except Exception as e:
+        logger.warning(f"[Sync] Backfill post-import échoué: {e}")
+
     # Après import, réévaluer les jours manquants
     try:
         from performance_tracker import evaluate_missed_days
@@ -306,6 +393,74 @@ def auto_import_if_empty() -> str | None:
         logger.warning(f"[Sync] Réévaluation post-import échouée: {e}")
 
     return result
+
+
+def backfill_temp_moy_prevue() -> str:
+    """Backfill predictions.temp_moy_prevue from weather_cache.temp_moy.
+
+    When predictions were imported from a dump that didn't have temperature
+    data, this fills in the blanks using the closest weather_cache entry.
+    Also backfills humidity_prevue and wind_speed_prevue.
+    """
+    from database import get_db
+
+    conn = get_db()
+    try:
+        # Count how many predictions are missing temp_moy_prevue
+        row = conn.execute(
+            "SELECT COUNT(*) as c FROM predictions "
+            "WHERE temp_moy_prevue IS NULL AND simulated = 0"
+        ).fetchone()
+        missing = row["c"] if row else 0
+        if missing == 0:
+            return "Backfill: aucune prédiction sans température"
+
+        # Get weather_cache data keyed by date (latest fetched_at per date)
+        weather_rows = conn.execute(
+            "SELECT wc.date, wc.temp_moy, wc.humidity, wc.wind_speed "
+            "FROM weather_cache wc "
+            "WHERE wc.temp_moy IS NOT NULL"
+        ).fetchall()
+
+        # Keep latest entry per date (rows ordered by default, take last seen)
+        weather_map = {}
+        for r in weather_rows:
+            weather_map[r["date"]] = {
+                "temp_moy": r["temp_moy"],
+                "humidity": r["humidity"],
+                "wind_speed": r["wind_speed"],
+            }
+
+        # Get predictions missing temp_moy_prevue
+        preds = conn.execute(
+            "SELECT id, date FROM predictions "
+            "WHERE temp_moy_prevue IS NULL AND simulated = 0"
+        ).fetchall()
+
+        updated = 0
+        for i, p in enumerate(preds):
+            w = weather_map.get(p["date"])
+            if w and w["temp_moy"] is not None:
+                conn.execute(
+                    "UPDATE predictions SET temp_moy_prevue = ?, "
+                    "humidity_prevue = COALESCE(humidity_prevue, ?), "
+                    "wind_speed_prevue = COALESCE(wind_speed_prevue, ?) "
+                    "WHERE id = ?",
+                    (w["temp_moy"], w["humidity"], w["wind_speed"], p["id"]),
+                )
+                updated += 1
+            if (i + 1) % 500 == 0:
+                conn.commit()
+
+        conn.commit()
+        msg = f"Backfill: {updated}/{missing} prédictions mises à jour avec temp_moy_prevue"
+        logger.info(f"[Sync] {msg}")
+        return msg
+    except Exception as e:
+        logger.warning(f"[Sync] Backfill temp_moy_prevue échoué: {e}")
+        return f"Backfill échoué: {e}"
+    finally:
+        conn.close()
 
 
 if __name__ == "__main__":
