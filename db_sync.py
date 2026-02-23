@@ -375,14 +375,6 @@ def auto_import_if_empty() -> str | None:
     )
     result = import_from_file(force=False)
 
-    # Backfill missing temperatures from weather_cache
-    try:
-        bf = backfill_temp_moy_prevue()
-        if "0/" not in bf:
-            result += f" | {bf}"
-    except Exception as e:
-        logger.warning(f"[Sync] Backfill post-import échoué: {e}")
-
     # Après import, réévaluer les jours manquants
     try:
         from performance_tracker import evaluate_missed_days
@@ -395,70 +387,57 @@ def auto_import_if_empty() -> str | None:
     return result
 
 
-def backfill_temp_moy_prevue() -> str:
-    """Backfill predictions.temp_moy_prevue from weather_cache.temp_moy.
+def reset_backfilled_temps() -> str:
+    """Reset temp_moy_prevue that was wrongly backfilled from weather_cache.
 
-    When predictions were imported from a dump that didn't have temperature
-    data, this fills in the blanks using the closest weather_cache entry.
-    Also backfills humidity_prevue and wind_speed_prevue.
+    The backfill wrote observed J-0 temperature into temp_moy_prevue for ALL
+    horizons, making J-1 through J-15 all show the same value. This resets
+    those values to NULL for predictions that don't have weather_forecast_log
+    data (i.e. imported predictions that never had real forecast temps).
+
+    Predictions made by the live scheduler (which store the actual forecast
+    temp at prediction time) are preserved — they have matching entries in
+    weather_forecast_log.
     """
     from database import get_db
 
     conn = get_db()
     try:
-        # Count how many predictions are missing temp_moy_prevue
+        # Reset temp_moy_prevue for predictions where the value matches
+        # weather_cache (observed) rather than actual forecast data.
+        # Predictions with weather_forecast_log entries are real and kept.
         row = conn.execute(
-            "SELECT COUNT(*) as c FROM predictions "
-            "WHERE temp_moy_prevue IS NULL AND simulated = 0"
-        ).fetchone()
-        missing = row["c"] if row else 0
-        if missing == 0:
-            return "Backfill: aucune prédiction sans température"
-
-        # Get weather_cache data keyed by date (latest fetched_at per date)
-        weather_rows = conn.execute(
-            "SELECT wc.date, wc.temp_moy, wc.humidity, wc.wind_speed "
-            "FROM weather_cache wc "
-            "WHERE wc.temp_moy IS NOT NULL"
-        ).fetchall()
-
-        # Keep latest entry per date (rows ordered by default, take last seen)
-        weather_map = {}
-        for r in weather_rows:
-            weather_map[r["date"]] = {
-                "temp_moy": r["temp_moy"],
-                "humidity": r["humidity"],
-                "wind_speed": r["wind_speed"],
-            }
-
-        # Get predictions missing temp_moy_prevue
-        preds = conn.execute(
-            "SELECT id, date FROM predictions "
-            "WHERE temp_moy_prevue IS NULL AND simulated = 0"
-        ).fetchall()
-
-        updated = 0
-        for i, p in enumerate(preds):
-            w = weather_map.get(p["date"])
-            if w and w["temp_moy"] is not None:
-                conn.execute(
-                    "UPDATE predictions SET temp_moy_prevue = ?, "
-                    "humidity_prevue = COALESCE(humidity_prevue, ?), "
-                    "wind_speed_prevue = COALESCE(wind_speed_prevue, ?) "
-                    "WHERE id = ?",
-                    (w["temp_moy"], w["humidity"], w["wind_speed"], p["id"]),
-                )
-                updated += 1
-            if (i + 1) % 500 == 0:
-                conn.commit()
+            """UPDATE predictions SET
+                   temp_moy_prevue = NULL,
+                   humidity_prevue = NULL,
+                   wind_speed_prevue = NULL
+               WHERE simulated = 0
+                 AND temp_moy_prevue IS NOT NULL
+                 AND NOT EXISTS (
+                     SELECT 1 FROM weather_forecast_log wfl
+                     WHERE wfl.target_date = predictions.date
+                 )"""
+        ).rowcount
+        # rowcount may not work on all wrappers, count manually
+        if row is None:
+            row = conn.execute(
+                """SELECT COUNT(*) as c FROM predictions
+                   WHERE simulated = 0
+                     AND temp_moy_prevue IS NOT NULL
+                     AND NOT EXISTS (
+                         SELECT 1 FROM weather_forecast_log wfl
+                         WHERE wfl.target_date = predictions.date
+                     )"""
+            ).fetchone()
+            row = row["c"] if row else 0
 
         conn.commit()
-        msg = f"Backfill: {updated}/{missing} prédictions mises à jour avec temp_moy_prevue"
+        msg = f"Reset: {row} prédictions nettoyées (temp_moy_prevue → NULL)"
         logger.info(f"[Sync] {msg}")
         return msg
     except Exception as e:
-        logger.warning(f"[Sync] Backfill temp_moy_prevue échoué: {e}")
-        return f"Backfill échoué: {e}"
+        logger.warning(f"[Sync] Reset backfill échoué: {e}")
+        return f"Reset échoué: {e}"
     finally:
         conn.close()
 
