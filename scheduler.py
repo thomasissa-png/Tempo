@@ -36,7 +36,16 @@ def start_scheduler():
         replace_existing=True,
     )
 
-    # 18h00 tous les jours — nouvelles prédictions + alertes
+    # 7h30 tous les jours — alertes matinales (users préférant le matin)
+    scheduler.add_job(
+        task_morning_alerts,
+        CronTrigger(hour=7, minute=30, timezone="Europe/Paris"),
+        id="morning_alerts",
+        name="Alertes matinales 7h30",
+        replace_existing=True,
+    )
+
+    # 18h00 tous les jours — nouvelles prédictions + alertes soir
     scheduler.add_job(
         task_daily_predictions,
         CronTrigger(hour=18, minute=0, timezone="Europe/Paris"),
@@ -104,7 +113,7 @@ def start_scheduler():
     )
 
     scheduler.start()
-    logger.info("[Scheduler] Démarré avec 9 tâches planifiées")
+    logger.info("[Scheduler] Démarré avec 10 tâches planifiées")
 
 
 def stop_scheduler():
@@ -309,19 +318,32 @@ async def _refresh_predictions(trigger: str, send_sms: bool = False) -> int:
         if change:
             changes.append(change)
 
-        # Alertes SMS uniquement si demandé (cycle 18h)
+        # Alertes SMS uniquement si demandé (cycle 18h → users "soir" uniquement)
         if send_sms and not pred.get("confirmed"):
             from alerts import send_alerts_for_prediction
             target = date.fromisoformat(pred["date"])
             delta = (target - date.today()).days
             if 1 <= delta <= 3 and pred["couleur_predite"] in ("ROUGE", "BLANC"):
                 # Fix audit DB : run blocking SMS/sleep in thread pool
-                await asyncio.to_thread(send_alerts_for_prediction, target, pred)
+                await asyncio.to_thread(
+                    send_alerts_for_prediction, target, pred, "soir"
+                )
 
+    # #6 : alerter les utilisateurs sur les changements de prédiction
     if changes:
         logger.info(f"[{trigger}] {len(changes)} changements: "
                     + ", ".join(f"{c['date']} {c['couleur_avant']}→{c['couleur_apres']}"
                                 for c in changes))
+        from alerts import send_change_alerts
+        for c in changes:
+            try:
+                target = date.fromisoformat(c["date"])
+                await asyncio.to_thread(
+                    send_change_alerts, target,
+                    c["couleur_avant"], c["couleur_apres"]
+                )
+            except Exception as e:
+                logger.debug(f"[{trigger}] Erreur alerte changement: {e}")
 
     logger.info(f"[{trigger}] {len(predictions)} prédictions recalculées (cycle={cycle_id})")
 
@@ -661,6 +683,58 @@ async def task_daily_verification():
             if attempt == 0:
                 await asyncio.sleep(30)
     logger.error("[Scheduler] task_daily_verification failed after 2 attempts")
+
+
+# ================================================================
+# TÂCHE 1b : Alertes matinales (7h30)
+# ================================================================
+
+async def task_morning_alerts():
+    """7h30 — Rafraîchit les prédictions avec la météo du matin, puis envoie
+    les alertes aux utilisateurs qui préfèrent recevoir le matin.
+
+    La météo du run AROME 00h (disponible vers 5h-6h) est souvent plus
+    fiable pour J+1 que le run 12h de la veille.
+    """
+    try:
+        logger.info("[Task 7h30] Début alertes matinales")
+
+        # 1. Rafraîchir les prédictions avec la météo du matin
+        count = await _refresh_predictions("matin_7h30", send_sms=False)
+        if not count:
+            logger.warning("[Task 7h30] Pas de données météo, alertes matinales annulées")
+            return
+
+        # 2. Envoyer les alertes uniquement aux users "matin"
+        from alerts import send_alerts_for_prediction
+        from database import get_db
+
+        conn = get_db()
+        try:
+            today_str = date.today().isoformat()
+            predictions = conn.execute(
+                """SELECT date, couleur_predite, probabilite_rouge,
+                          probabilite_blanc, temp_min_prevue, confirmed
+                   FROM predictions
+                   WHERE date >= ? AND confirmed = 0
+                   ORDER BY date""",
+                (today_str,)
+            ).fetchall()
+        finally:
+            conn.close()
+
+        for pred in predictions:
+            pred_dict = dict(pred)
+            target = date.fromisoformat(pred_dict["date"])
+            delta = (target - date.today()).days
+            if 1 <= delta <= 3 and pred_dict["couleur_predite"] in ("ROUGE", "BLANC"):
+                await asyncio.to_thread(
+                    send_alerts_for_prediction, target, pred_dict, "matin"
+                )
+
+        logger.info(f"[Task 7h30] Alertes matinales terminées ({count} prédictions)")
+    except Exception as e:
+        logger.error(f"[Scheduler] task_morning_alerts failed: {e}")
 
 
 # ================================================================
@@ -1128,6 +1202,7 @@ async def run_task_now(task_name: str) -> str:
     tasks = {
         "verification": task_daily_verification,
         "predictions": task_daily_predictions,
+        "morning_alerts": task_morning_alerts,
         "weights": task_monthly_weights,
         "recap": task_weekly_recap,
         "validation": task_daily_validation,
@@ -1136,7 +1211,7 @@ async def run_task_now(task_name: str) -> str:
         available = list(tasks.keys()) + [
             "backfill", "analyze", "evaluate_missed",
             "db_export", "db_import",
-            "seo_agent", "backlinks_agent",
+            "seo_agent", "backlinks_agent", "morning_alerts",
         ]
         return f"Tâche inconnue: {task_name}. Disponibles: {available}"
 

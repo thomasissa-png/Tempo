@@ -668,6 +668,7 @@ def init_db():
             delai_alerte        INTEGER DEFAULT 1,
             alerte_blanc        INTEGER DEFAULT 0,
             recap_hebdo         INTEGER DEFAULT 0,
+            heure_envoi         TEXT    DEFAULT 'matin',
             actif               INTEGER DEFAULT 1,
             created_at          TEXT    NOT NULL,
             updated_at          TEXT    NOT NULL
@@ -1306,6 +1307,20 @@ def init_db():
         conn.execute("PRAGMA user_version = 20")
         conn.commit()
         logger.info("Migration v20 appliquee (index performance.date_prediction)")
+
+    if version < 21:
+        # Migration v21 — préférence horaire d'envoi des alertes
+        # 'matin' (7h30, défaut) ou 'soir' (18h) — choix utilisateur
+        try:
+            conn.execute(
+                "ALTER TABLE users ADD COLUMN heure_envoi TEXT DEFAULT 'matin'"
+            )
+        except _DbOperationalError:
+            logger.debug("Migration v21: colonne heure_envoi existe deja")
+
+        conn.execute("PRAGMA user_version = 21")
+        conn.commit()
+        logger.info("Migration v21 appliquee (users.heure_envoi)")
 
     # Poids initiaux si vide
     existing = conn.execute("SELECT COUNT(*) as c FROM weights_history").fetchone()

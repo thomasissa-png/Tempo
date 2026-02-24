@@ -59,6 +59,13 @@
                     </select>
                 </div>
                 <div class="form-group">
+                    <label for="heure_envoi">Heure d'envoi</label>
+                    <select id="heure_envoi" name="heure_envoi">
+                        <option value="matin" {% if user.heure_envoi == 'matin' or not user.heure_envoi %}selected{% endif %}>Matin (7h30) — pour planifier votre journée</option>
+                        <option value="soir" {% if user.heure_envoi == 'soir' %}selected{% endif %}>Soir (18h) — pour préparer le lendemain</option>
+                    </select>
+                </div>
+                <div class="form-group">
                     <label>Options</label>
                     <div class="form-checkbox">
                         <input type="checkbox" id="alerte_blanc" name="alerte_blanc" value="true" {% if user.alerte_blanc %}checked{% endif %}>

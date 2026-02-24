@@ -1602,9 +1602,10 @@ async def api_subscribe(
     request: Request,
     phone: str = Form(...),
     seuil_rouge: int = Form(70),
-    delai: int = Form(1),
+    delai: int = Form(3),
     alerte_blanc: bool = Form(False),
-    recap_hebdo: bool = Form(False),
+    recap_hebdo: bool = Form(True),
+    heure_envoi: str = Form("matin"),
 ):
     """Inscription aux alertes WhatsApp (Fix #16 : rate limiting + CSRF check)."""
     # Fix #16 (CSRF) : verify origin
@@ -1627,14 +1628,28 @@ async def api_subscribe(
     # M-05 QA : valider seuil_rouge et delai
     seuil_rouge = max(0, min(100, seuil_rouge))
     delai = max(1, min(3, delai))
+    heure_envoi = heure_envoi if heure_envoi in ("matin", "soir") else "matin"
 
-    from alerts import register_user
-    result = register_user(phone, seuil_rouge, delai, alerte_blanc, recap_hebdo)
+    from alerts import register_user, send_welcome
+    result = register_user(phone, seuil_rouge, delai, alerte_blanc, recap_hebdo,
+                           heure_envoi)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
     # Ajouter le lien de gestion dans la réponse
     if result.get("manage_token"):
         result["manage_url"] = f"/manage/{result['manage_token']}"
+
+    # #4 : Envoyer un message de bienvenue WhatsApp immédiatement
+    if result.get("success") and result.get("phone"):
+        try:
+            await asyncio.to_thread(
+                send_welcome, result["phone"], result.get("manage_token", "")
+            )
+        except Exception as e:
+            logger.warning(f"[Subscribe] Erreur envoi bienvenue: {e}")
+
+    # Ne pas exposer le numéro dans la réponse JSON
+    result.pop("phone", None)
     return result
 
 
@@ -1751,6 +1766,7 @@ async def api_manage_get(token: str):
         "delai_alerte": user["delai_alerte"],
         "alerte_blanc": bool(user["alerte_blanc"]),
         "recap_hebdo": bool(user["recap_hebdo"]),
+        "heure_envoi": user.get("heure_envoi", "matin"),
     }
 
 
@@ -1759,9 +1775,10 @@ async def api_manage_update(
     request: Request,
     token: str,
     seuil_rouge: int = Form(70),
-    delai: int = Form(1),
+    delai: int = Form(3),
     alerte_blanc: bool = Form(False),
-    recap_hebdo: bool = Form(False),
+    recap_hebdo: bool = Form(True),
+    heure_envoi: str = Form("matin"),
 ):
     """Met à jour les préférences via le token de gestion."""
     # CSRF check
@@ -1771,9 +1788,11 @@ async def api_manage_update(
     # Valider les paramètres
     seuil_rouge = max(0, min(100, seuil_rouge))
     delai = max(1, min(3, delai))
+    heure_envoi = heure_envoi if heure_envoi in ("matin", "soir") else "matin"
 
     from alerts import update_user_preferences
-    result = update_user_preferences(token, seuil_rouge, delai, alerte_blanc, recap_hebdo)
+    result = update_user_preferences(token, seuil_rouge, delai, alerte_blanc,
+                                     recap_hebdo, heure_envoi)
     if "error" in result:
         raise HTTPException(status_code=400, detail=result["error"])
     return result
