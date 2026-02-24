@@ -1415,16 +1415,17 @@ class TestAlertUXFraming:
         assert "87% confiance" not in content
         assert "Semaine" in content
 
-    def test_modal_has_7_day_slots(self):
-        """Subscribe modal has 7 day slots for dynamic dates (weekly recap)."""
+    def test_modal_has_dynamic_sms_bubble(self):
+        """Subscribe modal generates 7-day SMS preview dynamically (starts Monday)."""
         filepath = os.path.join(
             os.path.dirname(os.path.dirname(__file__)),
             "templates", "_subscribe_modal.html"
         )
         with open(filepath) as f:
             content = f.read()
-        for i in range(1, 8):
-            assert f"modal-sms-day{i}" in content, f"Missing day slot {i}"
+        assert "updateSmsBubble" in content, "Missing dynamic SMS bubble generator"
+        assert "PREVIEW_COLORS" in content, "Missing preview color pattern"
+        assert "modal-sms-bubble" in content, "Missing SMS bubble container"
 
 
 class TestMinifiedAssets:

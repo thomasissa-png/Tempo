@@ -9,16 +9,7 @@
         <div class="sms-preview" id="modal-sms-preview">
             <div class="sms-preview-label">&#128172; Exemple de message que vous recevrez :</div>
             <div class="sms-bubble" id="modal-sms-bubble">
-                &#128200; <strong>Calendrier Tempo EDF &mdash; Semaine &agrave; venir</strong><br><br>
-                &#128308; <span id="modal-sms-day1">lun. 24 f&eacute;v.</span><br>
-                &#128308; <span id="modal-sms-day2">mar. 25 f&eacute;v.</span><br>
-                &#9898; <span id="modal-sms-day3">mer. 26 f&eacute;v.</span><br>
-                &#128309; <span id="modal-sms-day4">jeu. 27 f&eacute;v.</span><br>
-                &#128309; <span id="modal-sms-day5">ven. 28 f&eacute;v.</span><br>
-                &#128309; <span id="modal-sms-day6">sam. 1 mars</span><br>
-                &#128308; <span id="modal-sms-day7">dim. 2 mars</span><br><br>
-                &#9888;&#65039; 2 jours rouges pr&eacute;vus cette semaine.<br>
-                &#128073; Anticipez vos machines et chauffage !
+                <!-- Content generated dynamically by updateSmsBubble() -->
             </div>
         </div>
         <form id="modal-subscribe-form">
@@ -31,15 +22,15 @@
                 <div class="form-group">
                     <label for="modal-phone">Votre num&eacute;ro de mobile</label>
                     <input type="tel" id="modal-phone" name="phone" placeholder="06 12 34 56 78" required autocomplete="tel" inputmode="tel">
-                    <span class="form-hint">France (06/07), Belgique, Suisse, Luxembourg, Allemagne</span>
+                    <span class="form-hint">France (06/07). Ajoutez l'indicateur pays pour les autres pays (+32, +41, +352, +49).</span>
                     <span class="phone-feedback" id="modal-phone-feedback" aria-live="polite"></span>
                 </div>
-                <div class="form-group" style="margin-top:14px">
-                    <label style="font-size:.88rem;font-weight:600;margin-bottom:8px;display:block">Quelles alertes souhaitez-vous&nbsp;?</label>
-                    <div style="display:flex;flex-direction:column;gap:8px">
-                        <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;cursor:default;color:var(--text-secondary)">
-                            <input type="checkbox" checked disabled style="accent-color:#e53935">
-                            <span>&#128308; Alertes jours <strong style="color:var(--text)">ROUGE</strong></span>
+                <div class="form-group" style="margin-top:16px">
+                    <label style="font-size:.88rem;font-weight:600;margin-bottom:6px;display:block">Quelles alertes souhaitez-vous&nbsp;?</label>
+                    <div style="display:flex;flex-direction:column;gap:10px">
+                        <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;cursor:pointer">
+                            <input type="checkbox" name="alerte_rouge" id="modal-alerte-rouge" checked style="accent-color:#e53935">
+                            <span>&#128308; Alertes jours <strong>ROUGE</strong></span>
                         </label>
                         <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;cursor:pointer">
                             <input type="checkbox" name="alerte_blanc" id="modal-alerte-blanc" style="accent-color:#9e9e9e">
@@ -50,7 +41,7 @@
                             <span>&#128200; R&eacute;cap hebdomadaire (chaque dimanche)</span>
                         </label>
                     </div>
-                    <span class="form-hint" style="margin-top:8px;display:block">Les alertes sont actives du 1<sup>er</sup> sept. au 31 mars (saison Tempo). Vous pouvez modifier vos pr&eacute;f&eacute;rences &agrave; tout moment.</span>
+                    <span class="form-hint" style="margin-top:10px;display:block">Alertes actives du 1<sup>er</sup> novembre au 31 mars. Modifiables &agrave; tout moment.</span>
                 </div>
             </div>
             <button type="submit" class="btn btn-subscribe" id="modal-subscribe-btn">Recevoir mon alerte gratuite</button>
@@ -62,7 +53,7 @@
             </p>
         </form>
         <div id="modal-form-result" class="form-result"></div>
-        <div class="modal-manage-link" style="margin-top:16px;text-align:center">
+        <div class="modal-manage-link">
             <button type="button" class="link-btn" id="modal-manage-toggle" style="font-size:.85rem">D&eacute;j&agrave; inscrit&nbsp;? G&eacute;rer mon abonnement</button>
             <div id="modal-manage-form" style="display:none;margin-top:10px">
                 <p style="font-size:.85rem;color:var(--text-secondary);margin-bottom:8px">
@@ -127,18 +118,46 @@
         el.style.display = 'block';
     }
 
-    function updateSmsDays() {
+    // Color pattern for 7 days Mon→Sun: respects EDF rules
+    // RED only on weekdays (R2), WHITE never on Sunday (R3)
+    var PREVIEW_COLORS = [
+        { emoji: '\uD83D\uDD34', label: 'ROUGE' },   // Mon
+        { emoji: '\u26AA',       label: 'BLANC' },    // Tue
+        { emoji: '\uD83D\uDD35', label: 'BLEU' },     // Wed
+        { emoji: '\uD83D\uDD35', label: 'BLEU' },     // Thu
+        { emoji: '\uD83D\uDD34', label: 'ROUGE' },    // Fri
+        { emoji: '\uD83D\uDD35', label: 'BLEU' },     // Sat
+        { emoji: '\uD83D\uDD35', label: 'BLEU' }      // Sun
+    ];
+
+    function updateSmsBubble() {
         var JOURS_COURT = ['dim.','lun.','mar.','mer.','jeu.','ven.','sam.'];
         var MOIS_COURT = ['jan.','f\u00e9v.','mars','avr.','mai','juin','juil.','ao\u00fbt','sept.','oct.','nov.','d\u00e9c.'];
-        // Generate 7 consecutive days starting from tomorrow (like weekly recap)
+
+        // Find next Monday
         var now = new Date();
         var d = new Date(now);
-        d.setDate(d.getDate() + 1); // start at J+1
+        var dayOfWeek = d.getDay(); // 0=Sun, 1=Mon
+        var daysUntilMon = (dayOfWeek === 0) ? 1 : (dayOfWeek === 1) ? 7 : (8 - dayOfWeek);
+        d.setDate(d.getDate() + daysUntilMon);
+
+        var redCount = 0;
+        var lines = [];
         for (var i = 0; i < 7; i++) {
-            var el = document.getElementById('modal-sms-day' + (i + 1));
-            if (el) el.textContent = JOURS_COURT[d.getDay()] + ' ' + d.getDate() + ' ' + MOIS_COURT[d.getMonth()];
+            var c = PREVIEW_COLORS[i];
+            var dayStr = JOURS_COURT[d.getDay()] + ' ' + d.getDate() + ' ' + MOIS_COURT[d.getMonth()];
+            lines.push(c.emoji + ' ' + dayStr);
+            if (c.label === 'ROUGE') redCount++;
             d.setDate(d.getDate() + 1);
         }
+
+        var bubble = document.getElementById('modal-sms-bubble');
+        if (!bubble) return;
+        var html = '\uD83D\uDCC8 <strong>Calendrier Tempo EDF \u2014 Semaine \u00e0 venir</strong><br><br>';
+        html += lines.join('<br>');
+        html += '<br><br>\u26A0\uFE0F ' + redCount + ' jour' + (redCount > 1 ? 's' : '') + ' rouge' + (redCount > 1 ? 's' : '') + ' pr\u00e9vu' + (redCount > 1 ? 's' : '') + ' cette semaine.';
+        html += '<br>\uD83D\uDC49 Anticipez vos machines et chauffage\u00a0!';
+        bubble.innerHTML = html;
     }
 
     window.openSubscribeModal = function() {
@@ -147,7 +166,7 @@
         _previouslyFocused = document.activeElement;
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
-        updateSmsDays();
+        updateSmsBubble();
         // Anti-bot: record open timestamp
         var tsField = document.getElementById('modal-ts');
         if (tsField) tsField.value = String(Math.floor(Date.now() / 1000));
@@ -241,8 +260,11 @@
                 var formData = new FormData(form);
                 formData.set('phone', normalized);
                 // Explicitly set checkbox values (unchecked checkboxes are not in FormData)
+                var alerteRouge = document.getElementById('modal-alerte-rouge');
                 var alerteBlanc = document.getElementById('modal-alerte-blanc');
                 var recapHebdo = document.getElementById('modal-recap-hebdo');
+                // seuil_rouge=0 disables red alerts, seuil_rouge=70 is default threshold
+                formData.set('seuil_rouge', alerteRouge && alerteRouge.checked ? '70' : '0');
                 formData.set('alerte_blanc', alerteBlanc && alerteBlanc.checked ? 'true' : 'false');
                 formData.set('recap_hebdo', recapHebdo && recapHebdo.checked ? 'true' : 'false');
                 fetch('/api/subscribe', { method: 'POST', body: formData })

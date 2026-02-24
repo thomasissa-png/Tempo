@@ -2458,18 +2458,44 @@ select:focus-visible {
 
 .subscribe-modal h2 {
     font-size: 1.2rem;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     padding-right: 40px;
 }
 
 .subscribe-modal .sub-desc {
     color: var(--text-secondary);
     font-size: 0.9rem;
-    margin-bottom: 16px;
+    margin-bottom: 20px;
+}
+
+.subscribe-modal .sms-preview {
+    margin-bottom: 24px;
 }
 
 .subscribe-modal .form-simple {
     max-width: 100%;
+}
+
+.subscribe-modal .form-group + .form-group {
+    margin-top: 16px;
+}
+
+.subscribe-modal .btn-subscribe {
+    margin-top: 20px;
+    width: 100%;
+    justify-content: center;
+}
+
+.subscribe-modal .form-legal {
+    margin-top: 14px;
+    text-align: center;
+}
+
+.subscribe-modal .modal-manage-link {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    text-align: center;
 }
 
 /* Success check animation (reco 12) */
@@ -2497,15 +2523,18 @@ select:focus-visible {
 
 /* Mobile modal adjustments */
 @media (max-width: 768px) {
-    .subscribe-modal { padding: 24px 20px; }
-    .subscribe-modal .sms-bubble { max-width: 100%; }
+    .subscribe-modal { padding: 28px 20px; }
+    .subscribe-modal .sms-bubble { max-width: 100%; font-size: 0.85rem; padding: 10px 14px; }
+    .subscribe-modal h2 { font-size: 1.1rem; }
 
     /* Week summary 5-col on mobile */
     .week-summary-dots { grid-template-columns: repeat(5, 1fr); }
 }
 
 @media (max-width: 480px) {
-    .subscribe-modal { padding: 20px 16px; max-height: 95vh; }
+    .subscribe-modal { padding: 22px 16px; max-height: 95vh; }
+    .subscribe-modal .sms-bubble { font-size: 0.82rem; padding: 10px 12px; }
+    .subscribe-modal .btn-subscribe { font-size: 0.95rem; padding: 12px 24px; }
 }
 
 /* Respecter prefers-reduced-motion */

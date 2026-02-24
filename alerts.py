@@ -544,8 +544,8 @@ def send_alerts_for_prediction(target_date: date, prediction: dict,
     couleur = prediction["couleur_predite"]
     if couleur == "BLEU":
         return
-    # B4 fix: ROUGE limité à nov-mars (R1), BLANC toute la saison
-    if couleur == "ROUGE" and not _is_red_season():
+    # Toutes les alertes désactivées hors saison (nov-mars)
+    if not _is_red_season():
         return
 
     conn = get_db()
@@ -556,7 +556,7 @@ def send_alerts_for_prediction(target_date: date, prediction: dict,
                 """SELECT id, phone_encrypted, seuil_alerte_rouge, delai_alerte,
                           manage_token, heure_envoi
                    FROM users
-                   WHERE actif = 1 AND seuil_alerte_rouge <= ?""",
+                   WHERE actif = 1 AND seuil_alerte_rouge > 0 AND seuil_alerte_rouge <= ?""",
                 (prob_pct,)
             ).fetchall()
             format_fn = format_alert_rouge
@@ -688,8 +688,8 @@ def send_official_alerts(target_date: date, couleur: str):
     """Envoie les alertes pour une couleur officiellement confirmée."""
     if couleur not in ("ROUGE", "BLANC"):
         return
-    # B4 fix: ROUGE limité à nov-mars (R1), BLANC toute la saison
-    if couleur == "ROUGE" and not _is_red_season():
+    # Toutes les alertes désactivées hors saison (nov-mars)
+    if not _is_red_season():
         return
 
     conn = get_db()
@@ -737,7 +737,9 @@ def send_official_alerts(target_date: date, couleur: str):
 
 def send_weekly_recap(predictions: list[dict]):
     """Envoie le récapitulatif hebdomadaire aux users inscrits.
-    B4 fix: envoyé toute la saison Tempo (sept-août), pas seulement nov-mars."""
+    Désactivé hors saison (nov-mars) pour ne pas envoyer de messages inutiles."""
+    if not _is_red_season():
+        return
 
     conn = get_db()
     try:
