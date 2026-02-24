@@ -463,6 +463,13 @@ def _extract_values_from_df(df, param_key: str, model_name: str) -> dict[int, fl
             # Exclure explicitement timedelta64 — pandas le considere "numeric"
             # mais float(Timedelta) leve TypeError.
             numeric_df = df.select_dtypes(include="number", exclude=["timedelta", "timedelta64"])
+            # Exclure les colonnes de coordonnées (latitude, longitude) que
+            # meteole inclut parfois dans le DataFrame — sinon elles sont
+            # moyennées avec les valeurs météo et corrompent les résultats.
+            coord_cols = [c for c in numeric_df.columns
+                          if any(k in str(c).lower() for k in ("lat", "lon", "altitude"))]
+            if coord_cols:
+                numeric_df = numeric_df.drop(columns=coord_cols, errors="ignore")
             if numeric_df.empty:
                 logger.debug(
                     f"[Meteo] Aucune colonne numerique pour {model_name}/{param_key}. "
