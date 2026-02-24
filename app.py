@@ -1606,11 +1606,29 @@ async def api_subscribe(
     alerte_blanc: bool = Form(False),
     recap_hebdo: bool = Form(True),
     heure_envoi: str = Form("matin"),
+    website: str = Form(""),
+    t: str = Form(""),
 ):
     """Inscription aux alertes WhatsApp (Fix #16 : rate limiting + CSRF check)."""
     # Fix #16 (CSRF) : verify origin
     if not _check_origin(request):
         raise HTTPException(status_code=403, detail="Origine de la requête non autorisée")
+
+    # Anti-bot: honeypot field must be empty (bots auto-fill hidden fields)
+    if website:
+        logger.warning(f"[Subscribe] Honeypot triggered from {request.client.host if request.client else 'unknown'}")
+        raise HTTPException(status_code=400, detail="Inscription impossible.")
+
+    # Anti-bot: JS timestamp check (form submitted too fast = bot)
+    if t:
+        try:
+            open_ts = int(t)
+            elapsed = int(time.time()) - open_ts
+            if elapsed < 3:
+                logger.warning(f"[Subscribe] Speed check failed ({elapsed}s) from {request.client.host if request.client else 'unknown'}")
+                raise HTTPException(status_code=400, detail="Trop rapide. Veuillez réessayer.")
+        except ValueError:
+            pass  # Invalid timestamp, skip check
 
     # Fix audit v6 : asyncio.Lock pour le rate limiter
     client_ip = request.client.host if request.client else "unknown"
@@ -1672,10 +1690,10 @@ async def api_unsubscribe(request: Request, phone: str = Form(...)):
             raise HTTPException(status_code=429, detail="Trop de tentatives. Réessayez plus tard.")
         _rate_limit_store[client_ip].append(now)
 
-    # H-06 QA : validation format téléphone
-    phone_clean = phone.strip().replace(" ", "")
-    if not phone_clean.startswith("+33") or len(phone_clean) != 12 or not phone_clean[3:].isdigit():
-        raise HTTPException(status_code=400, detail="Format invalide. Utilisez +33XXXXXXXXX.")
+    # H-06 QA : validation format téléphone (international)
+    phone_clean = phone.strip().replace(" ", "").replace("-", "").replace(".", "")
+    if not phone_clean.startswith("+") or len(phone_clean) < 10 or len(phone_clean) > 15 or not phone_clean[1:].isdigit():
+        raise HTTPException(status_code=400, detail="Format invalide. Utilisez un format international (+33, +32, +41...).")
 
     from alerts import unsubscribe_user
     result = unsubscribe_user(phone)
@@ -1683,6 +1701,56 @@ async def api_unsubscribe(request: Request, phone: str = Form(...)):
         # H-07 QA : message générique (ne pas révéler si le numéro existe)
         raise HTTPException(status_code=400, detail="Désinscription impossible. Vérifiez votre numéro.")
     return result
+
+
+@app.post("/api/resend-manage-link")
+async def api_resend_manage_link(request: Request, phone: str = Form(...)):
+    """Renvoie le lien de gestion par WhatsApp (pour les utilisateurs déjà inscrits)."""
+    if not _check_origin(request):
+        raise HTTPException(status_code=403, detail="Origine de la requête non autorisée")
+
+    # Rate limiting (same pool as subscribe)
+    client_ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    window = Config.SUBSCRIBE_RATE_WINDOW
+    async with _rate_limit_lock:
+        _rate_limit_store[client_ip] = [
+            t for t in _rate_limit_store[client_ip] if now - t < window
+        ]
+        if len(_rate_limit_store[client_ip]) >= Config.SUBSCRIBE_RATE_LIMIT:
+            raise HTTPException(status_code=429, detail="Trop de tentatives. Réessayez plus tard.")
+        _rate_limit_store[client_ip].append(now)
+
+    phone_clean = phone.strip().replace(" ", "").replace("-", "").replace(".", "")
+    if not phone_clean.startswith("+") or len(phone_clean) < 10 or len(phone_clean) > 15:
+        raise HTTPException(status_code=400, detail="Format invalide.")
+
+    from alerts import hash_phone
+    phone_h = hash_phone(phone_clean)
+    conn = get_db()
+    try:
+        user = conn.execute(
+            "SELECT manage_token, actif FROM users WHERE phone_hash = ?", (phone_h,)
+        ).fetchone()
+    finally:
+        conn.close()
+
+    # Generic message to avoid revealing if number exists (privacy)
+    generic_msg = "Si ce numéro est inscrit, vous recevrez un message WhatsApp avec votre lien de gestion."
+
+    if not user or not user["actif"]:
+        return {"success": True, "message": generic_msg}
+
+    # Send manage link via WhatsApp
+    try:
+        from alerts import send_whatsapp
+        manage_url = f"https://calendrier-tempo.fr/manage/{user['manage_token']}"
+        msg = f"📋 Voici votre lien de gestion Calendrier Tempo :\n{manage_url}\n\nVous pouvez modifier vos préférences ou vous désinscrire."
+        await asyncio.to_thread(send_whatsapp, phone_clean, msg)
+    except Exception as e:
+        logger.warning(f"[ResendManage] Erreur envoi: {e}")
+
+    return {"success": True, "message": generic_msg}
 
 
 @app.get("/api/webhook/whatsapp")
@@ -1757,17 +1825,30 @@ async def whatsapp_webhook_incoming(request: Request):
                         f"code={error_code}, {error_title}"
                     )
                     # Mettre à jour sms_logs pour marquer l'échec
-                    if msg_id:
-                        try:
-                            conn = get_db()
+                    try:
+                        conn = get_db()
+                        if msg_id:
                             conn.execute(
                                 "UPDATE sms_logs SET statut = ?, erreur = ? WHERE twilio_sid = ?",
                                 ("failed", f"{error_code}: {error_title}", msg_id),
                             )
-                            conn.commit()
-                            conn.close()
-                        except Exception as e:
-                            logger.debug(f"[WhatsApp Status] Erreur MAJ sms_logs: {e}")
+                        # Désactiver l'utilisateur si le numéro est invalide
+                        # Codes 131026 (recipient not on WhatsApp), 131047 (re-engagement limit)
+                        if str(error_code) in ("131026", "131047") and recipient:
+                            from alerts import hash_phone
+                            phone_normalized = "+" + recipient if not recipient.startswith("+") else recipient
+                            ph = hash_phone(phone_normalized)
+                            conn.execute(
+                                "UPDATE users SET actif = 0, updated_at = ? WHERE phone_hash = ? AND actif = 1",
+                                (_now_paris().isoformat(), ph),
+                            )
+                            logger.warning(
+                                f"[WhatsApp Status] User ****{recipient[-4:]} désactivé (code {error_code})"
+                            )
+                        conn.commit()
+                        conn.close()
+                    except Exception as e:
+                        logger.debug(f"[WhatsApp Status] Erreur MAJ sms_logs: {e}")
                 elif delivery_status == "delivered":
                     logger.info(f"[WhatsApp Status] Délivré → ****{recipient[-4:]}")
                 elif delivery_status == "read":

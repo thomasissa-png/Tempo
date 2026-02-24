@@ -2,7 +2,7 @@
 <div class="subscribe-modal-overlay" id="subscribe-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" style="display:none">
     <div class="subscribe-modal">
         <button class="modal-close" id="modal-close" aria-label="Fermer">&times;</button>
-        <h2 id="modal-title">Anticipez les 5 prochains jours Tempo</h2>
+        <h2 id="modal-title">Anticipez les 7 prochains jours Tempo</h2>
         <p class="sub-desc">
             100% gratuit, sans engagement, 1 message par jour maximum.
         </p>
@@ -10,21 +10,28 @@
             <div class="sms-preview-label">&#128172; Exemple de message que vous recevrez :</div>
             <div class="sms-bubble" id="modal-sms-bubble">
                 &#128200; <strong>Calendrier Tempo EDF &mdash; Semaine &agrave; venir</strong><br><br>
-                &#128308; <span id="modal-sms-day1">lun. 23 f&eacute;v.</span><br>
-                &#128308; <span id="modal-sms-day2">mar. 24 f&eacute;v.</span><br>
-                &#9898; <span id="modal-sms-day3">mer. 25 f&eacute;v.</span><br>
-                &#128309; <span id="modal-sms-day4">jeu. 26 f&eacute;v.</span><br>
-                &#128309; <span id="modal-sms-day5">ven. 27 f&eacute;v.</span><br><br>
+                &#128308; <span id="modal-sms-day1">lun. 24 f&eacute;v.</span><br>
+                &#128308; <span id="modal-sms-day2">mar. 25 f&eacute;v.</span><br>
+                &#9898; <span id="modal-sms-day3">mer. 26 f&eacute;v.</span><br>
+                &#128309; <span id="modal-sms-day4">jeu. 27 f&eacute;v.</span><br>
+                &#128309; <span id="modal-sms-day5">ven. 28 f&eacute;v.</span><br>
+                &#128309; <span id="modal-sms-day6">sam. 1 mars</span><br>
+                &#128308; <span id="modal-sms-day7">dim. 2 mars</span><br><br>
                 &#9888;&#65039; 2 jours rouges pr&eacute;vus cette semaine.<br>
                 &#128073; Anticipez vos machines et chauffage !
             </div>
         </div>
         <form id="modal-subscribe-form">
+            <!-- Anti-bot: honeypot field (invisible to humans, filled by bots) -->
+            <div style="position:absolute;left:-9999px" aria-hidden="true">
+                <input type="text" name="website" tabindex="-1" autocomplete="off" id="modal-hp">
+            </div>
+            <input type="hidden" name="t" id="modal-ts" value="">
             <div class="form-simple">
                 <div class="form-group">
                     <label for="modal-phone">Votre num&eacute;ro de mobile</label>
                     <input type="tel" id="modal-phone" name="phone" placeholder="06 12 34 56 78" required autocomplete="tel" inputmode="tel">
-                    <span class="form-hint">Tapez votre num&eacute;ro au format habituel (06 ou 07)</span>
+                    <span class="form-hint">France (06/07), Belgique, Suisse, Luxembourg, Allemagne</span>
                     <span class="phone-feedback" id="modal-phone-feedback" aria-live="polite"></span>
                 </div>
             </div>
@@ -37,6 +44,19 @@
             </p>
         </form>
         <div id="modal-form-result" class="form-result"></div>
+        <div class="modal-manage-link" style="margin-top:16px;text-align:center">
+            <button type="button" class="link-btn" id="modal-manage-toggle" style="font-size:.85rem">D&eacute;j&agrave; inscrit&nbsp;? G&eacute;rer mon abonnement</button>
+            <div id="modal-manage-form" style="display:none;margin-top:10px">
+                <p style="font-size:.85rem;color:var(--text-secondary);margin-bottom:8px">
+                    Entrez votre num&eacute;ro pour recevoir votre lien de gestion par WhatsApp.
+                </p>
+                <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+                    <input type="tel" id="modal-manage-phone" placeholder="06 12 34 56 78" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:.9rem;max-width:200px" inputmode="tel">
+                    <button type="button" class="btn" id="modal-manage-btn" style="margin-top:0;padding:8px 16px;font-size:.85rem">Envoyer</button>
+                </div>
+                <div id="modal-manage-result" style="display:none;margin-top:8px;font-size:.85rem"></div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -45,11 +65,35 @@
     var JOURS = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
     var MOIS = ['janvier','f\u00e9vrier','mars','avril','mai','juin','juillet','ao\u00fbt','septembre','octobre','novembre','d\u00e9cembre'];
 
+    // Supported countries: FR (+33, 9 digits), BE (+32, 8-9 digits),
+    // CH (+41, 9 digits), LU (+352, 6-9 digits), DE (+49, 10-11 digits)
+    var PHONE_RULES = [
+        { cc: '33',  local: /^[67]\d{8}$/,   nat: /^0[67]\d{8}$/, strip: 1 },
+        { cc: '32',  local: /^4\d{7,8}$/,    nat: /^04\d{7,8}$/,  strip: 1 },
+        { cc: '41',  local: /^7[5-9]\d{7}$/, nat: /^07[5-9]\d{7}$/,strip: 1 },
+        { cc: '352', local: /^\d{6,9}$/,     nat: null,            strip: 0 },
+        { cc: '49',  local: /^1[5-7]\d{8,9}$/,nat: /^01[5-7]\d{8,9}$/,strip: 1 }
+    ];
+
     function normalizePhoneLocal(raw) {
         var v = raw.replace(/[\s.\-()]/g, '');
+        // French national format (06/07)
         if (/^0[67]\d{8}$/.test(v)) return '+33' + v.substring(1);
-        if (/^\+33[67]\d{8}$/.test(v)) return v;
-        if (/^33[67]\d{8}$/.test(v)) return '+' + v;
+        // International format: +CC or CC prefix
+        var intl = v;
+        if (intl.charAt(0) === '+') intl = intl.substring(1);
+        for (var i = 0; i < PHONE_RULES.length; i++) {
+            var r = PHONE_RULES[i];
+            if (intl.indexOf(r.cc) === 0) {
+                var digits = intl.substring(r.cc.length);
+                if (r.local.test(digits)) return '+' + r.cc + digits;
+            }
+        }
+        // Belgian/Swiss/German national format
+        for (var j = 0; j < PHONE_RULES.length; j++) {
+            var r2 = PHONE_RULES[j];
+            if (r2.nat && r2.nat.test(v)) return '+' + r2.cc + v.substring(r2.strip);
+        }
         return null;
     }
 
@@ -68,20 +112,14 @@
     function updateSmsDays() {
         var JOURS_COURT = ['dim.','lun.','mar.','mer.','jeu.','ven.','sam.'];
         var MOIS_COURT = ['jan.','f\u00e9v.','mars','avr.','mai','juin','juil.','ao\u00fbt','sept.','oct.','nov.','d\u00e9c.'];
-        // Generate 5 upcoming weekdays starting from tomorrow+1 (J+2)
+        // Generate 7 consecutive days starting from tomorrow (like weekly recap)
         var now = new Date();
-        var days = [];
         var d = new Date(now);
-        d.setDate(d.getDate() + 2); // start at J+2
-        while (days.length < 5) {
-            if (d.getDay() !== 0 && d.getDay() !== 6) {
-                days.push(new Date(d));
-            }
-            d.setDate(d.getDate() + 1);
-        }
-        for (var i = 0; i < 5; i++) {
+        d.setDate(d.getDate() + 1); // start at J+1
+        for (var i = 0; i < 7; i++) {
             var el = document.getElementById('modal-sms-day' + (i + 1));
-            if (el) el.textContent = JOURS_COURT[days[i].getDay()] + ' ' + days[i].getDate() + ' ' + MOIS_COURT[days[i].getMonth()];
+            if (el) el.textContent = JOURS_COURT[d.getDay()] + ' ' + d.getDate() + ' ' + MOIS_COURT[d.getMonth()];
+            d.setDate(d.getDate() + 1);
         }
     }
 
@@ -92,6 +130,9 @@
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
         updateSmsDays();
+        // Anti-bot: record open timestamp
+        var tsField = document.getElementById('modal-ts');
+        if (tsField) tsField.value = String(Math.floor(Date.now() / 1000));
         trackEvent('modal_open', { page: window.location.pathname });
         var phoneInput = document.getElementById('modal-phone');
         if (phoneInput) setTimeout(function() { phoneInput.focus(); }, 100);
@@ -130,27 +171,26 @@
             }
         });
 
-        // Phone validation
+        // Phone validation (international)
         var phone = document.getElementById('modal-phone');
         var feedback = document.getElementById('modal-phone-feedback');
         if (phone && feedback) {
             phone.addEventListener('input', function() {
                 var val = phone.value.replace(/[\s.\-()]/g, '');
                 if (!val || val.length < 2) { feedback.textContent = ''; feedback.className = 'phone-feedback'; return; }
+                // Try normalization — if it works, number is valid
+                var normalized = normalizePhoneLocal(val);
+                if (normalized) { feedback.textContent = 'Num\u00e9ro valide'; feedback.className = 'phone-feedback valid'; return; }
+                // Partial input — show helpful feedback
                 if (/^0[67]/.test(val)) {
-                    if (/^0[67]\d{8}$/.test(val)) { feedback.textContent = 'Num\u00e9ro valide'; feedback.className = 'phone-feedback valid'; }
-                    else if (val.length < 10) { feedback.textContent = 'Encore ' + (10 - val.length) + ' chiffre(s)'; feedback.className = 'phone-feedback'; }
-                    else if (val.length > 10) { feedback.textContent = 'Trop de chiffres'; feedback.className = 'phone-feedback invalid'; }
+                    if (val.length < 10) { feedback.textContent = 'Encore ' + (10 - val.length) + ' chiffre(s)'; feedback.className = 'phone-feedback'; }
+                    else { feedback.textContent = 'Trop de chiffres'; feedback.className = 'phone-feedback invalid'; }
                     return;
                 }
-                if (/^\+?33/.test(val)) {
-                    var digits = val.replace(/^\+?33/, '');
-                    if (/^[67]\d{8}$/.test(digits)) { feedback.textContent = 'Num\u00e9ro valide'; feedback.className = 'phone-feedback valid'; }
-                    else if (digits.length < 9) { feedback.textContent = 'Encore ' + (9 - digits.length) + ' chiffre(s)'; feedback.className = 'phone-feedback'; }
-                    else { feedback.textContent = 'V\u00e9rifiez le num\u00e9ro'; feedback.className = 'phone-feedback invalid'; }
-                    return;
+                if (/^\+?\d{2,4}/.test(val) && val.length < 15) {
+                    feedback.textContent = 'Continuez\u2026'; feedback.className = 'phone-feedback'; return;
                 }
-                feedback.textContent = 'Tapez un num\u00e9ro en 06 ou 07';
+                feedback.textContent = 'Ex: 06 12 34 56 78 ou +32 4xx xx xx xx';
                 feedback.className = 'phone-feedback invalid';
             });
         }
@@ -171,7 +211,7 @@
                 var rawPhone = document.getElementById('modal-phone').value;
                 var normalized = (typeof normalizePhone === 'function') ? normalizePhone(rawPhone) : normalizePhoneLocal(rawPhone);
                 if (!normalized) {
-                    showResult(resultEl, 'error', 'Num\u00e9ro non reconnu. Tapez votre num\u00e9ro au format 06 12 34 56 78');
+                    showResult(resultEl, 'error', 'Num\u00e9ro non reconnu. Formats accept\u00e9s\u00a0: 06/07, +33, +32, +41, +352, +49');
                     submitting = false;
                     return;
                 }
@@ -191,10 +231,10 @@
                             trackEvent('modal_submit', { page: window.location.pathname });
                             resultEl.className = 'form-result success';
                             resultEl.innerHTML = '<span class="success-check">\u2713</span> ' +
-                                (result.data.message || "C'est fait\u00a0! Vous recevrez les pr\u00e9visions Tempo des 5 prochains jours.");
+                                "V\u00e9rifiez votre WhatsApp\u00a0! Vous devriez recevoir un message dans les 30 secondes.";
                             resultEl.style.display = 'block';
                             form.reset();
-                            setTimeout(function() { closeSubscribeModal(); }, 3000);
+                            setTimeout(function() { closeSubscribeModal(); }, 4000);
                         } else {
                             trackEvent('modal_error', { page: window.location.pathname, reason: result.data.detail || 'api_error' });
                             showResult(resultEl, 'error', result.data.detail || "Erreur lors de l'inscription");
@@ -209,6 +249,51 @@
                         btn.innerHTML = originalText;
                         submitting = false;
                     });
+            });
+        }
+
+        // "Déjà inscrit ? Gérer mon abonnement" toggle + send
+        var manageToggle = document.getElementById('modal-manage-toggle');
+        var manageForm = document.getElementById('modal-manage-form');
+        if (manageToggle && manageForm) {
+            manageToggle.addEventListener('click', function() {
+                manageForm.style.display = manageForm.style.display === 'none' ? 'block' : 'none';
+            });
+        }
+        var manageBtn = document.getElementById('modal-manage-btn');
+        if (manageBtn) {
+            manageBtn.addEventListener('click', function() {
+                var phoneInput = document.getElementById('modal-manage-phone');
+                var resultEl = document.getElementById('modal-manage-result');
+                var raw = phoneInput ? phoneInput.value : '';
+                var normalized = normalizePhoneLocal(raw);
+                if (!normalized) {
+                    resultEl.style.display = 'block';
+                    resultEl.style.color = '#b91c1c';
+                    resultEl.textContent = 'Num\u00e9ro non reconnu.';
+                    return;
+                }
+                manageBtn.disabled = true;
+                var formData = new FormData();
+                formData.set('phone', normalized);
+                fetch('/api/resend-manage-link', { method: 'POST', body: formData })
+                    .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+                    .then(function(res) {
+                        resultEl.style.display = 'block';
+                        if (res.ok) {
+                            resultEl.style.color = '#2e7d32';
+                            resultEl.textContent = res.data.message || 'Lien envoy\u00e9 par WhatsApp\u00a0!';
+                        } else {
+                            resultEl.style.color = '#b91c1c';
+                            resultEl.textContent = res.data.detail || 'Erreur.';
+                        }
+                    })
+                    .catch(function() {
+                        resultEl.style.display = 'block';
+                        resultEl.style.color = '#b91c1c';
+                        resultEl.textContent = 'Erreur de connexion.';
+                    })
+                    .finally(function() { manageBtn.disabled = false; });
             });
         }
     });

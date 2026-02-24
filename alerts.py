@@ -824,13 +824,27 @@ def register_user(phone_number: str, seuil_rouge: int = 70,
     - recap_hebdo=True (message à plus forte valeur perçue)
     - heure_envoi='matin' (quand l'utilisateur planifie sa journée)
     """
-    phone_clean = phone_number.strip().replace(" ", "")
-    # Fix #8 : message corrigé "9 chiffres"
-    if not phone_clean.startswith("+33") or len(phone_clean) != 12:
-        return {"error": "Format invalide. Utilisez +33XXXXXXXXX (9 chiffres après +33)."}
-    # Fix #13 audit v4 : verifier que les 9 derniers caracteres sont des chiffres
-    if not phone_clean[3:].isdigit():
-        return {"error": "Le numéro ne doit contenir que des chiffres après +33."}
+    phone_clean = phone_number.strip().replace(" ", "").replace("-", "").replace(".", "")
+    # Validate international phone: +CC followed by digits, total 10-15 chars
+    # Supported: FR (+33), BE (+32), CH (+41), LU (+352), DE (+49)
+    import re
+    _PHONE_PATTERNS = {
+        "+33":  re.compile(r"^\+33[67]\d{8}$"),       # France: 12 chars
+        "+32":  re.compile(r"^\+324\d{7,8}$"),         # Belgium: 11-12 chars
+        "+41":  re.compile(r"^\+417[5-9]\d{7}$"),      # Switzerland: 12 chars
+        "+352": re.compile(r"^\+352\d{6,9}$"),         # Luxembourg: 10-13 chars
+        "+49":  re.compile(r"^\+491[5-7]\d{8,9}$"),    # Germany: 13-14 chars
+    }
+    if not phone_clean.startswith("+") or not phone_clean[1:].isdigit():
+        return {"error": "Format invalide. Utilisez un format international (+33, +32, +41, +352, +49)."}
+    phone_valid = False
+    for prefix, pattern in _PHONE_PATTERNS.items():
+        if phone_clean.startswith(prefix):
+            if pattern.match(phone_clean):
+                phone_valid = True
+            break
+    if not phone_valid:
+        return {"error": "Numéro non reconnu. Pays acceptés : France, Belgique, Suisse, Luxembourg, Allemagne."}
 
     heure_envoi = heure_envoi if heure_envoi in ("matin", "soir") else "matin"
 
@@ -848,7 +862,7 @@ def register_user(phone_number: str, seuil_rouge: int = 70,
 
         if existing:
             if existing["actif"]:
-                return {"error": "Ce numéro est déjà inscrit."}
+                return {"error": "Ce numéro est déjà inscrit. Retrouvez votre lien de gestion dans vos messages WhatsApp, ou répondez RECAP au bot."}
             else:
                 # Réactiver + mettre à jour chiffré ET préférences (BUG-05 QA)
                 conn.execute(
