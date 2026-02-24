@@ -185,18 +185,18 @@ class TestSmsDedupCrossType:
             (phone_h, phone_enc, now, now)
         )
 
-        # Simuler un SMS de prédiction déjà envoyé aujourd'hui
+        # Simuler un SMS de prédiction déjà envoyé pour demain
+        tomorrow = date.today() + timedelta(days=1)
         conn.execute(
             """INSERT INTO sms_logs (user_id, type_alerte, couleur, message_body,
-               date_envoi, statut, twilio_sid, erreur)
-               VALUES (1, 'prediction_rouge', 'ROUGE', 'test', ?, 'simulated', 'SIM1', '')""",
-            (now,)
+               date_envoi, statut, whatsapp_msg_id, erreur, date_cible)
+               VALUES (1, 'prediction_rouge', 'ROUGE', 'test', ?, 'simulated', 'SIM1', '', ?)""",
+            (now, tomorrow.isoformat())
         )
         conn.commit()
         conn.close()
 
-        # Tenter d'envoyer une alerte officielle → devrait être skip
-        tomorrow = date.today() + timedelta(days=1)
+        # Tenter d'envoyer une alerte officielle → devrait être skip (dédup par date_cible)
         send_official_alerts(tomorrow, "ROUGE")
 
         conn = get_db()
@@ -392,7 +392,7 @@ class TestMigrationV8:
         conn = get_db()
         try:
             version = conn.execute("PRAGMA user_version").fetchone()[0]
-            assert version == 21
+            assert version == 22
         finally:
             conn.close()
 

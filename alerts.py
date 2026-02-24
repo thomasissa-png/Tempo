@@ -14,8 +14,14 @@ Gestion complète :
 import logging
 import secrets
 from datetime import datetime, date, timedelta
+from zoneinfo import ZoneInfo
 from config import Config
 from database import get_db, hash_phone, encrypt_phone, decrypt_phone
+
+
+def _now_paris() -> datetime:
+    """Heure actuelle en Europe/Paris (cohérent avec scheduler/predictor)."""
+    return datetime.now(tz=ZoneInfo("Europe/Paris"))
 
 logger = logging.getLogger(__name__)
 
@@ -31,9 +37,17 @@ def _is_whatsapp_configured() -> bool:
 
 def _is_red_season(d: date | None = None) -> bool:
     """Vérifie si la date est en saison rouge (1er nov — 31 mars).
-    Les alertes ne sont envoyées que pendant cette période."""
+    Les jours ROUGE n'existent que pendant cette période (règle R1 EDF)."""
     d = d or date.today()
     return d.month >= 11 or d.month <= 3
+
+
+def _is_tempo_season(d: date | None = None) -> bool:
+    """Vérifie si la date est en saison Tempo (1er sept — 31 août = toute l'année).
+    Les jours BLANC et BLEU existent toute la saison, y compris sept-oct."""
+    # La saison Tempo couvre toujours du 1er sept au 31 août
+    # → il y a toujours une saison active, donc toujours True.
+    return True
 
 
 def send_whatsapp(phone_number: str, message: str) -> tuple[str, str]:
@@ -42,7 +56,7 @@ def send_whatsapp(phone_number: str, message: str) -> tuple[str, str]:
     Retourne (message_id, statut) — message_id vide si échec."""
     if not _is_whatsapp_configured():
         logger.info(f"[WhatsApp] Mode simulation → ****{phone_number[-4:]}: {message[:80]}...")
-        return ("SIM_" + datetime.now().strftime("%H%M%S"), "simulated")
+        return ("SIM_" + _now_paris().strftime("%H%M%S"), "simulated")
 
     import time
     import httpx
@@ -95,7 +109,7 @@ def send_whatsapp_template(phone_number: str, template_name: str,
     Retourne (message_id, statut)."""
     if not _is_whatsapp_configured():
         logger.info(f"[WhatsApp] Mode simulation template '{template_name}' → ****{phone_number[-4:]}")
-        return ("SIM_" + datetime.now().strftime("%H%M%S"), "simulated")
+        return ("SIM_" + _now_paris().strftime("%H%M%S"), "simulated")
 
     import time
     import httpx
@@ -453,7 +467,7 @@ def format_welcome(predictions: list[dict], manage_token: str = "") -> str:
     """Message de bienvenue envoyé immédiatement après inscription."""
     lines = [
         "👋 *Bienvenue sur le Calendrier Tempo EDF !*\n",
-        "Vous recevrez chaque matin les prévisions Tempo pour anticiper vos dépenses.",
+        "Vous recevrez les prévisions Tempo selon vos préférences pour anticiper vos dépenses.",
     ]
 
     if predictions:
@@ -474,7 +488,7 @@ def format_welcome(predictions: list[dict], manage_token: str = "") -> str:
 def format_recap_on_demand(predictions: list[dict]) -> str:
     """Récap envoyé quand l'utilisateur écrit RECAP."""
     lines = ["📊 *Prochains jours Tempo :*\n"]
-    for p in predictions[:5]:
+    for p in predictions[:7]:  # L8 fix: 7 jours comme le récap hebdo
         d = date.fromisoformat(p["date"])
         jour = JOURS_FR[d.weekday()][:3]
         mois = MOIS_FR[d.month - 1][:3]
@@ -527,11 +541,11 @@ def send_alerts_for_prediction(target_date: date, prediction: dict,
         heure_filter: si renseigné ('matin' ou 'soir'), n'envoie qu'aux users
                       correspondant à cette préférence d'horaire.
     """
-    if not _is_red_season():
-        return
-
     couleur = prediction["couleur_predite"]
     if couleur == "BLEU":
+        return
+    # B4 fix: ROUGE limité à nov-mars (R1), BLANC toute la saison
+    if couleur == "ROUGE" and not _is_red_season():
         return
 
     conn = get_db()
@@ -556,11 +570,6 @@ def send_alerts_for_prediction(target_date: date, prediction: dict,
             format_fn = format_alert_blanc
             type_alerte = "prediction_blanc"
 
-        today_str = date.today().isoformat()
-        # Fix audit DB : range comparison au lieu de LIKE (index-friendly)
-        today_start = today_str + "T00:00:00"
-        today_end = today_str + "T23:59:59"
-
         for user in users:
             # Filtre horaire (matin/soir)
             if heure_filter:
@@ -572,13 +581,13 @@ def send_alerts_for_prediction(target_date: date, prediction: dict,
                 if user_pref != heure_filter:
                     continue
 
-            # M-09 QA : dédup par date cible (pas par date d'envoi)
-            # Vérifie aussi la date d'envoi pour limiter à 1/jour
+            # B6 fix: dédup par (user, date_cible, type_alerte) au lieu de date_envoi
+            # Permet d'envoyer ROUGE J+2 et ROUGE J+3 le même jour
             existing = conn.execute(
                 """SELECT id FROM sms_logs
-                   WHERE user_id = ? AND date_envoi >= ? AND date_envoi <= ?
+                   WHERE user_id = ? AND date_cible = ?
                    AND type_alerte IN ('prediction_rouge', 'prediction_blanc')""",
-                (user["id"], today_start, today_end),
+                (user["id"], target_date.isoformat()),
             ).fetchone()
 
             if existing:
@@ -604,7 +613,8 @@ def send_alerts_for_prediction(target_date: date, prediction: dict,
                 tpl_name, tpl_components = _build_blanc_template(target_date, prediction, token)
             sid, statut = send_whatsapp_template(phone, tpl_name, tpl_components)
 
-            _log_sms(conn, user["id"], type_alerte, couleur, message, statut, sid)
+            _log_sms(conn, user["id"], type_alerte, couleur, message, statut, sid,
+                     date_cible=target_date.isoformat())
 
         conn.commit()
         logger.info(f"[Alertes] Envoi terminé pour {couleur} {target_date}")
@@ -634,22 +644,22 @@ def send_change_alerts(target_date: date, old_color: str, new_color: str):
 
     conn = get_db()
     try:
+        # L4 fix: inclure delai_alerte pour respecter les préférences
         users = conn.execute(
-            """SELECT id, phone_encrypted, manage_token
+            """SELECT id, phone_encrypted, manage_token, delai_alerte
                FROM users WHERE actif = 1 AND seuil_alerte_rouge > 0"""
         ).fetchall()
 
-        today_str = date.today().isoformat()
-        today_start = today_str + "T00:00:00"
-        today_end = today_str + "T23:59:59"
-
         for user in users:
-            # Pas de changement alert si déjà reçu une alerte aujourd'hui
+            # L4 fix: respecter le délai d'alerte de l'user
+            if delta > user["delai_alerte"]:
+                continue
+            # B6 fix: dédup changement par (user, date_cible)
             existing = conn.execute(
                 """SELECT id FROM sms_logs
-                   WHERE user_id = ? AND date_envoi >= ? AND date_envoi <= ?
+                   WHERE user_id = ? AND date_cible = ?
                    AND type_alerte = 'changement'""",
-                (user["id"], today_start, today_end),
+                (user["id"], target_date.isoformat()),
             ).fetchone()
             if existing:
                 continue
@@ -665,7 +675,8 @@ def send_change_alerts(target_date: date, old_color: str, new_color: str):
             # Envoi via template (business-initiated)
             tpl_name, tpl_components = _build_change_template(target_date, old_color, new_color, token)
             sid, statut = send_whatsapp_template(phone, tpl_name, tpl_components)
-            _log_sms(conn, user["id"], "changement", new_color, message, statut, sid)
+            _log_sms(conn, user["id"], "changement", new_color, message, statut, sid,
+                     date_cible=target_date.isoformat())
 
         conn.commit()
         logger.info(f"[Alertes] Changement {old_color}→{new_color} pour {target_date}")
@@ -675,9 +686,10 @@ def send_change_alerts(target_date: date, old_color: str, new_color: str):
 
 def send_official_alerts(target_date: date, couleur: str):
     """Envoie les alertes pour une couleur officiellement confirmée."""
-    if not _is_red_season():
-        return
     if couleur not in ("ROUGE", "BLANC"):
+        return
+    # B4 fix: ROUGE limité à nov-mars (R1), BLANC toute la saison
+    if couleur == "ROUGE" and not _is_red_season():
         return
 
     conn = get_db()
@@ -693,19 +705,13 @@ def send_official_alerts(target_date: date, couleur: str):
                    FROM users WHERE actif = 1 AND alerte_blanc = 1"""
             ).fetchall()
 
-        today_str = date.today().isoformat()
-        # Fix audit DB : range comparison au lieu de LIKE (index-friendly)
-        today_start = today_str + "T00:00:00"
-        today_end = today_str + "T23:59:59"
-
         for user in users:
-            # Dédup cross-type : pas d'alerte officielle si déjà reçu
-            # une prédiction OU un officiel aujourd'hui (BUG-04 QA)
+            # B6 fix: dédup officiel par (user, date_cible) — cross-type avec prédictions
             existing = conn.execute(
                 """SELECT id FROM sms_logs
-                   WHERE user_id = ? AND date_envoi >= ? AND date_envoi <= ?
+                   WHERE user_id = ? AND date_cible = ?
                    AND type_alerte IN ('officiel', 'prediction_rouge', 'prediction_blanc')""",
-                (user["id"], today_start, today_end),
+                (user["id"], target_date.isoformat()),
             ).fetchone()
 
             if existing:
@@ -721,7 +727,8 @@ def send_official_alerts(target_date: date, couleur: str):
             # Envoi via template (business-initiated)
             tpl_name, tpl_components = _build_confirmation_template(target_date, couleur, token)
             sid, statut = send_whatsapp_template(phone, tpl_name, tpl_components)
-            _log_sms(conn, user["id"], "officiel", couleur, message, statut, sid)
+            _log_sms(conn, user["id"], "officiel", couleur, message, statut, sid,
+                     date_cible=target_date.isoformat())
 
         conn.commit()
     finally:
@@ -729,9 +736,8 @@ def send_official_alerts(target_date: date, couleur: str):
 
 
 def send_weekly_recap(predictions: list[dict]):
-    """Envoie le récapitulatif hebdomadaire aux users inscrits."""
-    if not _is_red_season():
-        return
+    """Envoie le récapitulatif hebdomadaire aux users inscrits.
+    B4 fix: envoyé toute la saison Tempo (sept-août), pas seulement nov-mars."""
 
     conn = get_db()
     try:
@@ -774,7 +780,7 @@ def send_welcome(phone_number: str, manage_token: str = ""):
 
 
 def _get_upcoming_predictions() -> list[dict]:
-    """Récupère les 5 prochaines prédictions non confirmées depuis la DB."""
+    """Récupère les 7 prochaines prédictions non confirmées depuis la DB."""
     conn = get_db()
     try:
         today_str = date.today().isoformat()
@@ -782,7 +788,7 @@ def _get_upcoming_predictions() -> list[dict]:
             """SELECT date, couleur_predite
                FROM predictions
                WHERE date >= ? AND confirmed = 0
-               ORDER BY date LIMIT 5""",
+               ORDER BY date LIMIT 7""",
             (today_str,)
         ).fetchall()
         return [dict(r) for r in rows] if rows else []
@@ -794,18 +800,24 @@ def _get_upcoming_predictions() -> list[dict]:
 
 
 def _log_sms(conn, user_id: int, type_alerte: str, couleur: str,
-             message: str, statut: str, sid: str):
-    """Enregistre un envoi dans sms_logs."""
+             message: str, statut: str, sid: str,
+             date_cible: str = ""):
+    """Enregistre un envoi dans sms_logs.
+    S4 fix: redact manage token from message_body."""
+    import re
     erreur = statut if "error" in statut else ""
+    # S4: masquer les tokens /manage/xxx dans le body stocké en DB
+    safe_message = re.sub(r"/manage/[A-Za-z0-9_-]+", "/manage/***", message)
     conn.execute(
         """INSERT INTO sms_logs
-           (user_id, type_alerte, couleur, message_body, date_envoi, statut, twilio_sid, erreur)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-        (user_id, type_alerte, couleur, message,
-         datetime.now().isoformat(),
+           (user_id, type_alerte, couleur, message_body, date_envoi, statut, whatsapp_msg_id, erreur, date_cible)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (user_id, type_alerte, couleur, safe_message,
+         _now_paris().isoformat(),
          statut if sid else "failed",
          sid or "",
-         erreur),
+         erreur,
+         date_cible),
     )
 
 
@@ -854,7 +866,7 @@ def register_user(phone_number: str, seuil_rouge: int = 70,
     manage_token = secrets.token_urlsafe(16)
 
     conn = get_db()
-    now = datetime.now().isoformat()
+    now = _now_paris().isoformat()
     try:
         existing = conn.execute(
             "SELECT id, actif FROM users WHERE phone_hash = ?", (phone_h,)
@@ -907,7 +919,7 @@ def unsubscribe_user(phone_number: str) -> dict:
     """Désactive un utilisateur (opt-out)."""
     phone_h = hash_phone(phone_number.strip().replace(" ", ""))
     conn = get_db()
-    now = datetime.now().isoformat()
+    now = _now_paris().isoformat()
     try:
         user = conn.execute(
             "SELECT id FROM users WHERE phone_hash = ?", (phone_h,)
@@ -974,7 +986,7 @@ def update_user_preferences(token: str, seuil_rouge: int = 70,
     heure_envoi = heure_envoi if heure_envoi in ("matin", "soir") else "matin"
 
     conn = get_db()
-    now = datetime.now().isoformat()
+    now = _now_paris().isoformat()
     try:
         user = conn.execute(
             "SELECT id, actif FROM users WHERE manage_token = ?", (token,)
@@ -1006,7 +1018,7 @@ def regenerate_manage_token(token: str) -> dict:
         return {"error": "Token invalide."}
 
     conn = get_db()
-    now = datetime.now().isoformat()
+    now = _now_paris().isoformat()
     try:
         user = conn.execute(
             "SELECT id FROM users WHERE manage_token = ? AND actif = 1", (token,)
@@ -1052,7 +1064,8 @@ def handle_incoming_sms(from_number: str, body: str) -> str:
             return "Ce numéro n'est pas inscrit au Calendrier Tempo EDF."
 
     if body_clean in ("START", "OUI", "INSCRIRE"):
-        result = register_user(phone_clean)
+        # L3 fix: réactiver sans écraser les préférences
+        result = _reactivate_user(phone_clean)
         if result.get("success"):
             logger.info(f"[WhatsApp IN] Réinscription: ****{phone_clean[-4:]}")
             return "Vous êtes réinscrit aux alertes du Calendrier Tempo EDF !"
@@ -1070,13 +1083,39 @@ def handle_incoming_sms(from_number: str, body: str) -> str:
             "RECAP = prochains jours")
 
 
+def _reactivate_user(phone_number: str) -> dict:
+    """Réactive un user désabonné en préservant ses préférences (L3 fix).
+    Utilisé par le webhook START — ne reset PAS les préférences."""
+    phone_clean = phone_number.strip().replace(" ", "").replace("-", "").replace(".", "")
+    phone_h = hash_phone(phone_clean)
+    conn = get_db()
+    now = _now_paris().isoformat()
+    try:
+        user = conn.execute(
+            "SELECT id, actif FROM users WHERE phone_hash = ?", (phone_h,)
+        ).fetchone()
+        if not user:
+            return {"error": "Ce numéro n'est pas inscrit au Calendrier Tempo EDF."}
+        if user["actif"]:
+            return {"error": "Ce numéro est déjà actif."}
+        # Réactiver sans modifier les préférences
+        conn.execute(
+            "UPDATE users SET actif = 1, updated_at = ? WHERE id = ?",
+            (now, user["id"]),
+        )
+        conn.commit()
+        return {"success": True, "user_id": user["id"]}
+    finally:
+        conn.close()
+
+
 def cleanup_inactive_users(months: int = 6):
     """Supprime les users inactifs depuis plus de N mois (RGPD).
 
     Fix audit DB v13 : ON DELETE CASCADE supprime automatiquement
     les sms_logs associes via la FK.
     """
-    cutoff = (datetime.now() - timedelta(days=months * 30)).isoformat()
+    cutoff = (_now_paris() - timedelta(days=months * 30)).isoformat()
     conn = get_db()
     try:
         deleted = conn.execute(

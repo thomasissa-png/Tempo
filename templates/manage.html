@@ -102,6 +102,9 @@
         <div class="footer-tagline">Service ind&eacute;pendant et gratuit.</div>
         <div class="footer-links">
             <a href="/">Accueil</a>
+            <a href="/calendrier">Calendrier</a>
+            <a href="/blog/">Blog</a>
+            <a href="/alertes">Alertes</a>
             <a href="/mentions-legales">Mentions l&eacute;gales</a>
         </div>
     </div>
@@ -126,6 +129,9 @@
 
         try {
             const formData = new FormData(form);
+            // B2 fix: checkboxes non cochées absentes du FormData → forcer la valeur
+            formData.set('alerte_blanc', form.alerte_blanc.checked ? 'true' : 'false');
+            formData.set('recap_hebdo', form.recap_hebdo.checked ? 'true' : 'false');
             const resp = await fetch('/api/manage/' + token, {
                 method: 'POST',
                 body: formData,

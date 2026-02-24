@@ -1322,6 +1322,24 @@ def init_db():
         conn.commit()
         logger.info("Migration v21 appliquee (users.heure_envoi)")
 
+    if version < 22:
+        # Migration v22 — corrections audit WhatsApp
+        # B5: backfill heure_envoi NULL pour users pré-v21
+        conn.execute("UPDATE users SET heure_envoi = 'matin' WHERE heure_envoi IS NULL")
+        # B6: colonne date_cible dans sms_logs (pour quel jour l'alerte a été envoyée)
+        try:
+            conn.execute("ALTER TABLE sms_logs ADD COLUMN date_cible TEXT DEFAULT ''")
+        except _DbOperationalError:
+            logger.debug("Migration v22: colonne date_cible existe deja")
+        # T4: renommer twilio_sid → whatsapp_msg_id
+        try:
+            conn.execute("ALTER TABLE sms_logs RENAME COLUMN twilio_sid TO whatsapp_msg_id")
+        except _DbOperationalError:
+            logger.debug("Migration v22: colonne whatsapp_msg_id existe deja")
+        conn.execute("PRAGMA user_version = 22")
+        conn.commit()
+        logger.info("Migration v22 appliquee (heure_envoi backfill, sms_logs.date_cible, whatsapp_msg_id)")
+
     # Poids initiaux si vide
     existing = conn.execute("SELECT COUNT(*) as c FROM weights_history").fetchone()
     if not existing or existing["c"] == 0:

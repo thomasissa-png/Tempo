@@ -1791,9 +1791,9 @@ async def whatsapp_webhook_incoming(request: Request):
             logger.warning("[WhatsApp Webhook] Signature invalide — requête rejetée")
             raise HTTPException(status_code=403, detail="Invalid signature")
     else:
-        logger.debug(
+        logger.warning(
             "[WhatsApp Webhook] WHATSAPP_APP_SECRET non configuré — "
-            "vérification de signature désactivée"
+            "vérification de signature désactivée (S1: risque de sécurité en production)"
         )
 
     import json as _json
@@ -1820,8 +1820,15 @@ async def whatsapp_webhook_incoming(request: Request):
                     body = msg.get("button", {}).get("text", "")
 
                 if from_number and body:
-                    handle_incoming_sms(from_number, body)
+                    reply = handle_incoming_sms(from_number, body)
                     messages_processed += 1
+                    # B1 fix: envoyer la réponse au user via WhatsApp
+                    if reply:
+                        from alerts import send_whatsapp
+                        phone_for_reply = from_number
+                        if not phone_for_reply.startswith("+"):
+                            phone_for_reply = f"+{phone_for_reply}"
+                        send_whatsapp(phone_for_reply, reply)
 
             # --- Statuts de livraison (sent/delivered/read/failed) ---
             for status in value.get("statuses", []):
@@ -1840,11 +1847,13 @@ async def whatsapp_webhook_incoming(request: Request):
                         f"code={error_code}, {error_title}"
                     )
                     # Mettre à jour sms_logs pour marquer l'échec
+                    # S3 fix: conn.close() dans finally pour éviter les fuites
+                    conn = None
                     try:
                         conn = get_db()
                         if msg_id:
                             conn.execute(
-                                "UPDATE sms_logs SET statut = ?, erreur = ? WHERE twilio_sid = ?",
+                                "UPDATE sms_logs SET statut = ?, erreur = ? WHERE whatsapp_msg_id = ?",
                                 ("failed", f"{error_code}: {error_title}", msg_id),
                             )
                         # Désactiver l'utilisateur si le numéro est invalide
@@ -1857,13 +1866,17 @@ async def whatsapp_webhook_incoming(request: Request):
                                 "UPDATE users SET actif = 0, updated_at = ? WHERE phone_hash = ? AND actif = 1",
                                 (_now_paris().isoformat(), ph),
                             )
+                            # U5: log explicite (impossible d'envoyer WhatsApp à un numéro en erreur)
                             logger.warning(
-                                f"[WhatsApp Status] User ****{recipient[-4:]} désactivé (code {error_code})"
+                                f"[WhatsApp Status] User ****{recipient[-4:]} désactivé automatiquement "
+                                f"(code {error_code}: {error_title}). L'user ne sera pas notifié."
                             )
                         conn.commit()
-                        conn.close()
                     except Exception as e:
                         logger.debug(f"[WhatsApp Status] Erreur MAJ sms_logs: {e}")
+                    finally:
+                        if conn:
+                            conn.close()
                 elif delivery_status == "delivered":
                     logger.info(f"[WhatsApp Status] Délivré → ****{recipient[-4:]}")
                 elif delivery_status == "read":
@@ -1916,7 +1929,7 @@ async def api_manage_update(
     seuil_rouge: int = Form(70),
     delai: int = Form(3),
     alerte_blanc: bool = Form(False),
-    recap_hebdo: bool = Form(True),
+    recap_hebdo: bool = Form(False),
     heure_envoi: str = Form("matin"),
 ):
     """Met à jour les préférences via le token de gestion."""
