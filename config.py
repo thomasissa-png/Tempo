@@ -71,10 +71,12 @@ class Config:
     # Fix #12 : capacite nucleaire configurable (evolue avec fermetures/mises en service)
     RTE_NUCLEAR_CAPACITY_MW = int(os.getenv("RTE_NUCLEAR_CAPACITY_MW", "61370"))
 
-    # --- Twilio (WhatsApp) ---
-    TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
-    TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
-    TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER", "")
+    # --- WhatsApp (Meta Cloud API) ---
+    # Configurer via Facebook Developer > WhatsApp > API Setup
+    WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN", "")
+    WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
+    WHATSAPP_VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "")
+    WHATSAPP_API_VERSION = os.getenv("WHATSAPP_API_VERSION", "v21.0")
 
     # --- URL de base du site (pour les liens dans les messages WhatsApp) ---
     BASE_URL = os.getenv("BASE_URL", "https://www.calendrier-tempo.fr")

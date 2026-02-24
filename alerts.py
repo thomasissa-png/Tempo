@@ -1,4 +1,4 @@
-"""Système d'alertes WhatsApp via Twilio.
+"""Système d'alertes WhatsApp via Meta Cloud API (Facebook Developer).
 
 Gestion complète :
   - Envoi d'alertes WhatsApp selon préférences utilisateur
@@ -19,50 +19,62 @@ from database import get_db, hash_phone, encrypt_phone, decrypt_phone
 logger = logging.getLogger(__name__)
 
 # ================================================================
-# ENVOI WHATSAPP
+# ENVOI WHATSAPP (Meta Cloud API)
 # ================================================================
 
 
-def _get_twilio_client():
-    """Crée le client Twilio (lazy import)."""
-    if not Config.TWILIO_ACCOUNT_SID or not Config.TWILIO_AUTH_TOKEN:
-        return None
-    try:
-        from twilio.rest import Client
-        return Client(Config.TWILIO_ACCOUNT_SID, Config.TWILIO_AUTH_TOKEN)
-    except ImportError:
-        logger.error("[WhatsApp] Module twilio non installé")
-        return None
+def _is_whatsapp_configured() -> bool:
+    """Vérifie si les credentials Meta WhatsApp sont configurées."""
+    return bool(Config.WHATSAPP_TOKEN and Config.WHATSAPP_PHONE_NUMBER_ID)
 
 
 def send_whatsapp(phone_number: str, message: str) -> tuple[str, str]:
-    """Envoie un message WhatsApp via Twilio avec retry exponentiel.
-    H-03 QA : retry 2 fois avec backoff sur échec Twilio.
-    Retourne (sid, statut) — sid vide si échec."""
-    client = _get_twilio_client()
-    if not client:
+    """Envoie un message WhatsApp via Meta Cloud API avec retry exponentiel.
+    H-03 QA : retry 2 fois avec backoff sur échec API.
+    Retourne (message_id, statut) — message_id vide si échec."""
+    if not _is_whatsapp_configured():
         logger.info(f"[WhatsApp] Mode simulation → ****{phone_number[-4:]}: {message[:80]}...")
         return ("SIM_" + datetime.now().strftime("%H%M%S"), "simulated")
 
     import time
+    import httpx
+
     last_error = None
-    wa_from = f"whatsapp:{Config.TWILIO_PHONE_NUMBER}"
-    wa_to = f"whatsapp:{phone_number}"
+    url = (
+        f"https://graph.facebook.com/{Config.WHATSAPP_API_VERSION}"
+        f"/{Config.WHATSAPP_PHONE_NUMBER_ID}/messages"
+    )
+    headers = {
+        "Authorization": f"Bearer {Config.WHATSAPP_TOKEN}",
+        "Content-Type": "application/json",
+    }
+    # Format international sans le "+" pour l'API Meta
+    recipient = phone_number.lstrip("+")
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": recipient,
+        "type": "text",
+        "text": {"body": message},
+    }
+
     for attempt in range(3):  # H-03 QA : 3 tentatives max
         try:
-            msg = client.messages.create(
-                body=message,
-                from_=wa_from,
-                to=wa_to,
-            )
-            logger.info(f"[WhatsApp] Envoyé à ****{phone_number[-4:]}: {msg.sid}")
-            return (msg.sid, "sent")
+            with httpx.Client(timeout=15) as client:
+                resp = client.post(url, headers=headers, json=payload)
+            if resp.status_code == 200 or resp.status_code == 201:
+                data = resp.json()
+                msg_id = data.get("messages", [{}])[0].get("id", "")
+                logger.info(f"[WhatsApp] Envoyé à ****{phone_number[-4:]}: {msg_id}")
+                return (msg_id, "sent")
+            else:
+                last_error = f"HTTP {resp.status_code}: {resp.text[:200]}"
+                logger.warning(f"[WhatsApp] Tentative {attempt+1} échouée: {last_error}")
         except Exception as e:
-            last_error = e
-            if attempt < 2:
-                wait = 2 ** attempt  # 1s, 2s
-                logger.warning(f"[WhatsApp] Tentative {attempt+1} échouée, retry dans {wait}s: {e}")
-                time.sleep(wait)
+            last_error = str(e)
+            logger.warning(f"[WhatsApp] Tentative {attempt+1} échouée: {last_error}")
+        if attempt < 2:
+            wait = 2 ** attempt  # 1s, 2s
+            time.sleep(wait)
 
     logger.error(f"[WhatsApp] Échec envoi à ****{phone_number[-4:]} après 3 tentatives: {last_error}")
     return ("", f"error: {last_error}")
@@ -548,13 +560,16 @@ def regenerate_manage_token(token: str) -> dict:
 # ================================================================
 
 def handle_incoming_sms(from_number: str, body: str) -> str:
-    """Traite un message entrant (webhook Twilio). Gère STOP/START.
+    """Traite un message entrant (webhook Meta WhatsApp). Gère STOP/START.
     Retourne le message de réponse."""
     body_clean = body.strip().upper()
     phone_clean = from_number.strip().replace(" ", "")
-    # Twilio WhatsApp préfixe avec "whatsapp:", on le retire
+    # Normaliser le numéro : retirer le préfixe "whatsapp:" si présent
     if phone_clean.startswith("whatsapp:"):
         phone_clean = phone_clean[len("whatsapp:"):]
+    # Meta envoie les numéros sans "+", on le rajoute si absent
+    if phone_clean and not phone_clean.startswith("+"):
+        phone_clean = f"+{phone_clean}"
 
     if body_clean in ("STOP", "ARRET", "DESINSCRIRE", "QUIT", "CANCEL"):
         result = unsubscribe_user(phone_clean)

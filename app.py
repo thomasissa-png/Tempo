@@ -1670,54 +1670,59 @@ async def api_unsubscribe(request: Request, phone: str = Form(...)):
     return result
 
 
-@app.post("/api/sms/incoming")
-async def api_sms_incoming(request: Request):
-    """Webhook Twilio pour messages WhatsApp entrants (STOP/START).
+@app.get("/api/webhook/whatsapp")
+async def whatsapp_webhook_verify(request: Request):
+    """Vérification du webhook Meta WhatsApp (challenge handshake).
 
-    Twilio envoie From, Body, etc. en POST form-data.
-    Retourne du TwiML pour répondre automatiquement.
-    BUG-01 QA : endpoint manquant pour l'opt-out par message.
-    BUG-05 QA : vérification de la signature Twilio.
+    Meta envoie un GET avec hub.mode, hub.verify_token, hub.challenge.
+    On répond avec le challenge si le verify_token correspond.
+    """
+    params = request.query_params
+    mode = params.get("hub.mode")
+    token = params.get("hub.verify_token")
+    challenge = params.get("hub.challenge")
+
+    if mode == "subscribe" and token == Config.WHATSAPP_VERIFY_TOKEN:
+        logger.info("[WhatsApp Webhook] Vérification réussie")
+        return PlainTextResponse(content=challenge or "")
+    logger.warning("[WhatsApp Webhook] Vérification échouée (token invalide)")
+    raise HTTPException(status_code=403, detail="Verification failed")
+
+
+@app.post("/api/webhook/whatsapp")
+async def whatsapp_webhook_incoming(request: Request):
+    """Webhook Meta WhatsApp pour messages entrants (STOP/START).
+
+    Meta envoie le payload JSON avec les messages reçus.
+    BUG-01 QA : endpoint pour l'opt-out par message.
     """
     from alerts import handle_incoming_sms
 
-    # BUG-05 QA : vérifier la signature Twilio si le token est configuré
-    if Config.TWILIO_AUTH_TOKEN:
-        try:
-            from twilio.request_validator import RequestValidator
-            validator = RequestValidator(Config.TWILIO_AUTH_TOKEN)
-            signature = request.headers.get("X-Twilio-Signature", "")
-            # Construire l'URL complète de la requête
-            url = str(request.url)
-            form_data = dict(await request.form())
-            if not validator.validate(url, form_data, signature):
-                logger.warning("[SMS IN] Signature Twilio invalide")
-                raise HTTPException(status_code=403, detail="Invalid signature")
-        except ImportError:
-            # Module twilio non installé, skip la vérification
-            pass
-        except HTTPException:
-            raise
-        except Exception as e:
-            logger.warning(f"[SMS IN] Erreur vérification signature: {e}")
+    try:
+        payload = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON")
 
-    form = await request.form()
-    from_number = str(form.get("From", ""))
-    body = str(form.get("Body", ""))
+    # Extraire les messages du payload Meta
+    # Structure: { "entry": [{ "changes": [{ "value": { "messages": [...] } }] }] }
+    messages_processed = 0
+    for entry in payload.get("entry", []):
+        for change in entry.get("changes", []):
+            value = change.get("value", {})
+            for msg in value.get("messages", []):
+                from_number = msg.get("from", "")
+                body = ""
+                if msg.get("type") == "text":
+                    body = msg.get("text", {}).get("body", "")
+                elif msg.get("type") == "button":
+                    body = msg.get("button", {}).get("text", "")
 
-    if not from_number or not body:
-        raise HTTPException(status_code=400, detail="Missing From or Body")
+                if from_number and body:
+                    handle_incoming_sms(from_number, body)
+                    messages_processed += 1
 
-    response_text = handle_incoming_sms(from_number, body)
-
-    # Réponse TwiML pour que Twilio envoie un SMS de confirmation
-    twiml = (
-        '<?xml version="1.0" encoding="UTF-8"?>'
-        "<Response>"
-        f"<Message>{response_text}</Message>"
-        "</Response>"
-    )
-    return PlainTextResponse(content=twiml, media_type="application/xml")
+    logger.info(f"[WhatsApp Webhook] {messages_processed} message(s) traité(s)")
+    return JSONResponse(content={"status": "ok"}, status_code=200)
 
 
 @app.get("/api/users/stats")

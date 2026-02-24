@@ -210,7 +210,7 @@ class TestSmsDedupCrossType:
 
 
 # ================================================================
-# BUG-01 : Webhook Twilio STOP
+# BUG-01 : Webhook WhatsApp STOP
 # ================================================================
 
 class TestIncomingSmsHandler:
@@ -819,7 +819,7 @@ class TestWhatsAppSendRetry:
     """H-03 : send_whatsapp retente 3 fois max."""
     def test_retry_on_failure(self):
         from alerts import send_whatsapp
-        # Mode simulation (pas de Twilio client) — doit toujours réussir
+        # Mode simulation (pas de Meta credentials) — doit toujours réussir
         sid, status = send_whatsapp("+33699999999", "Test retry")
         assert status == "simulated"
         assert sid.startswith("SIM_")
@@ -954,7 +954,7 @@ class TestWhatsAppMessages:
         assert "Gérer mes alertes" not in msg
 
     def test_handle_incoming_whatsapp_prefix(self):
-        """handle_incoming_sms gère le préfixe whatsapp: de Twilio."""
+        """handle_incoming_sms gère le préfixe whatsapp: hérité."""
         from alerts import register_user, handle_incoming_sms
         register_user("+33655555558")
         response = handle_incoming_sms("whatsapp:+33655555558", "STOP")
