@@ -2,6 +2,7 @@
 
 ## ABSOLUTE RULES
 - **NEVER invent or generate synthetic data** (weather, RTE, temperatures, etc.) for backtesting or any analysis. EDF Tempo colors are directly caused by real weather conditions — synthetic data has zero correlation with actual colors and produces meaningless results. If data is missing, identify what's missing and ask the user to provide it (e.g. via Replit with internet access).
+- **NEVER push without running tests first.** Run `pytest tests/` and ensure ALL tests pass before any `git push`. If pytest is not installed, install it (`pip install pytest`) and the project dependencies (`pip install -r requirements.txt`) first. If installation fails (network issues), explicitly warn the user that tests could not be run and ask for permission before pushing. Do NOT silently skip tests.
 
 ## Success Criteria (CRITICAL)
 
@@ -256,10 +257,18 @@
 - **Minified assets**: `style.min.css` (37KB, -31%) and `app.min.js` (18KB, -47%). All templates reference minified versions.
 
 ### Alert UX
-- **WhatsApp alert framing**: Alerts emphasize **5-day forecast** (J+2 to J+5), not "demain" predictions. EDF confirms J+1 directly, so our value is anticipation.
-- **SMS mockup**: All mockups (alertes.html, _subscribe_modal.html) show a weekly forecast with 5 days of colored dots (🔴🔴⚪🔵🔵 format), not a single "jour rouge demain" message.
-- **Modal dynamic dates**: `updateSmsDays()` generates 5 upcoming weekdays starting from J+2 and displays them in the modal SMS preview.
-- **Subscription CTA**: All CTAs across templates use "Anticipez les 5 prochains jours Tempo" framing instead of "alerte la veille".
+- **WhatsApp alert framing**: Alerts emphasize **7-day forecast** (weekly recap), not "demain" predictions. EDF confirms J+1 directly, so our value is anticipation.
+- **SMS mockup**: Subscribe modal (`_subscribe_modal.html`) shows a 7-day weekly forecast preview (🔴🔴⚪🔵🔵🔵🔴 format), matching the real Sunday weekly recap message.
+- **Modal dynamic dates**: `updateSmsDays()` generates 7 consecutive days starting from J+1 and displays them in the modal SMS preview.
+- **Subscription CTA**: Modal title is "Anticipez les 7 prochains jours Tempo". Some pages (alertes.html, blog) still reference "5 prochains jours" for SEO — align progressively.
+- **Nav CTA opens modal directly**: All "Alertes gratuites" nav buttons are `<button onclick="openSubscribeModal()">` (not `<a href="/alertes">`). Modal included on all public pages (dashboard, calendrier, blog, alertes, a_propos, legal, 404). Admin page keeps `<a>` link.
+- **International phone support**: Modal + backend accept FR (+33), BE (+32), CH (+41), LU (+352), DE (+49). Frontend `normalizePhoneLocal()` uses `PHONE_RULES` array. Backend `register_user()` uses `_PHONE_PATTERNS` dict.
+- **Anti-bot protection**: (1) Honeypot hidden field `name="website"` — rejected if filled. (2) JS timestamp `name="t"` — rejected if form submitted < 3 seconds after modal open. Both checked in `/api/subscribe`.
+- **Umami tracking**: `trackEvent()` fires `modal_open`, `modal_close`, `modal_submit`, `modal_error` with `page` context.
+- **Success message**: After subscribe, shows "Vérifiez votre WhatsApp ! Vous devriez recevoir un message dans les 30 secondes." (not instant confirmation).
+- **Already-subscribed UX**: Error message includes "Retrouvez votre lien de gestion dans vos messages WhatsApp, ou répondez RECAP au bot."
+- **Manage link resend**: "Déjà inscrit ? Gérer mon abonnement" link in modal footer. Calls `POST /api/resend-manage-link` which sends manage URL via WhatsApp (generic response for privacy).
+- **Delivery failure auto-deactivation**: WhatsApp webhook deactivates users on Meta error codes 131026 (not on WhatsApp) and 131047 (re-engagement limit).
 
 ### Accessibility
 - **Focus trap**: Subscribe modal traps Tab/Shift+Tab focus cycling within modal elements. Focus restored to triggering element on close via `_previouslyFocused`.
