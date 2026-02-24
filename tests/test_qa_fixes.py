@@ -1415,15 +1415,15 @@ class TestAlertUXFraming:
         assert "87% confiance" not in content
         assert "Semaine" in content
 
-    def test_modal_has_5_day_slots(self):
-        """Subscribe modal has 5 day slots for dynamic dates."""
+    def test_modal_has_7_day_slots(self):
+        """Subscribe modal has 7 day slots for dynamic dates (weekly recap)."""
         filepath = os.path.join(
             os.path.dirname(os.path.dirname(__file__)),
             "templates", "_subscribe_modal.html"
         )
         with open(filepath) as f:
             content = f.read()
-        for i in range(1, 6):
+        for i in range(1, 8):
             assert f"modal-sms-day{i}" in content, f"Missing day slot {i}"
 
 
