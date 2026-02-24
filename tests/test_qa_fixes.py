@@ -3298,7 +3298,11 @@ class TestPropagateEdfEvaluation:
         )
 
     def test_evaluate_called_before_confirm(self):
-        """evaluate must be called BEFORE confirm_prediction in propagation."""
+        """evaluate must be called BEFORE confirm_prediction in propagation.
+
+        Uses rfind for confirm_prediction to match the actual function CALL
+        (not the import line which appears earlier in source).
+        """
         import inspect
         try:
             import app
@@ -3306,8 +3310,10 @@ class TestPropagateEdfEvaluation:
             import pytest
             pytest.skip("fastapi not available in this environment")
         source = inspect.getsource(app._propagate_edf_confirmation)
-        eval_pos = source.index("evaluate_predictions_for_date")
-        confirm_pos = source.index("confirm_prediction")
+        # Find the actual call sites (not imports): evaluate_predictions_for_date(
+        # and confirm_prediction( — the opening paren distinguishes calls from imports
+        eval_pos = source.index("evaluate_predictions_for_date(")
+        confirm_pos = source.index("confirm_prediction(")
         assert eval_pos < confirm_pos, (
             "evaluate_predictions_for_date must be called BEFORE confirm_prediction"
         )
