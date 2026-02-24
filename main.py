@@ -184,8 +184,8 @@ def _load_real_app():
             import secrets
             Config.ADMIN_PASSWORD = secrets.token_urlsafe(24)
             logger.warning(
-                "[Proxy] ADMIN_PASSWORD non défini — mot de passe généré : %s",
-                Config.ADMIN_PASSWORD,
+                "[Proxy] ADMIN_PASSWORD non défini — mot de passe aléatoire généré. "
+                "Définissez ADMIN_PASSWORD dans .env pour le conserver."
             )
 
         # Déclencher le startup (init_db, scheduler, etc.) dans l'event loop uvicorn

@@ -110,7 +110,7 @@
 {% if not error %}
 <script>
 (function() {
-    const token = "{{ token }}";
+    const token = {{ token | tojson }};
 
     // Formulaire de mise à jour des préférences
     const form = document.getElementById('manage-form');

@@ -19,6 +19,7 @@ Endpoints :
 """
 
 import asyncio
+import hashlib
 import hmac
 import logging
 import os
@@ -266,9 +267,8 @@ async def lifespan(app: FastAPI):
         Config.ADMIN_PASSWORD = secrets.token_urlsafe(24)
         logger.warning(
             "[SECURITE] ADMIN_PASSWORD non défini ! "
-            "Un mot de passe aléatoire a été généré pour cette session : %s "
-            "Définissez ADMIN_PASSWORD dans .env pour le conserver.",
-            Config.ADMIN_PASSWORD,
+            "Un mot de passe aléatoire a été généré pour cette session. "
+            "Définissez ADMIN_PASSWORD dans .env pour le conserver."
         )
 
     # Fix #25 : tout en arrière-plan pour que Cloud Run reçoive 200 immédiatement
@@ -404,10 +404,7 @@ def verify_admin(authorization: str | None, client_ip: str = "unknown"):
     # Fix #15 : constant-time comparison to prevent timing attacks
     if not hmac.compare_digest(password, Config.ADMIN_PASSWORD):
         _admin_rate_limit_store[client_ip].append(now)
-        logger.warning(
-            "[Admin] Échec login depuis %s (longueur saisie=%d, longueur attendue=%d)",
-            client_ip, len(password), len(Config.ADMIN_PASSWORD),
-        )
+        logger.warning("[Admin] Échec login depuis %s", client_ip)
         raise HTTPException(status_code=403, detail="Mot de passe admin incorrect")
 
 
@@ -1782,9 +1779,27 @@ async def whatsapp_webhook_incoming(request: Request):
     """
     from alerts import handle_incoming_sms
 
+    # C-1 Sécurité : vérification de la signature HMAC-SHA256 Meta
+    raw_body = await request.body()
+    app_secret = Config.WHATSAPP_APP_SECRET
+    if app_secret:
+        sig_header = request.headers.get("X-Hub-Signature-256", "")
+        expected = "sha256=" + hmac.new(
+            app_secret.encode(), raw_body, hashlib.sha256
+        ).hexdigest()
+        if not hmac.compare_digest(sig_header, expected):
+            logger.warning("[WhatsApp Webhook] Signature invalide — requête rejetée")
+            raise HTTPException(status_code=403, detail="Invalid signature")
+    else:
+        logger.debug(
+            "[WhatsApp Webhook] WHATSAPP_APP_SECRET non configuré — "
+            "vérification de signature désactivée"
+        )
+
+    import json as _json
     try:
-        payload = await request.json()
-    except Exception:
+        payload = _json.loads(raw_body)
+    except (ValueError, TypeError):
         raise HTTPException(status_code=400, detail="Invalid JSON")
 
     # Structure: { "entry": [{ "changes": [{ "value": { "messages": [...], "statuses": [...] } }] }] }
