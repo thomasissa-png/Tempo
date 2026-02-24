@@ -53,6 +53,12 @@
         return null;
     }
 
+    function trackEvent(name, data) {
+        if (typeof umami !== 'undefined' && umami.track) {
+            umami.track(name, data || {});
+        }
+    }
+
     function showResult(el, type, msg) {
         el.className = 'form-result ' + type;
         el.textContent = msg;
@@ -86,6 +92,7 @@
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
         updateSmsDays();
+        trackEvent('modal_open', { page: window.location.pathname });
         var phoneInput = document.getElementById('modal-phone');
         if (phoneInput) setTimeout(function() { phoneInput.focus(); }, 100);
     };
@@ -95,6 +102,7 @@
     window.closeSubscribeModal = function() {
         var modal = document.getElementById('subscribe-modal');
         if (!modal) return;
+        trackEvent('modal_close', { page: window.location.pathname });
         modal.style.display = 'none';
         document.body.style.overflow = '';
         if (_previouslyFocused) { _previouslyFocused.focus(); _previouslyFocused = null; }
@@ -180,6 +188,7 @@
                     })
                     .then(function(result) {
                         if (result.ok) {
+                            trackEvent('modal_submit', { page: window.location.pathname });
                             resultEl.className = 'form-result success';
                             resultEl.innerHTML = '<span class="success-check">\u2713</span> ' +
                                 (result.data.message || "C'est fait\u00a0! Vous recevrez les pr\u00e9visions Tempo des 5 prochains jours.");
@@ -187,10 +196,12 @@
                             form.reset();
                             setTimeout(function() { closeSubscribeModal(); }, 3000);
                         } else {
+                            trackEvent('modal_error', { page: window.location.pathname, reason: result.data.detail || 'api_error' });
                             showResult(resultEl, 'error', result.data.detail || "Erreur lors de l'inscription");
                         }
                     })
                     .catch(function() {
+                        trackEvent('modal_error', { page: window.location.pathname, reason: 'network' });
                         showResult(resultEl, 'error', 'Erreur de connexion au serveur');
                     })
                     .finally(function() {

@@ -30,7 +30,7 @@
             <a href="/">Accueil</a>
             <a href="/calendrier">Calendrier</a>
             <a href="/blog/">Blog</a>
-            <a href="/alertes" class="nav-cta">Alertes gratuites</a>
+            <button type="button" class="nav-cta" onclick="openSubscribeModal()">Alertes gratuites</button>
         </nav>
     </div>
 </header>
@@ -43,9 +43,11 @@
         <a href="/" class="btn" style="min-width:200px">Calendrier Tempo du jour</a>
         <a href="/calendrier" class="btn btn-outline" style="min-width:200px">Calendrier mensuel</a>
         <a href="/blog/" class="btn btn-outline" style="min-width:200px">Blog &amp; guides</a>
-        <a href="/alertes" class="btn btn-outline" style="min-width:200px">Alertes gratuites</a>
+        <button type="button" class="btn btn-outline" style="min-width:200px" onclick="openSubscribeModal()">Alertes gratuites</button>
     </div>
 </main>
+
+{% include '_subscribe_modal.html' %}
 
 <footer role="contentinfo">
     <div class="container footer-content">

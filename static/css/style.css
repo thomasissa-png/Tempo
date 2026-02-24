@@ -178,15 +178,20 @@ nav a:hover, nav a.active {
 }
 
 /* CTA accent dans la nav (Alertes gratuites) — poussé à droite */
-nav a.nav-cta {
+nav .nav-cta {
     background: rgba(255,255,255,0.95);
     color: var(--accent);
     font-weight: 700;
     border-radius: 50px;
     padding: 10px 20px;
     margin-left: auto;
+    border: none;
+    cursor: pointer;
+    font-size: inherit;
+    font-family: inherit;
+    text-decoration: none;
 }
-nav a.nav-cta:hover {
+nav .nav-cta:hover {
     background: white;
     color: var(--accent-hover);
 }
@@ -1445,7 +1450,7 @@ footer a {
         min-height: 44px;
     }
 
-    #main-nav a.nav-cta {
+    #main-nav .nav-cta {
         background: rgba(255,255,255,0.95);
         color: var(--accent);
         border-radius: 8px;
