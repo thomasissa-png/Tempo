@@ -2469,7 +2469,7 @@ select:focus-visible {
 }
 
 .subscribe-modal .sms-preview {
-    margin-bottom: 24px;
+    margin-bottom: 18px;
 }
 
 .subscribe-modal .form-simple {
@@ -2481,7 +2481,7 @@ select:focus-visible {
 }
 
 .subscribe-modal .btn-subscribe {
-    margin-top: 20px;
+    margin-top: 16px;
     width: 100%;
     justify-content: center;
 }
@@ -2491,11 +2491,24 @@ select:focus-visible {
     text-align: center;
 }
 
-.subscribe-modal .modal-manage-link {
-    margin-top: 16px;
-    padding-top: 14px;
-    border-top: 1px solid var(--border);
+.subscribe-modal .modal-manage-section {
+    margin-top: 14px;
     text-align: center;
+}
+
+.modal-manage-link-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: .82rem;
+    text-decoration: underline;
+    padding: 0;
+    margin-left: 4px;
+}
+
+.modal-manage-link-btn:hover {
+    color: var(--accent);
 }
 
 /* Success check animation (reco 12) */

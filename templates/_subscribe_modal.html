@@ -22,26 +22,25 @@
                 <div class="form-group">
                     <label for="modal-phone">Votre num&eacute;ro de mobile</label>
                     <input type="tel" id="modal-phone" name="phone" placeholder="06 12 34 56 78" required autocomplete="tel" inputmode="tel">
-                    <span class="form-hint">France (06/07). Ajoutez l'indicateur pays pour les autres pays (+32, +41, +352, +49).</span>
                     <span class="phone-feedback" id="modal-phone-feedback" aria-live="polite"></span>
                 </div>
-                <div class="form-group" style="margin-top:16px">
-                    <label style="font-size:.88rem;font-weight:600;margin-bottom:6px;display:block">Quelles alertes souhaitez-vous&nbsp;?</label>
-                    <div style="display:flex;flex-direction:column;gap:10px">
+                <div class="form-group" style="margin-top:10px">
+                    <label style="font-size:.88rem;font-weight:600;margin-bottom:4px;display:block">Quelles alertes souhaitez-vous&nbsp;?</label>
+                    <div style="display:flex;flex-direction:column;gap:6px">
                         <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;cursor:pointer">
-                            <input type="checkbox" name="alerte_rouge" id="modal-alerte-rouge" checked style="accent-color:#e53935">
-                            <span>&#128308; Alertes jours <strong>ROUGE</strong></span>
+                            <input type="checkbox" name="alerte_rouge" id="modal-alerte-rouge" checked>
+                            <span>Alertes jours <strong>rouge</strong></span>
                         </label>
                         <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;cursor:pointer">
-                            <input type="checkbox" name="alerte_blanc" id="modal-alerte-blanc" style="accent-color:#9e9e9e">
-                            <span>&#9898; Alertes jours <strong>BLANC</strong></span>
+                            <input type="checkbox" name="alerte_blanc" id="modal-alerte-blanc">
+                            <span>Alertes jours <strong>blanc</strong></span>
                         </label>
                         <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;cursor:pointer">
-                            <input type="checkbox" name="recap_hebdo" id="modal-recap-hebdo" checked style="accent-color:#1565c0">
-                            <span>&#128200; R&eacute;cap hebdomadaire (chaque dimanche)</span>
+                            <input type="checkbox" name="recap_hebdo" id="modal-recap-hebdo" checked>
+                            <span>R&eacute;cap hebdomadaire (chaque dimanche)</span>
                         </label>
                     </div>
-                    <span class="form-hint" style="margin-top:10px;display:block">Alertes actives du 1<sup>er</sup> novembre au 31 mars. Modifiables &agrave; tout moment.</span>
+                    <span class="form-hint" style="margin-top:6px;display:block">Alertes actives du 1<sup>er</sup> novembre au 31 mars. Modifiables &agrave; tout moment.</span>
                 </div>
             </div>
             <button type="submit" class="btn btn-subscribe" id="modal-subscribe-btn">Recevoir mon alerte gratuite</button>
@@ -53,17 +52,15 @@
             </p>
         </form>
         <div id="modal-form-result" class="form-result"></div>
-        <div class="modal-manage-link">
-            <button type="button" class="link-btn" id="modal-manage-toggle" style="font-size:.85rem">D&eacute;j&agrave; inscrit&nbsp;? G&eacute;rer mon abonnement</button>
-            <div id="modal-manage-form" style="display:none;margin-top:10px">
-                <p style="font-size:.85rem;color:var(--text-secondary);margin-bottom:8px">
-                    Entrez votre num&eacute;ro pour recevoir votre lien de gestion par WhatsApp.
-                </p>
+        <div class="modal-manage-section">
+            <span style="font-size:.82rem;color:var(--text-secondary)">D&eacute;j&agrave; inscrit&nbsp;?</span>
+            <button type="button" class="modal-manage-link-btn" id="modal-manage-toggle">G&eacute;rer mon abonnement</button>
+            <div id="modal-manage-form" style="display:none;margin-top:8px">
                 <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
-                    <input type="tel" id="modal-manage-phone" placeholder="06 12 34 56 78" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:.9rem;max-width:200px" inputmode="tel">
-                    <button type="button" class="btn" id="modal-manage-btn" style="margin-top:0;padding:8px 16px;font-size:.85rem">Envoyer</button>
+                    <input type="tel" id="modal-manage-phone" placeholder="06 12 34 56 78" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:.85rem;max-width:180px" inputmode="tel">
+                    <button type="button" class="btn" id="modal-manage-btn" style="margin-top:0;padding:6px 14px;font-size:.82rem">Envoyer</button>
                 </div>
-                <div id="modal-manage-result" style="display:none;margin-top:8px;font-size:.85rem"></div>
+                <div id="modal-manage-result" style="display:none;margin-top:6px;font-size:.82rem"></div>
             </div>
         </div>
     </div>
