@@ -379,7 +379,7 @@
                 <div class="flat-card"><h4>Liste des abonnés</h4>
                     <div style="overflow-x:auto">
                         <table id="subscribers-table" class="sub-table" style="display:none">
-                            <thead><tr><th>ID</th><th>Téléphone</th><th>Seuil rouge</th><th>Délai</th><th>Blanc</th><th>Récap</th><th>Statut</th><th>Inscrit le</th></tr></thead>
+                            <thead><tr><th>ID</th><th>Téléphone</th><th>Seuil rouge</th><th>Délai</th><th>Blanc</th><th>Récap</th><th>Heure</th><th>Statut</th><th>Inscrit le</th></tr></thead>
                             <tbody id="subscribers-body"></tbody>
                         </table>
                     </div>
@@ -1183,6 +1183,7 @@ async function loadSubscribers() {
                 <td>J-${escapeHtml(String(u.delai_alerte))}</td>
                 <td>${u.alerte_blanc?'Oui':'Non'}</td>
                 <td>${u.recap_hebdo?'Oui':'Non'}</td>
+                <td>${escapeHtml(String(u.heure_envoi||'matin'))}</td>
                 <td>${u.actif?'<span style="color:#16A34A">Actif</span>':'<span style="color:#DC2626">Inactif</span>'}</td>
                 <td>${escapeHtml(u.created_at?.substring(0,10)||'—')}</td></tr>`).join('');
             document.getElementById('subscribers-table').style.display = 'table';

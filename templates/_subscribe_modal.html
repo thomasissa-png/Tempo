@@ -34,6 +34,24 @@
                     <span class="form-hint">France (06/07), Belgique, Suisse, Luxembourg, Allemagne</span>
                     <span class="phone-feedback" id="modal-phone-feedback" aria-live="polite"></span>
                 </div>
+                <div class="form-group" style="margin-top:14px">
+                    <label style="font-size:.88rem;font-weight:600;margin-bottom:8px;display:block">Quelles alertes souhaitez-vous&nbsp;?</label>
+                    <div style="display:flex;flex-direction:column;gap:8px">
+                        <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;cursor:default;color:var(--text-secondary)">
+                            <input type="checkbox" checked disabled style="accent-color:#e53935">
+                            <span>&#128308; Alertes jours <strong style="color:var(--text)">ROUGE</strong></span>
+                        </label>
+                        <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;cursor:pointer">
+                            <input type="checkbox" name="alerte_blanc" id="modal-alerte-blanc" style="accent-color:#9e9e9e">
+                            <span>&#9898; Alertes jours <strong>BLANC</strong></span>
+                        </label>
+                        <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;cursor:pointer">
+                            <input type="checkbox" name="recap_hebdo" id="modal-recap-hebdo" checked style="accent-color:#1565c0">
+                            <span>&#128200; R&eacute;cap hebdomadaire (chaque dimanche)</span>
+                        </label>
+                    </div>
+                    <span class="form-hint" style="margin-top:8px;display:block">Les alertes sont actives du 1<sup>er</sup> sept. au 31 mars (saison Tempo). Vous pouvez modifier vos pr&eacute;f&eacute;rences &agrave; tout moment.</span>
+                </div>
             </div>
             <button type="submit" class="btn btn-subscribe" id="modal-subscribe-btn">Recevoir mon alerte gratuite</button>
             <p class="form-legal">
@@ -222,6 +240,11 @@
 
                 var formData = new FormData(form);
                 formData.set('phone', normalized);
+                // Explicitly set checkbox values (unchecked checkboxes are not in FormData)
+                var alerteBlanc = document.getElementById('modal-alerte-blanc');
+                var recapHebdo = document.getElementById('modal-recap-hebdo');
+                formData.set('alerte_blanc', alerteBlanc && alerteBlanc.checked ? 'true' : 'false');
+                formData.set('recap_hebdo', recapHebdo && recapHebdo.checked ? 'true' : 'false');
                 fetch('/api/subscribe', { method: 'POST', body: formData })
                     .then(function(resp) {
                         return resp.json().then(function(data) { return { ok: resp.ok, data: data }; });

@@ -2165,7 +2165,7 @@ async def admin_subscribers(request: Request, authorization: str | None = Header
     try:
         rows = conn.execute(
             """SELECT id, phone_last4, seuil_alerte_rouge, delai_alerte,
-                      alerte_blanc, recap_hebdo, actif, created_at, updated_at
+                      alerte_blanc, recap_hebdo, heure_envoi, actif, created_at, updated_at
                FROM users ORDER BY created_at DESC"""
         ).fetchall()
         users = [dict(r) for r in rows]
