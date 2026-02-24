@@ -1706,9 +1706,10 @@ async def whatsapp_webhook_verify(request: Request):
 
 @app.post("/api/webhook/whatsapp")
 async def whatsapp_webhook_incoming(request: Request):
-    """Webhook Meta WhatsApp pour messages entrants (STOP/START).
+    """Webhook Meta WhatsApp pour messages entrants + statuts de livraison.
 
-    Meta envoie le payload JSON avec les messages reçus.
+    Meta envoie le payload JSON avec les messages reçus ET les statuts
+    de livraison (sent/delivered/read/failed).
     BUG-01 QA : endpoint pour l'opt-out par message.
     """
     from alerts import handle_incoming_sms
@@ -1718,12 +1719,15 @@ async def whatsapp_webhook_incoming(request: Request):
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid JSON")
 
-    # Extraire les messages du payload Meta
-    # Structure: { "entry": [{ "changes": [{ "value": { "messages": [...] } }] }] }
+    # Structure: { "entry": [{ "changes": [{ "value": { "messages": [...], "statuses": [...] } }] }] }
     messages_processed = 0
+    statuses_processed = 0
+
     for entry in payload.get("entry", []):
         for change in entry.get("changes", []):
             value = change.get("value", {})
+
+            # --- Messages entrants (STOP/START/RECAP) ---
             for msg in value.get("messages", []):
                 from_number = msg.get("from", "")
                 body = ""
@@ -1736,7 +1740,46 @@ async def whatsapp_webhook_incoming(request: Request):
                     handle_incoming_sms(from_number, body)
                     messages_processed += 1
 
-    logger.info(f"[WhatsApp Webhook] {messages_processed} message(s) traité(s)")
+            # --- Statuts de livraison (sent/delivered/read/failed) ---
+            for status in value.get("statuses", []):
+                msg_id = status.get("id", "")
+                delivery_status = status.get("status", "")
+                recipient = status.get("recipient_id", "")
+                errors = status.get("errors", [])
+                statuses_processed += 1
+
+                if delivery_status == "failed":
+                    error_detail = errors[0] if errors else {}
+                    error_code = error_detail.get("code", "?")
+                    error_title = error_detail.get("title", "unknown")
+                    logger.error(
+                        f"[WhatsApp Status] ÉCHEC livraison → ****{recipient[-4:]}: "
+                        f"code={error_code}, {error_title}"
+                    )
+                    # Mettre à jour sms_logs pour marquer l'échec
+                    if msg_id:
+                        try:
+                            conn = get_db()
+                            conn.execute(
+                                "UPDATE sms_logs SET statut = ?, erreur = ? WHERE twilio_sid = ?",
+                                ("failed", f"{error_code}: {error_title}", msg_id),
+                            )
+                            conn.commit()
+                            conn.close()
+                        except Exception as e:
+                            logger.debug(f"[WhatsApp Status] Erreur MAJ sms_logs: {e}")
+                elif delivery_status == "delivered":
+                    logger.info(f"[WhatsApp Status] Délivré → ****{recipient[-4:]}")
+                elif delivery_status == "read":
+                    logger.info(f"[WhatsApp Status] Lu → ****{recipient[-4:]}")
+                elif delivery_status == "sent":
+                    logger.debug(f"[WhatsApp Status] Envoyé → ****{recipient[-4:]}")
+
+    if messages_processed or statuses_processed:
+        logger.info(
+            f"[WhatsApp Webhook] {messages_processed} message(s), "
+            f"{statuses_processed} statut(s) traité(s)"
+        )
     return JSONResponse(content={"status": "ok"}, status_code=200)
 
 

@@ -78,6 +78,16 @@ class Config:
     WHATSAPP_VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "")
     WHATSAPP_API_VERSION = os.getenv("WHATSAPP_API_VERSION", "v21.0")
 
+    # --- WhatsApp Templates (noms des templates pré-approuvés Meta) ---
+    # Ces noms doivent correspondre exactement aux templates créés dans Meta Business Suite
+    WHATSAPP_TEMPLATE_WELCOME = os.getenv("WHATSAPP_TEMPLATE_WELCOME", "tempo_bienvenue")
+    WHATSAPP_TEMPLATE_ALERT_ROUGE = os.getenv("WHATSAPP_TEMPLATE_ALERT_ROUGE", "tempo_alerte_rouge")
+    WHATSAPP_TEMPLATE_ALERT_BLANC = os.getenv("WHATSAPP_TEMPLATE_ALERT_BLANC", "tempo_alerte_blanc")
+    WHATSAPP_TEMPLATE_CONFIRMATION = os.getenv("WHATSAPP_TEMPLATE_CONFIRMATION", "tempo_confirmation")
+    WHATSAPP_TEMPLATE_CHANGE = os.getenv("WHATSAPP_TEMPLATE_CHANGE", "tempo_changement")
+    WHATSAPP_TEMPLATE_RECAP = os.getenv("WHATSAPP_TEMPLATE_RECAP", "tempo_recap_hebdo")
+    WHATSAPP_TEMPLATE_LANG = os.getenv("WHATSAPP_TEMPLATE_LANG", "fr")
+
     # --- URL de base du site (pour les liens dans les messages WhatsApp) ---
     BASE_URL = os.getenv("BASE_URL", "https://www.calendrier-tempo.fr")
 

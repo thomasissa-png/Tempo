@@ -88,6 +88,73 @@ def send_whatsapp(phone_number: str, message: str) -> tuple[str, str]:
     return ("", f"error: {last_error}")
 
 
+def send_whatsapp_template(phone_number: str, template_name: str,
+                           components: list[dict] | None = None) -> tuple[str, str]:
+    """Envoie un message WhatsApp via template pré-approuvé Meta.
+    Requis pour les messages business-initiated (hors fenêtre 24h).
+    Retourne (message_id, statut)."""
+    if not _is_whatsapp_configured():
+        logger.info(f"[WhatsApp] Mode simulation template '{template_name}' → ****{phone_number[-4:]}")
+        return ("SIM_" + datetime.now().strftime("%H%M%S"), "simulated")
+
+    import time
+    import httpx
+
+    last_error = None
+    url = (
+        f"https://graph.facebook.com/{Config.WHATSAPP_API_VERSION}"
+        f"/{Config.WHATSAPP_PHONE_NUMBER_ID}/messages"
+    )
+    headers = {
+        "Authorization": f"Bearer {Config.WHATSAPP_TOKEN}",
+        "Content-Type": "application/json",
+    }
+    recipient = phone_number.lstrip("+")
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": recipient,
+        "type": "template",
+        "template": {
+            "name": template_name,
+            "language": {"code": Config.WHATSAPP_TEMPLATE_LANG},
+        },
+    }
+    if components:
+        payload["template"]["components"] = components
+
+    for attempt in range(3):
+        try:
+            with httpx.Client(timeout=15) as client:
+                resp = client.post(url, headers=headers, json=payload)
+            if resp.status_code in (200, 201):
+                data = resp.json()
+                msg_id = data.get("messages", [{}])[0].get("id", "")
+                logger.info(f"[WhatsApp] Template '{template_name}' envoyé à ****{phone_number[-4:]}: {msg_id}")
+                return (msg_id, "sent")
+            else:
+                last_error = f"HTTP {resp.status_code}: {resp.text[:200]}"
+                logger.warning(f"[WhatsApp] Template tentative {attempt+1} échouée: {last_error}")
+        except Exception as e:
+            last_error = str(e)
+            logger.warning(f"[WhatsApp] Template tentative {attempt+1} échouée: {last_error}")
+        if attempt < 2:
+            wait = 2 ** attempt
+            time.sleep(wait)
+
+    logger.error(f"[WhatsApp] Échec template '{template_name}' → ****{phone_number[-4:]} après 3 tentatives: {last_error}")
+    return ("", f"error: {last_error}")
+
+
+def _tpl_body(*params: str) -> list[dict]:
+    """Construit les components body pour un template WhatsApp."""
+    if not params:
+        return []
+    return [{
+        "type": "body",
+        "parameters": [{"type": "text", "text": str(p)} for p in params],
+    }]
+
+
 # Alias pour compatibilité (logs, tests existants)
 send_sms = send_whatsapp
 
@@ -126,6 +193,128 @@ def _msg_footer(manage_token: str) -> str:
         parts.append(f"📋 Gérer mes alertes : {link}")
     parts.append("_Répondez STOP ou RECAP._")
     return "\n\n".join(parts)
+
+
+# ================================================================
+# TEMPLATE BUILDERS (paramètres pour templates Meta)
+# ================================================================
+
+def _build_welcome_template(predictions: list[dict], manage_token: str) -> tuple[str, list[dict]]:
+    """Construit le template bienvenue. Params: {{1}}=prévisions, {{2}}=URL gestion."""
+    pred_lines = []
+    for p in predictions[:5]:
+        d = date.fromisoformat(p["date"])
+        jour = JOURS_FR[d.weekday()][:3]
+        mois = MOIS_FR[d.month - 1][:3]
+        couleur = p.get("couleur_predite", "?")
+        emoji = {"ROUGE": "🔴", "BLANC": "⚪", "BLEU": "🔵"}.get(couleur, "❓")
+        pred_lines.append(f"{emoji} {jour}. {d.day} {mois}.")
+    pred_text = "\n".join(pred_lines) if pred_lines else "Aucune prévision disponible."
+    manage_url = _manage_link(manage_token) or Config.BASE_URL
+    return Config.WHATSAPP_TEMPLATE_WELCOME, _tpl_body(pred_text, manage_url)
+
+
+def _build_rouge_template(target_date: date, prediction: dict, manage_token: str) -> tuple[str, list[dict]]:
+    """Construit le template alerte rouge. Params: {{1}}=date, {{2}}=proba, {{3}}=temp, {{4}}=URL."""
+    date_fr = _format_date_fr(target_date)
+    prob = str(round(prediction.get("probabilite_rouge", 0) * 100))
+    temp = prediction.get("temp_min_prevue", "?")
+    temp_str = f"{temp:.0f}°C" if isinstance(temp, (int, float)) else "?"
+    manage_url = _manage_link(manage_token) or Config.BASE_URL
+    return Config.WHATSAPP_TEMPLATE_ALERT_ROUGE, _tpl_body(date_fr, prob, temp_str, manage_url)
+
+
+def _build_blanc_template(target_date: date, prediction: dict, manage_token: str) -> tuple[str, list[dict]]:
+    """Construit le template alerte blanc. Params: {{1}}=date, {{2}}=proba, {{3}}=URL."""
+    date_fr = _format_date_fr(target_date)
+    prob = str(round(prediction.get("probabilite_blanc", 0) * 100))
+    manage_url = _manage_link(manage_token) or Config.BASE_URL
+    return Config.WHATSAPP_TEMPLATE_ALERT_BLANC, _tpl_body(date_fr, prob, manage_url)
+
+
+def _build_confirmation_template(target_date: date, couleur: str, manage_token: str) -> tuple[str, list[dict]]:
+    """Construit le template confirmation. Params: {{1}}=emoji, {{2}}=couleur, {{3}}=date, {{4}}=conseil, {{5}}=URL."""
+    emoji = {"ROUGE": "🔴", "BLANC": "⚪", "BLEU": "🔵"}.get(couleur, "")
+    date_fr = _format_date_fr(target_date)
+    if couleur == "ROUGE":
+        advice = "Heures pleines 6h-22h à 0,76€/kWh. Reportez vos machines !"
+    elif couleur == "BLANC":
+        advice = "Tarif intermédiaire. OK pour les machines, évitez le four en heures pleines."
+    else:
+        advice = "Tarif bleu, le moins cher. Profitez-en !"
+    manage_url = _manage_link(manage_token) or Config.BASE_URL
+    return Config.WHATSAPP_TEMPLATE_CONFIRMATION, _tpl_body(emoji, couleur, date_fr, advice, manage_url)
+
+
+def _build_change_template(target_date: date, old_color: str, new_color: str,
+                           manage_token: str) -> tuple[str, list[dict]]:
+    """Construit le template changement. Params: {{1}}=date, {{2}}=ancien, {{3}}=nouveau, {{4}}=conseil, {{5}}=URL."""
+    date_fr = _format_date_fr(target_date)
+    emoji_old = {"ROUGE": "🔴", "BLANC": "⚪", "BLEU": "🔵"}.get(old_color, "")
+    emoji_new = {"ROUGE": "🔴", "BLANC": "⚪", "BLEU": "🔵"}.get(new_color, "")
+    old_str = f"{emoji_old} {old_color}"
+    new_str = f"{emoji_new} {new_color}"
+    if new_color == "ROUGE":
+        advice = "Heures pleines à 0,76€/kWh. Reportez vos machines !"
+    elif new_color == "BLANC" and old_color == "ROUGE":
+        advice = "Bonne nouvelle ! Tarif intermédiaire, moins cher que prévu."
+    elif new_color == "BLEU" and old_color == "ROUGE":
+        advice = "Bonne nouvelle ! Tarif bleu, le moins cher."
+    else:
+        advice = "Consultez le calendrier pour adapter vos usages."
+    manage_url = _manage_link(manage_token) or Config.BASE_URL
+    return Config.WHATSAPP_TEMPLATE_CHANGE, _tpl_body(date_fr, old_str, new_str, advice, manage_url)
+
+
+def _build_recap_template(predictions: list[dict], manage_token: str) -> tuple[str, list[dict]]:
+    """Construit le template recap hebdo. Params: {{1}}=prévisions, {{2}}=résumé, {{3}}=URL."""
+    lines = []
+    rouge_count = 0
+    blanc_count = 0
+    bleu_days = []
+    rouge_days = []
+
+    for p in predictions[:7]:
+        d = date.fromisoformat(p["date"])
+        jour = JOURS_FR[d.weekday()][:3]
+        mois = MOIS_FR[d.month - 1][:3]
+        couleur = p["couleur_predite"]
+        emoji = {"ROUGE": "🔴", "BLANC": "⚪", "BLEU": "🔵"}.get(couleur, "❓")
+        lines.append(f"{emoji} {jour}. {d.day} {mois}.")
+        if couleur == "ROUGE":
+            rouge_count += 1
+            rouge_days.append(JOURS_FR[d.weekday()][:3])
+        elif couleur == "BLANC":
+            blanc_count += 1
+        else:
+            bleu_days.append(JOURS_FR[d.weekday()][:3])
+
+    pred_text = "\n".join(lines)
+
+    summary_parts = []
+    if rouge_count:
+        summary_parts.append(f"{rouge_count} jour{'s' if rouge_count > 1 else ''} rouge{'s' if rouge_count > 1 else ''}")
+    if blanc_count:
+        summary_parts.append(f"{blanc_count} jour{'s' if blanc_count > 1 else ''} blanc{'s' if blanc_count > 1 else ''}")
+
+    summary_lines = []
+    if summary_parts:
+        summary_lines.append("⚠️ " + " et ".join(summary_parts) + " cette semaine.")
+    else:
+        summary_lines.append("✅ Semaine 100% bleue — profitez-en !")
+    if bleu_days:
+        summary_lines.append(f"👉 Lancez vos machines {', '.join(bleu_days)} (bleu).")
+    if rouge_days:
+        summary_lines.append(f"👉 Reportez lessive et four {', '.join(rouge_days)} (rouge).")
+
+    summary_text = "\n".join(summary_lines)
+    manage_url = _manage_link(manage_token) or Config.BASE_URL
+    return Config.WHATSAPP_TEMPLATE_RECAP, _tpl_body(pred_text, summary_text, manage_url)
+
+
+# ================================================================
+# FORMATAGE DES MESSAGES (texte libre — pour logs + réponses webhook 24h)
+# ================================================================
 
 
 def format_alert_rouge(target_date: date, prediction: dict, manage_token: str = "") -> str:
@@ -407,7 +596,13 @@ def send_alerts_for_prediction(target_date: date, prediction: dict,
 
             token = _get_manage_token(user)
             message = format_fn(target_date, prediction, manage_token=token)
-            sid, statut = send_whatsapp(phone, message)
+
+            # Envoi via template (business-initiated, hors fenêtre 24h)
+            if couleur == "ROUGE":
+                tpl_name, tpl_components = _build_rouge_template(target_date, prediction, token)
+            else:
+                tpl_name, tpl_components = _build_blanc_template(target_date, prediction, token)
+            sid, statut = send_whatsapp_template(phone, tpl_name, tpl_components)
 
             _log_sms(conn, user["id"], type_alerte, couleur, message, statut, sid)
 
@@ -466,7 +661,10 @@ def send_change_alerts(target_date: date, old_color: str, new_color: str):
             token = _get_manage_token(user)
             message = format_change_alert(target_date, old_color, new_color,
                                           manage_token=token)
-            sid, statut = send_whatsapp(phone, message)
+
+            # Envoi via template (business-initiated)
+            tpl_name, tpl_components = _build_change_template(target_date, old_color, new_color, token)
+            sid, statut = send_whatsapp_template(phone, tpl_name, tpl_components)
             _log_sms(conn, user["id"], "changement", new_color, message, statut, sid)
 
         conn.commit()
@@ -519,7 +717,10 @@ def send_official_alerts(target_date: date, couleur: str):
 
             token = _get_manage_token(user)
             message = format_alert_officiel(target_date, couleur, manage_token=token)
-            sid, statut = send_whatsapp(phone, message)
+
+            # Envoi via template (business-initiated)
+            tpl_name, tpl_components = _build_confirmation_template(target_date, couleur, token)
+            sid, statut = send_whatsapp_template(phone, tpl_name, tpl_components)
             _log_sms(conn, user["id"], "officiel", couleur, message, statut, sid)
 
         conn.commit()
@@ -549,7 +750,10 @@ def send_weekly_recap(predictions: list[dict]):
 
             token = _get_manage_token(user)
             message = format_recap_hebdo(predictions, manage_token=token)
-            sid, statut = send_whatsapp(phone, message)
+
+            # Envoi via template (business-initiated)
+            tpl_name, tpl_components = _build_recap_template(predictions, token)
+            sid, statut = send_whatsapp_template(phone, tpl_name, tpl_components)
             _log_sms(conn, user["id"], "recap_hebdo", "", message, statut, sid)
 
         conn.commit()
@@ -559,10 +763,12 @@ def send_weekly_recap(predictions: list[dict]):
 
 
 def send_welcome(phone_number: str, manage_token: str = ""):
-    """Envoie le message de bienvenue avec les 5 prochains jours."""
+    """Envoie le message de bienvenue avec les 5 prochains jours via template."""
     predictions = _get_upcoming_predictions()
-    message = format_welcome(predictions, manage_token=manage_token)
-    sid, statut = send_whatsapp(phone_number, message)
+
+    # Envoi via template (business-initiated — l'user vient de s'inscrire sur le site)
+    tpl_name, tpl_components = _build_welcome_template(predictions, manage_token)
+    sid, statut = send_whatsapp_template(phone_number, tpl_name, tpl_components)
     logger.info(f"[WhatsApp] Bienvenue envoyé à ****{phone_number[-4:]}: {statut}")
     return sid, statut
 
