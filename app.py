@@ -1996,7 +1996,10 @@ async def admin_run_task(request: Request, task: str = Form(...)):
         return {"status": "ok", "result": result}
     except Exception as e:
         logger.error(f"[Admin] Erreur tâche {task}: {e}", exc_info=True)
-        return {"status": "error", "result": f"Erreur d'exécution: {e}"}
+        return JSONResponse(
+            status_code=500,
+            content={"status": "error", "result": f"Erreur d'exécution: {e}"},
+        )
 
 
 @app.get("/admin/scheduler-status")
@@ -2052,7 +2055,9 @@ async def admin_sms_logs(request: Request, authorization: str | None = Header(No
     conn = get_db()
     try:
         rows = conn.execute(
-            "SELECT * FROM sms_logs ORDER BY id DESC LIMIT ?", (limit,)
+            """SELECT id, type_alerte, couleur, message_body, date_envoi,
+                      statut, whatsapp_msg_id, erreur, date_cible
+               FROM sms_logs ORDER BY id DESC LIMIT ?""", (limit,)
         ).fetchall()
         return {"status": "ok", "logs": [dict(r) for r in rows]}
     finally:
@@ -2168,6 +2173,42 @@ async def admin_agent_reports(request: Request, authorization: str | None = Head
     return {"status": "ok", **reports}
 
 
+@app.get("/admin/validate-articles")
+async def admin_validate_articles(request: Request, authorization: str | None = Header(None)):
+    """Valide tous les articles de blog via validate_article.py."""
+    verify_admin(authorization, request.client.host if request.client else "unknown")
+    import pathlib
+    from validate_article import validate
+
+    articles_dir = pathlib.Path(__file__).parent / "articles"
+    results = []
+    for md_file in sorted(articles_dir.glob("*.md")):
+        if md_file.name.startswith("_"):
+            continue
+        try:
+            ret = validate(str(md_file))
+            if isinstance(ret, tuple):
+                errors, warnings = ret
+            else:
+                errors, warnings = ret, []
+            results.append({
+                "filename": md_file.name,
+                "errors": errors,
+                "warnings": warnings,
+                "valid": len(errors) == 0,
+            })
+        except Exception as e:
+            results.append({
+                "filename": md_file.name,
+                "errors": [f"Exception: {e}"],
+                "warnings": [],
+                "valid": False,
+            })
+    total = len(results)
+    valid = sum(1 for r in results if r["valid"])
+    return {"status": "ok", "total": total, "valid": valid, "articles": results}
+
+
 @app.get("/admin/subscribers")
 async def admin_subscribers(request: Request, authorization: str | None = Header(None)):
     """Liste des abonnés WhatsApp (4 derniers chiffres uniquement)."""
@@ -2178,7 +2219,7 @@ async def admin_subscribers(request: Request, authorization: str | None = Header
     try:
         rows = conn.execute(
             """SELECT id, phone_last4, seuil_alerte_rouge, delai_alerte,
-                      alerte_blanc, recap_hebdo, heure_envoi, actif, created_at, updated_at
+                      alerte_blanc, recap_hebdo, heure_envoi, actif, created_at
                FROM users ORDER BY created_at DESC"""
         ).fetchall()
         users = [dict(r) for r in rows]

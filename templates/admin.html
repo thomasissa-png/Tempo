@@ -336,6 +336,8 @@
             <div class="flat-card" style="margin-bottom:20px"><pre class="log-viewer" id="seo-log">Chargement...</pre></div>
             <div class="section-title">Calendrier éditorial</div>
             <div class="flat-card"><pre class="log-viewer" id="seo-calendar">Chargement...</pre></div>
+            <div class="section-title" style="margin-top:20px">Validation des articles <button class="action-btn blue" onclick="runArticleValidation()" style="margin-left:8px;font-size:0.75rem;padding:4px 10px">Lancer</button></div>
+            <div id="seo-validation" class="flat-card" style="display:none"></div>
         </div>
 
         <!-- ═══════ TAB 3 : Backlinks ═══════ -->
@@ -1160,14 +1162,15 @@ async function runTask(taskName) {
         const fd = new FormData(); fd.append('task', taskName);
         const resp = await fetch('/admin/run-task', { method:'POST', body:fd, headers:{'Authorization':`Bearer ${adminPassword}`} });
         const data = await resp.json();
-        if (resp.ok) { r.textContent=data.result; r.style.background='#F0FDF4'; r.style.color='#166534'; }
-        else { r.textContent=data.detail||'Erreur'; r.style.background='#FEF2F2'; r.style.color='#991B1B'; }
+        if (resp.ok && data.status !== 'error') { r.textContent=data.result; r.style.background='#F0FDF4'; r.style.color='#166534'; }
+        else { r.textContent=data.result||data.detail||'Erreur'; r.style.background='#FEF2F2'; r.style.color='#991B1B'; }
     } catch(e) { r.textContent='Erreur : '+e.message; r.style.background='#FEF2F2'; r.style.color='#991B1B'; }
 }
 
 async function loadSubscribers() {
     try {
         const resp = await fetch('/admin/subscribers', { headers:{'Authorization':`Bearer ${adminPassword}`} });
+        if (!resp.ok) { console.error('loadSubscribers HTTP', resp.status); document.getElementById('subscribers-summary').innerHTML='<p style="color:#DC2626">Erreur HTTP '+resp.status+'</p>'; return; }
         const data = await resp.json(); if (data.status!=='ok') return;
         const kpiSubs = document.getElementById('kpi-subs');
         if (kpiSubs) kpiSubs.textContent = data.actifs;
@@ -1188,19 +1191,21 @@ async function loadSubscribers() {
                 <td>${escapeHtml(u.created_at?.substring(0,10)||'—')}</td></tr>`).join('');
             document.getElementById('subscribers-table').style.display = 'table';
         }
-    } catch {}
+    } catch (e) { console.error('loadSubscribers:', e); document.getElementById('subscribers-summary').innerHTML='<p style="color:#DC2626">Erreur de chargement</p>'; }
 }
 
 async function loadSmsLogs() {
+    const container = document.getElementById('sms-logs-container');
     try {
         const resp = await fetch('/admin/sms-logs?limit=50', { headers:{'Authorization':`Bearer ${adminPassword}`} });
+        if (!resp.ok) { console.error('loadSmsLogs HTTP', resp.status); container.innerHTML='<p style="color:#DC2626">Erreur HTTP '+resp.status+'</p>'; return; }
         const data = await resp.json(); if (data.status!=='ok') return;
-        const container = document.getElementById('sms-logs-container');
         if (!data.logs || data.logs.length === 0) {
             container.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Aucun SMS envoy&eacute;.</p>';
             return;
         }
-        const failed = data.logs.filter(l => l.statut !== 'sent' && l.statut !== 'delivered');
+        const _isOk = s => s==='sent'||s==='delivered'||s==='read'||s==='simulated';
+        const failed = data.logs.filter(l => !_isOk(l.statut));
         let html = '';
         if (failed.length > 0) {
             html += `<div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:14px;font-size:0.85rem">
@@ -1208,7 +1213,7 @@ async function loadSmsLogs() {
         }
         html += '<div style="overflow-x:auto"><table class="sub-table"><thead><tr><th>Date</th><th>Type</th><th>Couleur</th><th>Statut</th><th>Erreur</th></tr></thead><tbody>';
         for (const l of data.logs) {
-            const isFail = l.statut !== 'sent' && l.statut !== 'delivered';
+            const isFail = !_isOk(l.statut);
             const statusHtml = isFail
                 ? `<span style="color:#DC2626;font-weight:600">${escapeHtml(l.statut)}</span>`
                 : `<span style="color:#16A34A">${escapeHtml(l.statut)}</span>`;
@@ -1222,14 +1227,15 @@ async function loadSmsLogs() {
         }
         html += '</tbody></table></div>';
         container.innerHTML = html;
-    } catch {}
+    } catch (e) { console.error('loadSmsLogs:', e); container.innerHTML='<p style="color:#DC2626">Erreur de chargement</p>'; }
 }
 
 async function loadSchedulerStatus() {
+    const container = document.getElementById('scheduler-status');
     try {
         const resp = await fetch('/admin/scheduler-status', { headers:{'Authorization':`Bearer ${adminPassword}`} });
+        if (!resp.ok) { console.error('loadSchedulerStatus HTTP', resp.status); container.innerHTML='<p style="color:#DC2626">Erreur HTTP '+resp.status+'</p>'; return; }
         const data = await resp.json(); if (data.status!=='ok') return;
-        const container = document.getElementById('scheduler-status');
         if (!data.jobs || data.jobs.length === 0) {
             container.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Aucune t&acirc;che planifi&eacute;e.</p>';
             return;
@@ -1250,7 +1256,7 @@ async function loadSchedulerStatus() {
         }
         html += '</tbody></table></div>';
         container.innerHTML = html;
-    } catch {}
+    } catch (e) { console.error('loadSchedulerStatus:', e); container.innerHTML='<p style="color:#DC2626">Erreur de chargement</p>'; }
 }
 
 async function loadDbDiagnostic() {
@@ -1321,6 +1327,7 @@ async function loadDbDiagnostic() {
 async function loadAgentReports() {
     try {
         const resp = await fetch('/admin/agent-reports', { headers:{'Authorization':`Bearer ${adminPassword}`} });
+        if (!resp.ok) { console.error('loadAgentReports HTTP', resp.status); document.getElementById('seo-log').textContent='Erreur HTTP '+resp.status; return; }
         const data = await resp.json(); if (data.status!=='ok') return;
         document.getElementById('seo-log').textContent = data.seo_log||'Aucun rapport.';
         document.getElementById('seo-calendar').textContent = data.seo_calendar||'Aucun calendrier.';
@@ -1333,7 +1340,28 @@ async function loadAgentReports() {
             ).join('');
             document.getElementById('backlinks-drafts-section').style.display = 'block';
         } else document.getElementById('bl-drafts-count').textContent = '0';
-    } catch {}
+    } catch (e) { console.error('loadAgentReports:', e); document.getElementById('seo-log').textContent='Erreur de chargement'; }
+}
+
+async function runArticleValidation() {
+    const ct = document.getElementById('seo-validation');
+    ct.style.display='block'; ct.innerHTML='<p style="color:var(--text-secondary)">Validation en cours...</p>';
+    try {
+        const resp = await fetch('/admin/validate-articles', { headers:{'Authorization':`Bearer ${adminPassword}`} });
+        if (!resp.ok) { ct.innerHTML='<p style="color:#DC2626">Erreur HTTP '+resp.status+'</p>'; return; }
+        const data = await resp.json(); if (data.status!=='ok') { ct.innerHTML='<p style="color:#DC2626">Erreur</p>'; return; }
+        let html = `<div class="metric-row" style="margin-bottom:10px"><span>Articles</span><span class="metric-value">${data.valid}/${data.total} valides</span></div>`;
+        html += '<div style="overflow-x:auto"><table class="sub-table"><thead><tr><th>Article</th><th>Statut</th><th>Détails</th></tr></thead><tbody>';
+        for (const a of data.articles) {
+            const icon = a.valid ? '<span style="color:#16A34A">OK</span>' : '<span style="color:#DC2626">Erreur</span>';
+            const details = [];
+            if (a.errors.length) details.push(...a.errors.map(e=>'<span style="color:#DC2626">'+escapeHtml(e)+'</span>'));
+            if (a.warnings.length) details.push(...a.warnings.map(w=>'<span style="color:#F59E0B">'+escapeHtml(w)+'</span>'));
+            html += `<tr><td>${escapeHtml(a.filename)}</td><td>${icon}</td><td style="font-size:0.78rem">${details.join('<br>')||'—'}</td></tr>`;
+        }
+        html += '</tbody></table></div>';
+        ct.innerHTML = html;
+    } catch (e) { console.error('runArticleValidation:', e); ct.innerHTML='<p style="color:#DC2626">Erreur: '+escapeHtml(String(e))+'</p>'; }
 }
 
 function renderBacklinksProspects(raw) {
@@ -1346,14 +1374,16 @@ function renderBacklinksProspects(raw) {
     const headers = parseRow(lines[0]), rows = lines.slice(2).map(parseRow);
     let aq=0, pn=0;
     const si = headers.findIndex(h=>/statut|status/i.test(h));
-    rows.forEach(r=>{ if(!r[si])return; if(/acquis|obtained|done|ok/i.test(r[si]))aq++;else pn++; });
+    if (si !== -1) {
+        rows.forEach(r=>{ if(!r[si])return; if(/acquis|obtained|done|ok/i.test(r[si]))aq++;else pn++; });
+    }
     document.getElementById('bl-total').textContent=rows.length;
-    document.getElementById('bl-acquired').textContent=aq;
-    document.getElementById('bl-pending').textContent=pn;
+    document.getElementById('bl-acquired').textContent=si!==-1?aq:'—';
+    document.getElementById('bl-pending').textContent=si!==-1?pn:'—';
     let h = '<table class="prospect-table"><thead><tr>';
     headers.forEach(hd=>{ h+=`<th>${escapeHtml(hd)}</th>`; }); h += '</tr></thead><tbody>';
     rows.forEach(r=>{ h+='<tr>'; r.forEach((cell,i)=>{
-        if(i===si){ const st=cell.toLowerCase(); const cls=/acquis|obtained|done|ok/i.test(st)?'acquired':/draft|brouillon/i.test(st)?'draft':/contact/i.test(st)?'contacted':'pending';
+        if(i===si && si!==-1){ const st=cell.toLowerCase(); const cls=/acquis|obtained|done|ok/i.test(st)?'acquired':/draft|brouillon/i.test(st)?'draft':/contact/i.test(st)?'contacted':'pending';
             h+=`<td><span class="status-pill ${cls}">${escapeHtml(cell)}</span></td>`; }
         else h+=`<td>${escapeHtml(cell)}</td>`; }); h+='</tr>'; });
     h += '</tbody></table>'; ct.innerHTML = h;
