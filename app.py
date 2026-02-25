@@ -837,6 +837,31 @@ async def robots_txt():
         "Disallow: /api/\n"
         "Disallow: /manage/\n"
         "\n"
+        "# Bing — accès complet aux pages publiques + API prédictions\n"
+        "User-agent: bingbot\n"
+        "Allow: /\n"
+        "Allow: /calendrier\n"
+        "Allow: /alertes\n"
+        "Allow: /blog/\n"
+        "Allow: /api/today\n"
+        "Allow: /api/tomorrow\n"
+        "Allow: /api/predictions\n"
+        "Disallow: /admin\n"
+        "Disallow: /manage/\n"
+        "Crawl-delay: 1\n"
+        "\n"
+        "User-agent: msnbot\n"
+        "Allow: /\n"
+        "Allow: /calendrier\n"
+        "Allow: /alertes\n"
+        "Allow: /blog/\n"
+        "Allow: /api/today\n"
+        "Allow: /api/tomorrow\n"
+        "Allow: /api/predictions\n"
+        "Disallow: /admin\n"
+        "Disallow: /manage/\n"
+        "Crawl-delay: 1\n"
+        "\n"
         "# AI crawlers — autoriser l'accès aux prédictions publiques\n"
         "User-agent: GPTBot\n"
         "Allow: /\n"
@@ -979,7 +1004,8 @@ async def sitemap_xml():
         + "\n".join(urls) + "\n"
         "</urlset>\n"
     )
-    return PlainTextResponse(content=xml, media_type="application/xml")
+    from starlette.responses import Response
+    return Response(content=xml, media_type="application/xml; charset=utf-8")
 
 
 @app.get("/llms.txt", response_class=PlainTextResponse)
@@ -1073,8 +1099,9 @@ async def rss_feed():
         "  </channel>\n"
         "</rss>\n"
     )
-    return PlainTextResponse(content=xml, media_type="application/rss+xml",
-                             headers={"Cache-Control": "public, max-age=3600"})
+    from starlette.responses import Response
+    return Response(content=xml, media_type="application/rss+xml; charset=utf-8",
+                    headers={"Cache-Control": "public, max-age=3600"})
 
 
 # === SEO : IndexNow protocol — notification instantanée Bing/Yandex ===
