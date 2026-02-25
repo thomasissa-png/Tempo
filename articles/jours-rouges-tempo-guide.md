@@ -125,7 +125,7 @@ EDF n'annonce officiellement que la couleur du **lendemain**, chaque jour vers 1
 
 ### Combien peut-on économiser en évitant de consommer les jours rouges ?
 
-L'économie dépend de votre profil de consommation, mais elle est significative. Pour un foyer avec chauffage électrique consommant 40 kWh/jour, décaler 60 % de sa consommation des heures pleines vers les heures creuses un jour rouge permet d'économiser environ **13 euros par jour rouge**. Sur une saison entière (22 jours rouges), cela représente une économie potentielle de plus de **290 euros**. Inscrivez-vous à nos [alertes WhatsApp](/#subscribe) pour ne plus jamais rater un jour rouge.
+L'économie dépend de votre profil de consommation, mais elle est significative. Pour un foyer avec chauffage électrique consommant 40 kWh/jour, décaler 60 % de sa consommation des heures pleines vers les heures creuses un jour rouge permet d'économiser environ **13 euros par jour rouge**. Sur une saison entière (22 jours rouges), cela représente une économie potentielle de plus de **290 euros**. Pour comparer Tempo avec d'autres offres, consultez notre [comparatif Tempo vs Heures Creuses vs EDF Bleu](/blog/tempo-vs-heures-creuses-edf-bleu). Inscrivez-vous à nos [alertes WhatsApp](/#subscribe) pour ne plus jamais rater un jour rouge.
 
 ---
 

@@ -130,4 +130,4 @@ En priorité, ciblez les appareils qui consomment le plus : le chauffe-eau (coup
 
 ---
 
-*Dernière mise à jour : 17 février 2026. Les tarifs indiqués sont ceux en vigueur pour l'option Tempo EDF en 2026. Consultez le [Calendrier Tempo EDF](/) pour suivre les couleurs du jour en temps réel.*
+*Dernière mise à jour : 17 février 2026. Les tarifs indiqués sont ceux en vigueur pour l'option Tempo EDF en 2026. Consultez le [Calendrier Tempo EDF](/) pour suivre les couleurs du jour en temps réel et notre [guide complet Tempo EDF 2026](/blog/tempo-edf-2026-guide-complet) pour tout savoir sur l'offre.*

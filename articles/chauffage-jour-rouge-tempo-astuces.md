@@ -1,5 +1,5 @@
 ---
-title: Chauffage et jour rouge Tempo : 10 astuces pour réduire la facture
+title: Chauffage jour rouge Tempo : 10 astuces pour économiser
 description: 10 astuces concrètes pour chauffer votre logement sans exploser la facture lors des jours rouges Tempo EDF. Programmation, inertie thermique, alternatives au tout-électrique.
 publish_date: 2026-03-24
 keywords: chauffage jour rouge tempo, économie chauffage tempo, réduire consommation jour rouge, astuces tempo edf chauffage
@@ -188,4 +188,4 @@ EDF n'annonce officiellement que la couleur du lendemain, chaque jour vers 17h. 
 
 ---
 
-*Dernière mise à jour : 24 mars 2026. Les tarifs indiqués correspondent à l'offre Tempo EDF saison 2025-2026 (prix TTC). Consultez le [calendrier Tempo](/) pour suivre les couleurs du jour en temps réel et [recevoir les alertes](/#subscribe) avant chaque jour rouge.*
+*Dernière mise à jour : 24 mars 2026. Les tarifs indiqués correspondent à l'offre Tempo EDF saison 2025-2026 (prix TTC). Consultez le [calendrier Tempo](/) pour suivre les couleurs du jour en temps réel, [recevoir les alertes](/#subscribe) avant chaque jour rouge, ou comparer Tempo avec d'autres offres dans notre [comparatif Tempo vs Heures Creuses](/blog/tempo-vs-heures-creuses-edf-bleu).*

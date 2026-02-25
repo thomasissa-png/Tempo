@@ -109,7 +109,7 @@ Ce récapitulatif vous permet de planifier votre semaine entière : programmer l
 
 La principale différence réside dans le canal de communication. Les notifications push sont facilement ignorées ou bloquées par les paramètres du téléphone. Un message WhatsApp a un taux d'ouverture supérieur à 90 %, ce qui en fait le canal le plus fiable pour une alerte que vous ne pouvez pas vous permettre de manquer.
 
-De plus, notre service de prévision anticipe les jours rouges **jusqu'à 5 jours à l'avance**, bien avant la confirmation officielle d'EDF. Cette anticipation vous donne un temps précieux pour vous organiser. Consultez nos [prévisions en temps réel](/) pour voir les couleurs attendues sur les prochains jours, ou retrouvez le [calendrier complet de la saison 2025-2026](/blog/calendrier-tempo-2025-2026-dates) pour une vue d'ensemble des dates et couleurs.
+De plus, notre service de prévision anticipe les jours rouges **jusqu'à 5 jours à l'avance**, bien avant la confirmation officielle d'EDF. Cette anticipation vous donne un temps précieux pour vous organiser. Consultez nos [prévisions en temps réel](/) pour voir les couleurs attendues sur les prochains jours, retrouvez le [calendrier complet de la saison 2025-2026](/blog/calendrier-tempo-2025-2026-dates) pour une vue d'ensemble des dates et couleurs, ou découvrez notre [guide complet Tempo EDF 2026](/blog/tempo-edf-2026-guide-complet) pour tout comprendre sur l'offre.
 
 ## FAQ : vos questions sur les alertes Tempo
 
