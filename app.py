@@ -739,6 +739,12 @@ async def page_a_propos(request: Request):
     return templates.TemplateResponse("a_propos.html", {"request": request})
 
 
+@app.get("/blog", response_class=RedirectResponse)
+async def redirect_blog():
+    """Redirige /blog vers /blog/ (trailing slash canonique)."""
+    return RedirectResponse(url="/blog/", status_code=301)
+
+
 @app.get("/blog/", response_class=HTMLResponse)
 async def page_blog_index(request: Request):
     """Page index du blog — liste les articles publiés."""
