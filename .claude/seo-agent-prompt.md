@@ -341,10 +341,14 @@ Toutes les 4 semaines, au lieu d'écrire un nouvel article, rafraîchissez un ar
 ## Référence — Mots-clés cibles
 
 ### Priorité 1 (volume élevé)
-- tempo edf, tarif tempo edf, offre tempo edf
-- calendrier tempo, calendrier tempo edf
-- jour rouge tempo, jours rouges tempo edf
+- tempo edf, edf tempo (**IMPORTANT : inclure les deux ordres dans chaque article**)
+- tarif tempo edf, offre tempo edf
+- calendrier tempo, calendrier tempo edf, edf tempo calendrier
+- jour rouge tempo, jours rouges tempo edf, jour tempo edf, jours tempo edf, edf jours tempos
 - couleur tempo, couleur tempo demain, quelle couleur tempo aujourd'hui
+- edf tempo couleur du jour, couleur du jour tempo edf, couleur edf tempo
+- edf tempo couleur du jour et du lendemain des 12h
+- edf tempo calendrier 2025, edf tempo calendrier 2026
 
 ### Priorité 2 (intention forte)
 - alerte tempo, alerte jour rouge tempo, notification tempo

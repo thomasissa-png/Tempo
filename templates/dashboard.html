@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calendrier Tempo EDF — Couleur du jour et pr&eacute;visions 15 jours</title>
-    <meta name="description" content="Pr&eacute;vision des jours rouges, blancs et bleus Tempo EDF jusqu'&agrave; 15 jours &agrave; l'avance. Alertes gratuites. Couleur Tempo aujourd'hui et demain.">
+    <title>Calendrier Tempo EDF — Couleur du jour EDF Tempo et pr&eacute;visions 15 jours</title>
+    <meta name="description" content="Pr&eacute;vision des jours rouges, blancs et bleus Tempo EDF jusqu'&agrave; 15 jours &agrave; l'avance. Couleur EDF Tempo aujourd'hui et demain d&egrave;s 12h. Alertes gratuites.">
     <!-- Fix #S4 : canonical URL -->
     <link rel="canonical" href="https://www.calendrier-tempo.fr/">
     <!-- Fix #S10 : hreflang -->
@@ -21,8 +21,8 @@
     <meta name="theme-color" content="#1565C0">
     <link rel="manifest" href="/manifest.json">
     <!-- Fix #S2 : Open Graph -->
-    <meta property="og:title" content="Calendrier Tempo EDF — Couleur du jour et prévisions 15 jours">
-    <meta property="og:description" content="Anticipez les jours rouges Tempo EDF jusqu'à 15 jours à l'avance. Alertes gratuites.">
+    <meta property="og:title" content="Calendrier Tempo EDF — Couleur du jour EDF Tempo et prévisions 15 jours">
+    <meta property="og:description" content="Anticipez les jours rouges EDF Tempo jusqu'à 15 jours à l'avance. Couleur du jour et du lendemain dès 12h. Alertes gratuites.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://www.calendrier-tempo.fr/">
     <meta property="og:locale" content="fr_FR">
@@ -33,8 +33,8 @@
     <meta property="og:image:alt" content="Calendrier Tempo EDF — Prévisions des jours rouges, blancs et bleus">
     <!-- Fix #S2 : Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Calendrier Tempo EDF — Couleur du jour et prévisions 15 jours">
-    <meta name="twitter:description" content="Anticipez les jours rouges Tempo EDF. Alertes gratuites pour les abonn&eacute;s.">
+    <meta name="twitter:title" content="Calendrier Tempo EDF — Couleur du jour EDF Tempo et prévisions 15 jours">
+    <meta name="twitter:description" content="Anticipez les jours rouges EDF Tempo. Couleur du jour et du lendemain d&egrave;s 12h. Alertes gratuites.">
     <meta name="twitter:image" content="https://www.calendrier-tempo.fr/static/og-image.png">
     <!-- JSON-LD WebSite -->
     <script type="application/ld+json">
@@ -158,7 +158,7 @@
                 "name": "Quelle couleur Tempo aujourd'hui et demain ?",
                 "acceptedAnswer": {
                     "@type": "Answer",
-                    "text": "La couleur Tempo du jour et de demain est affichée en temps réel en haut de notre page d'accueil. EDF annonce la couleur du lendemain chaque jour entre 6h et 11h. En attendant la confirmation, nous affichons notre prévision basée sur la météo et la consommation nationale."
+                    "text": "La couleur EDF Tempo du jour et de demain est affichée en temps réel en haut de notre page d'accueil. EDF annonce la couleur du lendemain chaque jour entre 11h et 12h — dès 12h, la couleur du lendemain est généralement connue. En attendant la confirmation, nous affichons notre prévision basée sur la météo et la consommation nationale."
                 }
             },
             {
@@ -175,6 +175,22 @@
                 "acceptedAnswer": {
                     "@type": "Answer",
                     "text": "Non. Le Calendrier Tempo EDF est un service indépendant et gratuit. Il utilise les données publiques de l'API Tempo et les prévisions météo pour faire ses propres estimations. Seule la couleur annoncée par EDF fait foi. Nos prévisions se mettent à jour automatiquement dès la publication officielle."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Quand connaît-on la couleur EDF Tempo du lendemain ?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "EDF publie la couleur Tempo officielle du lendemain chaque jour entre 11h et 12h sur son site et son application. Dès 12h, la couleur du lendemain est généralement connue. Notre Calendrier Tempo affiche sa prévision dès la veille au soir, avant même l'annonce officielle EDF, grâce à notre algorithme basé sur la météo et la consommation nationale."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Quels sont les tarifs EDF Tempo en 2026 ?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "En 2026, les tarifs Tempo EDF en heures pleines (6h-22h) sont : jour bleu 0,1612 €/kWh, jour blanc 0,1853 €/kWh, jour rouge 0,7562 €/kWh. En heures creuses (22h-6h) : bleu 0,1272 €/kWh, blanc 0,1430 €/kWh, rouge 0,2068 €/kWh. Un jour rouge en heures pleines coûte donc près de 5 fois plus cher qu'un jour bleu."
                 }
             }
         ]
@@ -280,7 +296,7 @@
 
     <!-- P-07 : Comment ça marche centré utilisateur (pas algo) -->
     <section class="how-it-works" id="comment-ca-marche">
-        <h2>Comment &eacute;conomiser avec le Calendrier Tempo ?</h2>
+        <h2>Comment &eacute;conomiser avec le Calendrier EDF Tempo ?</h2>
         <div class="steps-grid">
             <div class="step-card">
                 <div class="step-number">1</div>
@@ -340,7 +356,7 @@
                 <svg viewBox="0 0 24 24" width="40" height="40" fill="#25D366" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
             </div>
             <div class="subscribe-cta-content">
-                <h2>Anticipez les 5 prochains jours Tempo par WhatsApp</h2>
+                <h2>Anticipez les 7 prochains jours EDF Tempo par WhatsApp</h2>
                 <p>Recevez chaque jour les pr&eacute;visions rouge, blanc et bleu de la semaine.
                     <strong>Gratuit, sans engagement, 30 secondes.</strong></p>
                 <p class="social-proof-inline">D&eacute;j&agrave; plus de 2&nbsp;500 foyers Tempo alert&eacute;s.</p>
@@ -364,7 +380,7 @@
 
     <!-- FAQ pratique pour Jean-Pierre -->
     <section class="faq-section">
-        <h2 class="section-title">Tout comprendre sur Tempo en 2 minutes</h2>
+        <h2 class="section-title">Tout comprendre sur EDF Tempo en 2 minutes</h2>
         <div class="faq-list">
             <details class="faq-item">
                 <summary>Combien co&ucirc;te r&eacute;ellement un jour rouge ?</summary>
@@ -421,13 +437,37 @@
             <details class="faq-item">
                 <summary>Quelle couleur Tempo aujourd'hui et demain ?</summary>
                 <div class="faq-content">
-                <p>La <strong>couleur Tempo</strong> du jour et de demain est affich&eacute;e en haut de cette page, mise &agrave; jour en temps r&eacute;el.
-                    EDF annonce la couleur du lendemain chaque jour entre 6h et 11h.
+                <p>La <strong>couleur EDF Tempo</strong> du jour et de demain est affich&eacute;e en haut de cette page, mise &agrave; jour en temps r&eacute;el.
+                    EDF annonce la couleur du lendemain chaque jour entre 11h et 12h &mdash; d&egrave;s 12h, la couleur du lendemain est g&eacute;n&eacute;ralement connue.
                     D&egrave;s que la couleur officielle est publi&eacute;e, notre site la refl&egrave;te imm&eacute;diatement.
                     En attendant la confirmation EDF, nous affichons notre <strong>pr&eacute;vision</strong> bas&eacute;e
                     sur la m&eacute;t&eacute;o et la consommation nationale. Pour conna&icirc;tre la couleur Tempo des
                     prochains jours, consultez le r&eacute;sum&eacute; des 10 jours ci-dessus ou notre
-                    <a href="/calendrier">calendrier complet</a>.</p>
+                    <a href="/calendrier">calendrier EDF Tempo complet</a>.</p>
+                </div>
+            </details>
+            <details class="faq-item">
+                <summary>Quand conna&icirc;t-on la couleur EDF Tempo du lendemain ?</summary>
+                <div class="faq-content">
+                <p>EDF publie la couleur Tempo officielle du lendemain chaque jour <strong>entre 11h et 12h</strong> sur son site et son application.
+                    D&egrave;s 12h, la couleur du lendemain est g&eacute;n&eacute;ralement connue.
+                    Notre Calendrier Tempo affiche sa pr&eacute;vision <strong>d&egrave;s la veille au soir</strong>,
+                    avant m&ecirc;me l'annonce officielle EDF, gr&acirc;ce &agrave; notre algorithme bas&eacute; sur la m&eacute;t&eacute;o
+                    et la consommation nationale.</p>
+                </div>
+            </details>
+            <details class="faq-item">
+                <summary>Quels sont les tarifs EDF Tempo en 2026 ?</summary>
+                <div class="faq-content">
+                <p>Les tarifs Tempo EDF en <strong>heures pleines</strong> (6h&ndash;22h) :</p>
+                <ul style="margin:8px 0 8px 20px;line-height:1.8">
+                    <li>Jour bleu : <strong>0,1612&nbsp;&euro;/kWh</strong></li>
+                    <li>Jour blanc : <strong>0,1853&nbsp;&euro;/kWh</strong></li>
+                    <li>Jour rouge : <strong>0,7562&nbsp;&euro;/kWh</strong></li>
+                </ul>
+                <p>En <strong>heures creuses</strong> (22h&ndash;6h) : bleu 0,1272&nbsp;&euro;, blanc 0,1430&nbsp;&euro;, rouge 0,2068&nbsp;&euro;/kWh.
+                    Un jour rouge en HP co&ucirc;te donc pr&egrave;s de <strong>5 fois plus cher</strong> qu'un jour bleu.
+                    <em>(Tarifs TTC 2026, v&eacute;rifiez sur votre contrat EDF.)</em></p>
                 </div>
             </details>
             <details class="faq-item">
