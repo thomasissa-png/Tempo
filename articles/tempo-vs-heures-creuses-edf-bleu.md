@@ -1,6 +1,6 @@
 ---
-title: Tempo vs Heures Creuses vs EDF Bleu : quel contrat choisir ?
-description: Comparatif détaillé entre l'offre Tempo EDF, les Heures Creuses et le tarif Bleu classique. Simulez vos économies et découvrez quelle offre est faite pour vous.
+title: Tempo vs Heures Creuses vs EDF Bleu : quel contrat ?
+description: Comparatif Tempo EDF, Heures Creuses et tarif Bleu : simulez vos économies et trouvez le contrat fait pour vous.
 publish_date: 2026-03-03
 keywords: tempo vs heures creuses, comparatif edf tempo, tempo ou tarif bleu, meilleur contrat edf 2026
 cluster: tempo-guide

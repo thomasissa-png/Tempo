@@ -128,7 +128,7 @@ _TOOLS = [
 
 # Commandes bash interdites (sécurité)
 _BASH_BLOCKLIST = re.compile(
-    r"\b(rm\s+-rf|drop\s+table|reset\s+--hard|push\s+--force|clean\s+-f)\b",
+    r"\b(rm\s+-rf|rm\s+[^|]*\.(?:py|html|db|yaml|json)|drop\s+table|reset\s+--hard|push\s+--force|clean\s+-f|chmod\s|curl\s.*\|\s*(?:ba)?sh)\b",
     re.IGNORECASE,
 )
 
@@ -136,11 +136,22 @@ _BASH_BLOCKLIST = re.compile(
 _WRITE_PROTECTED = {
     ".claude/seo-agent-prompt.md",
     "seo_agent.py",
+    "validate_article.py",
     "config.py",
     "database.py",
     "app.py",
     "scheduler.py",
 }
+
+# Répertoires protégés en écriture (l'agent ne doit écrire que dans articles/)
+_WRITE_PROTECTED_DIRS = {"templates/", "tests/", "static/"}
+
+
+def _is_write_protected(rel_path: str) -> bool:
+    """Vérifie si un chemin relatif est protégé en écriture."""
+    if rel_path in _WRITE_PROTECTED:
+        return True
+    return any(rel_path.startswith(d) for d in _WRITE_PROTECTED_DIRS)
 
 
 def _resolve_path(path: str) -> Path:
@@ -169,7 +180,7 @@ def _exec_tool(name: str, input_data: dict) -> str:
             p = _resolve_path(input_data["path"])
             # A-1 : protection en écriture des fichiers critiques
             rel = str(p.relative_to(_PROJECT_ROOT))
-            if rel in _WRITE_PROTECTED:
+            if _is_write_protected(rel):
                 return f"ERREUR : écriture interdite sur {rel} (fichier protégé)"
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text(input_data["content"], encoding="utf-8")
@@ -179,7 +190,7 @@ def _exec_tool(name: str, input_data: dict) -> str:
             p = _resolve_path(input_data["path"])
             # A-1 : protection en écriture des fichiers critiques
             rel = str(p.relative_to(_PROJECT_ROOT))
-            if rel in _WRITE_PROTECTED:
+            if _is_write_protected(rel):
                 return f"ERREUR : écriture interdite sur {rel} (fichier protégé)"
             if not p.exists():
                 return f"ERREUR : fichier introuvable : {p}"
@@ -258,19 +269,29 @@ def _web_search(query: str) -> str:
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
         with urllib.request.urlopen(req, timeout=15) as resp:
             html = resp.read().decode("utf-8", errors="replace")
-        # Extraire les résultats (titres + snippets)
+        # Extraire les résultats : titre (<a class="result__a">) + snippet (<a class="result__snippet">)
         results = []
-        for m in re.finditer(r'class="result__a"[^>]*>(.*?)</a>.*?class="result__snippet"[^>]*>(.*?)</snippet', html, re.DOTALL):
+        # Méthode 1 : extraction structurée titre + snippet
+        for m in re.finditer(
+            r'class="result__a"[^>]*>(.*?)</a>.*?class="result__snippet"[^>]*>(.*?)</(?:a|span|div)',
+            html, re.DOTALL,
+        ):
             title = re.sub(r"<[^>]+>", "", m.group(1)).strip()
             snippet = re.sub(r"<[^>]+>", "", m.group(2)).strip()
             if title:
                 results.append(f"- {title}\n  {snippet}")
+        # Méthode 2 (fallback) : extraire uniquement les snippets
         if not results:
-            # Fallback: extraire tout texte visible
-            for m in re.finditer(r'class="result__snippet"[^>]*>(.*?)</(?:span|div)', html, re.DOTALL):
+            for m in re.finditer(r'class="result__snippet"[^>]*>(.*?)</(?:a|span|div)', html, re.DOTALL):
                 text = re.sub(r"<[^>]+>", "", m.group(1)).strip()
                 if text and len(text) > 20:
                     results.append(f"- {text}")
+        # Méthode 3 (dernier recours) : extraire les titres seuls
+        if not results:
+            for m in re.finditer(r'class="result__a"[^>]*>(.*?)</a>', html, re.DOTALL):
+                title = re.sub(r"<[^>]+>", "", m.group(1)).strip()
+                if title and len(title) > 5:
+                    results.append(f"- {title}")
         return "\n\n".join(results[:8]) if results else f"Aucun résultat pour : {query}"
     except Exception as e:
         return f"Recherche web indisponible ({e}). Continuez avec vos connaissances existantes."
@@ -336,6 +357,8 @@ def run_seo_agent() -> dict:
 
     turns = 0
     final_report = ""
+    total_input_tokens = 0
+    total_output_tokens = 0
 
     try:
         from config import Config
@@ -360,6 +383,11 @@ def run_seo_agent() -> dict:
             msg = f"[Agent SEO] Erreur API Claude (turn {turns}): {e}"
             logger.error(msg)
             return {"success": False, "report": final_report, "turns": turns, "error": msg}
+
+        # Comptabiliser les tokens
+        if hasattr(response, "usage"):
+            total_input_tokens += getattr(response.usage, "input_tokens", 0)
+            total_output_tokens += getattr(response.usage, "output_tokens", 0)
 
         # Traiter la réponse
         assistant_content = response.content
@@ -393,12 +421,26 @@ def run_seo_agent() -> dict:
             # Pas d'outil mais stop_reason != end_turn → forcer fin
             break
 
+        # Context trimming : garder les 3 premiers + les N derniers échanges
+        # pour éviter de dépasser la fenêtre de contexte
+        if len(messages) > 20:
+            # Garder le message initial (user) + les 16 derniers messages
+            messages = messages[:1] + messages[-16:]
+
     if turns >= max_turns:
         logger.warning(f"[Agent SEO] Limite de {max_turns} tours atteinte")
+
+    # Estimer le coût (Sonnet : $3/M input, $15/M output)
+    est_cost = (total_input_tokens * 3 + total_output_tokens * 15) / 1_000_000
+    logger.info(
+        f"[Agent SEO] Tokens: {total_input_tokens} input + {total_output_tokens} output "
+        f"= coût estimé ${est_cost:.2f}"
+    )
 
     return {
         "success": True,
         "report": final_report,
         "turns": turns,
         "error": None,
+        "tokens": {"input": total_input_tokens, "output": total_output_tokens, "est_cost_usd": round(est_cost, 2)},
     }

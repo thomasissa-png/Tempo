@@ -1,6 +1,6 @@
 ---
 title: Historique calendrier Tempo EDF : saisons depuis 2020
-description: Retrouvez l'historique complet des jours rouges, blancs et bleus Tempo EDF depuis la saison 2020-2021. Statistiques, tendances et analyse des patterns pour mieux anticiper les prochains jours rouges.
+description: Historique complet des jours rouges, blancs et bleus Tempo EDF depuis 2020. Statistiques et tendances par saison.
 publish_date: 2026-02-17
 keywords: calendrier tempo, historique tempo edf, jours rouges tempo historique, calendrier tempo edf saisons, tempo edf dates
 cluster: calendrier
@@ -150,6 +150,20 @@ L'historique du calendrier Tempo vous aide à :
 1. **Planifier votre hiver** : si vous savez que janvier concentre 35% des jours rouges, vous pouvez anticiper vos stocks de bois, programmer vos congés, etc.
 2. **Comprendre les patterns** : les jours rouges arrivent par "vagues" de 2-4 jours, rarement isolés
 3. **Calibrer vos attentes** : sur 22 jours rouges, la moitié tombe en janvier-février
+
+## FAQ : vos questions sur l'historique Tempo
+
+### Les jours rouges tombent-ils toujours aux mêmes dates chaque année ?
+
+Non, les dates exactes changent chaque saison car elles dépendent de la météo et de la consommation nationale. En revanche, les **tendances** sont stables : janvier concentre toujours 30 à 40 % des jours rouges, et les vagues de froid déclenchent systématiquement des séquences rouges. L'historique montre que les mêmes semaines de janvier reviennent souvent.
+
+### Combien de jours rouges y a-t-il eu en moyenne par mois depuis 2020 ?
+
+En moyenne sur les 6 dernières saisons : **6 à 8 jours rouges en janvier**, 3 à 5 en décembre et février, 2 à 4 en novembre, et 1 à 3 en mars. Ce schéma est remarquablement stable d'une saison à l'autre, ce qui facilite l'anticipation.
+
+### EDF a-t-il déjà utilisé moins de 22 jours rouges dans une saison ?
+
+Non. Depuis la création de Tempo, EDF utilise la totalité des 22 jours rouges chaque saison. Même lors d'hivers doux, les jours rouges sont placés en fin de période (février-mars) pour respecter le quota budgétaire.
 
 ## Consultez le calendrier en temps réel
 

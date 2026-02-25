@@ -61,6 +61,25 @@ mots_cles_cibles:
     - "edf tempo couleur du jour et du lendemain des 12h"
   note: "IMPORTANT - les requetes 'EDF Tempo' (ordre inverse) representent ~40% du volume. Chaque page doit inclure naturellement les deux ordres."
 
+tarifs_tempo:
+  date_maj: "2026-02"
+  saison: "2025-2026"
+  abonnement_mensuel: "15.96"
+  bleu_hp: "0.1612"
+  bleu_hc: "0.1272"
+  blanc_hp: "0.1853"
+  blanc_hc: "0.1430"
+  rouge_hp: "0.7562"
+  rouge_hc: "0.2068"
+  note: "Les tarifs changent generalement en fevrier. Lors de l'Etape 0, si la date_maj a plus de 12 mois, l'agent DOIT verifier les tarifs en vigueur via web_search('tarif tempo edf {annee}') et mettre a jour cette section."
+
+saison_tempo:
+  saison_courante: "2025-2026"
+  debut: "2025-09-01"
+  fin: "2026-08-31"
+  periode_rouge: "2025-11-01 au 2026-03-31"
+  note: "En septembre, l'agent doit mettre a jour la saison_courante et les dates. Les articles de la nouvelle saison (guides, calendrier) doivent etre prioritaires en pre-saison (sept-oct)."
+
 historique:
   - date: "2026-02-19"
     changement: "Creation initiale des regles"

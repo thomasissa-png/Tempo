@@ -1,6 +1,6 @@
 ---
 title: Chauffage jour rouge Tempo : 10 astuces pour économiser
-description: 10 astuces concrètes pour chauffer votre logement sans exploser la facture lors des jours rouges Tempo EDF. Programmation, inertie thermique, alternatives au tout-électrique.
+description: 10 astuces pour chauffer votre logement sans exploser la facture les jours rouges Tempo EDF. Inertie, programmation, alternatives.
 publish_date: 2026-03-24
 keywords: chauffage jour rouge tempo, économie chauffage tempo, réduire consommation jour rouge, astuces tempo edf chauffage
 cluster: equipements

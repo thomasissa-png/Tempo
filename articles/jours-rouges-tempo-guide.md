@@ -1,8 +1,9 @@
 ---
 title: Jours rouges Tempo EDF : le guide complet 2025-2026
-description: Tout savoir sur les jours rouges Tempo EDF : quand tombent-ils, combien coûtent-ils, et comment les anticiper. Guide pratique avec le calendrier de la saison 2025-2026.
+description: Jours rouges Tempo EDF : quand tombent-ils, combien coûtent-ils et comment les anticiper. Calendrier saison 2025-2026.
 publish_date: 2026-02-24
 keywords: jours rouges tempo, jour rouge edf, calendrier jours rouges tempo 2026, tarif jour rouge tempo
+cluster: jours-rouges
 ---
 Les jours rouges Tempo sont la bête noire des 900 000 foyers abonnés à l'offre Tempo d'EDF. Avec un tarif en heures pleines qui atteint **0,7060 euros/kWh**, soit **plus de quatre fois le prix d'un jour bleu en heures pleines**, ces 22 journées par saison peuvent transformer une facture d'électricité en cauchemar si l'on n'y est pas préparé. Dans ce guide, nous vous expliquons tout : les règles qui les encadrent, leur coût réel, les périodes où ils tombent, et surtout comment les anticiper pour protéger votre budget.
 

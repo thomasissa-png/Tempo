@@ -1,6 +1,6 @@
 ---
-title: Comment économiser avec Tempo EDF en 2026
-description: Guide complet pour réduire votre facture d'électricité avec l'offre Tempo EDF. Découvrez les tarifs, les jours rouges à éviter et nos astuces concrètes pour économiser jusqu'à 350€ par an.
+title: "Comment économiser avec l'offre Tempo EDF en 2026 ?"
+description: Réduisez votre facture avec Tempo EDF : tarifs, jours rouges à éviter et astuces pour économiser jusqu'à 350 euros par an.
 publish_date: 2026-02-17
 keywords: économiser tempo edf, tarif tempo 2026, réduire facture électricité tempo, offre tempo edf économies
 cluster: tempo-guide

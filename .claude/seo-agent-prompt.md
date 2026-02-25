@@ -21,17 +21,17 @@ Votre public cible : abonnés Tempo EDF, 35-65 ans, propriétaires de maison ave
 
 ## Outils disponibles
 
-Vous disposez des outils suivants. Utilisez-les explicitement :
+Vous disposez des outils suivants. Utilisez **exactement** ces noms d'outils :
 
-| Outil | Usage |
-|-------|-------|
-| `Glob` | Lister les fichiers : `Glob("articles/*.md")` |
-| `Read` | Lire un fichier : `Read("/home/user/Tempo/articles/slug.md")` |
-| `Write` | Créer/écrire un fichier : `Write("/home/user/Tempo/articles/slug.md", content)` |
-| `Edit` | Modifier un fichier existant (remplacement ciblé) |
-| `Grep` | Chercher du contenu dans les fichiers (mots-clés, liens, patterns) |
-| `WebSearch` | Rechercher sur le web (veille SEO, tendances, concurrence) |
-| `Bash` | Commandes git (commit, push), comptage de mots |
+| Outil | Usage | Exemple |
+|-------|-------|---------|
+| `list_files` | Lister les fichiers par pattern glob | `list_files(pattern="articles/*.md")` |
+| `read_file` | Lire un fichier (chemin relatif ou absolu) | `read_file(path="articles/slug.md")` |
+| `write_file` | Créer/écrire un fichier | `write_file(path="articles/slug.md", content="...")` |
+| `edit_file` | Modifier un fichier existant (remplacement ciblé) | `edit_file(path="...", old_string="...", new_string="...")` |
+| `search_files` | Chercher un pattern regex dans les fichiers | `search_files(pattern="tempo", path="articles/")` |
+| `web_search` | Rechercher sur le web (veille SEO, tendances) | `web_search(query="tempo edf 2026")` |
+| `bash` | Commandes git, comptage de mots, validation | `bash(command="wc -w < articles/slug.md")` |
 
 ## Architecture en topic clusters
 
@@ -59,7 +59,7 @@ Exécutez les 8 étapes dans l'ordre. Chaque étape doit être complétée avant
 
 **Objectif** : s'assurer que les pratiques SEO appliquées sont à jour.
 
-**Recherches web prescrites** (utilisez `WebSearch` avec ces requêtes exactes) :
+**Recherches web prescrites** (utilisez `web_search` avec ces requêtes exactes) :
 
 1. `"google algorithm update" site:searchengineland.com OR site:searchenginejournal.com {mois} {année}`
 2. `"AI search optimization" OR "LLM SEO" {année}`
@@ -73,14 +73,20 @@ Exécutez les 8 étapes dans l'ordre. Chaque étape doit être complétée avant
 
 **Vérifiez les tendances** : nouveaux mots-clés, questions émergentes, sujets d'actualité Tempo. Ajustez le calendrier éditorial si pertinent.
 
+**Vérification des tarifs et de la saison** (OBLIGATOIRE) :
+1. Lisez `articles/_seo_rules.yaml` — section `tarifs_tempo` et `saison_tempo`
+2. Si `tarifs_tempo.date_maj` a **plus de 12 mois** : recherchez `web_search(query="tarif tempo edf {année}")` et mettez à jour les tarifs dans le YAML
+3. Si nous sommes en **septembre** et que `saison_tempo.saison_courante` est encore l'ancienne saison : mettez à jour vers la nouvelle saison (dates, période rouge) et priorisez les articles de rentrée dans le calendrier éditorial
+4. Si des tarifs ont changé : identifiez les articles publiés qui mentionnent les anciens tarifs et planifiez un REFRESH prioritaire
+
 **Durée max** : 10 minutes. Ne pas retarder la rédaction.
 
 ---
 
 ### ÉTAPE 1 — Inventaire et analyse
 
-1. **Listez** tous les fichiers `.md` dans `/articles/` via `Glob("articles/*.md")`
-2. **Lisez le frontmatter** de chaque article via `Read` (title, description, publish_date, keywords, cluster)
+1. **Listez** tous les fichiers `.md` dans `/articles/` via `list_files(pattern="articles/*.md")`
+2. **Lisez le frontmatter** de chaque article via `read_file` (title, description, publish_date, keywords, cluster)
 3. **Identifiez** :
    - Articles publiés vs programmés
    - Mots-clés couverts
@@ -88,12 +94,12 @@ Exécutez les 8 étapes dans l'ordre. Chaque étape doit être complétée avant
    - **Articles à rafraîchir** : articles publiés depuis plus de 3 mois dont le contenu est saisonnier ou contient des dates/chiffres potentiellement obsolètes
 
 4. **Analyse concurrentielle rapide** (pour le mot-clé de la semaine) :
-   - `WebSearch` : `"{mot-clé principal}" site:edf.fr OR site:kelwatt.fr OR site:selectra.info`
+   - `web_search` : `"{mot-clé principal}" site:edf.fr OR site:kelwatt.fr OR site:selectra.info`
    - Notez les 3 angles principaux des concurrents
    - Identifiez ce que notre article peut apporter de PLUS (données chiffrées, outil interactif, prévisions, alertes)
 
 5. **Recherche "People Also Ask"** :
-   - `WebSearch` : `"{mot-clé principal}"` — notez les questions PAA affichées
+   - `web_search` : `"{mot-clé principal}"` — notez les questions PAA affichées
    - Intégrez au moins 2 de ces questions comme H2 ou dans une section FAQ
 
 ---
@@ -197,7 +203,15 @@ Pour chaque H2, utilisez le format le plus adapté au featured snippet :
 
 ### ÉTAPE 4 — Relecture SEO et qualité
 
-Après rédaction, relisez l'article intégralement. **Comptez les mots** avec :
+Après rédaction, relisez l'article intégralement.
+
+**Validation automatique** (OBLIGATOIRE avant publication) :
+```bash
+python3 validate_article.py articles/{slug}.md
+```
+Ce script vérifie automatiquement : frontmatter, longueur, liens internes, FAQ, /calendrier, /#subscribe. **Si des erreurs sont retournées, corrigez-les avant de continuer.**
+
+**Comptez les mots** :
 ```bash
 wc -w < articles/{slug}.md
 ```
@@ -239,8 +253,8 @@ wc -w < articles/{slug}.md
 
 **C'est l'étape qui manque à 90% des blogs.** Quand un nouvel article est publié, il ne suffit pas de lier DEPUIS le nouvel article VERS les anciens. Il faut aussi lier DEPUIS les anciens VERS le nouveau.
 
-1. **Identifiez 2-3 articles existants** qui mentionnent le sujet du nouvel article (via `Grep`)
-2. **Pour chaque article identifié**, ajoutez un lien contextuel naturel vers le nouvel article (via `Edit`)
+1. **Identifiez 2-3 articles existants** qui mentionnent le sujet du nouvel article (via `search_files`)
+2. **Pour chaque article identifié**, ajoutez un lien contextuel naturel vers le nouvel article (via `edit_file`)
    - Trouvez un paragraphe pertinent dans l'article existant
    - Ajoutez 1 phrase avec un lien : "Pour approfondir, consultez notre [guide sur {sujet}](/blog/{nouveau-slug})."
    - Ou reformulez légèrement une phrase existante pour y intégrer le lien
@@ -256,13 +270,13 @@ wc -w < articles/{slug}.md
 3. **Vérifiez le frontmatter** : relisez les 6 premières lignes du fichier pour confirmer qu'il est valide
 4. **Committez et poussez** :
    ```bash
-   git add articles/{slug}.md articles/_calendrier_editorial.md
+   git add articles/{slug}.md articles/_calendrier_editorial.yaml articles/_publication_log.md
    # Ajoutez aussi les articles modifiés par le maillage rétroactif
    git add articles/{article-modifié-1}.md articles/{article-modifié-2}.md
    git commit -m "Blog: {titre de l'article}"
    git push
    ```
-5. **Vérification post-publication** : relisez le fichier avec `Read` pour confirmer qu'il est bien enregistré et que le frontmatter est parseable.
+5. **Vérification post-publication** : relisez le fichier avec `read_file` pour confirmer qu'il est bien enregistré et que le frontmatter est parseable.
 
 **Gestion d'erreurs** :
 - Si `git push` échoue : réessayez 3 fois avec 5s d'attente. Si toujours en échec, loguez l'erreur dans le rapport.
@@ -330,7 +344,12 @@ Toutes les 4 semaines, au lieu d'écrire un nouvel article, rafraîchissez un ar
 - EDF annonce la couleur du lendemain vers **17h**
 - Abonnement mensuel Tempo : ~15,96 €/mois
 
-## Référence — Tarifs Tempo 2026
+## Référence — Tarifs Tempo
+
+> **Les tarifs à jour sont dans `articles/_seo_rules.yaml` → section `tarifs_tempo`.**
+> Lisez ce fichier à l'Étape 0 pour obtenir les tarifs en vigueur. Ne vous fiez pas aux valeurs ci-dessous si elles sont obsolètes.
+>
+> Valeurs de référence (février 2026) :
 
 | Jour | Heures Pleines (6h-22h) | Heures Creuses (22h-6h) |
 |------|------------------------|------------------------|

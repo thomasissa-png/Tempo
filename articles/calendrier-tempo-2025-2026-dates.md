@@ -1,6 +1,6 @@
 ---
 title: Calendrier Tempo 2025-2026 : toutes les dates et couleurs
-description: Consultez le calendrier complet de la saison Tempo EDF 2025-2026. Historique des jours rouges, blancs et bleus avec les prévisions à 15 jours mises à jour quotidiennement.
+description: Calendrier Tempo EDF 2025-2026 complet : jours rouges, blancs, bleus et prévisions à 15 jours mises à jour chaque jour.
 publish_date: 2026-03-10
 keywords: calendrier tempo 2025 2026, dates jours rouges tempo, historique tempo edf, saison tempo 2026
 cluster: calendrier
@@ -50,7 +50,7 @@ C'est durant cette fenêtre de cinq mois que se concentrent tous les jours rouge
 | Février | 3 à 5 | 6 à 8 |
 | Mars | 1 à 3 | 4 à 6 |
 
-**Janvier est historiquement le mois le plus chargé en jours rouges.** Les vagues de froid hivernales, combinées à une consommation électrique maximale pour le chauffage, poussent EDF à activer ses jours les plus chers durant cette période. La saison 2025-2026 ne déroge pas à cette tendance, avec une concentration notable de jours rouges autour des épisodes de températures négatives de janvier 2026. Pour comparer avec les saisons précédentes, retrouvez l'[historique complet des saisons Tempo](/blog/calendrier-tempo-historique-saisons).
+**Janvier est historiquement le mois le plus chargé en jours rouges.** Les vagues de froid hivernales, combinées à une consommation électrique maximale pour le chauffage, poussent EDF à activer ses jours les plus chers durant cette période. La saison 2025-2026 ne déroge pas à cette tendance, avec une concentration notable de jours rouges autour des épisodes de températures négatives de janvier 2026. Pour comparer avec les saisons précédentes, retrouvez l'[historique complet des saisons Tempo](/blog/calendrier-tempo-historique-saisons). Si vous cherchez des solutions pour réduire l'impact des jours rouges sur votre chauffage, consultez nos [10 astuces chauffage pour les jours rouges Tempo](/blog/chauffage-jour-rouge-tempo-astuces).
 
 ### Avril à août 2026 : la fin de saison sereine
 
@@ -78,7 +78,7 @@ Notre système de prévision combine plusieurs sources de données pour produire
 
 Nous collectons les prévisions de température, pression atmosphérique et gradient thermique pour **9 villes représentatives** de la France métropolitaine, pondérées par leur poids démographique et leur consommation électrique. Les données proviennent de Météo France (modèles AROME et ARPEGE) avec un système de fallback vers Open-Meteo pour garantir la continuité du service.
 
-La température reste le facteur numéro un : plus il fait froid, plus la demande électrique augmente (chauffage), plus la probabilité d'un jour rouge est élevée. Notre scoring attribue **40 % du poids total** à la composante température.
+La température reste le facteur numéro un : plus il fait froid, plus la demande électrique augmente (chauffage), plus la probabilité d'un jour rouge est élevée. Notre scoring attribue **40 % du poids total** à la composante température. Pour comprendre en détail le fonctionnement des jours rouges et leurs règles, consultez notre [guide complet des jours rouges Tempo](/blog/jours-rouges-tempo-guide).
 
 ### La consommation électrique nationale
 
@@ -102,7 +102,7 @@ Ne laissez pas un jour rouge vous surprendre. Vous pouvez [recevoir les alertes]
 
 ### Concentrez vos efforts sur les heures pleines rouges
 
-Rappelons que le coût d'un jour rouge se concentre sur les **heures pleines** (6h-22h). En heures creuses, même un jour rouge reste abordable. Privilégiez donc vos consommations électriques avant 6h ou après 22h lors des jours rouges annoncés.
+Rappelons que le coût d'un jour rouge se concentre sur les **heures pleines** (6h-22h). En heures creuses, même un jour rouge reste abordable. Privilégiez donc vos consommations électriques avant 6h ou après 22h lors des jours rouges annoncés. Pour aller plus loin, découvrez [comment économiser avec Tempo EDF](/blog/economiser-tempo-edf).
 
 ### Surveillez la météo et le budget restant
 

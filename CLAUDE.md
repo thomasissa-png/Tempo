@@ -353,30 +353,33 @@ git push -u origin <branch-name>
 - **Umami**: Cloud-hosted analytics (`cloud.umami.is`) on all public templates (dashboard, blog_index, blog_article, legal, manage, alertes). Script loaded with `defer`. Website ID: `1d187359-b4a6-4ba8-ba41-c449b356832f`.
 
 ### SEO Agent v2 (autonomous seasonal publication)
-- **Runner**: `seo_agent.py` — autonomous agent using Anthropic API with tool use (read/write/edit files, glob, grep, web search, bash)
+- **Runner**: `seo_agent.py` — autonomous agent using Anthropic API with tool use (read_file/write_file/edit_file/list_files/search_files/web_search/bash)
 - **Config**: `Config.ANTHROPIC_API_KEY`, `Config.SEO_AGENT_MODEL`, `Config.SEO_AGENT_MAX_TURNS`, `Config.SEO_SEASON_SCHEDULE`
-- **Prompt**: `.claude/seo-agent-prompt.md` — complete 8-step workflow for autonomous blog publication
-- **Editorial calendar**: `articles/_calendrier_editorial.yaml` (YAML format for reliable machine parsing) — tracks 10+ weeks ahead, updated each Tuesday
+- **Prompt**: `.claude/seo-agent-prompt.md` — complete 8-step workflow for autonomous blog publication. Tool names in prompt MUST match `_TOOLS` in `seo_agent.py` (list_files, read_file, write_file, edit_file, search_files, web_search, bash).
+- **Editorial calendar**: `articles/_calendrier_editorial.yaml` (YAML format, single source of truth — no `.md` duplicate). Tracks 10+ weeks ahead, updated each Tuesday.
 - **Publication log**: `articles/_publication_log.md` — persistent log of every publication action
 - **Scheduler**: `task_seo_agent` in scheduler.py — CronTrigger every Tuesday at 9h00 Paris time. `_should_publish_today()` gates execution based on seasonal frequency. Silently skipped if `ANTHROPIC_API_KEY` not set.
 - **Seasonal schedule** (`Config.SEO_SEASON_SCHEDULE`): Nov-Mar (saison active) = weekly; Sep-Oct (pré-saison) = bimonthly (1er+3e mardi); Apr-May (post-saison) = monthly (1er mardi); Jun-Aug (morte-saison) = off. ~30 articles/an au lieu de 52, concentrés quand le trafic Tempo est actif.
 - **API key**: Requires `ANTHROPIC_API_KEY` in environment variables (Replit Secrets). One-time setup. Uses Claude Sonnet for cost efficiency.
 - **Manual trigger**: Available via admin panel `/admin` → task `seo_agent`, or `run_task_now("seo_agent")` (bypasses seasonal gate)
 - **Schedule**: Each eligible Tuesday, the agent runs the full cycle: SEO monitoring → inventory → calendar → writing → review → bidirectional linking → publication → logging
-- **8 steps**: (0) SEO monitoring + self-update, (1) Inventory + competitive analysis + PAA, (2) Calendar update + anti-cannibalization, (3) Writing with 5-title brainstorming + FAQ + featured snippets, (4) SEO review + word count verification, (5) Bidirectional retroactive linking, (6) Publication + error handling + verification, (7) Publication log, (8) Execution report
+- **8 steps**: (0) SEO monitoring + self-update + tariff/season check, (1) Inventory + competitive analysis + PAA, (2) Calendar update + anti-cannibalization, (3) Writing with 5-title brainstorming + FAQ + featured snippets, (4) SEO review + `validate_article.py` execution + word count, (5) Bidirectional retroactive linking, (6) Publication + error handling + verification, (7) Publication log, (8) Execution report
 - **Topic clusters**: 5 clusters (tempo-guide, jours-rouges, calendrier, equipements, preparation). Each has a pillar article + satellites. Satellites must link to pillar, pillar must link to satellites.
 - **Anti-cannibalization**: Agent checks search intent (not just keywords) before creating new articles. Prefers refreshing existing articles over creating duplicates.
 - **Refresh cycle**: 3 new articles + 1 refresh per 4-week cycle. Refreshes update `updated_date` frontmatter for Google freshness signal.
 - **Bidirectional linking**: Step 5 adds links FROM existing articles TO the new one (retroactive mesh). Max 5 articles modified per week.
-- **Self-updating**: Step 0 checks for Google algorithm updates and AI search changes. SEO rules split into PERMANENT (E-E-A-T, no keyword stuffing) vs MODIFIABLE (structured data formats, Core Web Vitals thresholds). Guard-fous prevent modifying fundamental principles.
-- **SEO rules file**: `articles/_seo_rules.yaml` — externalized SEO rules (Google permanent principles, technical practices, AI engine practices, article best practices). Updated by SEO agent step 0. Historique section tracks changes.
-- **Write-protected files**: Agent cannot modify `.claude/seo-agent-prompt.md`, `seo_agent.py`, `config.py`, `database.py`, `app.py`, `scheduler.py`. Prevents agent from accidentally altering critical infrastructure.
-- **Article validation**: `validate_article.py` script validates blog articles programmatically (frontmatter fields, word count >=800, min 2 H2, min 3 blog links, mandatory `/calendrier` + `/#subscribe` links, FAQ section, keyword in title/description). Returns errors + warnings. Used by SEO agent step 4.
+- **Self-updating**: Step 0 checks for Google algorithm updates, AI search changes, tariff updates and season transitions. SEO rules split into PERMANENT (E-E-A-T, no keyword stuffing) vs MODIFIABLE (structured data formats, Core Web Vitals thresholds). Guard-fous prevent modifying fundamental principles.
+- **SEO rules file**: `articles/_seo_rules.yaml` — externalized SEO rules, tariffs (`tarifs_tempo` section with date_maj), season info (`saison_tempo` section), and keyword targets. Agent updates tariffs when date_maj > 12 months old, and updates season info in September.
+- **Write-protected files**: Agent cannot modify `.claude/seo-agent-prompt.md`, `seo_agent.py`, `validate_article.py`, `config.py`, `database.py`, `app.py`, `scheduler.py`. Also protects `templates/`, `tests/`, `static/` directories.
+- **Article validation**: `validate_article.py` script validates blog articles programmatically (frontmatter fields, word count >=800, min 2 H2, min 3 blog links, mandatory `/calendrier` + `/#subscribe` links, FAQ section, keyword in title/description). Returns errors + warnings. **MUST be called in Step 4** via `bash(command="python3 validate_article.py articles/{slug}.md")`.
 - **Blog article fields**: `updated_date` (optional, for refreshed articles) and `cluster` (topic cluster name) in frontmatter. `blog.py` Article dataclass supports both.
 - **Publishing**: Articles auto-appear on `/blog/`, `/sitemap.xml`, `/feed.xml` when `publish_date <= today`
 - **Style**: Vouvoiement, expert accessible tone, 1200-2000 words per article
-- **SEO requirements**: Min 5 internal links per article (3 blog + /calendrier + /#subscribe + pillar). Keyword in title/description/H1/intro. FAQ section (2-3 PAA questions). 1+ featured snippet element per H2.
+- **SEO requirements**: Min 5 internal links per article (3 blog + /calendrier + /#subscribe + pillar). Keyword in title/description/H1/intro. FAQ section (2-3 PAA questions). 1+ featured snippet element per H2. Meta description 140-155 chars max. Title 50-65 chars.
 - **Existing coverage**: 8 articles through March 24, 2026. Calendar planned through June 2, 2026.
+- **Context management**: Agent trims messages to last 16 when context exceeds 20 messages (keeps initial user message). Prevents context overflow on long runs.
+- **Cost tracking**: Agent logs estimated token costs (Sonnet pricing) and returns `tokens` dict in result (input, output, est_cost_usd).
+- **Web search**: DuckDuckGo HTML scraping with 3-level fallback (structured title+snippet → snippets only → titles only). Fragile but functional.
 
 ### Admin Page Harmonization
 - **Header/footer**: Admin page uses the same footer structure as the rest of the site (Calendrier, Blog, Alertes, Mentions légales links). Consistent visual identity across all pages.

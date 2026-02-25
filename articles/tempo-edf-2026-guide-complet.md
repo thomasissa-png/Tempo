@@ -1,6 +1,6 @@
 ---
 title: Tempo EDF en 2026 : le guide complet pour les abonnés
-description: Tout savoir sur l'offre Tempo EDF en 2026 : fonctionnement, tarifs, jours rouges, blancs et bleus, avantages, inconvénients et conseils pour économiser. Le guide le plus complet pour les 900 000 abonnés.
+description: Offre Tempo EDF 2026 : fonctionnement, tarifs, jours rouges, blancs et bleus, avantages et conseils pour économiser.
 publish_date: 2026-02-17
 keywords: tempo edf, offre tempo edf 2026, tempo edf avis, tempo edf tarif, calendrier tempo edf, jours rouges tempo
 cluster: tempo-guide
@@ -115,6 +115,20 @@ Soyons transparents, Tempo a aussi ses limites :
 | Effort requis | Important | Aucun | Faible |
 
 Pour une comparaison détaillée, lisez notre article [Tempo vs. Heures Creuses : quel contrat choisir ?](/blog/tempo-vs-heures-creuses-edf-bleu).
+
+## FAQ : vos questions sur Tempo EDF
+
+### Tempo EDF est-il rentable pour un appartement tout-électrique ?
+
+Cela dépend de votre capacité à réduire votre consommation les jours rouges. Un appartement de 60 m2 bien isolé avec un chauffage d'appoint (poêle, couverture chauffante) peut économiser **200 à 350 euros par an**. En revanche, un logement mal isolé sans alternative de chauffage risque de perdre de l'argent. Simulez vos économies avant de souscrire.
+
+### Comment connaître la couleur Tempo du jour et du lendemain ?
+
+EDF annonce la couleur du lendemain chaque jour vers **17h**. Pour anticiper davantage (J+2 à J+5), consultez notre [calendrier Tempo](/calendrier) mis à jour quotidiennement. Vous pouvez aussi [recevoir des alertes WhatsApp gratuites](/#subscribe) avant chaque jour rouge.
+
+### Peut-on revenir au tarif réglementé après avoir souscrit Tempo ?
+
+Oui, vous pouvez changer d'offre à tout moment et sans frais. Le changement prend effet sous quelques jours. Si Tempo ne vous convient pas après un essai, le retour au tarif réglementé est simple.
 
 ## Conclusion
 
