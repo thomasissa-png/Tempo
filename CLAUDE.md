@@ -301,6 +301,20 @@ git push -u origin <branch-name>
 - **Cache-Control headers**: `/static/` 1h + SWR 24h; `/api/today|tomorrow|remaining` 2min + SWR 1min; `/api/predictions` 2min + SWR 2min; `/api/performance/badge` 5min + SWR 5min; `/calendrier` 10min + SWR 30min; `/` 5min + SWR 10min. All API endpoints use `stale-while-revalidate` for seamless background refresh (visitor sees cached version immediately, browser updates silently).
 - **Cold start UX**: During FastAPI startup, ASGI proxy serves real `dashboard.html` + CSS + JS (not a loading placeholder). JS `loadAllData()` retries with backoff: 6 attempts (0-5) at 2s/4s/6s/8s/10s intervals (30s total), plus a last-resort retry at +30s for slow Replit cold starts. Total coverage: ~60s. Timeout per request: 5s.
 
+### SEO Target Keywords (user-defined, Feb 2026)
+**Primary keywords (high volume, Google/Bing/LLM):**
+- tempo edf, edf tempo
+- calendrier tempo edf, edf tempo calendrier
+- edf tempo couleur du jour, tempo edf couleur du jour, couleur du jour tempo edf, couleur edf tempo
+- tarif tempo edf
+- edf tempo couleur du jour et du lendemain des 12h
+- jour tempo edf, jours tempo edf, edf jours tempos
+- tempo edf calendrier, edf tempo calendrier 2025, edf tempo calendrier 2026
+
+**Audience:** Existing Tempo EDF subscribers wanting to anticipate red days and save money.
+**Goal:** #1 on Google, Bing, and all LLMs for all above queries.
+**Note:** Many users search with "EDF Tempo" (inverted order) — templates must include both "Tempo EDF" and "EDF Tempo" naturally.
+
 ### SEO & Server-Side Rendering
 - **SSR on homepage**: `_get_ssr_data()` pre-loads today/tomorrow colors, remaining counters, first 10 predictions, and last update timestamp from DB. Jinja2 renders real content instead of JS placeholders. JS takes over on client-side. Best-effort: if DB not ready, falls back to empty placeholders.
 - **SSR last update**: Uses `MAX(timestamp_prediction)` from predictions table (NOT `created_at` which doesn't exist). Displayed as "Dernière mise à jour" banner above the 10-day summary.
