@@ -358,6 +358,9 @@ _CACHE_EXACT: dict[str, str] = {
     "/blog/": "public, max-age=600, stale-while-revalidate=1800",
     "/calendrier": "public, max-age=600, stale-while-revalidate=1800",
     "/alertes": "public, max-age=3600, stale-while-revalidate=7200",
+    # SEO files — Bing re-fetche robots.txt et sitemap.xml à chaque crawl sans cache
+    "/robots.txt": "public, max-age=86400",
+    "/sitemap.xml": "public, max-age=3600, stale-while-revalidate=3600",
 }
 
 
