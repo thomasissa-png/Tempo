@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>&Agrave; propos — Calendrier Tempo EDF : m&eacute;thodologie et transparence</title>
-    <meta name="description" content="D&eacute;couvrez la m&eacute;thodologie de pr&eacute;vision du Calendrier Tempo EDF : sources de donn&eacute;es, mod&egrave;le ML, scoring et pr&eacute;cision mesur&eacute;e. Service ind&eacute;pendant et transparent.">
+    <title>&Agrave; propos — Calendrier Tempo EDF : qui sommes-nous, m&eacute;thodologie et sources</title>
+    <meta name="description" content="Calendrier Tempo est n&eacute; de clients EDF Tempo souhaitant anticiper les jours rouges et &eacute;conomiser. D&eacute;couvrez qui nous sommes, notre m&eacute;thodologie de pr&eacute;vision et nos sources de donn&eacute;es.">
     <link rel="canonical" href="https://www.calendrier-tempo.fr/a-propos">
     <link rel="alternate" hreflang="fr" href="https://www.calendrier-tempo.fr/a-propos">
     <link rel="icon" href="/static/favicon.ico" sizes="48x48">
@@ -14,16 +14,16 @@
     <meta name="apple-mobile-web-app-title" content="Calendrier Tempo">
     <meta name="theme-color" content="#1565C0">
     <link rel="manifest" href="/manifest.json">
-    <meta property="og:title" content="&Agrave; propos — Calendrier Tempo EDF">
-    <meta property="og:description" content="M&eacute;thodologie de pr&eacute;vision, sources de donn&eacute;es et transparence du Calendrier Tempo EDF.">
+    <meta property="og:title" content="&Agrave; propos — Calendrier Tempo EDF : qui sommes-nous">
+    <meta property="og:description" content="Cr&eacute;&eacute; par des clients Tempo EDF pour anticiper les jours rouges et &eacute;conomiser. M&eacute;thodologie, sources et transparence.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://www.calendrier-tempo.fr/a-propos">
     <meta property="og:locale" content="fr_FR">
     <meta property="og:site_name" content="Calendrier Tempo EDF">
     <meta property="og:image" content="https://www.calendrier-tempo.fr/static/og-image.png">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="&Agrave; propos — Calendrier Tempo EDF">
-    <meta name="twitter:description" content="M&eacute;thodologie de pr&eacute;vision et transparence du Calendrier Tempo EDF.">
+    <meta name="twitter:title" content="&Agrave; propos — Calendrier Tempo EDF : qui sommes-nous">
+    <meta name="twitter:description" content="Cr&eacute;&eacute; par des clients Tempo EDF pour anticiper les jours rouges et &eacute;conomiser.">
     <meta name="twitter:image" content="https://www.calendrier-tempo.fr/static/og-image.png">
     <!-- JSON-LD BreadcrumbList -->
     <script type="application/ld+json">
@@ -43,7 +43,7 @@
         "@type": "Organization",
         "name": "Calendrier Tempo EDF",
         "url": "https://www.calendrier-tempo.fr",
-        "description": "Service ind\u00e9pendant de pr\u00e9vision des jours Tempo EDF bas\u00e9 sur la data science et le machine learning.",
+        "description": "Service ind\u00e9pendant et gratuit cr\u00e9\u00e9 par des clients Tempo EDF pour anticiper les jours rouges et \u00e9conomiser sur la facture d'\u00e9lectricit\u00e9.",
         "foundingDate": "2025",
         "areaServed": {
             "@type": "Country",
@@ -90,86 +90,108 @@
 
     <h1>&Agrave; propos du Calendrier Tempo EDF</h1>
 
-    <p style="font-size:1.1rem;color:#475569;margin-bottom:2rem">
-        Calendrier-tempo.fr est un <strong>service ind&eacute;pendant et gratuit</strong> de pr&eacute;vision des jours Tempo EDF.
-        Nous ne sommes pas affili&eacute;s &agrave; EDF, Enedis ou RTE. Notre mission : vous aider &agrave; <strong>anticiper les jours rouges
-        jusqu'&agrave; 15 jours &agrave; l'avance</strong> pour r&eacute;duire votre facture d'&eacute;lectricit&eacute;.
-    </p>
+    <section class="legal-section">
+        <h2>Qui sommes-nous ?</h2>
+        <p class="legal-text">
+            Calendrier Tempo est n&eacute; d'un besoin concret&nbsp;: en tant que <strong>clients EDF
+            au tarif Tempo</strong>, nous cherchions un moyen fiable d'<strong>anticiper les jours
+            rouges</strong> pour adapter notre consommation et r&eacute;duire nos factures.
+        </p>
+        <p class="legal-text" style="margin-top:0.75rem">
+            EDF annonce la couleur du lendemain chaque jour entre 6h et 11h &mdash; souvent trop
+            tard pour r&eacute;organiser sa journ&eacute;e. Nous avons donc construit un
+            <strong>calendrier Tempo pr&eacute;visionnel sur 15 jours</strong> pour avoir
+            le temps de planifier&nbsp;: reporter une machine, baisser le chauffage ou
+            d&eacute;caler une recharge de v&eacute;hicule &eacute;lectrique.
+        </p>
+        <p class="legal-text" style="margin-top:0.75rem">
+            Cet outil, nous le mettons <strong>gratuitement &agrave; disposition de tous les
+            abonn&eacute;s Tempo</strong>. Notre objectif est simple&nbsp;: aider chaque foyer &agrave;
+            <strong>&eacute;conomiser sur sa facture d'&eacute;lectricit&eacute;</strong> en anticipant
+            les jours les plus chers de la saison.
+        </p>
+    </section>
 
     <section class="legal-section">
         <h2>Notre m&eacute;thodologie de pr&eacute;vision</h2>
         <p class="legal-text">
-            Nos pr&eacute;visions combinent deux approches compl&eacute;mentaires pour maximiser la pr&eacute;cision :
+            Pour pr&eacute;dire la couleur Tempo de chaque jour, notre syst&egrave;me croise
+            <strong>plusieurs sources de donn&eacute;es en temps r&eacute;el</strong> au travers
+            de deux approches compl&eacute;mentaires&nbsp;:
         </p>
 
-        <h3>1. Scoring classique &mdash; 7 sous-scores pond&eacute;r&eacute;s</h3>
+        <h3>Scoring multi-crit&egrave;res</h3>
         <p class="legal-text">
-            Un algorithme de scoring analyse chaque jour futur selon 7 crit&egrave;res pond&eacute;r&eacute;s :
+            Un algorithme analyse chaque jour futur selon plusieurs facteurs cl&eacute;s&nbsp;:
         </p>
         <ul style="margin:0.5rem 0 1rem 1.5rem;line-height:1.8">
-            <li><strong>Temp&eacute;rature moyenne nationale</strong> (38%) &mdash; moyenne pond&eacute;r&eacute;e de 9 villes fran&ccedil;aises repr&eacute;sentatives</li>
-            <li><strong>Consommation nette RTE</strong> (18%) &mdash; pr&eacute;vision de consommation &eacute;lectrique nationale</li>
-            <li><strong>Pression budg&eacute;taire</strong> (18%) &mdash; combien de jours rouges/blancs restent &agrave; placer avant fin de saison</li>
-            <li><strong>Pression atmosph&eacute;rique</strong> (10%) &mdash; anticyclone vs d&eacute;pression (corr&eacute;l&eacute; avec la consommation)</li>
-            <li><strong>Jour de la semaine</strong> (8%) &mdash; les lundis sont historiquement plus souvent rouges</li>
-            <li><strong>Gradient thermique</strong> (6%) &mdash; chute brutale de temp&eacute;rature = pic de consommation</li>
-            <li><strong>Clustering temporel</strong> (2%) &mdash; EDF &eacute;vite de placer des jours rouges isol&eacute;s</li>
+            <li><strong>Temp&eacute;ratures</strong> &mdash; moyennes pond&eacute;r&eacute;es de 9 grandes villes fran&ccedil;aises, pour d&eacute;tecter les vagues de froid qui d&eacute;clenchent les jours rouges</li>
+            <li><strong>Consommation &eacute;lectrique nationale</strong> &mdash; donn&eacute;es RTE refl&eacute;tant la tension sur le r&eacute;seau</li>
+            <li><strong>Budget saisonnier EDF</strong> &mdash; suivi du nombre de jours rouges et blancs restant &agrave; placer dans la saison</li>
+            <li><strong>Gradient thermique</strong> &mdash; une chute brutale de temp&eacute;rature entra&icirc;ne un pic de consommation</li>
+            <li><strong>Pression atmosph&eacute;rique</strong> &mdash; indicateur compl&eacute;mentaire corr&eacute;l&eacute; aux vagues de froid</li>
+            <li><strong>Profil du jour</strong> &mdash; jour de la semaine, week-end, jours f&eacute;ri&eacute;s (les dimanches et f&eacute;ri&eacute;s ne sont jamais rouges)</li>
         </ul>
 
-        <h3>2. Mod&egrave;le Machine Learning &mdash; GradientBoosting</h3>
+        <h3>Machine Learning</h3>
         <p class="legal-text">
-            En parall&egrave;le, un mod&egrave;le de Machine Learning (GradientBoosting) analyse <strong>33 features</strong>
-            entra&icirc;n&eacute;es sur 5 saisons historiques (2019-2026, 1 827 &eacute;chantillons). Le mod&egrave;le est
-            <strong>sensible au co&ucirc;t</strong> : il pond&egrave;re les jours rouges 25x plus que les jours bleus pour
-            minimiser les faux n&eacute;gatifs (jours rouges manqu&eacute;s).
+            En parall&egrave;le, un mod&egrave;le de Machine Learning entra&icirc;n&eacute; sur
+            plusieurs saisons historiques analyse des dizaines de variables pour d&eacute;tecter des
+            sch&eacute;mas r&eacute;currents. Ce mod&egrave;le est calibr&eacute; pour
+            <strong>ne pas manquer les jours rouges</strong>&nbsp;: mieux vaut une fausse alerte
+            qu'un jour rouge manqu&eacute;.
         </p>
 
-        <h3>3. Ensemble &mdash; combinaison des deux approches</h3>
+        <h3>Combinaison et r&egrave;gles EDF</h3>
         <p class="legal-text">
-            La pr&eacute;diction finale combine le scoring classique et le ML pour obtenir un <strong>consensus robuste</strong>.
-            Les r&egrave;gles EDF (pas de rouge le weekend, pas de rouge hors novembre-mars, max 5 cons&eacute;cutifs)
-            sont appliqu&eacute;es en post-traitement pour garantir la conformit&eacute;.
+            La pr&eacute;diction finale combine les deux approches pour un consensus robuste. Les
+            r&egrave;gles officielles EDF (pas de rouge le week-end ni les jours f&eacute;ri&eacute;s,
+            rouge uniquement de novembre &agrave; mars, maximum 5 jours rouges cons&eacute;cutifs) sont
+            appliqu&eacute;es syst&eacute;matiquement. Le syst&egrave;me s'am&eacute;liore en continu en
+            comparant ses pr&eacute;dictions pass&eacute;es avec les couleurs r&eacute;elles annonc&eacute;es par EDF.
         </p>
     </section>
 
     <section class="legal-section">
         <h2>Sources de donn&eacute;es</h2>
-        <p class="legal-text">Toutes nos donn&eacute;es proviennent de sources officielles fran&ccedil;aises :</p>
+        <p class="legal-text">La transparence est essentielle. Toutes nos donn&eacute;es proviennent de sources officielles&nbsp;:</p>
         <ul style="margin:0.5rem 0 1rem 1.5rem;line-height:1.8">
-            <li><strong>M&eacute;t&eacute;o France</strong> &mdash; mod&egrave;les AROME (haute r&eacute;solution J+0 &agrave; J+2) et ARPEGE (global J+2 &agrave; J+5) pour 9 villes repr&eacute;sentatives de la consommation nationale</li>
-            <li><strong>RTE</strong> (R&eacute;seau de Transport d'&Eacute;lectricit&eacute;) &mdash; pr&eacute;visions de consommation nationale et historique</li>
-            <li><strong>EDF</strong> &mdash; couleurs officielles des jours Tempo (confirm&eacute;es quotidiennement)</li>
-            <li><strong>Open-Meteo</strong> &mdash; source de secours si M&eacute;t&eacute;o France est indisponible</li>
+            <li><strong>M&eacute;t&eacute;o France</strong> &mdash; mod&egrave;les AROME (haute r&eacute;solution, J+0 &agrave; J+2) et ARPEGE (global, J+2 &agrave; J+5) pour 9 villes repr&eacute;sentatives de la consommation nationale</li>
+            <li><strong>RTE</strong> (R&eacute;seau de Transport d'&Eacute;lectricit&eacute;) &mdash; pr&eacute;visions de consommation nationale et disponibilit&eacute; du parc nucl&eacute;aire</li>
+            <li><strong>EDF</strong> &mdash; couleurs officielles des jours Tempo, confirm&eacute;es quotidiennement</li>
+            <li><strong>Open-Meteo</strong> &mdash; source compl&eacute;mentaire pour &eacute;tendre les pr&eacute;visions au-del&agrave; de J+5, et source de secours si M&eacute;t&eacute;o France est indisponible</li>
         </ul>
     </section>
 
     <section class="legal-section">
-        <h2>Pr&eacute;cision mesur&eacute;e</h2>
+        <h2>Pr&eacute;cision et fiabilit&eacute;</h2>
         <p class="legal-text">
-            Nous mesurons syst&eacute;matiquement la pr&eacute;cision de nos pr&eacute;visions par horizon :
+            Nous mesurons la pr&eacute;cision de nos pr&eacute;visions en continu. Le taux de r&eacute;ussite
+            r&eacute;el sur les 30 derniers jours est affich&eacute; en temps r&eacute;el sur la
+            <a href="/">page d'accueil</a>.
         </p>
         <ul style="margin:0.5rem 0 1rem 1.5rem;line-height:1.8">
-            <li><strong>J+1</strong> : EDF confirme la couleur chaque matin &mdash; notre pr&eacute;diction est g&eacute;n&eacute;ralement align&eacute;e</li>
-            <li><strong>J+2 &agrave; J+5</strong> : pr&eacute;cision globale de <strong>83,4%</strong> (backtesté sur les saisons 2019-2026)</li>
-            <li><strong>J+6 &agrave; J+15</strong> : pr&eacute;visions indicatives &mdash; les donn&eacute;es m&eacute;t&eacute;o deviennent moins fiables au-del&agrave; de 5 jours</li>
+            <li><strong>J+1</strong>&nbsp;: EDF confirme la couleur chaque matin &mdash; notre pr&eacute;diction est g&eacute;n&eacute;ralement align&eacute;e</li>
+            <li><strong>J+2 &agrave; J+5</strong>&nbsp;: pr&eacute;cision la plus &eacute;lev&eacute;e, c'est l'horizon id&eacute;al pour prendre vos d&eacute;cisions</li>
+            <li><strong>J+6 &agrave; J+15</strong>&nbsp;: pr&eacute;visions indicatives &mdash; utiles pour anticiper une tendance, mais les donn&eacute;es m&eacute;t&eacute;o sont moins fiables au-del&agrave; de 5 jours</li>
         </ul>
         <p class="legal-text">
-            Notre priorit&eacute; absolue est de <strong>ne pas manquer les jours rouges</strong> (rappel ROUGE).
-            Un faux positif (pr&eacute;voir rouge alors que c'est bleu) co&ucirc;te peu &agrave; l'utilisateur,
-            mais un faux n&eacute;gatif (manquer un jour rouge) peut co&ucirc;ter plus de 15&euro; en une journ&eacute;e.
+            Notre priorit&eacute; absolue est de <strong>ne pas manquer les jours rouges</strong>.
+            Un faux positif (pr&eacute;voir rouge alors que c'est bleu) ne co&ucirc;te quasiment rien &agrave; l'utilisateur,
+            tandis qu'un jour rouge manqu&eacute; peut co&ucirc;ter cher sur la facture.
         </p>
     </section>
 
     <section class="legal-section">
         <h2>Transparence et limites</h2>
         <p class="legal-text">
-            En toute transparence, voici ce que nous ne pouvons <strong>pas</strong> garantir :
+            En toute transparence, voici ce que nous ne pouvons <strong>pas</strong> garantir&nbsp;:
         </p>
         <ul style="margin:0.5rem 0 1rem 1.5rem;line-height:1.8">
             <li>Nos pr&eacute;visions sont <strong>indicatives</strong> et ne constituent pas une information officielle EDF</li>
             <li>Seul EDF d&eacute;termine la couleur d&eacute;finitive des jours Tempo</li>
             <li>La pr&eacute;cision diminue naturellement au-del&agrave; de J+5 (incertitude m&eacute;t&eacute;o)</li>
-            <li>Des &eacute;v&eacute;nements exceptionnels (temp&ecirc;te, grève, maintenance nucléaire imprévue) peuvent affecter nos prédictions</li>
+            <li>Des &eacute;v&eacute;nements exceptionnels (temp&ecirc;te, gr&egrave;ve, maintenance nucl&eacute;aire impr&eacute;vue) peuvent affecter nos pr&eacute;dictions</li>
         </ul>
     </section>
 
@@ -177,7 +199,7 @@
         <h2>API publique gratuite</h2>
         <p class="legal-text">
             Nous mettons &agrave; disposition une <strong>API JSON publique et gratuite</strong> pour les d&eacute;veloppeurs
-            et les projets domotique :
+            et les projets domotique&nbsp;:
         </p>
         <ul style="margin:0.5rem 0 1rem 1.5rem;line-height:1.8">
             <li><code>/api/today</code> &mdash; couleur Tempo du jour</li>
@@ -185,15 +207,19 @@
             <li><code>/api/predictions</code> &mdash; pr&eacute;visions J+1 &agrave; J+15 avec niveau de confiance</li>
         </ul>
         <p class="legal-text">
-            Pas de cl&eacute; API n&eacute;cessaire. Pas de limite de requ&ecirc;tes abusive.
+            Pas de cl&eacute; API n&eacute;cessaire. Utilisation raisonnable.
             Id&eacute;al pour les int&eacute;grations <strong>Home Assistant</strong>, <strong>Jeedom</strong> ou tout projet domotique.
+            Pour un usage intensif ou un partenariat, <a href="mailto:jean-pierre@calendrier-tempo.fr">contactez-nous</a>.
         </p>
     </section>
 
     <section class="legal-section">
-        <h2>Contact</h2>
+        <h2>Nous contacter</h2>
         <p class="legal-text">
-            Pour toute question, suggestion ou partenariat : <strong>contact@calendrier-tempo.fr</strong>
+            Une question, une suggestion ou un bug &agrave; signaler&nbsp;?
+            &Eacute;crivez-nous &agrave;
+            <a href="mailto:jean-pierre@calendrier-tempo.fr"><strong>jean-pierre@calendrier-tempo.fr</strong></a>.
+            Nous r&eacute;pondons g&eacute;n&eacute;ralement sous 48h.
         </p>
     </section>
 
