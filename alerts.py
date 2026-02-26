@@ -931,7 +931,7 @@ def register_user(phone_number: str, seuil_rouge: int = 70,
 
         if existing:
             if existing["actif"]:
-                return {"error": "Ce numéro est déjà inscrit. Retrouvez votre lien de gestion dans vos messages WhatsApp, ou répondez RECAP au bot."}
+                return {"error": "Ce numéro est déjà inscrit. Retrouvez votre lien de gestion dans vos messages WhatsApp."}
             else:
                 # Réactiver + mettre à jour chiffré ET préférences (BUG-05 QA)
                 conn.execute(

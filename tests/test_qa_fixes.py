@@ -1289,6 +1289,43 @@ class TestCalendrierAjaxNavigation:
         assert "_get_calendrier_data(month, year)" in content
 
 
+class TestWhatsAppFixes:
+    """WhatsApp message and endpoint fixes."""
+
+    def test_already_subscribed_no_recap_mention(self):
+        """The 'already subscribed' error message should NOT mention RECAP."""
+        with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "alerts.py")) as f:
+            content = f.read()
+        # Must contain the shortened message
+        assert "Ce numéro est déjà inscrit. Retrouvez votre lien de gestion dans vos messages WhatsApp." in content
+        # Must NOT contain the old RECAP mention
+        assert "répondez RECAP au bot" not in content
+
+    def test_resend_manage_link_uses_background(self):
+        """The resend-manage-link endpoint sends WhatsApp in background to avoid timeouts."""
+        with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "app.py")) as f:
+            content = f.read()
+        assert "bg.add_task(" in content
+        assert "BackgroundTasks" in content
+
+    def test_whatsapp_diagnostic_endpoint(self):
+        """The admin whatsapp-diagnostic endpoint exists."""
+        with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "app.py")) as f:
+            content = f.read()
+        assert '"/admin/whatsapp-diagnostic"' in content
+
+    def test_template_param_counts_documented(self):
+        """Each template builder has the correct number of parameters."""
+        with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "alerts.py")) as f:
+            content = f.read()
+        # Welcome: 2 params (predictions, manage_url)
+        assert "_tpl_body(pred_text, manage_url)" in content
+        # Rouge: 4 params (date, prob, temp, manage_url)
+        assert "_tpl_body(date_fr, prob, temp_str, manage_url)" in content
+        # Blanc: 3 params (date, prob, manage_url)
+        assert "_tpl_body(date_fr, prob, manage_url)" in content
+
+
 class TestOriginCheck:
     """M-11 : _check_origin case-insensitive."""
     def test_case_insensitive(self):

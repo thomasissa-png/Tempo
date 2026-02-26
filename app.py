@@ -36,7 +36,7 @@ def _now_paris() -> datetime:
     """Retourne l'heure actuelle en timezone Paris (CET/CEST)."""
     return datetime.now(tz=_PARIS_TZ)
 
-from fastapi import FastAPI, Request, Form, HTTPException, Header
+from fastapi import BackgroundTasks, FastAPI, Request, Form, HTTPException, Header
 from fastapi.middleware.gzip import GZipMiddleware
 from pathlib import Path
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse, FileResponse
@@ -1776,8 +1776,14 @@ async def api_unsubscribe(request: Request, phone: str = Form(...)):
 
 
 @app.post("/api/resend-manage-link")
-async def api_resend_manage_link(request: Request, phone: str = Form(...)):
-    """Renvoie le lien de gestion par WhatsApp (pour les utilisateurs déjà inscrits)."""
+async def api_resend_manage_link(
+    request: Request, bg: BackgroundTasks, phone: str = Form(...)
+):
+    """Renvoie le lien de gestion par WhatsApp (pour les utilisateurs déjà inscrits).
+
+    Répond immédiatement, l'envoi WhatsApp se fait en arrière-plan pour éviter
+    les timeouts (send_whatsapp peut prendre 30-45s avec les retries).
+    """
     if not _check_origin(request):
         raise HTTPException(status_code=403, detail="Origine de la requête non autorisée")
 
@@ -1797,6 +1803,9 @@ async def api_resend_manage_link(request: Request, phone: str = Form(...)):
     if not phone_clean.startswith("+") or len(phone_clean) < 10 or len(phone_clean) > 15:
         raise HTTPException(status_code=400, detail="Format invalide.")
 
+    # Generic message to avoid revealing if number exists (privacy)
+    generic_msg = "Si ce numéro est inscrit, vous recevrez un message WhatsApp avec votre lien de gestion."
+
     from alerts import hash_phone
     phone_h = hash_phone(phone_clean)
     conn = get_db()
@@ -1807,20 +1816,23 @@ async def api_resend_manage_link(request: Request, phone: str = Form(...)):
     finally:
         conn.close()
 
-    # Generic message to avoid revealing if number exists (privacy)
-    generic_msg = "Si ce numéro est inscrit, vous recevrez un message WhatsApp avec votre lien de gestion."
-
-    if not user or not user["actif"]:
-        return {"success": True, "message": generic_msg}
-
-    # Send manage link via WhatsApp
-    try:
-        from alerts import send_whatsapp
+    if user and user["actif"]:
+        # Envoi en arrière-plan — la réponse HTTP part immédiatement
         manage_url = f"https://www.calendrier-tempo.fr/manage/{user['manage_token']}"
-        msg = f"📋 Voici votre lien de gestion Calendrier Tempo :\n{manage_url}\n\nVous pouvez modifier vos préférences ou vous désinscrire."
-        await asyncio.to_thread(send_whatsapp, phone_clean, msg)
-    except Exception as e:
-        logger.warning(f"[ResendManage] Erreur envoi: {e}")
+
+        def _send_manage_link():
+            try:
+                from alerts import send_whatsapp
+                msg = (
+                    f"📋 Voici votre lien de gestion Calendrier Tempo :\n"
+                    f"{manage_url}\n\n"
+                    f"Vous pouvez modifier vos préférences ou vous désinscrire."
+                )
+                send_whatsapp(phone_clean, msg)
+            except Exception as e:
+                logger.warning(f"[ResendManage] Erreur envoi: {e}")
+
+        bg.add_task(_send_manage_link)
 
     return {"success": True, "message": generic_msg}
 
@@ -2137,6 +2149,65 @@ async def admin_sms_logs(request: Request, authorization: str | None = Header(No
         return {"status": "ok", "logs": [dict(r) for r in rows]}
     finally:
         conn.close()
+
+
+@app.get("/admin/whatsapp-diagnostic")
+async def admin_whatsapp_diagnostic(request: Request, authorization: str | None = Header(None)):
+    """Diagnostic des templates WhatsApp — vérifie la cohérence code↔Meta.
+
+    Liste chaque template avec le nom, le nombre de paramètres envoyés par le code,
+    et le statut de la configuration Meta (token présent, numéro configuré).
+    """
+    verify_admin(authorization, request.client.host if request.client else "unknown")
+
+    from alerts import _is_whatsapp_configured
+
+    templates = [
+        {"name": Config.WHATSAPP_TEMPLATE_WELCOME, "usage": "Bienvenue", "body_params": 2,
+         "params": ["{{1}} prévisions 5j", "{{2}} URL gestion"]},
+        {"name": Config.WHATSAPP_TEMPLATE_ALERT_ROUGE, "usage": "Alerte rouge", "body_params": 4,
+         "params": ["{{1}} date", "{{2}} proba%", "{{3}} temp°C", "{{4}} URL gestion"]},
+        {"name": Config.WHATSAPP_TEMPLATE_ALERT_BLANC, "usage": "Alerte blanc", "body_params": 3,
+         "params": ["{{1}} date", "{{2}} proba%", "{{3}} URL gestion"]},
+        {"name": Config.WHATSAPP_TEMPLATE_CONFIRMATION, "usage": "Confirmation EDF", "body_params": 5,
+         "params": ["{{1}} emoji", "{{2}} couleur", "{{3}} date", "{{4}} conseil", "{{5}} URL gestion"]},
+        {"name": Config.WHATSAPP_TEMPLATE_CHANGE, "usage": "Changement prédiction", "body_params": 5,
+         "params": ["{{1}} date", "{{2}} ancienne couleur", "{{3}} nouvelle couleur", "{{4}} conseil", "{{5}} URL gestion"]},
+        {"name": Config.WHATSAPP_TEMPLATE_RECAP, "usage": "Récap hebdomadaire", "body_params": 3,
+         "params": ["{{1}} prévisions 7j", "{{2}} résumé", "{{3}} URL gestion"]},
+    ]
+
+    # Dernier statut d'envoi par template depuis sms_logs
+    recent_errors = {}
+    try:
+        conn = get_db()
+        try:
+            for tpl in templates:
+                row = conn.execute(
+                    """SELECT statut, erreur, date_envoi FROM sms_logs
+                       WHERE statut LIKE 'error%'
+                       ORDER BY id DESC LIMIT 1"""
+                ).fetchone()
+                if row:
+                    recent_errors["last_error"] = dict(row)
+        finally:
+            conn.close()
+    except Exception:
+        pass
+
+    return {
+        "status": "ok",
+        "configured": _is_whatsapp_configured(),
+        "api_version": Config.WHATSAPP_API_VERSION,
+        "language": Config.WHATSAPP_TEMPLATE_LANG,
+        "phone_number_id": bool(Config.WHATSAPP_PHONE_NUMBER_ID),
+        "token_set": bool(Config.WHATSAPP_TOKEN),
+        "templates": templates,
+        "recent_errors": recent_errors,
+        "note": "Chaque template Meta doit avoir EXACTEMENT le nombre de {{body}} params "
+                "indiqué ci-dessus. Si un template a 3 params dans Meta mais que le code en envoie 4, "
+                "Meta retourne erreur 132018 (parameter count mismatch).",
+    }
 
 
 @app.get("/admin/db-diagnostic")
