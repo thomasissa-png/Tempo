@@ -278,7 +278,8 @@ def _build_welcome_template(predictions: list[dict], manage_token: str) -> tuple
         couleur = p.get("couleur_predite", "?")
         emoji = {"ROUGE": "🔴", "BLANC": "⚪", "BLEU": "🔵"}.get(couleur, "❓")
         pred_lines.append(f"{emoji} {jour}. {d.day} {mois}.")
-    pred_text = "\n".join(pred_lines) if pred_lines else "Aucune prévision disponible."
+    # Meta interdit les \n dans les variables de template — utiliser " · " comme séparateur
+    pred_text = " · ".join(pred_lines) if pred_lines else "Aucune prévision disponible."
     manage_url = _manage_link(manage_token) or Config.BASE_URL
     return Config.WHATSAPP_TEMPLATE_WELCOME, _tpl_body(pred_text, manage_url)
 
@@ -358,7 +359,8 @@ def _build_recap_template(predictions: list[dict], manage_token: str) -> tuple[s
         else:
             bleu_days.append(JOURS_FR[d.weekday()][:3])
 
-    pred_text = "\n".join(lines)
+    # Meta interdit les \n dans les variables de template — utiliser " · " comme séparateur
+    pred_text = " · ".join(lines)
 
     summary_parts = []
     if rouge_count:
@@ -376,7 +378,7 @@ def _build_recap_template(predictions: list[dict], manage_token: str) -> tuple[s
     if rouge_days:
         summary_lines.append(f"👉 Reportez lessive et four {', '.join(rouge_days)} (rouge).")
 
-    summary_text = "\n".join(summary_lines)
+    summary_text = " · ".join(summary_lines)
     manage_url = _manage_link(manage_token) or Config.BASE_URL
     return Config.WHATSAPP_TEMPLATE_RECAP, _tpl_body(pred_text, summary_text, manage_url)
 
