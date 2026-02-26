@@ -589,36 +589,32 @@ async def page_dashboard(request: Request):
     return templates.TemplateResponse("dashboard.html", {"request": request, "ssr": ssr})
 
 
-@app.get("/calendrier", response_class=HTMLResponse)
-async def page_calendrier(request: Request, month: int | None = None, year: int | None = None):
-    """Page calendrier Tempo EDF — vue mensuelle avec couleurs passées et prévisions.
+def _get_calendrier_data(month: int | None = None, year: int | None = None) -> dict:
+    """Compute calendar data for a given month/year.
 
-    Cible SEO : 'calendrier tempo', 'calendrier tempo edf'.
-    Le contenu est entièrement server-side rendered pour le crawl Google.
+    Returns a dict with all data needed to render the calendar grid and navigation.
+    Shared by the SSR page and the AJAX API endpoint.
     """
     import calendar as cal_module
 
     today = date.today()
-    # Mois affiché (défaut: mois actuel)
     if not month or not year:
         month = today.month
         year = today.year
     month = max(1, min(12, month))
     year = max(2020, min(2030, year))
 
-    # Label saison
     from tempo_client import get_season_dates
     season_start, season_end = get_season_dates()
     season_label = f"{season_start.year}-{season_end.year}"
 
     # Charger les couleurs depuis la DB
-    colors_map: dict[str, str] = {}  # "YYYY-MM-DD" -> "ROUGE"|"BLANC"|"BLEU"
-    actuals_set: set[str] = set()    # dates confirmed by EDF
+    colors_map: dict[str, str] = {}
+    actuals_set: set[str] = set()
     try:
         from database import get_db
         conn = get_db()
         try:
-            # Actuals (couleurs officielles)
             rows = conn.execute(
                 "SELECT date, couleur_reelle FROM actuals WHERE date LIKE ?",
                 (f"{year}-{month:02d}-%",)
@@ -627,7 +623,6 @@ async def page_calendrier(request: Request, month: int | None = None, year: int 
                 colors_map[r["date"]] = r["couleur_reelle"]
                 actuals_set.add(r["date"])
 
-            # Prédictions pour les jours futurs non confirmés
             pred_rows = conn.execute(
                 """SELECT date, couleur_predite FROM predictions
                    WHERE date LIKE ? AND date > ? AND id IN (
@@ -657,22 +652,18 @@ async def page_calendrier(request: Request, month: int | None = None, year: int 
     except Exception:
         pass
 
-    # Construire la grille du calendrier
     month_names_fr = [
         "", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
         "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
     ]
     first_weekday, num_days = cal_module.monthrange(year, month)
-    # first_weekday: 0=lundi, 6=dimanche
     calendar_days = []
-    # Cases vides au début
     for _ in range(first_weekday):
         calendar_days.append({"empty": True})
-    # Jours du mois
     for day in range(1, num_days + 1):
         d = date(year, month, day)
         d_str = d.isoformat()
-        color = colors_map.get(d_str, "BLEU")  # default bleu hors saison
+        color = colors_map.get(d_str, "BLEU")
         is_future = d > today and d_str not in actuals_set
         is_today = d == today
         calendar_days.append({
@@ -680,18 +671,15 @@ async def page_calendrier(request: Request, month: int | None = None, year: int 
             "is_future": is_future, "is_today": is_today,
         })
 
-    # Navigation mois précédent / suivant
     prev_m = month - 1 if month > 1 else 12
     prev_y = year if month > 1 else year - 1
     next_m = month + 1 if month < 12 else 1
     next_y = year if month < 12 else year + 1
 
-    # Limiter la navigation à la saison
     show_prev = date(prev_y, prev_m, 1) >= date(season_start.year, season_start.month, 1)
     show_next = date(next_y, next_m, 1) <= date(season_end.year, season_end.month, 1)
 
-    return templates.TemplateResponse("calendrier.html", {
-        "request": request,
+    return {
         "season_label": season_label,
         "season_start": season_start.isoformat(),
         "season_end": season_end.isoformat(),
@@ -704,7 +692,25 @@ async def page_calendrier(request: Request, month: int | None = None, year: int 
         "next_month": next_m if show_next else None,
         "next_year": next_y,
         "next_month_label": f"{month_names_fr[next_m]} {next_y}" if show_next else "",
-    })
+    }
+
+
+@app.get("/calendrier", response_class=HTMLResponse)
+async def page_calendrier(request: Request, month: int | None = None, year: int | None = None):
+    """Page calendrier Tempo EDF — vue mensuelle avec couleurs passées et prévisions.
+
+    Cible SEO : 'calendrier tempo', 'calendrier tempo edf'.
+    Le contenu est entièrement server-side rendered pour le crawl Google.
+    """
+    data = _get_calendrier_data(month, year)
+    data["request"] = request
+    return templates.TemplateResponse("calendrier.html", data)
+
+
+@app.get("/api/calendrier-data")
+async def api_calendrier_data(month: int | None = None, year: int | None = None):
+    """API JSON pour la navigation AJAX du calendrier (pas d'URL avec query params)."""
+    return _get_calendrier_data(month, year)
 
 
 @app.get("/alertes", response_class=HTMLResponse)
@@ -1810,7 +1816,7 @@ async def api_resend_manage_link(request: Request, phone: str = Form(...)):
     # Send manage link via WhatsApp
     try:
         from alerts import send_whatsapp
-        manage_url = f"https://calendrier-tempo.fr/manage/{user['manage_token']}"
+        manage_url = f"https://www.calendrier-tempo.fr/manage/{user['manage_token']}"
         msg = f"📋 Voici votre lien de gestion Calendrier Tempo :\n{manage_url}\n\nVous pouvez modifier vos préférences ou vous désinscrire."
         await asyncio.to_thread(send_whatsapp, phone_clean, msg)
     except Exception as e:

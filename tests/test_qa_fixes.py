@@ -1236,20 +1236,57 @@ class TestBlogArticles:
         assert len(md_files) >= 8, f"Only {len(md_files)} articles found: {md_files}"
 
 
-class TestCalendrierAnchorNavigation:
-    """Calendar month navigation uses #cal anchor."""
+class TestCalendrierAjaxNavigation:
+    """Calendar month navigation uses AJAX buttons (no query param URLs for SEO)."""
 
-    def test_prev_next_links_have_anchor(self):
-        """Month navigation links include #cal to avoid scroll-to-top."""
+    def test_no_query_param_links(self):
+        """Month navigation must NOT use <a href> with query params."""
         filepath = os.path.join(
             os.path.dirname(os.path.dirname(__file__)),
             "templates", "calendrier.html"
         )
         with open(filepath) as f:
             content = f.read()
-        # Both prev and next links should end with #cal
-        assert "prev_year }}#cal" in content
-        assert "next_year }}#cal" in content
+        # No <a href="/calendrier?month=..."> links
+        assert 'href="/calendrier?month=' not in content
+
+    def test_uses_button_elements(self):
+        """Month navigation uses <button> with data attributes."""
+        filepath = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "templates", "calendrier.html"
+        )
+        with open(filepath) as f:
+            content = f.read()
+        assert 'data-month="{{ prev_month }}"' in content
+        assert 'data-month="{{ next_month }}"' in content
+        assert "navigateCalendar(this)" in content
+
+    def test_ajax_js_function_exists(self):
+        """The navigateCalendar JS function is defined in the template."""
+        filepath = os.path.join(
+            os.path.dirname(os.path.dirname(__file__)),
+            "templates", "calendrier.html"
+        )
+        with open(filepath) as f:
+            content = f.read()
+        assert "function navigateCalendar(" in content
+        assert "function renderCalendar(" in content
+        assert "/api/calendrier-data" in content
+
+    def test_api_calendrier_data_route_exists(self):
+        """The /api/calendrier-data endpoint is defined in app.py."""
+        with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "app.py")) as f:
+            content = f.read()
+        assert '"/api/calendrier-data"' in content
+
+    def test_get_calendrier_data_helper(self):
+        """_get_calendrier_data helper function exists and is callable."""
+        with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "app.py")) as f:
+            content = f.read()
+        assert "def _get_calendrier_data(" in content
+        # Used by both the SSR page and the API endpoint
+        assert "_get_calendrier_data(month, year)" in content
 
 
 class TestOriginCheck:

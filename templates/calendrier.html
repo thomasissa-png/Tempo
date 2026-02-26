@@ -119,9 +119,9 @@
     <script defer src="https://cloud.umami.is/script.js" data-website-id="1d187359-b4a6-4ba8-ba41-c449b356832f"></script>
     <style>
         .cal-nav { display: flex; justify-content: center; align-items: center; gap: 16px; margin: 24px 0; flex-wrap: wrap; }
-        .cal-nav a, .cal-nav span { padding: 8px 16px; border-radius: var(--radius-sm); text-decoration: none; font-weight: 600; font-size: 0.95rem; }
-        .cal-nav a { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
-        .cal-nav a:hover { background: var(--bleu-bg); border-color: var(--bleu); }
+        .cal-nav button, .cal-nav span { padding: 8px 16px; border-radius: var(--radius-sm); text-decoration: none; font-weight: 600; font-size: 0.95rem; }
+        .cal-nav button { background: var(--surface); border: 1px solid var(--border); color: var(--text); cursor: pointer; }
+        .cal-nav button:hover { background: var(--bleu-bg); border-color: var(--bleu); }
         .cal-nav .cal-current { background: var(--bleu); color: white; padding: 8px 20px; }
         .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin: 0 auto 32px; max-width: 700px; }
         .cal-header { text-align: center; font-weight: 700; font-size: 0.85rem; padding: 8px 4px; color: var(--text-secondary); }
@@ -206,14 +206,14 @@
         </div>
     </div>
 
-    <!-- Navigation entre mois -->
+    <!-- Navigation entre mois (AJAX, pas de changement d'URL pour le SEO) -->
     <nav id="cal" class="cal-nav" aria-label="Navigation entre mois">
         {% if prev_month %}
-        <a href="/calendrier?month={{ prev_month }}&year={{ prev_year }}#cal">&larr; {{ prev_month_label }}</a>
+        <button type="button" data-month="{{ prev_month }}" data-year="{{ prev_year }}" onclick="navigateCalendar(this)" aria-label="Mois précédent : {{ prev_month_label }}">&larr; {{ prev_month_label }}</button>
         {% endif %}
-        <span class="cal-current">{{ current_month_label }}</span>
+        <span class="cal-current" id="cal-current-label">{{ current_month_label }}</span>
         {% if next_month %}
-        <a href="/calendrier?month={{ next_month }}&year={{ next_year }}#cal">{{ next_month_label }} &rarr;</a>
+        <button type="button" data-month="{{ next_month }}" data-year="{{ next_year }}" onclick="navigateCalendar(this)" aria-label="Mois suivant : {{ next_month_label }}">{{ next_month_label }} &rarr;</button>
         {% endif %}
     </nav>
 
@@ -340,27 +340,80 @@
 
 <script src="/static/js/app.min.js"></script>
 <script>
-/* Calendar month navigation: maintain exact scroll position */
-(function() {
-    var calNav = document.getElementById('cal');
-    if (!calNav) return;
+/* Calendar AJAX month navigation — no URL change, no query params for SEO */
+function navigateCalendar(btn) {
+    var m = btn.getAttribute('data-month');
+    var y = btn.getAttribute('data-year');
+    if (!m || !y) return;
+    btn.disabled = true;
 
-    var saved = sessionStorage.getItem('cal_scroll_top');
-    if (saved !== null && location.hash === '#cal') {
-        history.replaceState(null, '', location.pathname + location.search);
-        var navTop = calNav.getBoundingClientRect().top + window.pageYOffset;
-        var headerH = document.querySelector('header[role="banner"]');
-        var offset = headerH ? headerH.offsetHeight + 8 : 0;
-        window.scrollTo(0, navTop - offset);
-        sessionStorage.removeItem('cal_scroll_top');
+    fetch('/api/calendrier-data?month=' + m + '&year=' + y)
+        .then(function(r) { return r.json(); })
+        .then(function(d) { renderCalendar(d); })
+        .catch(function() { btn.disabled = false; });
+}
+
+function renderCalendar(d) {
+    /* Update month label */
+    var label = document.getElementById('cal-current-label');
+    if (label) label.textContent = d.current_month_label;
+
+    /* Update grid aria-label */
+    var grid = document.querySelector('.cal-grid[role="grid"]');
+    if (grid) grid.setAttribute('aria-label', 'Calendrier Tempo ' + d.current_month_label);
+
+    /* Rebuild navigation buttons */
+    var nav = document.getElementById('cal');
+    if (nav) {
+        var html = '';
+        if (d.prev_month) {
+            html += '<button type="button" data-month="' + d.prev_month + '" data-year="' + d.prev_year +
+                '" onclick="navigateCalendar(this)" aria-label="Mois précédent : ' + d.prev_month_label +
+                '">&larr; ' + d.prev_month_label + '</button>';
+        }
+        html += '<span class="cal-current" id="cal-current-label">' + d.current_month_label + '</span>';
+        if (d.next_month) {
+            html += '<button type="button" data-month="' + d.next_month + '" data-year="' + d.next_year +
+                '" onclick="navigateCalendar(this)" aria-label="Mois suivant : ' + d.next_month_label +
+                '">' + d.next_month_label + ' &rarr;</button>';
+        }
+        nav.innerHTML = html;
     }
 
-    calNav.querySelectorAll('a').forEach(function(link) {
-        link.addEventListener('click', function() {
-            sessionStorage.setItem('cal_scroll_top', '1');
+    /* Rebuild calendar grid (keep headers) */
+    if (grid) {
+        var cells = '';
+        var headers = '<div class="cal-header" role="columnheader">Lun</div>' +
+            '<div class="cal-header" role="columnheader">Mar</div>' +
+            '<div class="cal-header" role="columnheader">Mer</div>' +
+            '<div class="cal-header" role="columnheader">Jeu</div>' +
+            '<div class="cal-header" role="columnheader">Ven</div>' +
+            '<div class="cal-header" role="columnheader">Sam</div>' +
+            '<div class="cal-header" role="columnheader">Dim</div>';
+        d.calendar_days.forEach(function(day) {
+            if (day.empty) {
+                cells += '<div class="cal-day empty" role="gridcell"></div>';
+            } else {
+                var cls = 'cal-day ' + day.color.toLowerCase();
+                if (day.is_today) cls += ' today';
+                if (day.is_future) cls += ' future';
+                var aria = day.num + ' ' + d.current_month_label + ' - ' + day.color;
+                if (day.is_future) aria += ' (prévision)';
+                cells += '<div class="' + cls + '" role="gridcell" aria-label="' + aria + '">' + day.num + '</div>';
+            }
         });
-    });
-})();
+        grid.innerHTML = headers + cells;
+    }
+
+    /* Scroll nav into view */
+    var calNav = document.getElementById('cal');
+    if (calNav) {
+        var headerEl = document.querySelector('header[role="banner"]');
+        var offset = headerEl ? headerEl.offsetHeight + 8 : 0;
+        var navTop = calNav.getBoundingClientRect().top + window.pageYOffset;
+        window.scrollTo(0, navTop - offset);
+    }
+}
 </script>
 
 </body>
