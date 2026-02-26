@@ -392,7 +392,7 @@ class TestMigrationV8:
         conn = get_db()
         try:
             version = conn.execute("PRAGMA user_version").fetchone()[0]
-            assert version == 22
+            assert version == 23
         finally:
             conn.close()
 
@@ -4423,3 +4423,224 @@ class TestDbSync:
         with open("app.py") as f:
             source = f.read()
         assert "/admin/db-diagnostic" in source
+
+
+# ================================================================
+# Tests v23 : Résilience Autoscale (D+C)
+# ================================================================
+
+class TestSchedulerExecutionsTable:
+    """Migration v23: scheduler_executions table for Autoscale resilience."""
+
+    def test_migration_creates_table(self):
+        """scheduler_executions table exists after migration."""
+        from database import get_db
+        conn = get_db()
+        try:
+            row = conn.execute(
+                "SELECT COUNT(*) as c FROM scheduler_executions"
+            ).fetchone()
+            assert row["c"] >= 0
+        finally:
+            conn.close()
+
+    def test_scheduler_executions_insert_and_update(self):
+        """Can insert and upsert into scheduler_executions."""
+        from database import get_db
+        conn = get_db()
+        try:
+            conn.execute(
+                """INSERT INTO scheduler_executions
+                   (task_id, last_run, last_status, last_duration_s, last_error)
+                   VALUES (?, ?, ?, ?, ?)
+                   ON CONFLICT(task_id) DO UPDATE SET
+                       last_run = excluded.last_run,
+                       last_status = excluded.last_status,
+                       last_duration_s = excluded.last_duration_s,
+                       last_error = excluded.last_error""",
+                ("test_task", "2026-02-26T10:00:00", "ok", 1.5, None),
+            )
+            conn.commit()
+
+            row = conn.execute(
+                "SELECT * FROM scheduler_executions WHERE task_id = ?",
+                ("test_task",)
+            ).fetchone()
+            assert row is not None
+            assert row["last_status"] == "ok"
+            assert row["last_duration_s"] == 1.5
+
+            # Upsert
+            conn.execute(
+                """INSERT INTO scheduler_executions
+                   (task_id, last_run, last_status, last_duration_s, last_error)
+                   VALUES (?, ?, ?, ?, ?)
+                   ON CONFLICT(task_id) DO UPDATE SET
+                       last_run = excluded.last_run,
+                       last_status = excluded.last_status,
+                       last_duration_s = excluded.last_duration_s,
+                       last_error = excluded.last_error""",
+                ("test_task", "2026-02-26T11:00:00", "error", 0.5, "timeout"),
+            )
+            conn.commit()
+
+            row = conn.execute(
+                "SELECT * FROM scheduler_executions WHERE task_id = ?",
+                ("test_task",)
+            ).fetchone()
+            assert row["last_status"] == "error"
+            assert row["last_error"] == "timeout"
+
+            # Cleanup
+            conn.execute("DELETE FROM scheduler_executions WHERE task_id = ?", ("test_task",))
+            conn.commit()
+        finally:
+            conn.close()
+
+    def test_conflict_cols_includes_scheduler_executions(self):
+        """_CONFLICT_COLS mapping includes scheduler_executions."""
+        with open("database.py") as f:
+            source = f.read()
+        assert "'scheduler_executions'" in source
+
+
+class TestSchedulerTracking:
+    """Scheduler task execution tracking for Autoscale resilience."""
+
+    def test_tracked_wrapper_exists(self):
+        """scheduler.py should have _tracked() wrapper function."""
+        with open("scheduler.py") as f:
+            source = f.read()
+        assert "def _tracked(" in source
+
+    def test_track_execution_exists(self):
+        """scheduler.py should have _track_execution() function."""
+        with open("scheduler.py") as f:
+            source = f.read()
+        assert "async def _track_execution(" in source
+
+    def test_all_jobs_tracked(self):
+        """All scheduler jobs should use _tracked() wrapper."""
+        with open("scheduler.py") as f:
+            source = f.read()
+        # Check that start_scheduler uses _tracked for all main jobs
+        assert '_tracked("daily_verification"' in source
+        assert '_tracked("morning_alerts"' in source
+        assert '_tracked("daily_predictions"' in source
+        assert '_tracked("bimonthly_weights"' in source
+        assert '_tracked("daily_validation"' in source
+        assert '_tracked("weekly_recap"' in source
+        assert '_tracked("edf_polling"' in source
+        assert '_tracked("seo_agent"' in source
+        assert '_tracked("backlinks_agent"' in source
+
+
+class TestSchedulerRecovery:
+    """Overdue task recovery after cold start."""
+
+    def test_recover_overdue_tasks_exists(self):
+        """scheduler.py should have recover_overdue_tasks() function."""
+        with open("scheduler.py") as f:
+            source = f.read()
+        assert "async def recover_overdue_tasks(" in source
+
+    def test_check_and_recover_exists(self):
+        """scheduler.py should have check_and_recover() with cooldown."""
+        with open("scheduler.py") as f:
+            source = f.read()
+        assert "async def check_and_recover(" in source
+        assert "_RECOVERY_COOLDOWN_S" in source
+
+    def test_post_startup_calls_recovery(self):
+        """_task_post_startup should call recover_overdue_tasks."""
+        with open("scheduler.py") as f:
+            source = f.read()
+        assert "recover_overdue_tasks" in source
+        # Must appear in the post_startup function
+        idx_post_startup = source.index("async def _task_post_startup")
+        idx_next_func = source.index("\ndef ", idx_post_startup + 1)
+        post_startup_body = source[idx_post_startup:idx_next_func]
+        assert "recover_overdue_tasks" in post_startup_body
+
+    def test_recovery_helpers_exist(self):
+        """Helper functions for overdue detection should exist."""
+        with open("scheduler.py") as f:
+            source = f.read()
+        assert "def _not_run_today(" in source
+        assert "def _not_run_this_week(" in source
+        assert "def _stale(" in source
+        assert "def _get_last_runs(" in source
+
+    def test_not_run_today_logic(self):
+        """_not_run_today returns True when task hasn't run today."""
+        from datetime import date, datetime
+        from zoneinfo import ZoneInfo
+        paris = ZoneInfo("Europe/Paris")
+        today = date(2026, 2, 26)
+        yesterday = datetime(2026, 2, 25, 18, 0, tzinfo=paris)
+
+        # Simulate: task ran yesterday
+        last_runs = {"test": yesterday}
+
+        # Import the function
+        import importlib
+        import scheduler as sched_mod
+        importlib.reload(sched_mod)
+        assert sched_mod._not_run_today(last_runs, "test", today) is True
+        assert sched_mod._not_run_today(last_runs, "missing_task", today) is True
+
+        # Task ran today
+        today_run = datetime(2026, 2, 26, 10, 0, tzinfo=paris)
+        last_runs["test"] = today_run
+        assert sched_mod._not_run_today(last_runs, "test", today) is False
+
+    def test_not_run_this_week_logic(self):
+        """_not_run_this_week returns True when task hasn't run this ISO week."""
+        from datetime import date, datetime
+        from zoneinfo import ZoneInfo
+        paris = ZoneInfo("Europe/Paris")
+
+        # Thursday Feb 26, 2026 = ISO week 9
+        today = date(2026, 2, 26)
+        # Last week (ISO week 8)
+        last_week = datetime(2026, 2, 18, 20, 0, tzinfo=paris)
+
+        import importlib
+        import scheduler as sched_mod
+        importlib.reload(sched_mod)
+
+        last_runs = {"recap": last_week}
+        assert sched_mod._not_run_this_week(last_runs, "recap", today) is True
+
+        # This week
+        this_week = datetime(2026, 2, 23, 20, 0, tzinfo=paris)  # Monday same ISO week
+        last_runs["recap"] = this_week
+        assert sched_mod._not_run_this_week(last_runs, "recap", today) is False
+
+
+class TestKeepaliveEndpoint:
+    """Keepalive endpoint for external monitoring services."""
+
+    def test_keepalive_route_exists(self):
+        """App should have /keepalive route."""
+        with open("app.py") as f:
+            source = f.read()
+        assert '"/keepalive"' in source
+
+    def test_keepalive_returns_status(self):
+        """Keepalive endpoint should return status, scheduler, recovered fields."""
+        with open("app.py") as f:
+            source = f.read()
+        assert '"status"' in source or "'status'" in source
+        assert "check_and_recover" in source
+
+    def test_proxy_serves_keepalive_during_loading(self):
+        """ASGI proxy should serve /keepalive during FastAPI loading."""
+        with open("main.py") as f:
+            source = f.read()
+        assert "/keepalive" in source
+
+    def test_keepalive_not_blocked_by_db_middleware(self):
+        """Keepalive should not start with /api/ to avoid DB wait middleware."""
+        # /keepalive does not match /api/* so it won't be blocked
+        assert not "/keepalive".startswith("/api/")

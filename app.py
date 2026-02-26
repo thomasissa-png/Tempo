@@ -1177,6 +1177,34 @@ async def health():
     return {"status": status, "db": db_ok, "timestamp": datetime.now().isoformat()}
 
 
+@app.get("/keepalive")
+async def keepalive():
+    """Endpoint pour services de keepalive externes (UptimeRobot, cron-job.org).
+
+    Résilience Autoscale : maintient l'instance éveillée et déclenche
+    le rattrapage des tâches manquées si nécessaire (cooldown 5 min).
+
+    Configurer un service externe pour pinger cette URL toutes les 5 min
+    entre 6h et 23h (heure Paris) afin de garantir l'exécution des
+    tâches planifiées par APScheduler.
+    """
+    recovered = []
+    scheduler_running = False
+
+    if _db_ready.is_set():
+        try:
+            from scheduler import check_and_recover, scheduler as _scheduler
+            scheduler_running = _scheduler.running
+            recovered = await check_and_recover()
+        except Exception as e:
+            logger.debug(f"[Keepalive] Erreur recovery: {e}")
+
+    return {
+        "status": "alive",
+        "scheduler": scheduler_running,
+        "recovered": recovered,
+        "timestamp": _now_paris().isoformat(),
+    }
 
 
 # ================================================================

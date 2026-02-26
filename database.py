@@ -72,6 +72,7 @@ _CONFLICT_COLS = {
     'learning_journal': '(pattern_type, pattern_key, date_analysis)',
     'weather_forecast_log': '(target_date, forecast_date)',
     'performance': '(date_prediction, date_cible, jours_avance)',
+    'scheduler_executions': '(task_id)',
 }
 
 # Connection pool for PostgreSQL (lazy-initialized)
@@ -1339,6 +1340,23 @@ def init_db():
         conn.execute("PRAGMA user_version = 22")
         conn.commit()
         logger.info("Migration v22 appliquee (heure_envoi backfill, sms_logs.date_cible, whatsapp_msg_id)")
+
+    if version < 23:
+        # Migration v23 — table scheduler_executions (résilience Autoscale)
+        # Trace la dernière exécution de chaque tâche planifiée pour permettre
+        # le rattrapage automatique après un cold start (scale-to-zero).
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS scheduler_executions (
+                task_id TEXT PRIMARY KEY,
+                last_run TEXT NOT NULL,
+                last_status TEXT NOT NULL DEFAULT 'ok',
+                last_duration_s REAL,
+                last_error TEXT
+            )
+        """)
+        conn.execute("PRAGMA user_version = 23")
+        conn.commit()
+        logger.info("Migration v23 appliquee (table scheduler_executions)")
 
     # Poids initiaux si vide
     existing = conn.execute("SELECT COUNT(*) as c FROM weights_history").fetchone()

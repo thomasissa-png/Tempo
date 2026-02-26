@@ -6,16 +6,26 @@ Tâches planifiées :
   - 1er et 15 du mois : recalcul poids algorithme + analyse patterns d'erreurs (W-1)
   - Dimanche 20h     : analyse patterns + récapitulatif hebdomadaire SMS
   - Quotidien 23h    : validation corrections + kill-switch (A-1/C-3)
+
+Résilience Autoscale (D+C) :
+  - Chaque tâche enregistre son exécution en DB (table scheduler_executions)
+  - Au cold start, recover_overdue_tasks() détecte les tâches en retard et les rattrape
+  - L'endpoint /keepalive permet à un service externe (UptimeRobot) de maintenir
+    l'instance éveillée et de déclencher le rattrapage si nécessaire
 """
 
 import asyncio
 import logging
+import time
 import uuid
 from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 logger = logging.getLogger(__name__)
+
+_PARIS_TZ = ZoneInfo("Europe/Paris")
 
 scheduler = AsyncIOScheduler(timezone="Europe/Paris")
 
@@ -24,12 +34,219 @@ scheduler = AsyncIOScheduler(timezone="Europe/Paris")
 # doivent attendre ce signal pour que get_remaining_days() soit fiable.
 _backfill_done = asyncio.Event()
 
+# Cooldown pour éviter les rattrapages en boucle via /keepalive
+_last_recovery_check = 0.0
+_RECOVERY_COOLDOWN_S = 300  # 5 minutes
+
+
+def _now_paris() -> datetime:
+    """Retourne l'heure actuelle en timezone Paris (CET/CEST)."""
+    return datetime.now(tz=_PARIS_TZ)
+
+
+# ================================================================
+# TRACKING : enregistrement des exécutions en DB
+# ================================================================
+
+async def _track_execution(task_id: str, task_fn):
+    """Exécute une tâche et enregistre le résultat en DB.
+
+    Permet le rattrapage automatique après cold start : on sait
+    quand chaque tâche a tourné pour la dernière fois.
+    """
+    from database import get_db
+
+    start_time = time.monotonic()
+    status = "ok"
+    error_msg = None
+    try:
+        await task_fn()
+    except Exception as e:
+        status = "error"
+        error_msg = str(e)[:500]
+        raise
+    finally:
+        duration = time.monotonic() - start_time
+        now_iso = _now_paris().isoformat()
+        try:
+            conn = get_db()
+            try:
+                conn.execute(
+                    """INSERT INTO scheduler_executions
+                       (task_id, last_run, last_status, last_duration_s, last_error)
+                       VALUES (?, ?, ?, ?, ?)
+                       ON CONFLICT(task_id) DO UPDATE SET
+                           last_run = excluded.last_run,
+                           last_status = excluded.last_status,
+                           last_duration_s = excluded.last_duration_s,
+                           last_error = excluded.last_error""",
+                    (task_id, now_iso, status, round(duration, 2), error_msg),
+                )
+                conn.commit()
+            finally:
+                conn.close()
+        except Exception as db_err:
+            logger.debug(f"[Tracking] Erreur DB pour {task_id}: {db_err}")
+
+
+def _tracked(task_id: str, fn):
+    """Retourne une version trackée d'une tâche async pour APScheduler."""
+    async def wrapper():
+        await _track_execution(task_id, fn)
+    wrapper.__name__ = f"tracked_{task_id}"
+    return wrapper
+
+
+# ================================================================
+# RECOVERY : rattrapage des tâches manquées (cold start / Autoscale)
+# ================================================================
+
+def _get_last_runs() -> dict:
+    """Récupère les dernières exécutions depuis la DB.
+
+    Returns:
+        dict task_id → datetime (Paris timezone-aware)
+    """
+    from database import get_db
+
+    conn = get_db()
+    try:
+        rows = conn.execute(
+            "SELECT task_id, last_run, last_status FROM scheduler_executions"
+        ).fetchall()
+        result = {}
+        for r in rows:
+            try:
+                dt = datetime.fromisoformat(r["last_run"])
+                # Rendre timezone-aware si nécessaire
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=_PARIS_TZ)
+                result[r["task_id"]] = dt
+            except (ValueError, TypeError):
+                pass
+        return result
+    except Exception:
+        return {}
+    finally:
+        conn.close()
+
+
+def _not_run_today(last_runs: dict, task_id: str, today: date) -> bool:
+    """True si la tâche n'a PAS tourné aujourd'hui."""
+    last = last_runs.get(task_id)
+    if not last:
+        return True
+    return last.date() != today
+
+
+def _not_run_this_week(last_runs: dict, task_id: str, today: date) -> bool:
+    """True si la tâche n'a PAS tourné cette semaine ISO."""
+    last = last_runs.get(task_id)
+    if not last:
+        return True
+    return last.date().isocalendar()[:2] != today.isocalendar()[:2]
+
+
+def _stale(last_runs: dict, task_id: str, minutes: int) -> bool:
+    """True si la dernière exécution date de plus de N minutes."""
+    last = last_runs.get(task_id)
+    if not last:
+        return True
+    now = _now_paris()
+    return (now - last).total_seconds() > minutes * 60
+
+
+async def recover_overdue_tasks() -> list[str]:
+    """Détecte et exécute les tâches en retard après un cold start.
+
+    Appelée par _task_post_startup() et par /keepalive.
+    Chaque tâche est rattrapée si :
+    - On est dans sa fenêtre horaire (ex: 18h pour daily_predictions)
+    - Elle n'a pas tourné aujourd'hui (ou cette semaine pour weekly_recap)
+
+    Returns:
+        Liste des task_id rattrapés.
+    """
+    now = _now_paris()
+    today = now.date()
+    last_runs = _get_last_runs()
+    recovered = []
+
+    # Ordre de priorité : les tâches les plus critiques d'abord
+    # (task_id, fn, condition_pour_rattrapage)
+    recovery_plan = [
+        # EDF polling : si on est dans la fenêtre 6h-11h et pas de run récent
+        ("edf_polling", task_edf_polling,
+         lambda: 6 <= now.hour <= 11 and _stale(last_runs, "edf_polling", 20)),
+
+        # Alertes matinales : si passé 7h30 et pas tourné aujourd'hui
+        ("morning_alerts", task_morning_alerts,
+         lambda: 7 <= now.hour < 12 and _not_run_today(last_runs, "morning_alerts", today)),
+
+        # Vérification EDF 11h30 : si passé 11h30 et pas tourné aujourd'hui
+        ("daily_verification", task_daily_verification,
+         lambda: now.hour >= 11 and _not_run_today(last_runs, "daily_verification", today)),
+
+        # Prédictions 18h : si passé 18h et pas tourné aujourd'hui
+        ("daily_predictions", task_daily_predictions,
+         lambda: now.hour >= 18 and _not_run_today(last_runs, "daily_predictions", today)),
+
+        # Récap hebdo : dimanche >= 20h et pas tourné cette semaine
+        ("weekly_recap", task_weekly_recap,
+         lambda: now.weekday() == 6 and now.hour >= 20
+         and _not_run_this_week(last_runs, "weekly_recap", today)),
+
+        # Validation corrections 23h : si passé 23h et pas tourné aujourd'hui
+        ("daily_validation", task_daily_validation,
+         lambda: now.hour >= 23 and _not_run_today(last_runs, "daily_validation", today)),
+
+        # Recalcul poids : 1er/15 du mois >= 2h, pas tourné aujourd'hui
+        ("bimonthly_weights", task_monthly_weights,
+         lambda: today.day in (1, 15) and now.hour >= 2
+         and _not_run_today(last_runs, "bimonthly_weights", today)),
+    ]
+
+    for task_id, fn, is_overdue in recovery_plan:
+        try:
+            if is_overdue():
+                logger.info(f"[Recovery] Rattrapage tâche en retard: {task_id}")
+                await _track_execution(task_id, fn)
+                recovered.append(task_id)
+        except Exception as e:
+            logger.error(f"[Recovery] Échec rattrapage {task_id}: {e}")
+
+    if recovered:
+        logger.info(f"[Recovery] {len(recovered)} tâche(s) rattrapée(s): {recovered}")
+    else:
+        logger.debug("[Recovery] Aucune tâche en retard")
+
+    return recovered
+
+
+async def check_and_recover() -> list[str]:
+    """Vérifie les tâches en retard avec cooldown (pour /keepalive).
+
+    Évite de lancer le rattrapage à chaque ping (toutes les 5 min max).
+    """
+    global _last_recovery_check
+
+    now = time.monotonic()
+    if now - _last_recovery_check < _RECOVERY_COOLDOWN_S:
+        return []
+
+    _last_recovery_check = now
+    return await recover_overdue_tasks()
+
 
 def start_scheduler():
-    """Démarre le scheduler avec toutes les tâches planifiées."""
+    """Démarre le scheduler avec toutes les tâches planifiées.
+
+    Chaque tâche est wrappée par _tracked() pour enregistrer son exécution
+    en DB, permettant le rattrapage automatique après cold start.
+    """
     # 11h30 tous les jours — vérification + performance
     scheduler.add_job(
-        task_daily_verification,
+        _tracked("daily_verification", task_daily_verification),
         CronTrigger(hour=11, minute=30, timezone="Europe/Paris"),
         id="daily_verification",
         name="Vérification quotidienne 11h30",
@@ -38,7 +255,7 @@ def start_scheduler():
 
     # 7h30 tous les jours — alertes matinales (users préférant le matin)
     scheduler.add_job(
-        task_morning_alerts,
+        _tracked("morning_alerts", task_morning_alerts),
         CronTrigger(hour=7, minute=30, timezone="Europe/Paris"),
         id="morning_alerts",
         name="Alertes matinales 7h30",
@@ -47,7 +264,7 @@ def start_scheduler():
 
     # 18h00 tous les jours — nouvelles prédictions + alertes soir
     scheduler.add_job(
-        task_daily_predictions,
+        _tracked("daily_predictions", task_daily_predictions),
         CronTrigger(hour=18, minute=0, timezone="Europe/Paris"),
         id="daily_predictions",
         name="Prédictions quotidiennes 18h00",
@@ -56,7 +273,7 @@ def start_scheduler():
 
     # 1er et 15 du mois à 2h00 — recalcul des poids (W-1 : bimensuel)
     scheduler.add_job(
-        task_monthly_weights,
+        _tracked("bimonthly_weights", task_monthly_weights),
         CronTrigger(day="1,15", hour=2, minute=0, timezone="Europe/Paris"),
         id="bimonthly_weights",
         name="Recalcul bimensuel des poids",
@@ -65,7 +282,7 @@ def start_scheduler():
 
     # 23h00 quotidien — validation des corrections + kill-switch (A-1/C-3)
     scheduler.add_job(
-        task_daily_validation,
+        _tracked("daily_validation", task_daily_validation),
         CronTrigger(hour=23, minute=0, timezone="Europe/Paris"),
         id="daily_validation",
         name="Validation quotidienne des corrections",
@@ -74,7 +291,7 @@ def start_scheduler():
 
     # Dimanche 20h00 — récap hebdomadaire
     scheduler.add_job(
-        task_weekly_recap,
+        _tracked("weekly_recap", task_weekly_recap),
         CronTrigger(day_of_week="sun", hour=20, minute=0, timezone="Europe/Paris"),
         id="weekly_recap",
         name="Récap hebdomadaire dimanche 20h",
@@ -85,7 +302,7 @@ def start_scheduler():
     # Détecte la couleur EDF dès publication (parfois avant 11h) et met à jour
     # immédiatement les prédictions. La tâche 11h30 reste en filet de sécurité.
     scheduler.add_job(
-        task_edf_polling,
+        _tracked("edf_polling", task_edf_polling),
         CronTrigger(hour="6-11", minute="*/15", timezone="Europe/Paris"),
         id="edf_polling",
         name="Polling réactif couleur EDF (6h-11h15)",
@@ -95,7 +312,7 @@ def start_scheduler():
     # Mardi 9h00 — Agent SEO autonome (publication blog saisonnière)
     # Tourne chaque mardi, la logique saisonnière est dans task_seo_agent()
     scheduler.add_job(
-        task_seo_agent,
+        _tracked("seo_agent", task_seo_agent),
         CronTrigger(day_of_week="tue", hour=9, minute=0, timezone="Europe/Paris"),
         id="seo_agent_seasonal",
         name="Agent SEO blog saisonnier (mardi 9h)",
@@ -105,7 +322,7 @@ def start_scheduler():
     # Mercredi 10h00 — Agent Backlinks autonome (prospection netlinking)
     # Tourne chaque mercredi en saison active, même gate saisonnière que l'agent SEO
     scheduler.add_job(
-        task_backlinks_agent,
+        _tracked("backlinks_agent", task_backlinks_agent),
         CronTrigger(day_of_week="wed", hour=10, minute=0, timezone="Europe/Paris"),
         id="backlinks_agent_weekly",
         name="Agent Backlinks netlinking (mercredi 10h)",
@@ -217,6 +434,15 @@ async def _task_post_startup():
             logger.info(f"[Post-startup] {count} prédictions recalculées")
     except Exception as e:
         logger.error(f"[Post-startup] Erreur prédictions: {e}")
+
+    # 4. Rattrapage des tâches manquées pendant le scale-to-zero
+    # (ex: alertes matinales, vérification EDF, récap hebdo)
+    try:
+        recovered = await recover_overdue_tasks()
+        if recovered:
+            logger.info(f"[Post-startup] Tâches rattrapées: {recovered}")
+    except Exception as e:
+        logger.error(f"[Post-startup] Erreur rattrapage: {e}")
 
     logger.info("[Post-startup] Toutes les tâches différées terminées")
 

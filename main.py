@@ -112,7 +112,7 @@ async def _serve_loading_response(scope, send):
 
     cache_control = None
 
-    if path == "/health":
+    if path in ("/health", "/keepalive"):
         body = b'{"status":"starting","detail":"FastAPI loading"}'
         content_type = b"application/json"
         status = 200
