@@ -89,7 +89,11 @@ def send_whatsapp(phone_number: str, message: str) -> tuple[str, str]:
                 logger.info(f"[WhatsApp] Envoyé à ****{phone_number[-4:]}: {msg_id}")
                 return (msg_id, "sent")
             else:
-                last_error = f"HTTP {resp.status_code}: {resp.text[:200]}"
+                meta_err = _parse_meta_error(resp.text)
+                last_error = (
+                    f"HTTP {resp.status_code} [code={meta_err['code']} "
+                    f"sub={meta_err['subcode']}]: {meta_err['message']}"
+                )
                 logger.warning(f"[WhatsApp] Tentative {attempt+1} échouée: {last_error}")
         except Exception as e:
             last_error = str(e)
@@ -102,10 +106,32 @@ def send_whatsapp(phone_number: str, message: str) -> tuple[str, str]:
     return ("", f"error: {last_error}")
 
 
+def _parse_meta_error(resp_text: str) -> dict:
+    """Parse la réponse d'erreur Meta pour extraire code, subcode et message."""
+    import json
+    try:
+        data = json.loads(resp_text)
+        err = data.get("error", {})
+        return {
+            "code": err.get("code", 0),
+            "subcode": err.get("error_subcode", 0),
+            "message": err.get("message", ""),
+            "type": err.get("type", ""),
+            "fbtrace_id": err.get("fbtrace_id", ""),
+        }
+    except (json.JSONDecodeError, AttributeError):
+        return {"code": 0, "subcode": 0, "message": resp_text[:300]}
+
+
+# Langue alternative pour retry automatique sur erreur 132018
+_LANG_FALLBACKS = {"fr": "fr_FR", "fr_FR": "fr"}
+
+
 def send_whatsapp_template(phone_number: str, template_name: str,
                            components: list[dict] | None = None) -> tuple[str, str]:
     """Envoie un message WhatsApp via template pré-approuvé Meta.
     Requis pour les messages business-initiated (hors fenêtre 24h).
+    Retry auto avec code langue alternatif sur erreur 132018.
     Retourne (message_id, statut)."""
     if not _is_whatsapp_configured():
         logger.info(f"[WhatsApp] Mode simulation template '{template_name}' → ****{phone_number[-4:]}")
@@ -114,7 +140,6 @@ def send_whatsapp_template(phone_number: str, template_name: str,
     import time
     import httpx
 
-    last_error = None
     url = (
         f"https://graph.facebook.com/{Config.WHATSAPP_API_VERSION}"
         f"/{Config.WHATSAPP_PHONE_NUMBER_ID}/messages"
@@ -124,38 +149,68 @@ def send_whatsapp_template(phone_number: str, template_name: str,
         "Content-Type": "application/json",
     }
     recipient = phone_number.lstrip("+")
-    payload = {
-        "messaging_product": "whatsapp",
-        "to": recipient,
-        "type": "template",
-        "template": {
-            "name": template_name,
-            "language": {"code": Config.WHATSAPP_TEMPLATE_LANG},
-        },
-    }
-    if components:
-        payload["template"]["components"] = components
 
-    for attempt in range(3):
-        try:
-            with httpx.Client(timeout=15) as client:
-                resp = client.post(url, headers=headers, json=payload)
-            if resp.status_code in (200, 201):
-                data = resp.json()
-                msg_id = data.get("messages", [{}])[0].get("id", "")
-                logger.info(f"[WhatsApp] Template '{template_name}' envoyé à ****{phone_number[-4:]}: {msg_id}")
-                return (msg_id, "sent")
-            else:
-                last_error = f"HTTP {resp.status_code}: {resp.text[:200]}"
+    # Langues à essayer : configurée d'abord, puis fallback si 132018
+    lang_primary = Config.WHATSAPP_TEMPLATE_LANG
+    langs_to_try = [lang_primary]
+    alt = _LANG_FALLBACKS.get(lang_primary)
+    if alt:
+        langs_to_try.append(alt)
+
+    last_error = None
+    for lang_code in langs_to_try:
+        payload = {
+            "messaging_product": "whatsapp",
+            "to": recipient,
+            "type": "template",
+            "template": {
+                "name": template_name,
+                "language": {"code": lang_code},
+            },
+        }
+        if components:
+            payload["template"]["components"] = components
+
+        got_132018 = False
+        for attempt in range(3):
+            try:
+                with httpx.Client(timeout=15) as client:
+                    resp = client.post(url, headers=headers, json=payload)
+                if resp.status_code in (200, 201):
+                    data = resp.json()
+                    msg_id = data.get("messages", [{}])[0].get("id", "")
+                    if lang_code != lang_primary:
+                        logger.info(f"[WhatsApp] Template '{template_name}' réussi avec lang={lang_code} (fallback)")
+                    logger.info(f"[WhatsApp] Template '{template_name}' envoyé à ****{phone_number[-4:]}: {msg_id}")
+                    return (msg_id, "sent")
+                else:
+                    meta_err = _parse_meta_error(resp.text)
+                    last_error = (
+                        f"HTTP {resp.status_code} [code={meta_err['code']} "
+                        f"sub={meta_err['subcode']}]: {meta_err['message']}"
+                    )
+                    logger.warning(
+                        f"[WhatsApp] Template '{template_name}' lang={lang_code} "
+                        f"tentative {attempt+1}: {last_error} "
+                        f"(fbtrace={meta_err.get('fbtrace_id', '')})"
+                    )
+                    # Erreur 132018/132001 (template/param mismatch) → essayer langue alt
+                    if meta_err["code"] in (132018, 132001):
+                        logger.info(f"[WhatsApp] Erreur {meta_err['code']} avec lang={lang_code}, tentative fallback...")
+                        got_132018 = True
+                        break
+            except Exception as e:
+                last_error = str(e)
                 logger.warning(f"[WhatsApp] Template tentative {attempt+1} échouée: {last_error}")
-        except Exception as e:
-            last_error = str(e)
-            logger.warning(f"[WhatsApp] Template tentative {attempt+1} échouée: {last_error}")
-        if attempt < 2:
-            wait = 2 ** attempt
-            time.sleep(wait)
+            if attempt < 2:
+                wait = 2 ** attempt
+                time.sleep(wait)
 
-    logger.error(f"[WhatsApp] Échec template '{template_name}' → ****{phone_number[-4:]} après 3 tentatives: {last_error}")
+        if got_132018:
+            continue  # essayer la langue suivante
+        break  # erreur non liée à la langue, inutile de réessayer
+
+    logger.error(f"[WhatsApp] Échec template '{template_name}' → ****{phone_number[-4:]} après toutes tentatives: {last_error}")
     return ("", f"error: {last_error}")
 
 
