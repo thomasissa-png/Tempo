@@ -87,6 +87,7 @@ class Config:
     WHATSAPP_TEMPLATE_CONFIRMATION = os.getenv("WHATSAPP_TEMPLATE_CONFIRMATION", "tempo_confirmation")
     WHATSAPP_TEMPLATE_CHANGE = os.getenv("WHATSAPP_TEMPLATE_CHANGE", "tempo_changement")
     WHATSAPP_TEMPLATE_RECAP = os.getenv("WHATSAPP_TEMPLATE_RECAP", "tempo_recap_hebdo")
+    WHATSAPP_TEMPLATE_MANAGE_LINK = os.getenv("WHATSAPP_TEMPLATE_MANAGE_LINK", "tempo_lien_gestion")
     WHATSAPP_TEMPLATE_LANG = os.getenv("WHATSAPP_TEMPLATE_LANG", "fr")
 
     # --- URL de base du site (pour les liens dans les messages WhatsApp) ---

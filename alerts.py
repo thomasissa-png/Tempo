@@ -381,6 +381,11 @@ def _build_recap_template(predictions: list[dict], manage_token: str) -> tuple[s
     return Config.WHATSAPP_TEMPLATE_RECAP, _tpl_body(pred_text, summary_text, manage_url)
 
 
+def _build_manage_link_template(manage_url: str) -> tuple[str, list[dict]]:
+    """Construit le template lien de gestion. Params: {{1}}=URL gestion."""
+    return Config.WHATSAPP_TEMPLATE_MANAGE_LINK, _tpl_body(manage_url)
+
+
 # ================================================================
 # FORMATAGE DES MESSAGES (texte libre — pour logs + réponses webhook 24h)
 # ================================================================

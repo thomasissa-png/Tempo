@@ -1817,18 +1817,14 @@ async def api_resend_manage_link(
         conn.close()
 
     if user and user["actif"]:
-        # Envoi en arrière-plan — la réponse HTTP part immédiatement
+        # Envoi via template (fonctionne hors fenêtre 24h, contrairement aux messages texte)
         manage_url = f"https://www.calendrier-tempo.fr/manage/{user['manage_token']}"
 
         def _send_manage_link():
             try:
-                from alerts import send_whatsapp
-                msg = (
-                    f"📋 Voici votre lien de gestion Calendrier Tempo :\n"
-                    f"{manage_url}\n\n"
-                    f"Vous pouvez modifier vos préférences ou vous désinscrire."
-                )
-                send_whatsapp(phone_clean, msg)
+                from alerts import _build_manage_link_template, send_whatsapp_template
+                tpl_name, tpl_components = _build_manage_link_template(manage_url)
+                send_whatsapp_template(phone_clean, tpl_name, tpl_components)
             except Exception as e:
                 logger.warning(f"[ResendManage] Erreur envoi: {e}")
 
@@ -2175,6 +2171,8 @@ async def admin_whatsapp_diagnostic(request: Request, authorization: str | None 
          "params": ["{{1}} date", "{{2}} ancienne couleur", "{{3}} nouvelle couleur", "{{4}} conseil", "{{5}} URL gestion"]},
         {"name": Config.WHATSAPP_TEMPLATE_RECAP, "usage": "Récap hebdomadaire", "body_params": 3,
          "params": ["{{1}} prévisions 7j", "{{2}} résumé", "{{3}} URL gestion"]},
+        {"name": Config.WHATSAPP_TEMPLATE_MANAGE_LINK, "usage": "Lien de gestion (renvoi)", "body_params": 1,
+         "params": ["{{1}} URL gestion"]},
     ]
 
     # Dernier statut d'envoi par template depuis sms_logs
