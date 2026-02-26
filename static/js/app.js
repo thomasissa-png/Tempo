@@ -47,6 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
             Promise.all([
                 loadRemaining(),
                 loadPredictions(),
+                loadWeekSummary(),
             ]);
         }, 1000); // laisser 1s aux appels EDF pour propager
     }, 5 * 60 * 1000);
@@ -88,6 +89,7 @@ async function loadAllData(attempt = 0) {
     await Promise.all([
         loadRemaining(),
         loadPredictions(),
+        loadWeekSummary(),
         loadBadge(),
     ]);
 }
@@ -288,6 +290,32 @@ async function loadPredictions() {
     } catch (e) {
         container.innerHTML = '<p class="loading-state">Erreur de connexion au serveur<br><button class="retry-btn" onclick="loadPredictions()">Réessayer</button></p>';
         console.error('Erreur prédictions:', e);
+    }
+}
+
+/**
+ * Charge le résumé des 10 prochains jours indépendamment de loadPredictions.
+ * Sur la homepage, #forecast-container n'existe pas → loadPredictions() fait
+ * un early return et renderWeekSummary() n'est jamais appelée. Cette fonction
+ * garantit que le résumé est toujours mis à jour via JS (fallback si SSR vide
+ * lors d'un cold start).
+ */
+async function loadWeekSummary() {
+    const container = document.getElementById('week-summary');
+    if (!container) return;
+    try {
+        const resp = await fetchWithTimeout('/api/predictions');
+        if (!resp.ok) return;
+        const data = await resp.json();
+        if (!data || data.status !== 'ok') return;
+        const preds = data.predictions || [];
+        if (preds.length === 0) return;
+        if (data.generated_at) {
+            updateLastUpdateBar(data.generated_at);
+        }
+        renderWeekSummary(preds);
+    } catch {
+        // SSR fallback reste visible si l'API échoue
     }
 }
 
