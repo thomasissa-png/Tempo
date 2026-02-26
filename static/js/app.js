@@ -8,12 +8,13 @@
 const JOURS = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
 const JOURS_FULL = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
 const MOIS = ['jan', 'fév', 'mar', 'avr', 'mai', 'jun', 'jul', 'aoû', 'sep', 'oct', 'nov', 'déc'];
+const MOIS_FULL = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 
-// Tarifs indicatifs Tempo 2026 (€/kWh TTC — vérifiez sur votre contrat EDF)
+// Tarifs indicatifs Tempo au 1er février 2026 (€/kWh TTC — vérifiez sur votre contrat EDF)
 const TARIFS = {
-    BLEU:  { hp: 0.1296, hc: 0.1044 },
-    BLANC: { hp: 0.1486, hc: 0.1140 },
-    ROUGE: { hp: 0.7562, hc: 0.1568 },
+    BLEU:  { hp: 0.1612, hc: 0.1325 },
+    BLANC: { hp: 0.1871, hc: 0.1499 },
+    ROUGE: { hp: 0.7060, hc: 0.1575 },
 };
 
 // M-04 QA : helper fetch avec timeout (10s par défaut)
@@ -28,20 +29,68 @@ function fetchWithTimeout(url, options = {}, timeoutMs = 10000) {
 // ================================================================
 
 document.addEventListener('DOMContentLoaded', () => {
-    loadToday();
-    loadTomorrow();
-    loadRemaining();
-    loadPredictions();
-    loadBadge();
-    setupSubscribeForm();
-    setupWelcomeBanner();
-    setupAlertDismiss();
+    // Charger toutes les données en parallèle (au lieu de séquentiellement)
+    loadAllData();
     setupHamburger();
     setupBackToTop();
-    setupPhoneValidation();
     setupUnsubscribeForm();
+    setupWelcomeBanner();
     checkHorsSaison();
+
+    // Fix #31 : auto-refresh toutes les 5 min pour refléter
+    // les confirmations EDF sans recharger la page manuellement
+    setInterval(() => {
+        // Propager confirmations EDF avant de recharger les prédictions
+        fetchWithTimeout('/api/today', {}, 3000).catch(() => {});
+        fetchWithTimeout('/api/tomorrow', {}, 3000).catch(() => {});
+        setTimeout(() => {
+            Promise.all([
+                loadRemaining(),
+                loadPredictions(),
+            ]);
+        }, 1000); // laisser 1s aux appels EDF pour propager
+    }, 5 * 60 * 1000);
 });
+
+/**
+ * Charge toutes les données. Si l'API n'est pas encore prête (cold start),
+ * retente avec backoff exponentiel : 2s, 4s, 6s, 8s, 10s (= 30s max).
+ * Si toutes les tentatives échouent, planifie un dernier essai à 30s
+ * pour couvrir les cold starts lents (Replit free tier).
+ */
+async function loadAllData(attempt = 0) {
+    // Étape 1 : Appeler /api/today et /api/tomorrow pour propager les confirmations EDF
+    // vers la DB (store_actual + confirm_prediction). Ces appels DOIVENT précéder
+    // loadPredictions() pour que les prédictions reflètent les couleurs confirmées.
+    try {
+        const todayResp = await fetchWithTimeout('/api/today', {}, 5000);
+        if (todayResp.status === 503 && attempt < 5) {
+            const delay = (attempt + 1) * 2000;
+            setTimeout(() => loadAllData(attempt + 1), delay);
+            return;
+        }
+    } catch {
+        if (attempt < 5) {
+            const delay = (attempt + 1) * 2000;
+            setTimeout(() => loadAllData(attempt + 1), delay);
+            return;
+        }
+        // Dernier recours : un retry isolé à 30s pour les cold starts très lents
+        if (attempt === 5) {
+            setTimeout(() => loadAllData(6), 30000);
+            return;
+        }
+    }
+    // /api/tomorrow : propage la confirmation EDF demain (non bloquant)
+    fetchWithTimeout('/api/tomorrow', {}, 5000).catch(() => {});
+
+    // Étape 2 : Charger les données d'affichage en parallèle
+    await Promise.all([
+        loadRemaining(),
+        loadPredictions(),
+        loadBadge(),
+    ]);
+}
 
 // ================================================================
 // CHARGEMENT DES DONNÉES
@@ -79,7 +128,7 @@ async function loadTomorrow() {
                 <h3>DEMAIN</h3>
                 <div class="couleur-circle couleur-UNKNOWN" role="img" aria-label="En attente">?</div>
                 <div style="font-size:1.1rem;font-weight:600;margin:4px 0;color:var(--text-secondary)">En attente</div>
-                <div class="date-text">EDF annonce la couleur de demain vers 11h.<br>Revenez d'ici quelques minutes !</div>
+                <div class="date-text">EDF n'a pas encore publi&eacute; la couleur de demain.<br>Elle sera d&eacute;tect&eacute;e automatiquement d&egrave;s sa publication.</div>
             `;
         }
     } catch {
@@ -116,16 +165,22 @@ async function loadRemaining() {
         setProgress('progress-bleu',  (totalBleu  - r.BLEU)  / totalBleu);
 
         // P-06 : contexte humain pour Paul
+        // Les jours rouges ne peuvent être placés que du 1er nov au 31 mars (R1).
         const ctxEl = document.getElementById('counter-context');
-        if (ctxEl && data.days_left_in_season) {
-            const daysLeft = data.days_left_in_season;
-            if (r.ROUGE > 0 && daysLeft < 90) {
-                const density = (r.ROUGE / daysLeft * 100).toFixed(0);
-                ctxEl.innerHTML = `<strong style="color:var(--rouge)">Attention :</strong> il reste ${r.ROUGE} jours rouges à placer en ${daysLeft} jours — risque de ${density}% par jour.`;
-            } else if (r.ROUGE === 0) {
-                ctxEl.textContent = 'Tous les jours rouges de la saison ont été utilisés. Bonne nouvelle !';
+        if (ctxEl && data.season_end) {
+            const seasonEndYear = new Date(data.season_end).getFullYear();
+            const rougeDeadline = new Date(seasonEndYear, 2, 31); // 31 mars
+            const daysLeftRouge = Math.max(0, Math.ceil((rougeDeadline - new Date()) / 86400000));
+            if (r.ROUGE === 0) {
+                ctxEl.textContent = 'Tous les jours rouges de la saison ont \u00e9t\u00e9 utilis\u00e9s. Bonne nouvelle\u00a0!';
+            } else if (daysLeftRouge === 0) {
+                ctxEl.textContent = 'La p\u00e9riode des jours rouges est termin\u00e9e (fin mars). Plus de risque\u00a0!';
+            } else if (daysLeftRouge < 60) {
+                // Fréquence en langage naturel (1 jour rouge par X jours)
+                const freq = Math.round(daysLeftRouge / r.ROUGE);
+                ctxEl.innerHTML = `<strong style="color:var(--rouge)">Attention\u00a0:</strong> il reste ${r.ROUGE} jour${r.ROUGE > 1 ? 's' : ''} rouge${r.ROUGE > 1 ? 's' : ''} \u00e0 placer en ${daysLeftRouge} jours \u2014 attendez-vous \u00e0 environ <strong>1 jour rouge tous les ${freq} jours</strong>.`;
             } else {
-                ctxEl.textContent = `Encore ${r.ROUGE} jours rouges à placer d'ici fin mai. Restez vigilant !`;
+                ctxEl.textContent = `Encore ${r.ROUGE} jours rouges \u00e0 placer d'ici fin mars. Restez vigilant\u00a0!`;
             }
         }
     } catch (e) {
@@ -155,40 +210,18 @@ async function loadPredictions() {
         }
 
         container.innerHTML = '';
-        const alertEl = document.getElementById('alert-rouge');
-        let hasRouge = false;
 
         const preds = data.predictions || [];
 
-        // P-05 : Résumé "Prochain jour rouge" pour Paul
-        renderNextRougeSummary(preds);
-
         if (preds.length === 0) {
             container.innerHTML = '<p class="loading-state">' +
-                escapeHtml(data.message || 'Aucune prévision disponible. Revenez après 18h.') + '</p>';
+                escapeHtml(data.message || 'Aucune prévision disponible. Les prévisions se mettent à jour automatiquement.') + '</p>';
             return;
         }
 
-        // Avertissement si données simulées
-        const hasSimulated = preds.some(p => p.simulated);
-        if (hasSimulated) {
-            const warn = document.createElement('div');
-            warn.className = 'simulated-warning';
-            warn.innerHTML = '<strong>Prévisions météo temporairement indisponibles</strong> — ' +
-                'Les prédictions sont basées sur des moyennes saisonnières et sont donc moins fiables que d\'habitude.';
-            container.appendChild(warn);
-        }
-
-        // Date de dernière mise à jour
+        // Date de dernière mise à jour (timezone Paris) — affichée en haut de page
         if (data.generated_at) {
-            const genDate = new Date(data.generated_at);
-            if (!isNaN(genDate.getTime())) {
-                const meta = document.createElement('div');
-                meta.className = 'forecast-meta';
-                meta.textContent = `Dernière mise à jour : ${genDate.toLocaleDateString('fr-FR')} ` +
-                    `à ${genDate.toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'})}`;
-                container.appendChild(meta);
-            }
+            updateLastUpdateBar(data.generated_at);
         }
 
         // Résumé de la semaine
@@ -209,7 +242,7 @@ async function loadPredictions() {
             grid1.className = 'forecast-grid forecast-grid-primary';
             groupPrimary.forEach(pred => {
                 grid1.appendChild(createForecastCard(pred));
-                if (pred.couleur_predite === 'ROUGE') hasRouge = true;
+
             });
             container.appendChild(grid1);
         }
@@ -224,7 +257,7 @@ async function loadPredictions() {
             grid2.className = 'forecast-grid';
             groupMedium.forEach(pred => {
                 grid2.appendChild(createForecastCard(pred));
-                if (pred.couleur_predite === 'ROUGE') hasRouge = true;
+
             });
             container.appendChild(grid2);
         }
@@ -232,27 +265,26 @@ async function loadPredictions() {
         if (groupFar.length > 0) {
             const label3 = document.createElement('div');
             label3.className = 'forecast-group-label';
-            label3.textContent = 'Semaine prochaine et au-delà — tendances indicatives';
+            label3.textContent = 'Semaine prochaine et au-del\u00e0 \u2014 tendances indicatives';
             container.appendChild(label3);
 
+            // UX audit #27: explanation for distant predictions
+            const hint3 = document.createElement('div');
+            hint3.className = 'forecast-group-hint';
+            hint3.textContent = 'Ces tendances \u00e9voluent souvent \u2014 consultez \u00e0 nouveau dans 2-3 jours pour confirmer.';
+            hint3.style.cssText = 'font-size:0.8rem;color:var(--text-secondary);margin:-6px 0 10px;font-style:italic;';
+            container.appendChild(hint3);
+
+            // UX audit #9: desaturated grid for far predictions
             const grid3 = document.createElement('div');
-            grid3.className = 'forecast-grid';
+            grid3.className = 'forecast-grid forecast-grid-far';
             groupFar.forEach(pred => {
                 grid3.appendChild(createForecastCard(pred));
-                if (pred.couleur_predite === 'ROUGE') hasRouge = true;
+
             });
             container.appendChild(grid3);
         }
 
-        // Alerte rouge si nécessaire
-        if (alertEl && hasRouge && !sessionStorage.getItem('alert-rouge-dismissed')) {
-            const rougePreds = preds.filter(p => p.couleur_predite === 'ROUGE');
-            const first = rougePreds[0];
-            const dateStr = formatDateFr(first.date);
-            alertEl.querySelector('.alert-text').innerHTML =
-                `<strong>Jour rouge prévu ${dateStr} !</strong> Reportez vos machines et baissez le chauffage.`;
-            alertEl.classList.add('visible');
-        }
     } catch (e) {
         container.innerHTML = '<p class="loading-state">Erreur de connexion au serveur<br><button class="retry-btn" onclick="loadPredictions()">Réessayer</button></p>';
         console.error('Erreur prédictions:', e);
@@ -266,17 +298,15 @@ async function loadBadge() {
         const data = await resp.json();
         if (!data || data.status !== 'ok') return;
 
-        const el = document.getElementById('badge-text');
-        if (el) {
-            if (data.total_predictions > 0) {
+        // Inject precision into FAQ "Vos prévisions sont-elles fiables ?"
+        const faqValue = document.getElementById('faq-precision-value');
+        if (faqValue) {
+            if (data.total_predictions > 0 && data.precision_30j != null) {
                 const pct = data.precision_30j;
-                document.getElementById('badge-value').textContent = `${pct}%`;
-                // P-12 : qualificatif pour donner du contexte à Paul
-                const qualif = pct >= 90 ? 'Excellente' : pct >= 80 ? 'Très bonne' : pct >= 70 ? 'Bonne' : 'En amélioration';
-                el.textContent = `${qualif} précision sur les 30 derniers jours`;
+                const qualif = pct >= 90 ? 'Excellente' : pct >= 80 ? 'Tr\u00e8s bonne' : pct >= 70 ? 'Bonne' : 'En am\u00e9lioration';
+                faqValue.textContent = `${pct}% (${qualif}).`;
             } else {
-                document.getElementById('badge-value').textContent = '—';
-                el.textContent = 'Précision en cours de calcul (pas encore assez de données)';
+                faqValue.textContent = 'en cours de calcul (pas encore assez de donn\u00e9es).';
             }
         }
     } catch (e) {
@@ -292,8 +322,8 @@ function renderWeekSummary(preds) {
     const container = document.getElementById('week-summary');
     if (!container) return;
 
-    // Prendre les 7 premiers jours
-    const weekPreds = preds.slice(0, 7);
+    // Prendre les 10 premiers jours (2 lignes de 5)
+    const weekPreds = preds.slice(0, 10);
     if (weekPreds.length === 0) return;
 
     const rougeCount = weekPreds.filter(p => p.couleur_predite === 'ROUGE').length;
@@ -308,89 +338,87 @@ function renderWeekSummary(preds) {
         if (rougeCount > 0) {
             const rougeDays = weekPreds
                 .filter(p => p.couleur_predite === 'ROUGE')
-                .map(p => { const d = new Date(p.date); return JOURS_FULL[d.getDay()]; });
+                .map(p => { const d = parseLocalDate(p.date); return JOURS_FULL[d.getDay()]; });
             parts.push(`<strong style="color:var(--rouge)">${rougeCount} jour${rougeCount > 1 ? 's' : ''} rouge${rougeCount > 1 ? 's' : ''}</strong> (${rougeDays.join(', ')})`);
         }
         if (blancCount > 0) {
             const blancDays = weekPreds
                 .filter(p => p.couleur_predite === 'BLANC')
-                .map(p => { const d = new Date(p.date); return JOURS_FULL[d.getDay()]; });
+                .map(p => { const d = parseLocalDate(p.date); return JOURS_FULL[d.getDay()]; });
             parts.push(`<strong>${blancCount} jour${blancCount > 1 ? 's' : ''} blanc${blancCount > 1 ? 's' : ''}</strong> (${blancDays.join(', ')})`);
         }
         summaryText = parts.join(' et ') + ' en vue. <strong>Planifiez vos machines les jours bleus.</strong>';
     }
 
-    // Dots visuels
+    // Dots visuels avec info Confirmé / probabilité
+    // Les 2 premiers dots sont labellisés "Auj." et "Dem." pour éviter la redondance
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
     let dotsHtml = '<div class="week-summary-dots">';
-    weekPreds.forEach(p => {
-        const d = new Date(p.date);
+    weekPreds.forEach((p, idx) => {
+        // Séparateur entre les 2 lignes de 5 jours
+        if (idx === 5) {
+            dotsHtml += '<div class="week-dots-separator" aria-hidden="true"></div>';
+        }
+
+        const d = parseLocalDate(p.date);
         const dayLabel = JOURS[d.getDay()];
+        const dayNum = d.getDate();
         const couleur = p.couleur_predite;
         const bg = couleur === 'ROUGE' ? 'var(--rouge)' : couleur === 'BLANC' ? 'var(--blanc)' : 'var(--bleu)';
+
+        // Contextual label: "Aujourd'hui" for today, "Demain" for tomorrow, day name + num otherwise
+        const dTime = d.getTime();
+        let displayLabel;
+        if (dTime === today.getTime()) {
+            displayLabel = `<strong>Aujourd'hui</strong>`;
+        } else if (dTime === tomorrow.getTime()) {
+            displayLabel = `<strong>Demain</strong>`;
+        } else {
+            displayLabel = `${escapeHtml(dayLabel)} ${dayNum}`;
+        }
+
+        // Info sous le dot : Confirmé ou probabilité
+        let infoHtml = '';
+        if (p.confirmed) {
+            infoHtml = '<span class="week-dot-confirmed">Confirm\u00e9</span>';
+        } else {
+            const probKey = `probabilite_${couleur.toLowerCase()}`;
+            const confidence = Math.round((p[probKey] || 0) * 100);
+            infoHtml = `<span class="week-dot-proba">${confidence}%</span>`;
+        }
+
+        // UX audit #25: shape classes for colorblind users + #16: confirmed border
+        const shapeClass = couleur === 'BLANC' ? ' dot-blanc' : couleur === 'ROUGE' ? ' dot-rouge' : '';
+        const confirmedClass = p.confirmed ? ' confirmed-dot' : '';
+
         dotsHtml += `
-            <div class="week-dot">
-                <div class="week-dot-circle" style="background:${bg}">${couleur[0]}</div>
-                <span class="week-dot-label">${escapeHtml(dayLabel)}</span>
+            <div class="week-dot${dTime === today.getTime() || dTime === tomorrow.getTime() ? ' week-dot-highlight' : ''}">
+                <div class="week-dot-circle${shapeClass}${confirmedClass}" style="background:${bg}">${couleur[0]}</div>
+                <span class="week-dot-label">${displayLabel}</span>
+                <div class="week-dot-info">${infoHtml}</div>
             </div>`;
     });
     dotsHtml += '</div>';
 
+    const title = document.createElement('h2');
+    title.className = 'section-title';
+    title.style.marginTop = '0';
+    title.textContent = 'R\u00e9sum\u00e9 des 10 prochains jours';
+
     const card = document.createElement('div');
     card.className = 'week-summary-card' + (rougeCount > 0 ? ' has-rouge' : '');
     card.innerHTML = `
-        <div class="week-summary-title">Résumé des 7 prochains jours</div>
         <div class="week-summary-text">${summaryText}</div>
         ${dotsHtml}
+        <button type="button" class="btn btn-cta-summary" onclick="openSubscribeModal()">Recevoir les alertes gratuites</button>
     `;
     container.innerHTML = '';
+    container.appendChild(title);
     container.appendChild(card);
-}
-
-// ================================================================
-// P-05 : RÉSUMÉ PROCHAIN JOUR ROUGE
-// ================================================================
-
-function renderNextRougeSummary(preds) {
-    const container = document.getElementById('next-rouge-summary');
-    if (!container) return;
-
-    const rougePreds = preds.filter(p => p.couleur_predite === 'ROUGE' && !p.confirmed);
-    const confirmedRouge = preds.filter(p => p.couleur_predite === 'ROUGE' && p.confirmed);
-
-    if (confirmedRouge.length > 0) {
-        const first = confirmedRouge[0];
-        const dateStr = formatDateFr(first.date);
-        container.innerHTML = `
-            <div class="next-rouge-card next-rouge-confirmed">
-                <span class="next-rouge-icon" aria-hidden="true">&#9888;&#65039;</span>
-                <div>
-                    <strong>Jour rouge confirm&eacute; : ${escapeHtml(dateStr)}</strong>
-                    <span class="next-rouge-detail">Reportez vos machines et baissez le chauffage. <a href="#subscribe">Recevoir les alertes</a></span>
-                </div>
-            </div>`;
-    } else if (rougePreds.length > 0) {
-        const first = rougePreds[0];
-        const dateStr = formatDateFr(first.date);
-        const probKey = `probabilite_rouge`;
-        const confidence = Math.round((first[probKey] || 0) * 100);
-        container.innerHTML = `
-            <div class="next-rouge-card">
-                <span class="next-rouge-icon" aria-hidden="true">&#128308;</span>
-                <div>
-                    <strong>Prochain jour rouge pr&eacute;vu : ${escapeHtml(dateStr)}</strong> (${confidence}% de probabilit&eacute;)
-                    <span class="next-rouge-detail">Anticipez vos consommations. <a href="#subscribe">Recevoir les alertes</a></span>
-                </div>
-            </div>`;
-    } else {
-        container.innerHTML = `
-            <div class="next-rouge-card next-rouge-safe">
-                <span class="next-rouge-icon" aria-hidden="true">&#9989;</span>
-                <div>
-                    <strong>Aucun jour rouge en vue</strong> pour les 15 prochains jours.
-                    <span class="next-rouge-detail">Consommez normalement !</span>
-                </div>
-            </div>`;
-    }
 }
 
 // ================================================================
@@ -471,7 +499,7 @@ function createForecastCard(pred) {
         card.classList.add('confirmed');
     }
 
-    const d = new Date(pred.date);
+    const d = parseLocalDate(pred.date);
     const dow = JOURS[d.getDay()];
     const dayNum = d.getDate();
     const month = MOIS[d.getMonth()];
@@ -479,16 +507,17 @@ function createForecastCard(pred) {
     const probKey = `probabilite_${couleur.toLowerCase()}`;
     const confidence = Math.round((pred[probKey] || 0) * 100);
 
+    // Probabilités des 3 couleurs
+    const pRouge = pred.probabilite_rouge || 0;
+    const pBlanc = pred.probabilite_blanc || 0;
+    const pBleu  = pred.probabilite_bleu  || 0;
+
     let tempHtml = '';
     if (pred.temp_min_prevue != null && pred.temp_max_prevue != null) {
         tempHtml = `<div class="fc-temp">${escapeHtml(String(pred.temp_min_prevue))}° / ${escapeHtml(String(pred.temp_max_prevue))}°</div>`;
     }
 
-    // Raison simplifiée — pas de jargon technique
-    let raisonHtml = '';
-    if (pred.raison && pred.raison !== 'Conditions normales') {
-        raisonHtml = `<div class="fc-raison">${escapeHtml(simplifyRaison(pred.raison))}</div>`;
-    }
+    // Raison technique supprimée (reco 3 audit UX — pas utile pour le prospect)
 
     let confirmedHtml = '';
     if (pred.confirmed) {
@@ -497,7 +526,7 @@ function createForecastCard(pred) {
 
     let changedHtml = '';
     if (pred.couleur_precedente) {
-        changedHtml = `<div class="fc-changed">Était ${escapeHtml(pred.couleur_precedente)}</div>`;
+        changedHtml = `<div class="fc-changed" title="Notre prévision a changé suite aux nouvelles données météo.">Était ${escapeHtml(pred.couleur_precedente)}</div>`;
     }
 
     // Tip actionnable pour les jours ROUGE
@@ -506,11 +535,56 @@ function createForecastCard(pred) {
         tipHtml = '<div class="fc-tip">Reportez vos machines !</div>';
     }
 
-    // Confiance en langage humain
+    // Confiance en langage humain (% visible dans la barre de proba en dessous)
     const confidenceLabel = confidenceToLabel(confidence);
     const confidenceText = pred.confirmed
-        ? 'Couleur officielle EDF'
-        : `${escapeHtml(confidenceLabel)} (${confidence}%)`;
+        ? ''
+        : escapeHtml(confidenceLabel);
+
+    // Barre tricolore de probabilités (masquée si confirmé)
+    let probaBarHtml = '';
+    if (!pred.confirmed) {
+        const pctRouge = Math.round(pRouge * 100);
+        const pctBlanc = Math.round(pBlanc * 100);
+        const pctBleu  = Math.round(pBleu * 100);
+
+        // Construire les segments (n'afficher que ceux > 5%)
+        const segments = [];
+        if (pctBleu > 5)  segments.push(`<div class="proba-seg seg-bleu" style="width:${pctBleu}%"></div>`);
+        if (pctBlanc > 5) segments.push(`<div class="proba-seg seg-blanc" style="width:${pctBlanc}%"></div>`);
+        if (pctRouge > 5) segments.push(`<div class="proba-seg seg-rouge" style="width:${pctRouge}%"></div>`);
+
+        // Labels sous la barre (n'afficher que ceux > 10%)
+        const labels = [];
+        if (pctBleu > 10)  labels.push(`<span class="proba-label"><span class="proba-dot" style="background:var(--bleu)"></span>${pctBleu}%</span>`);
+        if (pctBlanc > 10) labels.push(`<span class="proba-label"><span class="proba-dot" style="background:var(--blanc)"></span>${pctBlanc}%</span>`);
+        if (pctRouge > 10) labels.push(`<span class="proba-label"><span class="proba-dot" style="background:var(--rouge)"></span>${pctRouge}%</span>`);
+
+        probaBarHtml = `
+            <div class="fc-proba-bar" aria-label="Probabilités : bleu ${pctBleu}%, blanc ${pctBlanc}%, rouge ${pctRouge}%">
+                ${segments.join('')}
+            </div>
+            <div class="fc-proba-labels">${labels.join('')}</div>`;
+    }
+
+    // Badge incertitude si les 2 premières probas sont proches (écart < 30%)
+    let uncertainHtml = '';
+    if (!pred.confirmed) {
+        const probs = [
+            { color: 'rouge', val: pRouge },
+            { color: 'blanc', val: pBlanc },
+            { color: 'bleu',  val: pBleu },
+        ].sort((a, b) => b.val - a.val);
+
+        const gap = probs[0].val - probs[1].val;
+        if (gap < 0.30 && probs[1].val > 0.15) {
+            const colorNames = { rouge: 'Rouge', blanc: 'Blanc', bleu: 'Bleu' };
+            uncertainHtml = `<div class="fc-uncertain-badge">
+                <span class="uncertain-icon" aria-hidden="true">&#9888;</span>
+                H\u00e9sitation ${colorNames[probs[0].color]}/${colorNames[probs[1].color]}
+            </div>`;
+        }
+    }
 
     card.innerHTML = `
         <div class="fc-day">${escapeHtml(dow)}</div>
@@ -519,8 +593,9 @@ function createForecastCard(pred) {
         ${confirmedHtml}
         ${tempHtml}
         <div class="fc-confidence">${confidenceText}</div>
+        ${uncertainHtml}
+        ${probaBarHtml}
         ${changedHtml}
-        ${raisonHtml}
         ${tipHtml}
     `;
 
@@ -588,59 +663,6 @@ function normalizePhone(input) {
     return null; // Format non reconnu
 }
 
-function setupSubscribeForm() {
-    const form = document.getElementById('subscribe-form');
-    if (!form) return;
-
-    form.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const resultEl = document.getElementById('form-result');
-        const btn = document.getElementById('subscribe-btn');
-        resultEl.className = 'form-result';
-        resultEl.style.display = 'none';
-
-        const rawPhone = form.elements.phone.value;
-        const phone = normalizePhone(rawPhone);
-
-        if (!phone) {
-            showFormResult(resultEl, 'error',
-                'Numéro non reconnu. Tapez votre numéro au format 06 12 34 56 78 ou +33612345678');
-            return;
-        }
-
-        // Remplacer la valeur du champ par le format normalisé pour l'envoi
-        const formData = new FormData(form);
-        formData.set('phone', phone);
-
-        // Désactiver le bouton + spinner
-        const originalText = btn.textContent;
-        btn.disabled = true;
-        btn.innerHTML = '<span class="btn-spinner"></span> Inscription en cours...';
-
-        try {
-            const resp = await fetchWithTimeout('/api/subscribe', {
-                method: 'POST',
-                body: formData,
-            });
-            const data = await resp.json();
-
-            if (resp.ok) {
-                // P-14 : message post-inscription plus précis et rassurant
-                showFormResult(resultEl, 'success',
-                    data.message || 'C\'est fait ! Vous recevrez un SMS la veille de chaque jour rouge. Désinscription possible à tout moment par SMS (STOP) ou ci-dessous.');
-                form.reset();
-            } else {
-                showFormResult(resultEl, 'error', data.detail || "Erreur lors de l'inscription");
-            }
-        } catch {
-            showFormResult(resultEl, 'error', 'Erreur de connexion au serveur');
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = originalText;
-        }
-    });
-}
-
 function showFormResult(el, type, message) {
     el.className = `form-result ${type}`;
     el.textContent = message;
@@ -649,51 +671,31 @@ function showFormResult(el, type, message) {
 }
 
 // ================================================================
-// WELCOME BANNER (collapsible, remember via localStorage)
+// WELCOME BANNER (dismissable, remembered in localStorage)
 // ================================================================
 
 function setupWelcomeBanner() {
-    const banner = document.getElementById('welcome-banner');
-    const closeBtn = document.getElementById('welcome-close');
-    if (!banner || !closeBtn) return;
-
-    // L-04 QA : try/catch pour localStorage (peut être désactivé)
-    try {
-        if (localStorage.getItem('welcome-dismissed')) {
-            banner.classList.add('hidden');
-            return;
-        }
-    } catch { /* localStorage indisponible */ }
-
-    closeBtn.addEventListener('click', () => {
-        banner.classList.add('hidden');
-        try { localStorage.setItem('welcome-dismissed', '1'); } catch { /* ok */ }
-    });
-}
-
-// ================================================================
-// ALERTE ROUGE DISMISSABLE (sessionStorage)
-// ================================================================
-
-function setupAlertDismiss() {
-    const alertEl = document.getElementById('alert-rouge');
-    const closeBtn = document.getElementById('alert-close');
-    if (!alertEl || !closeBtn) return;
-
-    closeBtn.addEventListener('click', () => {
-        alertEl.classList.remove('visible');
-        sessionStorage.setItem('alert-rouge-dismissed', '1');
-    });
+    // Welcome banner is now always visible (no close button)
 }
 
 // ================================================================
 // UTILITAIRES
 // ================================================================
 
+/**
+ * Parse une date ISO "YYYY-MM-DD" en date LOCALE (pas UTC).
+ * Fix #32 : new Date("2026-02-10") crée une date UTC midnight,
+ * ce qui décale getDay()/getDate() pour les utilisateurs en CET.
+ */
+function parseLocalDate(dateStr) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d);
+}
+
 function formatDateFr(dateStr) {
-    const d = new Date(dateStr);
-    const dow = JOURS_FULL[d.getDay()];
-    return `${dow} ${d.getDate()} ${MOIS[d.getMonth()]}`;
+    const d = parseLocalDate(dateStr);
+    const dow = JOURS_FULL[d.getDay()].toLowerCase();
+    return `${dow} ${d.getDate()} ${MOIS_FULL[d.getMonth()]}`;
 }
 
 function setText(id, text) {
@@ -707,6 +709,28 @@ function setProgress(id, ratio) {
     if (!el) return;
     const fill = el.querySelector('.counter-progress-fill');
     if (fill) fill.style.width = `${Math.round(Math.max(0, Math.min(1, ratio)) * 100)}%`;
+}
+
+/**
+ * Met à jour la barre "Dernière mise à jour" en haut de page.
+ */
+function updateLastUpdateBar(timestamp) {
+    const bar = document.getElementById('last-update-bar');
+    const textEl = document.getElementById('last-update-text');
+    if (!bar || !textEl) return;
+
+    let ts = timestamp;
+    // Si le timestamp n'a pas de timezone, assumer UTC
+    if (ts.length > 10 && !ts.includes('+') && !ts.includes('Z') && !ts.match(/\d{2}:\d{2}:\d{2}-/)) {
+        ts += 'Z';
+    }
+    const genDate = new Date(ts);
+    if (!isNaN(genDate.getTime())) {
+        const opts = {timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit'};
+        textEl.textContent = `Dernière mise à jour : ${genDate.toLocaleDateString('fr-FR', {timeZone: 'Europe/Paris'})} ` +
+            `à ${genDate.toLocaleTimeString('fr-FR', opts)}`;
+        bar.style.display = '';
+    }
 }
 
 function escapeHtml(str) {
@@ -767,67 +791,13 @@ function setupBackToTop() {
 }
 
 // ================================================================
-// VALIDATION TÉLÉPHONE (temps réel, format FR)
-// ================================================================
-
-function setupPhoneValidation() {
-    const phoneInput = document.getElementById('phone');
-    const feedback = document.getElementById('phone-feedback');
-    if (!phoneInput || !feedback) return;
-
-    phoneInput.addEventListener('input', () => {
-        const val = phoneInput.value.replace(/[\s.\-()]/g, '');
-
-        if (!val || val.length < 2) {
-            feedback.textContent = '';
-            feedback.className = 'phone-feedback';
-            return;
-        }
-
-        // Format FR : 06/07
-        if (/^0[67]/.test(val)) {
-            if (/^0[67]\d{8}$/.test(val)) {
-                feedback.textContent = 'Numéro valide';
-                feedback.className = 'phone-feedback valid';
-            } else if (val.length < 10) {
-                feedback.textContent = `Encore ${10 - val.length} chiffre(s)`;
-                feedback.className = 'phone-feedback';
-            } else if (val.length > 10) {
-                feedback.textContent = 'Trop de chiffres';
-                feedback.className = 'phone-feedback invalid';
-            }
-            return;
-        }
-
-        // Format international +33
-        if (/^\+?33/.test(val)) {
-            const digits = val.replace(/^\+?33/, '');
-            if (/^[67]\d{8}$/.test(digits)) {
-                feedback.textContent = 'Numéro valide';
-                feedback.className = 'phone-feedback valid';
-            } else if (digits.length < 9) {
-                feedback.textContent = `Encore ${9 - digits.length} chiffre(s)`;
-                feedback.className = 'phone-feedback';
-            } else {
-                feedback.textContent = 'Vérifiez le numéro';
-                feedback.className = 'phone-feedback invalid';
-            }
-            return;
-        }
-
-        feedback.textContent = 'Tapez un numéro en 06 ou 07';
-        feedback.className = 'phone-feedback invalid';
-    });
-}
-
-// ================================================================
 // P-15 : DÉTECTION HORS-SAISON
 // ================================================================
 
 function checkHorsSaison() {
     const now = new Date();
     const month = now.getMonth() + 1; // 1-12
-    // Saison Tempo : 1er sept → 31 mai. Hors-saison : juin, juillet, août
+    // Saison Tempo : 1er sept → 31 août. Juin-août = tout BLEU, rien à signaler
     if (month >= 6 && month <= 8) {
         const banner = document.getElementById('hors-saison-banner');
         if (banner) banner.style.display = 'flex';
@@ -879,7 +849,7 @@ function setupUnsubscribeForm() {
 
             if (resp.ok) {
                 showFormResult(resultEl, 'success',
-                    data.message || 'Désinscription effectuée. Vous ne recevrez plus de SMS.');
+                    data.message || 'Désinscription effectuée. Vous ne recevrez plus de messages.');
                 form.reset();
             } else {
                 showFormResult(resultEl, 'error',
@@ -893,3 +863,5 @@ function setupUnsubscribeForm() {
         }
     });
 }
+
+// Modal is now in the shared _subscribe_modal.html partial (included in all pages)

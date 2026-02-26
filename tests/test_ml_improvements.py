@@ -103,13 +103,13 @@ class TestBudgetBlanc:
         score = _score_budget_v2(remaining, 120, target)
         assert score > 0, "La pression BLANC seule devrait donner un score > 0"
 
-    def test_blanc_pressure_capped_55(self):
-        """La pression BLANC ne depasse pas 55 (zone BLANC, pas ROUGE)."""
+    def test_blanc_pressure_capped_64(self):
+        """Fix #26 : pression BLANC plafonnee a 64 (zone BLANC 35-65, pas ROUGE)."""
         from predictor import _score_budget_v2
         remaining = {"ROUGE": 0, "BLANC": 43, "BLEU": 50}
         target = date(2026, 1, 15)
         score = _score_budget_v2(remaining, 20, target)
-        assert score <= 55
+        assert score <= 64
 
     def test_rouge_dominates_blanc(self):
         """Quand ROUGE pressure > BLANC pressure, ROUGE domine."""
@@ -175,7 +175,7 @@ class TestProbCalibration:
 
 class TestWeeklyRedSaturation:
     def test_saturation_3_reds(self):
-        """Apres 3 rouges dans la semaine, score clustering tres attenue."""
+        """Apres 3 rouges dans la semaine, score clustering attenue."""
         from predictor import _score_clustering
         target = date(2026, 1, 15)  # Jeudi
         week_start = target - timedelta(days=target.weekday())
@@ -191,8 +191,9 @@ class TestWeeklyRedSaturation:
 
         forecasts = [{"temp_moy": 0}]
         score = _score_clustering(target, forecasts, 0, actuals)
-        # Avec 3 rouges cette semaine, forte attenuation
-        assert score < 30, f"Score devrait etre attenue avec 3 rouges/semaine, got {score}"
+        # Fix audit ML #5 : 3 rouges = attenuation moderee (0.5x), pas forte (0.3x)
+        # 3 rouges/semaine est possible pendant les vagues de froid (max EDF = 5 consecutifs)
+        assert score < 50, f"Score devrait etre attenue avec 3 rouges/semaine, got {score}"
 
     def test_no_saturation_1_red(self):
         """Avec seulement 1 rouge dans la semaine, pas d'attenuation."""

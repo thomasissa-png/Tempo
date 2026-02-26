@@ -2,10 +2,14 @@ fastapi==0.115.6
 uvicorn[standard]==0.34.0
 httpx==0.28.1
 apscheduler==3.10.4
-twilio==9.4.0
 pydantic==2.10.4
 python-dotenv==1.0.1
 jinja2==3.1.5
-scikit-learn==1.6.1
+scikit-learn~=1.8.0
 numpy==2.2.1
 cryptography==44.0.0
+meteole>=0.2.5
+anthropic>=0.80.0
+markdown>=3.5
+pyyaml>=6.0
+psycopg2-binary>=2.9

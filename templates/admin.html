@@ -3,14 +3,169 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TempoForecast — Admin / Performance</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%232196F3'/><path d='M50 5A45 45 0 0 1 95 50H5A45 45 0 0 1 50 5z' fill='%23F44336'/><circle cx='50' cy='50' r='20' fill='white'/></svg>" type="image/svg+xml">
-    <link rel="stylesheet" href="/static/css/style.css">
-    <!-- Fix #S8 : preconnect pour CDN -->
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"
-            integrity="sha384-e1kSEwCaVTZnKiRDkBBbMLR5cMrqYOBNMu90RCMBB4RnXQ+LiY7SAFnFEeYz8dT"
-            crossorigin="anonymous"></script>
+    <meta name="robots" content="noindex, nofollow">
+    <title>Calendrier Tempo EDF — Admin / Performance</title>
+    <link rel="icon" href="/static/favicon.ico" sizes="48x48">
+    <link rel="icon" href="/static/icon-192.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/static/favicon-180.png">
+    <link rel="stylesheet" href="/static/css/style.min.css">
+    <style>
+        .admin-login { max-width:400px; margin:60px auto; text-align:center; }
+        .admin-login h2 { font-size:1.25rem; font-weight:700; margin-bottom:8px; }
+        .admin-login p { font-size:0.875rem; color:var(--text-secondary); margin-bottom:20px; }
+        .admin-login .login-row { display:flex; gap:8px; }
+        .admin-login input { flex:1; padding:10px 14px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:0.9rem; }
+        .admin-login input:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-shadow); }
+
+        .admin-tabs { display:flex; gap:0; border-bottom:2px solid var(--border); margin-bottom:20px; overflow-x:auto; -webkit-overflow-scrolling:touch; }
+        .admin-tab { padding:10px 18px; font-size:0.82rem; font-weight:600; color:var(--text-secondary); background:none; border:none; border-bottom:2px solid transparent; margin-bottom:-2px; cursor:pointer; white-space:nowrap; text-transform:uppercase; letter-spacing:0.5px; transition:color .15s,border-color .15s; }
+        .admin-tab:hover { color:var(--text); }
+        .admin-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+        .tab-panel { display:none; }
+        .tab-panel.active { display:block; }
+
+
+        .section-title { font-size:0.92rem; font-weight:700; color:var(--text); margin:8px 0 12px 0; display:flex; align-items:center; gap:8px; }
+        .section-title:first-child { margin-top:0; }
+        .section-title .badge { font-size:0.7rem; font-weight:600; padding:2px 8px; border-radius:999px; color:#fff; }
+        .badge-seo { background:#7B1FA2; }
+        .badge-backlinks { background:#00695C; }
+        .badge-info { background:var(--accent); }
+
+        .panel-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:24px; }
+        .panel-grid.full { grid-template-columns:1fr; }
+        @media(max-width:900px){ .detection-grid-3{grid-template-columns:1fr !important;} }
+        @media(max-width:768px){
+            .panel-grid{grid-template-columns:1fr;}
+            .admin-tabs{gap:0;padding:0 4px;}
+            .admin-tab{padding:8px 10px;font-size:0.72rem;letter-spacing:0;}
+            .section-title{font-size:0.84rem;flex-wrap:wrap;}
+            .flat-card{padding:14px 12px;}
+            .flat-card h4{font-size:0.82rem;}
+            .recap-wrapper{margin:0 -12px;padding:0 12px;}
+            .recap-table{min-width:900px;font-size:0.65rem;}
+            .recap-table th{padding:4px 2px;font-size:0.58rem;}
+            .recap-table td{padding:2px 1px;}
+            .recap-dot{width:13px;height:13px;}
+            .recap-table .sticky-date{min-width:60px;font-size:0.6rem;}
+            .diag-text{max-width:120px;font-size:0.58rem;}
+            .prf-table th,.prf-table td{padding:6px 4px;font-size:0.72rem;}
+            .rouge-table th,.rouge-table td{padding:6px 4px;font-size:0.72rem;}
+            .sub-table th,.sub-table td{padding:6px 6px;font-size:0.75rem;}
+            .action-grid{gap:6px;}
+            .action-btn{padding:8px 12px;font-size:0.75rem;}
+            .confusion-table th,.confusion-table td{font-size:0.72rem;padding:6px 4px;}
+            .scope-label{font-size:0.65rem;}
+            .season-select{font-size:0.78rem;padding:6px 8px;}
+            .log-viewer{font-size:0.7rem;max-height:250px;padding:10px;}
+        }
+        @media(max-width:480px){
+            .admin-tab{padding:7px 8px;font-size:0.65rem;}
+            .flat-card{padding:10px 8px;}
+            .recap-table{min-width:750px;}
+            .recap-dot{width:11px;height:11px;border-width:1.5px;}
+            .recap-table .sticky-date{min-width:52px;font-size:0.55rem;}
+            .recap-actual{font-size:0.6rem;padding:1px 6px;}
+            .prf-table th,.prf-table td{padding:4px 3px;font-size:0.65rem;}
+            .rouge-table th,.rouge-table td{padding:4px 3px;font-size:0.65rem;}
+        }
+
+        .flat-card { background:var(--surface); border-radius:var(--radius); padding:20px; box-shadow:var(--shadow); }
+        .flat-card h4 { font-size:0.88rem; font-weight:700; margin-bottom:10px; color:var(--text); }
+        .flat-card .card-hint { font-size:0.78rem; color:var(--text-secondary); margin:-6px 0 10px 0; line-height:1.4; }
+
+        .bl-stat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:12px; margin-bottom:20px; }
+        .bl-stat { background:var(--bg); border-radius:var(--radius-sm); padding:14px; text-align:center; }
+        .bl-stat .stat-num { font-size:1.5rem; font-weight:800; }
+        .bl-stat .stat-label { font-size:0.75rem; color:var(--text-secondary); margin-top:2px; }
+        .prospect-table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+        .prospect-table th { text-align:left; padding:8px 10px; background:var(--bg); font-weight:600; border-bottom:2px solid var(--border); white-space:nowrap; }
+        .prospect-table td { padding:8px 10px; border-bottom:1px solid var(--border); }
+        .prospect-table tr:last-child td { border-bottom:none; }
+        .status-pill { display:inline-block; padding:2px 8px; border-radius:999px; font-size:0.72rem; font-weight:600; }
+        .status-pill.acquired { background:#D1FAE5; color:#065F46; }
+        .status-pill.pending { background:#FEF3C7; color:#92400E; }
+        .status-pill.draft { background:#DBEAFE; color:#1E40AF; }
+        .status-pill.contacted { background:#E0E7FF; color:#3730A3; }
+
+        .log-viewer { background:var(--bg); padding:16px; border-radius:var(--radius-sm); overflow-x:auto; max-height:350px; overflow-y:auto; font-size:0.8rem; white-space:pre-wrap; font-family:'JetBrains Mono','Fira Code',monospace; line-height:1.6; color:var(--text-secondary); }
+        .chart-fallback { display:flex; align-items:center; justify-content:center; height:200px; background:var(--bg); border-radius:var(--radius-sm); color:var(--text-secondary); font-size:0.85rem; }
+
+        .action-grid { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+        .action-btn { padding:9px 18px; border:none; border-radius:var(--radius-sm); font-size:0.82rem; font-weight:600; cursor:pointer; transition:opacity .15s,transform .1s; color:#fff; }
+        .action-btn:hover { opacity:0.88; }
+        .action-btn:active { transform:scale(0.97); }
+        .action-btn.blue { background:var(--accent); }
+        .action-btn.green { background:#16A34A; }
+        .action-btn.purple { background:#7B1FA2; }
+        .action-btn.teal { background:#00695C; }
+        .action-btn.gray { background:#6B7280; }
+
+        .sub-table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+        .sub-table th { text-align:left; padding:8px 10px; background:var(--bg); font-weight:600; border-bottom:2px solid var(--border); }
+        .sub-table td { padding:8px 10px; border-bottom:1px solid var(--border); }
+        .sub-table tr:last-child td { border-bottom:none; }
+
+        .draft-item { border:1px solid var(--border); border-radius:var(--radius-sm); margin-bottom:8px; overflow:hidden; }
+        .draft-item summary { padding:10px 14px; font-size:0.82rem; font-weight:600; cursor:pointer; background:var(--bg); }
+        .draft-item summary:hover { background:var(--border); }
+        .draft-item pre { padding:14px; font-size:0.78rem; white-space:pre-wrap; max-height:250px; overflow-y:auto; }
+
+        .prf-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+        .prf-table th,.prf-table td { padding:10px 14px; text-align:center; border:1px solid var(--border); }
+        .prf-table th { background:var(--bg); font-weight:600; font-size:0.8rem; }
+
+        .confusion-table .diag { background:#E8F5E9; font-weight:700; }
+        .confusion-table .miss-rouge { background:#FFEBEE; color:#B71C1C; font-weight:600; }
+        .confusion-table .row-pct { font-size:0.72rem; color:var(--text-secondary); display:block; }
+
+        .rouge-table { width:100%; border-collapse:collapse; font-size:0.85rem; }
+        .rouge-table th,.rouge-table td { padding:10px 14px; text-align:center; border:1px solid var(--border); }
+        .rouge-table th { background:var(--bg); font-weight:600; font-size:0.8rem; }
+        .rouge-table .val-good { color:#16A34A; font-weight:700; }
+        .rouge-table .val-warn { color:#D97706; font-weight:700; }
+        .rouge-table .val-bad { color:#DC2626; font-weight:700; }
+
+        .recap-wrapper { overflow-x:auto; margin:0 -20px; padding:0 20px; }
+        .recap-table { width:100%; border-collapse:collapse; font-size:0.72rem; min-width:1100px; }
+        .recap-table th { text-align:center; padding:5px 3px; background:var(--bg); font-weight:600; border-bottom:2px solid var(--border); white-space:nowrap; font-size:0.65rem; text-transform:uppercase; letter-spacing:0.3px; color:var(--text-secondary); position:sticky; top:0; z-index:1; }
+        .recap-table td { padding:3px 2px; text-align:center; border-bottom:1px solid var(--border); vertical-align:middle; }
+        .recap-table tr:hover { background:var(--bg); }
+        .recap-table tr.today-row { background:#EFF6FF; }
+        .recap-table tr.future-row { opacity:0.5; }
+        .recap-table th.sticky,.recap-table td.sticky { position:sticky; z-index:2; background:var(--surface); }
+        .recap-table th.sticky { background:var(--bg); }
+        .recap-table tr:hover td.sticky { background:var(--bg); }
+        .recap-table .sticky-date { left:0; min-width:75px; text-align:left; padding-left:6px; }
+        /* Résultat column is no longer sticky — positioned after J-1 */
+
+        .recap-dot { display:inline-block; width:16px; height:16px; border-radius:50%; border:2px solid transparent; vertical-align:middle; }
+        .recap-dot.correct { border-color:#16A34A; }
+        .recap-dot.incorrect { border-color:#DC2626; }
+        .recap-dot.pending { border-color:transparent; opacity:0.6; }
+        .recap-dot.bleu { background:#2196F3; }
+        .recap-dot.blanc { background:#B0BEC5; }
+        .recap-dot.rouge { background:#F44336; }
+        .recap-dot.empty { background:var(--border); width:6px; height:6px; border:none; }
+
+        .recap-actual { display:inline-block; padding:2px 8px; border-radius:999px; font-size:0.68rem; font-weight:700; color:#fff; }
+        .recap-actual.bleu { background:#2196F3; }
+        .recap-actual.blanc { background:#9E9E9E; }
+        .recap-actual.rouge { background:#F44336; }
+        .recap-actual.unknown { background:var(--border); color:var(--text-secondary); font-weight:400; }
+        .recap-temp { display:block; font-size:0.6rem; color:var(--text-secondary); line-height:1.1; margin-top:1px; }
+
+        .season-select { padding:7px 12px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:0.85rem; font-weight:600; background:var(--surface); }
+        .low-data-warn { font-size:0.75rem; color:#D97706; background:#FEF3C7; padding:6px 10px; border-radius:var(--radius-sm); margin-bottom:12px; }
+        .update-marker { display:inline-block; width:8px; height:8px; border-radius:50%; background:#7B1FA2; margin-left:4px; vertical-align:middle; }
+        .diag-text { font-size:0.65rem; color:var(--text-secondary); text-align:left; max-width:200px; white-space:normal; line-height:1.3; }
+
+        .quick-month-btn { padding:4px 10px; font-size:0.72rem; font-weight:600; border:1px solid var(--border); border-radius:var(--radius-sm); background:var(--surface); cursor:pointer; color:var(--accent); }
+        .quick-month-btn:hover { background:var(--accent); color:#fff; }
+        .scope-label { font-size:0.72rem; color:var(--text-secondary); font-weight:400; background:var(--bg); padding:2px 8px; border-radius:999px; }
+        .summary-total-row { font-weight:700; background:var(--bg); border-top:2px solid var(--border); }
+        /* footer uses site-wide styles from style.min.css */
+    </style>
 </head>
 <body>
 
@@ -19,395 +174,1244 @@
 <header role="banner">
     <div class="container header-row">
         <a href="/" class="header-brand">
-            <h1>TempoForecast — Admin</h1>
+            <svg class="header-logo" viewBox="0 0 100 100" width="32" height="32" aria-hidden="true"><circle cx="50" cy="50" r="45" fill="#fff"/><circle cx="50" cy="50" r="40" fill="#2563EB"/><path d="M50 10A40 40 0 0 1 90 50H10A40 40 0 0 1 50 10z" fill="#DC2626"/><circle cx="50" cy="50" r="16" fill="#fff"/></svg>
+            <span class="header-title" style="line-height:1.2">Calendrier Tempo EDF</span>
         </a>
         <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu de navigation" aria-expanded="false" aria-controls="main-nav">
-            <span class="bar"></span>
-            <span class="bar"></span>
-            <span class="bar"></span>
+            <span class="bar"></span><span class="bar"></span><span class="bar"></span>
         </button>
-        <nav id="main-nav" aria-label="Navigation admin">
-            <a href="/">Dashboard public</a>
-            <a href="/admin?auth=1" class="active" aria-current="page">Admin</a>
+        <nav id="main-nav" aria-label="Navigation principale">
+            <a href="/">Accueil</a>
+            <a href="/calendrier">Calendrier</a>
+            <a href="/blog/">Blog</a>
+            <a href="/alertes" class="nav-cta">Alertes gratuites</a>
         </nav>
     </div>
 </header>
 
 <main id="main-content" class="container" role="main">
 
-    <!-- Fix I-10 : noscript fallback -->
     <noscript>
         <div style="background:#FFEBEE;border:2px solid #F44336;border-radius:8px;padding:20px;margin:24px 0;text-align:center">
             <strong>JavaScript est nécessaire</strong> pour utiliser le dashboard admin.
         </div>
     </noscript>
 
-    <!-- Authentification -->
-    <div style="margin:24px 0">
-        <div class="form-group" style="max-width:400px">
-            <label for="admin-pw">Mot de passe admin</label>
-            <div style="display:flex;gap:8px">
-                <input type="password" id="admin-pw" placeholder="Mot de passe" autocomplete="current-password">
-                <button class="task-btn" onclick="loadAdminData()" aria-label="Charger les données admin">Charger</button>
-            </div>
+    <div id="admin-login" class="admin-login">
+        <h2>Administration</h2>
+        <p>Entrez le mot de passe pour accéder au tableau de bord.</p>
+        <div class="login-row">
+            <input type="password" id="admin-pw" placeholder="Mot de passe" autocomplete="current-password"
+                   onkeydown="if(event.key==='Enter') loadAdminData()">
+            <button class="action-btn blue" onclick="loadAdminData()">Connexion</button>
         </div>
     </div>
 
     <div id="admin-content" style="display:none">
 
-        <!-- Métriques globales -->
-        <div class="admin-grid">
-            <div class="admin-card">
-                <h3>Précision globale</h3>
-                <div id="metrics-global">
-                    <div class="metric-row">
-                        <span>30 derniers jours</span>
-                        <span class="metric-value" id="acc-30j">—</span>
-                    </div>
-                    <div class="metric-row">
-                        <span>90 derniers jours</span>
-                        <span class="metric-value" id="acc-90j">—</span>
-                    </div>
-                    <div class="metric-row">
-                        <span>Total prédictions (30j)</span>
-                        <span class="metric-value" id="total-pred">—</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="admin-card">
-                <h3>Précision par horizon</h3>
-                <div id="metrics-horizon"></div>
-            </div>
+        <!-- Tabs AU-DESSUS de tout -->
+        <div class="admin-tabs" role="tablist">
+            <button class="admin-tab active" role="tab" aria-selected="true" data-tab="performance">Performance</button>
+            <button class="admin-tab" role="tab" aria-selected="false" data-tab="seo">SEO</button>
+            <button class="admin-tab" role="tab" aria-selected="false" data-tab="backlinks">Backlinks</button>
+            <button class="admin-tab" role="tab" aria-selected="false" data-tab="subscribers">Abonnés</button>
+            <button class="admin-tab" role="tab" aria-selected="false" data-tab="actions">Actions</button>
         </div>
 
-        <!-- Matrice de confusion + Graphique -->
-        <div class="admin-grid">
-            <div class="admin-card">
-                <h3>Matrice de confusion (90 jours)</h3>
-                <div id="confusion-matrix"></div>
-            </div>
+        <!-- ═══════ TAB 1 : Performance ═══════ -->
+        <div id="panel-performance" class="tab-panel active" role="tabpanel">
 
-            <div class="admin-card">
-                <h3>Précision par horizon</h3>
-                <div class="chart-container">
-                    <canvas id="chart-horizon"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <!-- Erreurs récentes + Poids -->
-        <div class="admin-grid">
-            <div class="admin-card">
-                <h3>Erreurs récentes</h3>
-                <ul class="error-list" id="errors-list">
-                    <li>Chargement...</li>
-                </ul>
-            </div>
-
-            <div class="admin-card">
-                <h3>Poids actuels de l'algorithme</h3>
-                <div id="current-weights"></div>
-                <div class="chart-container" style="height:250px">
-                    <canvas id="chart-weights"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <!-- Actions manuelles -->
-        <div class="admin-card" style="margin:24px 0">
-            <h3>Actions manuelles</h3>
-            <p style="font-size:0.9rem;color:var(--text-secondary);margin-bottom:12px">
-                Exécuter les tâches du scheduler manuellement :
-            </p>
-            <button class="task-btn" onclick="runTask('verification')">Vérification (11h30)</button>
-            <button class="task-btn" onclick="runTask('predictions')">Prédictions (18h00)</button>
-            <button class="task-btn" onclick="runTask('weights')">Recalcul poids</button>
-            <button class="task-btn" onclick="runTask('recap')">Récap hebdo</button>
-            <button class="task-btn" onclick="runTask('backfill')">Backfill saison</button>
-            <div id="task-result" style="margin-top:12px;font-size:0.9rem;color:var(--text-secondary)"></div>
-        </div>
-
-        <!-- Stats utilisateurs -->
-        <div class="admin-card" style="margin-bottom:24px">
-            <h3>Utilisateurs SMS</h3>
-            <div id="user-stats">Chargement...</div>
-        </div>
-
-        <!-- Fix #11 : Export CSV avec tous les 12 mois -->
-        <div class="admin-card" style="margin-bottom:24px">
-            <h3>Export CSV des performances</h3>
-            <div style="display:flex;gap:8px;align-items:center">
-                <select id="csv-month" aria-label="Mois">
-                    <option value="1">Janvier</option>
-                    <option value="2">Février</option>
-                    <option value="3">Mars</option>
-                    <option value="4">Avril</option>
-                    <option value="5">Mai</option>
-                    <option value="6">Juin</option>
-                    <option value="7">Juillet</option>
-                    <option value="8">Août</option>
-                    <option value="9">Septembre</option>
-                    <option value="10">Octobre</option>
-                    <option value="11">Novembre</option>
-                    <option value="12">Décembre</option>
+            <!-- Filtre saison (uniquement onglet performance) -->
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+                <span style="font-size:0.82rem;font-weight:600;color:var(--text-secondary)">Saison :</span>
+                <select id="season-select" class="season-select" aria-label="Saison">
+                    <option value="2025-2026">2025-2026</option>
                 </select>
-                <input type="number" id="csv-year" value="2026" aria-label="Année" style="width:80px;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm)">
-                <button class="task-btn" onclick="downloadCsv()">Télécharger CSV</button>
+            </div>
+
+            <!-- SECTION 1 : Récap jour par jour -->
+            <div class="section-title">Récapitulatif jour par jour</div>
+            <div class="panel-grid full">
+                <div class="flat-card">
+                    <p class="card-hint">
+                        Chaque ligne = une journée. Les colonnes J-15 à J-1 montrent l'évolution de nos prévisions
+                        et de la température prévue à mesure qu'on se rapproche.
+                        Bordure <span style="color:#16A34A;font-weight:600">verte</span> = correct,
+                        <span style="color:#DC2626;font-weight:600">rouge</span> = faux.
+                        <span class="update-marker" style="display:inline-block;vertical-align:middle"></span> = mise à jour de l'outil (description affichée).
+                    </p>
+                    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+                        <span style="font-size:0.8rem;font-weight:600;color:var(--text-secondary)">Mois :</span>
+                        <select id="month-filter" style="padding:5px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:0.82rem" aria-label="Filtre par mois">
+                            <option value="all">Tous</option>
+                        </select>
+                        <button class="quick-month-btn" id="btn-current-month" title="Filtrer sur le mois en cours">Ce mois</button>
+                    </div>
+                    <div id="daily-recap">Chargement...</div>
+                </div>
+            </div>
+
+            <!-- SECTION 2 : Analyse erreurs -->
+            <div class="section-title" style="justify-content:space-between;flex-wrap:wrap">
+                <span>Analyse des erreurs</span>
+                <div style="display:flex;align-items:center;gap:8px">
+                    <span style="font-size:0.78rem;font-weight:600;color:var(--text-secondary)">Version :</span>
+                    <select id="version-filter" style="padding:5px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:0.82rem;font-weight:500" aria-label="Filtre par version">
+                        <option value="all">Toutes les versions</option>
+                    </select>
+                </div>
+            </div>
+            <div class="detection-grid-3" style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:24px">
+                <div class="flat-card">
+                    <h4>Détection ROUGE <span class="badge" style="background:#DC2626">Priorité #1</span></h4>
+                    <p class="card-hint">Sur les vrais jours ROUGE, combien avons-nous anticipés ? Par horizon J-1 à J-10.</p>
+                    <div id="rouge-recall-table">Chargement...</div>
+                </div>
+                <div class="flat-card">
+                    <h4>Détection BLANC</h4>
+                    <p class="card-hint">Sur les vrais jours BLANC, combien avons-nous anticipés ?</p>
+                    <div id="blanc-recall-table">Chargement...</div>
+                </div>
+                <div class="flat-card">
+                    <h4>Détection BLEU</h4>
+                    <p class="card-hint">Sur les vrais jours BLEU, combien avons-nous anticipés ?</p>
+                    <div id="bleu-recall-table">Chargement...</div>
+                </div>
+            </div>
+            <div class="panel-grid">
+                <div class="flat-card">
+                    <h4>Matrice de confusion <span id="cm-scope-label" class="scope-label">J-2→J-5</span></h4>
+                    <p class="card-hint">Prédit vs réel sur notre zone de valeur (J-2 à J-5). Diagonale = correct. Rouge = ROUGE manqué.</p>
+                    <div id="confusion-matrix"></div>
+                </div>
+                <div class="flat-card">
+                    <h4>Diagnostic <span id="diag-scope-label" class="scope-label"></span></h4>
+                    <div id="diagnostic-summary" style="display:none;padding:10px 14px;border-radius:var(--radius-sm);margin-bottom:12px;font-size:0.85rem;line-height:1.5"></div>
+                    <div id="diagnostic-content">Chargement...</div>
+                </div>
+            </div>
+            <div class="panel-grid full">
+                <div class="flat-card">
+                    <h4>Fiabilité météo par horizon</h4>
+                    <p class="card-hint">Écart moyen entre la prévision météo et l'observation réelle. Plus l'horizon est lointain, moins la météo est fiable.</p>
+                    <div id="weather-reliability">Chargement...</div>
+                </div>
+            </div>
+
+            <!-- SECTION 3 : Progresse-t-on ? -->
+            <div class="section-title">Progresse-t-on ?</div>
+            <div class="panel-grid full">
+                <div class="flat-card">
+                    <h4>Bilan par version de l'outil</h4>
+                    <p class="card-hint">Précision segmentée par version de l'algorithme. Permet de mesurer l'impact de chaque mise à jour.</p>
+                    <div id="version-perf-table">Chargement...</div>
+                </div>
+            </div>
+            <div class="panel-grid full">
+                <div class="flat-card">
+                    <h4>Bilan mois par mois</h4>
+                    <p class="card-hint">Précision par horizon de prédiction (J-1 = veille, J-15 = 15 jours avant), mois après mois.</p>
+                    <div id="monthly-perf-table">Chargement...</div>
+                </div>
+            </div>
+
+            <!-- SECTION 4 : Learnings -->
+            <div class="section-title">Learnings et leviers d'amélioration</div>
+            <div class="panel-grid">
+                <div class="flat-card">
+                    <h4>Poids de l'algorithme</h4>
+                    <p class="card-hint">Importance de chaque facteur. Recalculés tous les 15 jours.</p>
+                    <div id="current-weights"></div>
+                </div>
+                <div class="flat-card">
+                    <h4>Recommandations</h4>
+                    <div id="recommendations-content">Chargement...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════ TAB 2 : SEO ═══════ -->
+        <div id="panel-seo" class="tab-panel" role="tabpanel">
+            <div class="section-title">Journal de publication <span class="badge badge-seo">Agent SEO</span></div>
+            <div class="flat-card" style="margin-bottom:20px"><pre class="log-viewer" id="seo-log">Chargement...</pre></div>
+            <div class="section-title">Calendrier éditorial</div>
+            <div class="flat-card"><pre class="log-viewer" id="seo-calendar">Chargement...</pre></div>
+            <div class="section-title" style="margin-top:20px">Validation des articles <button class="action-btn blue" onclick="runArticleValidation()" style="margin-left:8px;font-size:0.75rem;padding:4px 10px">Lancer</button></div>
+            <div id="seo-validation" class="flat-card" style="display:none"></div>
+        </div>
+
+        <!-- ═══════ TAB 3 : Backlinks ═══════ -->
+        <div id="panel-backlinks" class="tab-panel" role="tabpanel">
+            <div class="section-title">Vue d'ensemble <span class="badge badge-backlinks">Agent Backlinks</span></div>
+            <div class="bl-stat-grid">
+                <div class="bl-stat"><div class="stat-num" id="bl-total">—</div><div class="stat-label">Prospects</div></div>
+                <div class="bl-stat"><div class="stat-num" style="color:#16A34A" id="bl-acquired">—</div><div class="stat-label">Acquis</div></div>
+                <div class="bl-stat"><div class="stat-num" style="color:#D97706" id="bl-pending">—</div><div class="stat-label">En cours</div></div>
+                <div class="bl-stat"><div class="stat-num" style="color:var(--accent)" id="bl-drafts-count">—</div><div class="stat-label">Drafts prêts</div></div>
+            </div>
+            <div class="panel-grid">
+                <div class="flat-card"><h4>Prospects netlinking</h4><div id="backlinks-prospects-table" style="overflow-x:auto"><p style="color:var(--text-secondary);font-size:0.85rem">Chargement...</p></div></div>
+                <div class="flat-card"><h4>Journal hebdomadaire</h4><pre class="log-viewer" id="backlinks-log">Chargement...</pre></div>
+            </div>
+            <div class="panel-grid full" id="backlinks-drafts-section" style="display:none">
+                <div class="flat-card"><h4>Drafts prêts à poster</h4><div id="backlinks-drafts"></div></div>
+            </div>
+        </div>
+
+        <!-- ═══════ TAB 4 : Abonnés ═══════ -->
+        <div id="panel-subscribers" class="tab-panel" role="tabpanel">
+            <div class="panel-grid">
+                <div class="flat-card"><h4>Résumé</h4><div id="subscribers-summary">Chargement...</div></div>
+                <div class="flat-card">
+                    <h4>Export CSV</h4>
+                    <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:12px">Téléchargez les données de performance par mois.</p>
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                        <select id="csv-month" aria-label="Mois" style="padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:0.85rem">
+                            <option value="1">Janvier</option><option value="2">Février</option><option value="3">Mars</option>
+                            <option value="4">Avril</option><option value="5">Mai</option><option value="6">Juin</option>
+                            <option value="7">Juillet</option><option value="8">Août</option><option value="9">Septembre</option>
+                            <option value="10">Octobre</option><option value="11">Novembre</option><option value="12">Décembre</option>
+                        </select>
+                        <input type="number" id="csv-year" value="2026" aria-label="Année" style="width:80px;padding:8px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:0.85rem">
+                        <button class="action-btn blue" onclick="downloadCsv()">Télécharger</button>
+                    </div>
+                </div>
+            </div>
+            <div class="panel-grid full">
+                <div class="flat-card"><h4>Liste des abonnés</h4>
+                    <div style="overflow-x:auto">
+                        <table id="subscribers-table" class="sub-table" style="display:none">
+                            <thead><tr><th>ID</th><th>Téléphone</th><th>Seuil rouge</th><th>Délai</th><th>Blanc</th><th>Récap</th><th>Heure</th><th>Statut</th><th>Inscrit le</th></tr></thead>
+                            <tbody id="subscribers-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="panel-grid full">
+                <div class="flat-card">
+                    <h4>Derniers SMS envoyés</h4>
+                    <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:12px">50 derniers messages (alertes et récaps).</p>
+                    <div id="sms-logs-container">Chargement...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════ TAB 5 : Actions ═══════ -->
+        <div id="panel-actions" class="tab-panel" role="tabpanel">
+            <div class="panel-grid">
+                <div class="flat-card">
+                    <h4>Tâches manuelles</h4>
+                    <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:14px">Exécuter les tâches du scheduler manuellement.</p>
+                    <div class="action-grid">
+                        <button class="action-btn blue" onclick="runTask('verification')">Vérification EDF</button>
+                        <button class="action-btn blue" onclick="runTask('predictions')">Prédictions + Alertes</button>
+                        <button class="action-btn green" onclick="runTask('weights')">Recalcul poids</button>
+                        <button class="action-btn gray" onclick="runTask('recap')">Récap hebdo</button>
+                        <button class="action-btn gray" onclick="runTask('backfill')">Backfill saison</button>
+                        <button class="action-btn purple" onclick="runTask('seo_agent')">Agent SEO</button>
+                        <button class="action-btn teal" onclick="runTask('backlinks_agent')">Agent Backlinks</button>
+                    </div>
+                    <div id="task-result" style="margin-top:12px;font-size:0.85rem;padding:10px;border-radius:var(--radius-sm);display:none"></div>
+                </div>
+                <div class="flat-card">
+                    <h4>État du scheduler</h4>
+                    <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:14px">Prochaines exécutions planifiées.</p>
+                    <div id="scheduler-status">Chargement...</div>
+                </div>
+                <div class="flat-card">
+                    <h4>Diagnostic base de données</h4>
+                    <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:14px">Vérifie l'état des données (prédictions, actuals, évaluations) sur les 15 derniers jours.</p>
+                    <div class="action-grid">
+                        <button class="action-btn blue" onclick="loadDbDiagnostic()">Lancer le diagnostic</button>
+                        <button class="action-btn green" onclick="runTask('evaluate_missed')">Réévaluer jours manquants</button>
+                        <button class="action-btn gray" onclick="runTask('db_export')">Exporter DB &rarr; dump</button>
+                        <button class="action-btn gray" onclick="runTask('db_import')">Importer dump &rarr; DB</button>
+                        <button class="action-btn gray" onclick="if(confirm('Écraser les données existantes ?'))runTask('db_import_force')" title="Écrase les données existantes (ON CONFLICT DO UPDATE)">Import forcé</button>
+                        <button class="action-btn gray" onclick="runTask('reset_bad_backfill')" title="Remet temp_moy_prevue à NULL pour les prédictions importées (corrige le backfill incorrect)">Reset temp backfill</button>
+                    </div>
+                    <div id="db-diagnostic" style="margin-top:12px;font-size:0.8rem;display:none"></div>
+                </div>
             </div>
         </div>
 
     </div>
-
 </main>
 
 <footer role="contentinfo">
-    <div class="container">
-        <p>TempoForecast Admin &mdash; <a href="/">Retour au dashboard</a></p>
+    <div class="footer-inner">
+        <div class="footer-brand">Calendrier Tempo EDF</div>
+        <div class="footer-tagline">Service ind&eacute;pendant et gratuit pour anticiper les jours Tempo.</div>
+        <div class="footer-links">
+            <a href="/">Accueil</a>
+            <a href="/calendrier">Calendrier</a>
+            <a href="/alertes">Alertes</a>
+            <a href="/blog/">Blog</a>
+            <a href="/a-propos">&Agrave; propos</a>
+            <a href="/mentions-legales">Mentions l&eacute;gales</a>
+        </div>
+        <div class="footer-legal">
+            Seule la couleur officielle annonc&eacute;e par EDF fait foi. Nos pr&eacute;visions sont indicatives.
+        </div>
     </div>
 </footer>
 
 <script>
 let adminPassword = '';
-let chartHorizon = null;
-let chartWeights = null;
+let currentSeason = '2025-2026';
+let _recapData = []; // cached for month filter
+let _selectedMonth = 'all'; // D5: persist month filter across reloads
+let _perfData = null; // cached full performance data for version filtering
+let _selectedVersion = 'all'; // persisted version filter
+let _versionFilterInitialized = false; // auto-select latest version on first load
 
+function escapeHtml(s) {
+    if (!s) return '';
+    const d = document.createElement('div');
+    d.appendChild(document.createTextNode(String(s)));
+    return d.innerHTML;
+}
+
+/* ── Tabs ── */
+document.querySelectorAll('.admin-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.admin-tab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active'); tab.setAttribute('aria-selected','true');
+        document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+    });
+});
+
+/* ── Season selector ── */
+document.getElementById('season-select').addEventListener('change', e => {
+    currentSeason = e.target.value;
+    loadPerformanceData(currentSeason);
+});
+
+/* ── Login ── */
 async function loadAdminData() {
     adminPassword = document.getElementById('admin-pw').value;
     if (!adminPassword) return;
-
     try {
-        const resp = await fetch('/api/performance', {
+        const resp = await fetch(`/api/performance?season=${currentSeason}`, {
+            headers: { 'Authorization': `Bearer ${adminPassword}` }
+        });
+        if (!resp.ok) { const e = await resp.json().catch(()=>({})); alert(e.detail||`Erreur ${resp.status}`); return; }
+        const data = await resp.json();
+        if (data.status !== 'ok') { alert('Erreur de chargement'); return; }
+
+        document.getElementById('admin-login').style.display = 'none';
+        document.getElementById('admin-content').style.display = 'block';
+
+        if (data.available_seasons && data.available_seasons.length > 0) {
+            const sel = document.getElementById('season-select');
+            sel.innerHTML = data.available_seasons.map(s =>
+                `<option value="${escapeHtml(s)}" ${s===currentSeason?'selected':''}>${escapeHtml(s)}</option>`
+            ).join('');
+        }
+
+        renderPerformanceData(data);
+        loadSubscribers();
+        loadSmsLogs();
+        loadAgentReports();
+        loadSchedulerStatus();
+    } catch (e) { alert('Erreur : ' + e.message); }
+}
+
+/* ── Reload perf (D4: visible error handling) ── */
+async function loadPerformanceData(season) {
+    if (!adminPassword) return;
+    const panel = document.getElementById('panel-performance');
+    panel.style.opacity = '0.45'; panel.style.pointerEvents = 'none';
+    try {
+        const resp = await fetch(`/api/performance?season=${season}`, {
             headers: { 'Authorization': `Bearer ${adminPassword}` }
         });
         if (!resp.ok) {
-            const errData = await resp.json().catch(() => ({}));
-            alert(errData.detail || `Erreur ${resp.status}`);
+            console.error(`Erreur de chargement (${resp.status})`);
             return;
         }
         const data = await resp.json();
-
         if (data.status !== 'ok') {
-            alert('Erreur de chargement');
+            console.error('Erreur serveur performance');
             return;
         }
-
-        document.getElementById('admin-content').style.display = 'block';
-
-        // Métriques globales
-        const g30 = data.global_30j;
-        const g90 = data.global_90j;
-        document.getElementById('acc-30j').textContent = g30.total > 0 ? `${g30.precision}%` : 'N/A';
-        document.getElementById('acc-90j').textContent = g90.total > 0 ? `${g90.precision}%` : 'N/A';
-        document.getElementById('total-pred').textContent = g30.total;
-
-        // Précision par horizon
-        // Fix audit v6 : escapeHtml sur toutes les valeurs dynamiques
-        const horizonEl = document.getElementById('metrics-horizon');
-        if (data.by_horizon.length > 0) {
-            horizonEl.innerHTML = data.by_horizon.map(h =>
-                `<div class="metric-row">
-                    <span>${escapeHtml(String(h.horizon))} (${escapeHtml(String(h.total))} préd.)</span>
-                    <span class="metric-value">${escapeHtml(String(h.precision))}%</span>
-                </div>`
-            ).join('');
-        } else {
-            horizonEl.innerHTML = '<p style="color:var(--text-secondary);font-size:0.9rem">Pas encore de données</p>';
-        }
-
-        // Matrice de confusion
-        // Fix audit v6 : escapeHtml sur les valeurs de la matrice
-        const cm = data.confusion_matrix;
-        const cmEl = document.getElementById('confusion-matrix');
-        const s = (v) => escapeHtml(String(v ?? 0));
-        cmEl.innerHTML = `
-            <table class="confusion-table">
-                <tr><th>Prédit \\ Réel</th><th>BLEU</th><th>BLANC</th><th>ROUGE</th></tr>
-                <tr><td><strong>BLEU</strong></td><td>${s(cm.BLEU?.BLEU)}</td><td>${s(cm.BLEU?.BLANC)}</td><td>${s(cm.BLEU?.ROUGE)}</td></tr>
-                <tr><td><strong>BLANC</strong></td><td>${s(cm.BLANC?.BLEU)}</td><td>${s(cm.BLANC?.BLANC)}</td><td>${s(cm.BLANC?.ROUGE)}</td></tr>
-                <tr><td><strong>ROUGE</strong></td><td>${s(cm.ROUGE?.BLEU)}</td><td>${s(cm.ROUGE?.BLANC)}</td><td>${s(cm.ROUGE?.ROUGE)}</td></tr>
-            </table>
-        `;
-
-        // Erreurs récentes
-        const errEl = document.getElementById('errors-list');
-        if (data.recent_errors.length > 0) {
-            errEl.innerHTML = data.recent_errors.map(e =>
-                `<li>
-                    <strong>${escapeHtml(e.date_cible)}</strong> (${e.jours_avance > 0 ? 'J-' + e.jours_avance : 'J0'}) :
-                    Prédit <span style="color:var(--${e.couleur_predite === 'ROUGE' ? 'rouge' : e.couleur_predite === 'BLANC' ? 'blanc' : 'bleu'})">${escapeHtml(e.couleur_predite)}</span>
-                    → Réel <strong>${escapeHtml(e.couleur_reelle)}</strong>
-                    (score: ${e.score_risque_predit})
-                    <br><small style="color:var(--text-secondary)">${escapeHtml(e.contexte_meteo) || 'Pas de contexte'}</small>
-                </li>`
-            ).join('');
-        } else {
-            errEl.innerHTML = '<li style="color:var(--text-secondary)">Aucune erreur enregistrée</li>';
-        }
-
-        // Poids
-        // Fix audit v6 : escapeHtml sur les clés et valeurs
-        const weights = data.current_weights;
-        const wEl = document.getElementById('current-weights');
-        wEl.innerHTML = Object.entries(weights).map(([k, v]) =>
-            `<div class="metric-row"><span>${escapeHtml(k)}</span><span class="metric-value">${escapeHtml((Number(v) * 100).toFixed(1))}%</span></div>`
-        ).join('');
-
-        // Graphiques
-        renderHorizonChart(data.by_horizon);
-        renderWeightsChart(weights);
-
-        // Stats users
-        loadUserStats();
-
+        renderPerformanceData(data);
     } catch (e) {
-        alert('Erreur: ' + e.message);
+        console.error('Erreur chargement performance:', e);
     }
+    finally { panel.style.opacity = '1'; panel.style.pointerEvents = ''; }
 }
 
-function renderHorizonChart(horizonData) {
-    const ctx = document.getElementById('chart-horizon');
-    if (!ctx) return;
-    if (horizonData.length === 0) return;
+/* ══════════════════════════════════ */
+/* RENDER PERFORMANCE                */
+/* ══════════════════════════════════ */
+function renderPerformanceData(data) {
+    const g = data.global||{}, j1 = data.accuracy_j1||{}, j2j5 = data.accuracy_j2_j5||{};
+    const j6j15 = data.accuracy_j6_j15||{};
 
-    if (chartHorizon) { chartHorizon.destroy(); }
-    chartHorizon = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: horizonData.map(h => h.horizon),
-            datasets: [{
-                label: 'Précision (%)',
-                data: horizonData.map(h => h.precision),
-                backgroundColor: horizonData.map(h =>
-                    h.precision >= 80 ? '#4CAF50' : h.precision >= 60 ? '#FFC107' : '#F44336'
-                ),
-                borderRadius: 6,
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: { beginAtZero: true, max: 100, title: { display: true, text: '%' } }
-            },
-            plugins: { legend: { display: false } }
-        }
-    });
-}
+    /* Cache full data for version filtering */
+    _perfData = data;
 
-function renderWeightsChart(weights) {
-    const ctx = document.getElementById('chart-weights');
-    if (!ctx) return;
+    /* Populate version filter */
+    _populateVersionFilter(data.tool_versions||[]);
 
-    const labels = Object.keys(weights).map(k => k.replace('_', ' '));
-    const values = Object.values(weights).map(v => v * 100);
+    /* Sections */
+    renderDailyRecap(data.daily_recap||[]);
+    renderErrorSection(data, _selectedVersion);
+    renderVersionPerfTable(data.version_performance||[]);
+    renderMonthlyPerfTable(data.monthly_performance||[], _selectedVersion);
 
-    if (chartWeights) { chartWeights.destroy(); }
-    chartWeights = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: values,
-                backgroundColor: ['#F44336', '#FF9800', '#2196F3', '#4CAF50', '#9C27B0', '#795548'],
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { position: 'bottom', labels: { font: { size: 12 } } }
+    const weightLabels = {
+        "temperature": "Température moyenne",
+        "jours_restants": "Pression budgétaire",
+        "jour_semaine": "Jour de la semaine",
+        "gradient_thermique": "Gradient thermique",
+        "clustering": "Similitude historique",
+        "consommation_rte": "Consommation électrique nationale",
+        "pression": "Pression atmosphérique",
+    };
+    const weights = data.current_weights||{};
+    const prevWeights = data.previous_weights||null;
+    document.getElementById('current-weights').innerHTML = Object.entries(weights).map(([k,v]) => {
+        const cur = (Number(v)*100).toFixed(1);
+        let prev = '';
+        if (prevWeights && prevWeights[k] != null) {
+            const pv = (Number(prevWeights[k])*100).toFixed(1);
+            if (pv !== cur) {
+                prev = ` <span style="color:#DC2626;font-size:0.72rem;font-weight:500">(${pv}%)</span>`;
+            } else {
+                /* Same after rounding — show in gray to confirm comparison works */
+                prev = ` <span style="color:var(--text-secondary);font-size:0.68rem">(=${pv}%)</span>`;
             }
         }
+        return `<div class="metric-row"><span>${escapeHtml(weightLabels[k]||k)}</span><span class="metric-value">${cur}%${prev}</span></div>`;
+    }).join('') + (prevWeights ? '<div style="font-size:0.65rem;color:var(--text-secondary);margin-top:6px"><span style="color:#DC2626">( )</span> = changé · <span style="color:var(--text-secondary)">(= )</span> = identique</div>' : '');
+    /* C4: Scope label on recommendations */
+    renderRecommendations(data.diagnostic||{}, data.last_tool_update, data.last_tool_update_label, data.period_comparison);
+
+    /* Weather reliability */
+    renderWeatherReliability(data.weather_reliability||{});
+}
+
+/* ══════════════════════════════════ */
+/* DAILY RECAP (15 horizons)         */
+/* ══════════════════════════════════ */
+function renderDailyRecap(recap) {
+    _recapData = recap; // store for month filtering
+    _populateMonthFilter(recap);
+    /* D5: Apply persisted month filter */
+    if (_selectedMonth !== 'all') {
+        _renderRecapTable(recap.filter(r => r.date && r.date.startsWith(_selectedMonth)));
+    } else {
+        _renderRecapTable(recap);
+    }
+}
+
+/* D5: Persist month filter across season changes */
+function _populateMonthFilter(recap) {
+    const sel = document.getElementById('month-filter');
+    if (!sel || !recap || !recap.length) return;
+    const months = new Set();
+    recap.forEach(r => { if (r.date) months.add(r.date.substring(0,7)); });
+    const monthNames = {'01':'Janvier','02':'Février','03':'Mars','04':'Avril','05':'Mai','06':'Juin',
+        '07':'Juillet','08':'Août','09':'Septembre','10':'Octobre','11':'Novembre','12':'Décembre'};
+    const sortedMonths = Array.from(months).sort();
+    sel.innerHTML = '<option value="all">Tous</option>' +
+        sortedMonths.map(m => {
+            const mm = m.split('-')[1];
+            return `<option value="${m}"${m===_selectedMonth?' selected':''}>${monthNames[mm]||mm} ${m.split('-')[0]}</option>`;
+        }).join('');
+    /* If previously selected month still exists, keep it; otherwise reset */
+    if (_selectedMonth !== 'all' && !sortedMonths.includes(_selectedMonth)) {
+        _selectedMonth = 'all';
+        sel.value = 'all';
+    }
+}
+
+document.getElementById('month-filter')?.addEventListener('change', e => {
+    const val = e.target.value;
+    _selectedMonth = val; /* D5: remember selection */
+    if (val === 'all') _renderRecapTable(_recapData);
+    else _renderRecapTable(_recapData.filter(r => r.date && r.date.startsWith(val)));
+});
+
+function _renderRecapTable(recap) {
+    const el = document.getElementById('daily-recap');
+    if (!recap || recap.length === 0) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Aucune donnée.</p>'; return; }
+
+    const todayISO = new Date().toISOString().split('T')[0];
+    const HORIZONS = [];
+    for (let i = 15; i >= 1; i--) HORIZONS.push('J-'+i);
+
+    /* Show confidence in tooltip only, temperature below dot (even for future) */
+    function dot(pred, isFuture) {
+        if (!pred) return '<span class="recap-dot empty"></span>';
+        const c = escapeHtml(pred.couleur).toLowerCase();
+        if (!['bleu','blanc','rouge'].includes(c)) return '<span class="recap-dot empty"></span>';
+        let border = 'pending';
+        if (pred.correct === true) border = 'correct';
+        else if (pred.correct === false) border = 'incorrect';
+        const conf = pred.confidence;
+        const titleParts = [pred.couleur];
+        if (pred.score) titleParts.push('score '+pred.score);
+        if (conf) titleParts.push('confiance '+conf+'%');
+        let h = `<span class="recap-dot ${c} ${border}" title="${titleParts.join(' · ')}"></span>`;
+        if (pred.temp_prevue != null) h += `<span class="recap-temp">${pred.temp_prevue}°</span>`;
+        return h;
+    }
+
+    function pill(color) {
+        if (!color) return '<span class="recap-actual unknown">—</span>';
+        const s = escapeHtml(color), c = s.toLowerCase();
+        if (!['bleu','blanc','rouge'].includes(c)) return `<span class="recap-actual unknown">${s}</span>`;
+        return `<span class="recap-actual ${c}">${s}</span>`;
+    }
+
+    function dayLabel(dt) {
+        const d = new Date(dt+'T12:00:00');
+        const days = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+        return `<strong>${days[d.getDay()]}</strong> ${d.getDate()}/${String(d.getMonth()+1).padStart(2,'0')}`;
+    }
+
+    let h = '<div class="recap-wrapper"><table class="recap-table"><thead><tr>';
+    h += '<th class="sticky sticky-date">Date</th>';
+    HORIZONS.forEach(hz => {
+        const hNum = parseInt(hz.split('-')[1]);
+        if (hNum >= 6) h += `<th style="opacity:0.5;font-size:0.58rem" title="Indicatif — météo imprécise à cet horizon">${hz}</th>`;
+        else h += `<th>${hz}</th>`;
     });
-}
+    h += '<th>Résultat</th><th>&#10003; consec.</th><th>Météo obs.</th><th style="text-align:left">Analyse erreur</th>';
+    h += '</tr></thead><tbody>';
 
-async function runTask(taskName) {
-    // M-08 QA : confirmation avant exécution
-    if (!confirm(`Êtes-vous sûr de vouloir exécuter la tâche "${taskName}" ?`)) return;
-    const resultEl = document.getElementById('task-result');
-    resultEl.textContent = `Exécution de "${taskName}"...`;
-
-    try {
-        const formData = new FormData();
-        formData.append('task', taskName);
-
-        const resp = await fetch('/admin/run-task', {
-            method: 'POST',
-            body: formData,
-            headers: { 'Authorization': `Bearer ${adminPassword}` },
-        });
-        const data = await resp.json();
-
-        if (resp.ok) {
-            resultEl.textContent = data.result;
-            resultEl.style.color = '#2E7D32';
+    /* Staircase version boundaries: continuous border between versions.
+       For each cell (date, J-N), the prediction was made on (date - N days).
+       The active version is the latest version deployed <= prediction date.
+       Borders appear where adjacent cells (above / left) belong to different
+       versions, producing a continuous staircase contour.
+       Latest version boundary = solid 2px, older = dashed 1px (readability). */
+    const toolVersions = (_perfData && _perfData.tool_versions) || [];
+    const versionDates = toolVersions.map(v => v.date).sort();
+    const latestVersion = versionDates.length ? versionDates[versionDates.length - 1] : null;
+    function _getActiveVersion(targetDateStr, horizon, row) {
+        /* Use actual pred_made_date from DB when available (accurate),
+           otherwise fall back to target_date - horizon (approximate) */
+        let predStr;
+        const hz = 'J-' + horizon;
+        if (row && row.predictions && row.predictions[hz] && row.predictions[hz].pred_made_date) {
+            predStr = row.predictions[hz].pred_made_date;
         } else {
-            resultEl.textContent = data.detail || 'Erreur';
-            resultEl.style.color = '#C62828';
+            const td = new Date(targetDateStr + 'T12:00:00');
+            td.setDate(td.getDate() - horizon);
+            predStr = td.toISOString().split('T')[0];
         }
+        let ver = null;
+        for (const vd of versionDates) { if (vd <= predStr) ver = vd; else break; }
+        return ver;
+    }
+    /* Determine the border style for a version boundary.
+       If either side is the latest version → solid 2px (prominent).
+       Otherwise → dashed 1px light purple (subtle for old boundaries). */
+    function _versionBorderStyle(verA, verB, direction) {
+        if (verA === latestVersion || verB === latestVersion)
+            return `border-${direction}:2px solid #7B1FA2`;
+        /* 2px needed: border-collapse makes solid>dashed at same width,
+           so 1px dashed loses against default 1px solid border-bottom */
+        return `border-${direction}:2px dashed #B39DDB`;
+    }
+    let _prevRowDate = null;
+    let _prevRow = null;
+
+    recap.forEach(row => {
+        const isToday = row.date === todayISO;
+        /* Fix: confirmed future dates (e.g. tomorrow confirmed by EDF) are not grayed */
+        const isFuture = row.date > todayISO && row.actual_status !== 'confirmed';
+        let cls = isToday ? 'today-row' : isFuture ? 'future-row' : '';
+
+        h += `<tr class="${cls}">`;
+        h += `<td class="sticky sticky-date" style="white-space:nowrap">${dayLabel(row.date)}`;
+        if (isToday) h += ' <span style="font-size:0.6rem;color:var(--accent);font-weight:700">AUJ.</span>';
+        h += '</td>';
+
+        HORIZONS.forEach(hz => {
+            const hNum = parseInt(hz.split('-')[1]);
+            const indicative = hNum >= 6;
+            const myVer = _getActiveVersion(row.date, hNum, row);
+            const aboveVer = _prevRow ? _getActiveVersion(_prevRowDate, hNum, _prevRow) : myVer;
+            const leftVer = hNum < 15 ? _getActiveVersion(row.date, hNum + 1, row) : myVer;
+            let parts = [];
+            if (indicative) parts.push('opacity:0.65');
+            if (myVer !== aboveVer) {
+                parts.push(_versionBorderStyle(myVer, aboveVer, 'top'));
+            }
+            if (myVer !== leftVer) {
+                parts.push(_versionBorderStyle(myVer, leftVer, 'left'));
+            }
+            const tdStyle = parts.join(';');
+            h += `<td${tdStyle?' style="'+tdStyle+'"':''}>${dot(row.predictions?row.predictions[hz]:null, isFuture)}</td>`;
+        });
+
+        /* Résultat (after J-1, before CONSEC) */
+        h += `<td>${pill(row.actual)}</td>`;
+
+        const cc = row.consec_correct;
+        const isConfirmedDay = row.actual_status === 'confirmed' && row.actual;
+        const ccColor = cc ? '#16A34A' : isConfirmedDay ? '#DC2626' : 'var(--text-secondary)';
+        const ccText = cc ? cc+'j' : isConfirmedDay ? '0j' : '—';
+        const ccTitle = cc ? cc+' horizon(s) consécutif(s) correct(s) depuis J-1' : isConfirmedDay ? 'Aucun horizon correct consécutif' : '';
+        h += `<td style="font-size:0.7rem;font-weight:600;color:${ccColor}" title="${ccTitle}">${ccText}</td>`;
+
+        const w = row.weather_observed;
+        const tempVal = w ? Number(w.temp_moy) : NaN;
+        if (w && !isNaN(tempVal)) {
+            h += `<td style="font-size:0.7rem;white-space:nowrap"><strong>${tempVal.toFixed(1)}°C</strong>`;
+            const humVal = w.humidity != null ? Number(w.humidity) : NaN;
+            if (!isNaN(humVal)) h += ` ${Math.round(humVal)}%`;
+            h += '</td>';
+        } else h += '<td style="font-size:0.7rem;color:var(--text-secondary)">—</td>';
+
+        /* A8: "Rattrapé J-1" shown as warning (orange), not neutral. A11: show "en attente" for past without actual */
+        const isConfirmed = row.actual_status === 'confirmed';
+        let diagHtml;
+        if (row.diagnostic) {
+            const isRattrape = row.diagnostic.startsWith('\u26A0');
+            const diagColor = isRattrape ? 'color:#D97706' : '';
+            diagHtml = `<span style="${diagColor}">${escapeHtml(row.diagnostic)}</span>`;
+        } else if (isConfirmed && row.actual) {
+            diagHtml = '<span style="color:#16A34A">OK</span>';
+        } else if (!isFuture && !row.actual && row.actual_status === 'pending') {
+            diagHtml = '<span style="color:var(--text-secondary);font-style:italic">en attente EDF</span>';
+        } else {
+            diagHtml = '—';
+        }
+        /* Tool version label in comment column (purple) */
+        if (row.tool_update) {
+            diagHtml += `<div style="font-size:0.55rem;color:#7B1FA2;font-weight:600;line-height:1.1;margin-top:2px">${escapeHtml(row.tool_update)}</div>`;
+        }
+        h += `<td class="diag-text">${diagHtml}</td>`;
+        h += '</tr>';
+        _prevRowDate = row.date;
+        _prevRow = row;
+    });
+
+    h += '</tbody></table></div>';
+    h += `<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;font-size:0.7rem;color:var(--text-secondary)">
+        <span><span class="recap-dot bleu correct" style="width:12px;height:12px;border-width:2px"></span> Correct</span>
+        <span><span class="recap-dot rouge incorrect" style="width:12px;height:12px;border-width:2px"></span> Faux</span>
+        <span><span class="recap-dot blanc pending" style="width:12px;height:12px;border-width:2px"></span> En attente</span>
+        <span><span class="recap-dot empty" style="width:6px;height:6px;margin:3px"></span> Pas de prévision</span>
+        <span style="display:inline-block;width:18px;height:2px;background:#7B1FA2;vertical-align:middle;margin-right:2px"></span> <span style="color:#7B1FA2">Version actuelle</span>
+        <span style="display:inline-block;width:18px;height:0;border-top:1px dashed #B39DDB;vertical-align:middle;margin-right:2px"></span> <span style="color:#B39DDB">Versions précédentes</span>
+        <span style="font-style:italic">Température = prévision météo à cet horizon</span>
+        <span><strong>✓ consec.</strong> = nb de jours consécutifs corrects en remontant depuis J-1</span>
+    </div>`;
+    el.innerHTML = h;
+}
+
+/* ══════════════════════════════════ */
+/* COLOR RECALL TABLE (generic)      */
+/* ══════════════════════════════════ */
+/* C3: Accessible labels + A3: extended horizons J-1→J-10 + D9: total J-2→J-5 row */
+function renderColorRecallTable(elId, data, totalActual) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    if (totalActual === 0) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Aucun jour réel de cette couleur dans la période — rien à évaluer.</p>'; return; }
+    const allH = []; for(let i=1;i<=10;i++) allH.push('J-'+i);
+    const horizons = allH.filter(h => data[h] && ((data[h].total_actual||0)>0 || (data[h].false_alarms||0)>0));
+    if (horizons.length === 0) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Pas de données.</p>'; return; }
+    let h = '<table class="rouge-table"><thead><tr><th>Horizon</th>';
+    h += '<th title="Parmi les vrais jours de cette couleur, combien avons-nous anticipés ?">Détectés</th>';
+    h += '<th title="Parmi nos alertes, combien étaient correctes ?">Alertes justes</th>';
+    h += '<th>OK</th><th>Réels</th><th>Faux +</th></tr></thead><tbody>';
+
+    /* D9: Accumulate totals for J-2→J-5 summary row */
+    let sumCaught=0, sumTotal=0, sumFP=0;
+    horizons.forEach(hz => {
+        const d = data[hz]||{};
+        const hNum = parseInt(hz.split('-')[1]);
+        if (hNum >= 2 && hNum <= 5) { sumCaught += d.caught||0; sumTotal += d.total_actual||0; sumFP += d.false_alarms||0; }
+        const rc = d.recall==null?'':d.recall>=70?'val-good':d.recall>=40?'val-warn':'val-bad';
+        const pc = d.precision==null?'':d.precision>=70?'val-good':d.precision>=40?'val-warn':'val-bad';
+        const isIndicative = hNum >= 6;
+        const rowStyle = isIndicative ? ' style="opacity:0.6"' : '';
+        h += `<tr${rowStyle}><td><strong>${hz}</strong>${isIndicative?' <span style="font-size:0.6rem;color:var(--text-secondary)">(indicatif)</span>':''}</td>`;
+        h += `<td class="${rc}">${d.recall!=null?d.recall+'%':'—'}</td>`;
+        h += `<td class="${pc}">${d.precision!=null?d.precision+'%':'—'}</td>`;
+        h += `<td>${d.caught??'—'}</td><td>${d.total_actual??'—'}</td><td>${d.false_alarms??'—'}</td></tr>`;
+        /* D9: Insert total row after J-5 */
+        if (hNum === 5 && sumTotal > 0) {
+            const sr = Math.round(sumCaught/sumTotal*100);
+            const sp = (sumCaught+sumFP) > 0 ? Math.round(sumCaught/(sumCaught+sumFP)*100) : 0;
+            const src = sr>=70?'val-good':sr>=40?'val-warn':'val-bad';
+            const spc = sp>=70?'val-good':sp>=40?'val-warn':'val-bad';
+            h += `<tr class="summary-total-row"><td><strong>Total J-2→J-5</strong></td>`;
+            h += `<td class="${src}"><strong>${sr}%</strong></td><td class="${spc}"><strong>${sp}%</strong></td>`;
+            h += `<td><strong>${sumCaught}</strong></td><td><strong>${sumTotal}</strong></td><td><strong>${sumFP}</strong></td></tr>`;
+        }
+    });
+    h += '</tbody></table>';
+    el.innerHTML = h;
+}
+
+/* ══════════════════════════════════ */
+/* MONTHLY PERFORMANCE TABLE         */
+/* ══════════════════════════════════ */
+/* C5: Monthly performance table — version-aware */
+function renderMonthlyPerfTable(monthly, version) {
+    const el = document.getElementById('monthly-perf-table');
+    if (!el) return;
+    if (!monthly || monthly.length === 0) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Pas encore de données mensuelles.</p>'; return; }
+    const vc = v => { if(v==null) return ''; return v>=70?'val-good':v>=50?'val-warn':'val-bad'; };
+    const allHorizons = [];
+    for (let i = 1; i <= 15; i++) allHorizons.push(`J-${i}`);
+    const activeHorizons = allHorizons.filter(hz =>
+        monthly.some(m => m.horizons && m.horizons[hz] && m.horizons[hz].total > 0));
+    if (activeHorizons.length === 0) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Pas de données par horizon.</p>'; return; }
+
+    /* C5: If version filter is active, show notice */
+    let versionNote = '';
+    if (version && version !== 'all') {
+        versionNote = `<div style="font-size:0.75rem;color:#D97706;margin-bottom:6px">Note : le tableau mensuel couvre toutes les versions. Utilisez le tableau par version ci-dessus pour une vue par version.</div>`;
+    }
+
+    let h = versionNote + '<div style="overflow-x:auto"><table class="rouge-table" style="font-size:0.78rem"><thead><tr>';
+    h += '<th>Mois</th><th>Éval.</th><th>Glob.</th>';
+    activeHorizons.forEach(hz => { h += `<th>${hz}</th>`; });
+    h += '</tr></thead><tbody>';
+    monthly.forEach(m => {
+        const ac = m.accuracy>=75?'val-good':m.accuracy>=55?'val-warn':'val-bad';
+        /* D11: Click month to filter recap */
+        h += `<tr style="cursor:pointer" onclick="_clickMonth('${escapeHtml(m.month_key)}')" title="Cliquer pour filtrer le récapitulatif sur ${escapeHtml(m.month_label)}">`;
+        h += `<td><strong>${escapeHtml(m.month_label)}</strong></td>`;
+        h += `<td>${m.total}</td>`;
+        h += `<td class="${ac}"><strong>${m.accuracy}%</strong></td>`;
+        activeHorizons.forEach(hz => {
+            const hd = m.horizons?.[hz];
+            if (hd && hd.precision != null) {
+                h += `<td class="${vc(hd.precision)}" title="${hd.total} éval.">${hd.precision}%</td>`;
+            } else {
+                h += '<td style="color:var(--text-secondary)">—</td>';
+            }
+        });
+        h += '</tr>';
+    });
+    h += '</tbody></table></div>';
+    h += '<p style="font-size:0.7rem;color:var(--text-secondary);margin-top:6px">Glob. = précision tous horizons. Cliquez sur un mois pour filtrer le récapitulatif ci-dessus.</p>';
+    el.innerHTML = h;
+}
+
+/* D11: Click month in monthly table to filter recap */
+function _clickMonth(monthKey) {
+    _selectedMonth = monthKey;
+    const sel = document.getElementById('month-filter');
+    if (sel) sel.value = monthKey;
+    if (_recapData.length) {
+        _renderRecapTable(_recapData.filter(r => r.date && r.date.startsWith(monthKey)));
+    }
+    /* Scroll to recap */
+    document.getElementById('daily-recap')?.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+/* ══════════════════════════════════ */
+/* VERSION FILTER + ERROR SECTION    */
+/* ══════════════════════════════════ */
+function _populateVersionFilter(versions) {
+    const sel = document.getElementById('version-filter');
+    if (!sel || !versions || !versions.length) return;
+    /* Default to latest version on first load — most actionable view. */
+    if (!_versionFilterInitialized) {
+        _versionFilterInitialized = true;
+        _selectedVersion = versions[versions.length - 1].date;
+    }
+    sel.innerHTML = '<option value="all"' + (_selectedVersion==='all'?' selected':'') + '>Toutes les versions</option>' +
+        versions.map(v =>
+            `<option value="${escapeHtml(v.date)}"${v.date===_selectedVersion?' selected':''}>${escapeHtml(v.date)} — ${escapeHtml(v.label)}</option>`
+        ).join('');
+    if (_selectedVersion !== 'all' && !versions.some(v => v.date === _selectedVersion)) {
+        _selectedVersion = 'all';
+    }
+    /* Ensure visual state matches variable */
+    sel.value = _selectedVersion;
+}
+
+document.getElementById('version-filter')?.addEventListener('change', e => {
+    _selectedVersion = e.target.value;
+    if (_perfData) {
+        /* Version filter updates errors + monthly + recommendations */
+        renderErrorSection(_perfData, _selectedVersion);
+        renderMonthlyPerfTable(_perfData.monthly_performance||[], _selectedVersion);
+        /* Re-render recommendations with version-scoped diagnostic */
+        const isV = _selectedVersion !== 'all' && _perfData.per_version_data && _perfData.per_version_data[_selectedVersion];
+        const diagForRecs = isV ? (_perfData.per_version_data[_selectedVersion].diagnostic||{}) : (_perfData.diagnostic||{});
+        const recUpdate = isV ? _selectedVersion : _perfData.last_tool_update;
+        const recLabel = isV ? (_perfData.tool_versions||[]).find(v=>v.date===_selectedVersion)?.label||'' : _perfData.last_tool_update_label;
+        renderRecommendations(diagForRecs, recUpdate, recLabel, _perfData.period_comparison);
+    }
+});
+
+function renderErrorSection(data, version) {
+    let rrh, brh, blh, cm, diag, totalEvals;
+    const isVersioned = version !== 'all' && data.per_version_data && data.per_version_data[version];
+    if (isVersioned) {
+        const vd = data.per_version_data[version];
+        rrh = vd.rouge_recall_by_horizon || {};
+        brh = vd.blanc_recall_by_horizon || {};
+        blh = vd.bleu_recall_by_horizon || {};
+        cm = vd.confusion_matrix || {};
+        diag = vd.diagnostic || {};
+        const C = ['BLEU','BLANC','ROUGE'];
+        totalEvals = C.reduce((s,p) => s + C.reduce((s2,a) => s2 + ((cm[p]||{})[a]||0), 0), 0);
+    } else {
+        rrh = data.rouge_recall_by_horizon || {};
+        brh = data.blanc_recall_by_horizon || {};
+        blh = data.bleu_recall_by_horizon || {};
+        cm = data.confusion_matrix || {};
+        diag = data.diagnostic || {};
+        const C = ['BLEU','BLANC','ROUGE'];
+        totalEvals = C.reduce((s,p) => s + C.reduce((s2,a) => s2 + ((cm[p]||{})[a]||0), 0), 0);
+    }
+
+    /* C4: Scope labels — always mention J-2→J-5 for clarity */
+    const scopeText = isVersioned ? `version ${version}, J-2→J-5` : 'J-2→J-5';
+    const diagScopeEl = document.getElementById('diag-scope-label');
+    if (diagScopeEl) diagScopeEl.textContent = isVersioned ? `version ${version}, J-2→J-5` : `depuis ${data.last_tool_update||'—'}, J-2→J-5`;
+    const cmScopeEl = document.getElementById('cm-scope-label');
+    if (cmScopeEl) cmScopeEl.textContent = scopeText;
+    const totalRouge = Object.values(rrh).reduce((s,v) => s + (v.total_actual||0), 0);
+    renderColorRecallTable('rouge-recall-table', rrh, totalRouge);
+    renderColorRecallTable('blanc-recall-table', brh,
+        Object.values(brh).reduce((s,v) => s + (v.total_actual||0), 0));
+    renderColorRecallTable('bleu-recall-table', blh,
+        Object.values(blh).reduce((s,v) => s + (v.total_actual||0), 0));
+    renderConfusionMatrix(cm, totalEvals);
+    renderDiagnostic(diag, totalEvals);
+}
+
+/* ══════════════════════════════════ */
+/* VERSION PERFORMANCE TABLE         */
+/* ══════════════════════════════════ */
+function renderVersionPerfTable(versionPerf) {
+    const el = document.getElementById('version-perf-table');
+    if (!el) return;
+    if (!versionPerf || versionPerf.length === 0) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Pas encore de données par version.</p>'; return; }
+    const vc = v => { if(v==null) return ''; return v>=70?'val-good':v>=50?'val-warn':'val-bad'; };
+    const allHorizons = [];
+    for (let i = 1; i <= 15; i++) allHorizons.push(`J-${i}`);
+    const activeHorizons = allHorizons.filter(hz =>
+        versionPerf.some(v => v.horizons && v.horizons[hz] && v.horizons[hz].total > 0));
+    if (activeHorizons.length === 0) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Pas de données par horizon.</p>'; return; }
+
+    let h = '<div style="overflow-x:auto"><table class="rouge-table" style="font-size:0.78rem"><thead><tr>';
+    h += '<th style="text-align:left">Version</th><th>Jours</th><th>Éval.</th><th>Glob.</th>';
+    activeHorizons.forEach(hz => { h += `<th>${hz}</th>`; });
+    h += '</tr></thead><tbody>';
+    versionPerf.forEach(v => {
+        const ac = v.accuracy>=75?'val-good':v.accuracy>=55?'val-warn':'val-bad';
+        h += `<tr><td style="text-align:left;white-space:nowrap"><strong>${escapeHtml(v.version_date)}</strong>`;
+        h += `<div style="font-size:0.65rem;color:var(--text-secondary);line-height:1.2;max-width:180px;white-space:normal">${escapeHtml(v.version_label)}</div></td>`;
+        /* D8: Show days count and coverage */
+        const dc = v.days_count||'?', dd = v.dates_with_data||0;
+        h += `<td title="${dd} jours avec données sur ${dc} jours calendaires">${dc}j <span style="font-size:0.6rem;color:var(--text-secondary)">(${dd} éval.)</span></td>`;
+        h += `<td>${v.total}</td>`;
+        h += `<td class="${ac}"><strong>${v.accuracy}%</strong></td>`;
+        activeHorizons.forEach(hz => {
+            const hd = v.horizons?.[hz];
+            if (hd && hd.precision != null) {
+                h += `<td class="${vc(hd.precision)}" title="${hd.total} éval.">${hd.precision}%</td>`;
+            } else {
+                h += '<td style="color:var(--text-secondary)">—</td>';
+            }
+        });
+        h += '</tr>';
+    });
+    h += '</tbody></table></div>';
+    h += '<p style="font-size:0.7rem;color:var(--text-secondary);margin-top:6px">Chaque ligne = une version de l\'outil. La précision ne compte que les prédictions faites après la date de mise en production.</p>';
+    el.innerHTML = h;
+}
+
+/* ── Confusion matrix ── */
+function renderConfusionMatrix(cm, totalEvals) {
+    const el = document.getElementById('confusion-matrix');
+    if (totalEvals === 0) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Aucune évaluation.</p>'; return; }
+    const C = ['BLEU','BLANC','ROUGE'];
+    let h = '<table class="confusion-table prf-table"><tr><th>Prédit \\ Réel</th>';
+    C.forEach(c => { h += `<th>${c}</th>`; });
+    h += '<th style="font-size:0.75rem">Tot.</th></tr>';
+    C.forEach(p => {
+        const row = cm[p]||{}; const rt = C.reduce((s,c)=>s+(row[c]||0),0);
+        h += `<tr><td><strong>${p}</strong></td>`;
+        C.forEach(a => {
+            const v = row[a]||0, pct = rt>0?Math.round(v/rt*100):'—';
+            const cls = p===a?'diag':(a==='ROUGE'&&p!=='ROUGE'&&v>0?'miss-rouge':'');
+            h += `<td class="${cls}">${v}<span class="row-pct">${typeof pct==='number'?pct+'%':pct}</span></td>`;
+        });
+        h += `<td style="color:var(--text-secondary);font-size:0.8rem">${rt}</td></tr>`;
+    });
+    h += '<tr style="background:var(--bg)"><td><strong>Total réel</strong></td>';
+    C.forEach(a => { h += `<td style="font-weight:600">${C.reduce((s,p)=>s+((cm[p]||{})[a]||0),0)}</td>`; });
+    h += `<td style="font-weight:600">${C.reduce((s,p)=>s+C.reduce((s2,a)=>s2+((cm[p]||{})[a]||0),0),0)}</td></tr></table>`;
+    el.innerHTML = h;
+}
+
+/* ── Diagnostic (C4: actionable summary + action) ── */
+function renderDiagnostic(diag, totalEvals) {
+    const el = document.getElementById('diagnostic-content');
+    const sumEl = document.getElementById('diagnostic-summary');
+    if (totalEvals===0) { el.innerHTML='<p style="color:var(--text-secondary);font-size:0.85rem">Aucune évaluation.</p>'; sumEl.style.display='none'; return; }
+    if (!diag.top_confusions||diag.top_confusions.length===0) { el.innerHTML='<p style="color:var(--text-secondary);font-size:0.85rem">Aucune erreur.</p>'; sumEl.style.display='none'; return; }
+
+    /* C4: Summary + action */
+    if (diag.summary) {
+        const vColor = diag.verdict==='bon'?'#F0FDF4;color:#166534':diag.verdict==='moyen'?'#FEF3C7;color:#92400E':'#FEF2F2;color:#991B1B';
+        let sh = `<div style="margin-bottom:6px"><strong>${escapeHtml(diag.summary)}</strong></div>`;
+        if (diag.action) sh += `<div style="font-size:0.82rem;margin-top:4px">${escapeHtml(diag.action)}</div>`;
+        sumEl.innerHTML = sh;
+        sumEl.style.background = vColor.split(';')[0];
+        sumEl.style.color = vColor.split('color:')[1] || 'var(--text)';
+        sumEl.style.display = 'block';
+    } else { sumEl.style.display = 'none'; }
+
+    const cd = c => c==='ROUGE'?'#F44336':c==='BLANC'?'#9E9E9E':'#2196F3';
+    let h = '<div style="margin-bottom:12px">';
+    if (diag.bias==='sur-prediction') h += `<div style="padding:8px 12px;background:#FEF3C7;border-radius:var(--radius-sm);font-size:0.82rem;color:#92400E;margin-bottom:8px"><strong>Biais : sur-prédiction</strong> — ${diag.over_predictions} sur-préd. vs ${diag.under_predictions} sous-préd.</div>`;
+    else if (diag.bias==='sous-prediction') h += `<div style="padding:8px 12px;background:#FFEBEE;border-radius:var(--radius-sm);font-size:0.82rem;color:#B71C1C;margin-bottom:8px"><strong>Biais : sous-prédiction</strong> — ${diag.under_predictions} sous-préd. vs ${diag.over_predictions} sur-préd.</div>`;
+    h += '</div><div style="font-size:0.85rem"><strong>Top confusions :</strong></div><div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">';
+    diag.top_confusions.forEach(c => {
+        const pct = diag.total_errors>0?Math.round(c.count/diag.total_errors*100):0;
+        h += `<div style="display:flex;align-items:center;gap:8px;font-size:0.82rem">
+            <div style="display:flex;align-items:center;gap:4px;min-width:140px">
+                <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${cd(c.predicted)}"></span>${c.predicted}<span style="color:var(--text-secondary)">→</span>
+                <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${cd(c.actual)}"></span>${c.actual}
+            </div>
+            <div style="flex:1;height:8px;background:var(--border);border-radius:4px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${c.actual==='ROUGE'&&c.predicted!=='ROUGE'?'#DC2626':'#D97706'};border-radius:4px"></div></div>
+            <span style="min-width:60px;text-align:right;font-weight:600">${c.count}x (${pct}%)</span></div>`;
+    });
+    h += '</div>';
+    el.innerHTML = h;
+}
+
+/* ── Recommendations (C4: clear scope label) ── */
+function renderRecommendations(diag, lastUpdate, lastUpdateLabel, periodComp) {
+    const el = document.getElementById('recommendations-content');
+    /* C4: Clear scope labeling */
+    let header = '';
+    if (lastUpdate) {
+        header = `<div style="font-size:0.78rem;color:var(--text-secondary);margin-bottom:10px;padding:6px 10px;background:var(--bg);border-radius:var(--radius-sm)">`;
+        header += `<strong>Périmètre :</strong> Prédictions J-2→J-5 depuis la MAJ <strong>${escapeHtml(lastUpdate)}</strong>`;
+        if (lastUpdateLabel) header += ` — ${escapeHtml(lastUpdateLabel)}`;
+        if (periodComp && periodComp.current) {
+            header += `<br>Évaluations dans ce périmètre : ${periodComp.current.total||0}`;
+        }
+        header += '</div>';
+    }
+    if (!diag.recommendations||diag.recommendations.length===0) { el.innerHTML=header+'<p style="color:var(--text-secondary);font-size:0.85rem">Aucune erreur détectée dans ce périmètre.</p>'; return; }
+    el.innerHTML = header + '<ul style="margin:0;padding-left:18px;font-size:0.85rem;line-height:1.6">' +
+        diag.recommendations.map(r => `<li style="margin-bottom:6px">${escapeHtml(r)}</li>`).join('') + '</ul>';
+}
+
+/* ══════════════════════════════════ */
+/* CHARTS                            */
+/* ══════════════════════════════════ */
+
+/* ══════════════════════════════════ */
+/* D6: WEATHER RELIABILITY           */
+/* ══════════════════════════════════ */
+function renderWeatherReliability(wr) {
+    const el = document.getElementById('weather-reliability');
+    if (!el) return;
+    if (!wr || Object.keys(wr).length === 0) { el.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Pas de données.</p>'; return; }
+    let h = '<table class="rouge-table" style="font-size:0.82rem"><thead><tr><th>Horizon</th><th>Écart moyen</th><th>Biais</th><th>Échantillon</th></tr></thead><tbody>';
+    for (let i = 1; i <= 15; i++) {
+        const k = 'J-'+i;
+        const d = wr[k];
+        if (!d || d.samples < 1) continue;
+        const errClass = d.avg_error <= 1.5 ? 'val-good' : d.avg_error <= 3 ? 'val-warn' : 'val-bad';
+        const biasSign = d.avg_bias > 0 ? '+' : '';
+        h += `<tr${i>=6?' style="opacity:0.6"':''}>`;
+        h += `<td><strong>${k}</strong></td>`;
+        h += `<td class="${errClass}">±${d.avg_error}°C</td>`;
+        h += `<td>${biasSign}${d.avg_bias}°C</td>`;
+        h += `<td>${d.samples}</td></tr>`;
+    }
+    h += '</tbody></table>';
+    h += '<p style="font-size:0.7rem;color:var(--text-secondary);margin-top:6px">Écart moyen = erreur absolue moyenne (°C). Biais = tendance systématique (positif = prévu plus chaud que réel).</p>';
+    el.innerHTML = h;
+}
+
+/* ══════════════════════════════════ */
+/* D4: QUICK MONTH BUTTON            */
+/* ══════════════════════════════════ */
+document.getElementById('btn-current-month')?.addEventListener('click', () => {
+    const now = new Date();
+    const key = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    _selectedMonth = key;
+    const sel = document.getElementById('month-filter');
+    if (sel) sel.value = key;
+    if (_recapData.length) {
+        _renderRecapTable(_recapData.filter(r => r.date && r.date.startsWith(key)));
+    }
+});
+
+/* ══════════════════════════════════ */
+/* TASKS, SUBSCRIBERS, AGENTS        */
+/* ══════════════════════════════════ */
+async function runTask(taskName) {
+    if (!confirm(`Exécuter « ${taskName} » ?`)) return;
+    const r = document.getElementById('task-result');
+    r.style.display='block'; r.style.background='var(--bg)'; r.style.color='var(--text-secondary)'; r.textContent=`Exécution de « ${taskName} »...`;
+    try {
+        const fd = new FormData(); fd.append('task', taskName);
+        const resp = await fetch('/admin/run-task', { method:'POST', body:fd, headers:{'Authorization':`Bearer ${adminPassword}`} });
+        const data = await resp.json();
+        if (resp.ok && data.status !== 'error') { r.textContent=data.result; r.style.background='#F0FDF4'; r.style.color='#166534'; }
+        else { r.textContent=data.result||data.detail||'Erreur'; r.style.background='#FEF2F2'; r.style.color='#991B1B'; }
+    } catch(e) { r.textContent='Erreur : '+e.message; r.style.background='#FEF2F2'; r.style.color='#991B1B'; }
+}
+
+async function loadSubscribers() {
+    try {
+        const resp = await fetch('/admin/subscribers', { headers:{'Authorization':`Bearer ${adminPassword}`} });
+        if (!resp.ok) { console.error('loadSubscribers HTTP', resp.status); document.getElementById('subscribers-summary').innerHTML='<p style="color:#DC2626">Erreur HTTP '+resp.status+'</p>'; return; }
+        const data = await resp.json(); if (data.status!=='ok') return;
+        const kpiSubs = document.getElementById('kpi-subs');
+        if (kpiSubs) kpiSubs.textContent = data.actifs;
+        document.getElementById('subscribers-summary').innerHTML = `
+            <div class="metric-row"><span>Total inscrits</span><span class="metric-value">${escapeHtml(String(data.total))}</span></div>
+            <div class="metric-row"><span>Actifs</span><span class="metric-value" style="color:#16A34A">${escapeHtml(String(data.actifs))}</span></div>
+            <div class="metric-row"><span>Désinscrits</span><span class="metric-value" style="color:#DC2626">${escapeHtml(String(data.total-data.actifs))}</span></div>`;
+        if (data.users.length > 0) {
+            document.getElementById('subscribers-body').innerHTML = data.users.map(u => `<tr style="${u.actif?'':'opacity:0.5'}">
+                <td>${escapeHtml(String(u.id))}</td>
+                <td style="font-family:monospace">***${escapeHtml(String(u.phone_last4||'????'))}</td>
+                <td>${escapeHtml(String(u.seuil_alerte_rouge))}%</td>
+                <td>J-${escapeHtml(String(u.delai_alerte))}</td>
+                <td>${u.alerte_blanc?'Oui':'Non'}</td>
+                <td>${u.recap_hebdo?'Oui':'Non'}</td>
+                <td>${escapeHtml(String(u.heure_envoi||'matin'))}</td>
+                <td>${u.actif?'<span style="color:#16A34A">Actif</span>':'<span style="color:#DC2626">Inactif</span>'}</td>
+                <td>${escapeHtml(u.created_at?.substring(0,10)||'—')}</td></tr>`).join('');
+            document.getElementById('subscribers-table').style.display = 'table';
+        }
+    } catch (e) { console.error('loadSubscribers:', e); document.getElementById('subscribers-summary').innerHTML='<p style="color:#DC2626">Erreur de chargement</p>'; }
+}
+
+async function loadSmsLogs() {
+    const container = document.getElementById('sms-logs-container');
+    try {
+        const resp = await fetch('/admin/sms-logs?limit=50', { headers:{'Authorization':`Bearer ${adminPassword}`} });
+        if (!resp.ok) { console.error('loadSmsLogs HTTP', resp.status); container.innerHTML='<p style="color:#DC2626">Erreur HTTP '+resp.status+'</p>'; return; }
+        const data = await resp.json(); if (data.status!=='ok') return;
+        if (!data.logs || data.logs.length === 0) {
+            container.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Aucun SMS envoy&eacute;.</p>';
+            return;
+        }
+        const _isOk = s => s==='sent'||s==='delivered'||s==='read'||s==='simulated';
+        const failed = data.logs.filter(l => !_isOk(l.statut));
+        let html = '';
+        if (failed.length > 0) {
+            html += `<div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:var(--radius-sm);padding:10px 14px;margin-bottom:14px;font-size:0.85rem">
+                <strong style="color:#991B1B">${failed.length} &eacute;chec(s)</strong> sur les ${data.logs.length} derniers messages</div>`;
+        }
+        html += '<div style="overflow-x:auto"><table class="sub-table"><thead><tr><th>Date</th><th>Type</th><th>Couleur</th><th>Statut</th><th>Erreur</th></tr></thead><tbody>';
+        for (const l of data.logs) {
+            const isFail = !_isOk(l.statut);
+            const statusHtml = isFail
+                ? `<span style="color:#DC2626;font-weight:600">${escapeHtml(l.statut)}</span>`
+                : `<span style="color:#16A34A">${escapeHtml(l.statut)}</span>`;
+            const errHtml = l.erreur ? `<span style="color:#DC2626;font-size:0.78rem">${escapeHtml(l.erreur.substring(0,80))}</span>` : '—';
+            html += `<tr style="${isFail?'background:#FEF2F2':''}">
+                <td style="white-space:nowrap">${escapeHtml(l.date_envoi||'—')}</td>
+                <td>${escapeHtml(l.type_alerte||'—')}</td>
+                <td>${escapeHtml(l.couleur||'—')}</td>
+                <td>${statusHtml}</td>
+                <td>${errHtml}</td></tr>`;
+        }
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+    } catch (e) { console.error('loadSmsLogs:', e); container.innerHTML='<p style="color:#DC2626">Erreur de chargement</p>'; }
+}
+
+async function loadSchedulerStatus() {
+    const container = document.getElementById('scheduler-status');
+    try {
+        const resp = await fetch('/admin/scheduler-status', { headers:{'Authorization':`Bearer ${adminPassword}`} });
+        if (!resp.ok) { console.error('loadSchedulerStatus HTTP', resp.status); container.innerHTML='<p style="color:#DC2626">Erreur HTTP '+resp.status+'</p>'; return; }
+        const data = await resp.json(); if (data.status!=='ok') return;
+        if (!data.jobs || data.jobs.length === 0) {
+            container.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Aucune t&acirc;che planifi&eacute;e.</p>';
+            return;
+        }
+        const runningHtml = data.running
+            ? '<span style="color:#16A34A;font-weight:600">Actif</span>'
+            : '<span style="color:#DC2626;font-weight:600">Arr&ecirc;t&eacute;</span>';
+        let html = `<div class="metric-row" style="margin-bottom:12px"><span>Scheduler</span><span class="metric-value">${runningHtml}</span></div>`;
+        html += '<div style="overflow-x:auto"><table class="sub-table"><thead><tr><th>T&acirc;che</th><th>Prochaine ex&eacute;cution</th><th>&Eacute;tat</th></tr></thead><tbody>';
+        for (const j of data.jobs) {
+            const nextStr = j.next_run
+                ? new Date(j.next_run).toLocaleString('fr-FR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})
+                : '—';
+            const stateHtml = j.pending
+                ? '<span style="color:#16A34A">Planifi&eacute;</span>'
+                : '<span style="color:var(--text-secondary)">Termin&eacute;</span>';
+            html += `<tr><td>${escapeHtml(j.name)}</td><td>${nextStr}</td><td>${stateHtml}</td></tr>`;
+        }
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+    } catch (e) { console.error('loadSchedulerStatus:', e); container.innerHTML='<p style="color:#DC2626">Erreur de chargement</p>'; }
+}
+
+async function loadDbDiagnostic() {
+    const container = document.getElementById('db-diagnostic');
+    container.style.display = 'block';
+    container.innerHTML = '<p style="color:var(--text-secondary)">Chargement...</p>';
+    try {
+        const resp = await fetch('/admin/db-diagnostic', { headers:{'Authorization':`Bearer ${adminPassword}`} });
+        const data = await resp.json();
+        if (data.status !== 'ok') { container.innerHTML = '<p style="color:#DC2626">Erreur</p>'; return; }
+        const s = data.global_stats;
+        let html = `<div style="margin-bottom:12px;padding:10px;background:var(--card-bg);border-radius:var(--radius-sm);border:1px solid var(--border)">`;
+        html += `<div><strong>PREDICTION_START_DATE:</strong> ${escapeHtml(data.prediction_start_date||'non défini')}</div>`;
+        html += `<div><strong>Prédictions (non simulées):</strong> ${s.pred_total} | ${s.pred_min_date||'—'} → ${s.pred_max_date||'—'}</div>`;
+        html += `<div><strong>Actuals (non synthétiques):</strong> ${s.actual_total} | ${s.actual_min_date||'—'} → ${s.actual_max_date||'—'}</div>`;
+        html += `<div><strong>Évaluations (performance):</strong> ${s.perf_total} | ${s.perf_min_date||'—'} → ${s.perf_max_date||'—'}</div>`;
+        html += '</div>';
+
+        /* Predictions by date */
+        html += '<details open><summary style="cursor:pointer;font-weight:600;margin-bottom:6px">Prédictions par date (15j)</summary>';
+        if (data.predictions_by_date.length === 0) {
+            html += '<p style="color:#DC2626;font-weight:600">Aucune prédiction trouvée !</p>';
+        } else {
+            html += '<table class="sub-table"><thead><tr><th>Date</th><th>Nb</th><th>Horizons</th><th>Confirmé</th><th>Simulé</th></tr></thead><tbody>';
+            for (const r of data.predictions_by_date) {
+                const conf = r.any_confirmed ? '✓' : '—';
+                const sim = r.any_simulated ? '⚠' : '—';
+                html += `<tr><td>${r.date}</td><td>${r.cnt}</td><td>${r.min_h}→${r.max_h}</td><td>${conf}</td><td>${sim}</td></tr>`;
+            }
+            html += '</tbody></table>';
+        }
+        html += '</details>';
+
+        /* Actuals */
+        html += '<details><summary style="cursor:pointer;font-weight:600;margin:8px 0 6px">Actuals récents</summary>';
+        if (data.actuals_recent.length === 0) {
+            html += '<p style="color:#DC2626;font-weight:600">Aucun actual trouvé !</p>';
+        } else {
+            html += '<table class="sub-table"><thead><tr><th>Date</th><th>Couleur</th><th>Synthétique</th></tr></thead><tbody>';
+            for (const r of data.actuals_recent) {
+                const syn = r.synthetic ? '<span style="color:#F59E0B">Oui</span>' : 'Non';
+                html += `<tr><td>${r.date}</td><td>${r.couleur_reelle}</td><td>${syn}</td></tr>`;
+            }
+            html += '</tbody></table>';
+        }
+        html += '</details>';
+
+        /* Performance evaluations */
+        html += '<details><summary style="cursor:pointer;font-weight:600;margin:8px 0 6px">Évaluations performance</summary>';
+        if (data.performance_by_date.length === 0) {
+            html += '<p style="color:#DC2626;font-weight:600">Aucune évaluation trouvée !</p>';
+        } else {
+            html += '<table class="sub-table"><thead><tr><th>Date cible</th><th>Évaluations</th><th>Correctes</th></tr></thead><tbody>';
+            for (const r of data.performance_by_date) {
+                const pct = r.cnt > 0 ? Math.round((r.corrects||0)/r.cnt*100) : 0;
+                html += `<tr><td>${r.date_cible}</td><td>${r.cnt}</td><td>${r.corrects||0} (${pct}%)</td></tr>`;
+            }
+            html += '</tbody></table>';
+        }
+        html += '</details>';
+
+        container.innerHTML = html;
     } catch (e) {
-        resultEl.textContent = 'Erreur: ' + e.message;
-        resultEl.style.color = '#C62828';
+        container.innerHTML = `<p style="color:#DC2626">Erreur: ${escapeHtml(String(e))}</p>`;
     }
 }
 
-async function loadUserStats() {
+async function loadAgentReports() {
     try {
-        const resp = await fetch('/api/users/stats', {
-            headers: { 'Authorization': `Bearer ${adminPassword}` }
-        });
-        const data = await resp.json();
-        const el = document.getElementById('user-stats');
-        if (data.status === 'ok') {
-            el.innerHTML = `
-                <div class="metric-row"><span>Total inscrits</span><span class="metric-value">${escapeHtml(String(data.total))}</span></div>
-                <div class="metric-row"><span>Actifs</span><span class="metric-value">${escapeHtml(String(data.actifs))}</span></div>
-            `;
+        const resp = await fetch('/admin/agent-reports', { headers:{'Authorization':`Bearer ${adminPassword}`} });
+        if (!resp.ok) { console.error('loadAgentReports HTTP', resp.status); document.getElementById('seo-log').textContent='Erreur HTTP '+resp.status; return; }
+        const data = await resp.json(); if (data.status!=='ok') return;
+        document.getElementById('seo-log').textContent = data.seo_log||'Aucun rapport.';
+        document.getElementById('seo-calendar').textContent = data.seo_calendar||'Aucun calendrier.';
+        document.getElementById('backlinks-log').textContent = data.backlinks_log||'Aucun rapport.';
+        renderBacklinksProspects(data.backlinks_prospects);
+        if (data.backlinks_drafts && data.backlinks_drafts.length > 0) {
+            document.getElementById('bl-drafts-count').textContent = data.backlinks_drafts.length;
+            document.getElementById('backlinks-drafts').innerHTML = data.backlinks_drafts.map(d =>
+                `<details class="draft-item"><summary>${escapeHtml(d.filename)}</summary><pre>${escapeHtml(d.content)}</pre></details>`
+            ).join('');
+            document.getElementById('backlinks-drafts-section').style.display = 'block';
+        } else document.getElementById('bl-drafts-count').textContent = '0';
+    } catch (e) { console.error('loadAgentReports:', e); document.getElementById('seo-log').textContent='Erreur de chargement'; }
+}
+
+async function runArticleValidation() {
+    const ct = document.getElementById('seo-validation');
+    ct.style.display='block'; ct.innerHTML='<p style="color:var(--text-secondary)">Validation en cours...</p>';
+    try {
+        const resp = await fetch('/admin/validate-articles', { headers:{'Authorization':`Bearer ${adminPassword}`} });
+        if (!resp.ok) { ct.innerHTML='<p style="color:#DC2626">Erreur HTTP '+resp.status+'</p>'; return; }
+        const data = await resp.json(); if (data.status!=='ok') { ct.innerHTML='<p style="color:#DC2626">Erreur</p>'; return; }
+        let html = `<div class="metric-row" style="margin-bottom:10px"><span>Articles</span><span class="metric-value">${data.valid}/${data.total} valides</span></div>`;
+        html += '<div style="overflow-x:auto"><table class="sub-table"><thead><tr><th>Article</th><th>Statut</th><th>Détails</th></tr></thead><tbody>';
+        for (const a of data.articles) {
+            const icon = a.valid ? '<span style="color:#16A34A">OK</span>' : '<span style="color:#DC2626">Erreur</span>';
+            const details = [];
+            if (a.errors.length) details.push(...a.errors.map(e=>'<span style="color:#DC2626">'+escapeHtml(e)+'</span>'));
+            if (a.warnings.length) details.push(...a.warnings.map(w=>'<span style="color:#F59E0B">'+escapeHtml(w)+'</span>'));
+            html += `<tr><td>${escapeHtml(a.filename)}</td><td>${icon}</td><td style="font-size:0.78rem">${details.join('<br>')||'—'}</td></tr>`;
         }
-    } catch {
-        // silently fail
+        html += '</tbody></table></div>';
+        ct.innerHTML = html;
+    } catch (e) { console.error('runArticleValidation:', e); ct.innerHTML='<p style="color:#DC2626">Erreur: '+escapeHtml(String(e))+'</p>'; }
+}
+
+function renderBacklinksProspects(raw) {
+    const ct = document.getElementById('backlinks-prospects-table');
+    if (!raw||!raw.trim()) { ct.innerHTML='<p style="color:var(--text-secondary);font-size:0.85rem">Aucun prospect.</p>';
+        document.getElementById('bl-total').textContent='0'; document.getElementById('bl-acquired').textContent='0'; document.getElementById('bl-pending').textContent='0'; return; }
+    const lines = raw.trim().split('\n').filter(l=>l.trim().startsWith('|'));
+    if (lines.length < 3) { ct.innerHTML=`<pre class="log-viewer">${escapeHtml(raw)}</pre>`; return; }
+    const parseRow = l => l.split('|').slice(1,-1).map(c=>c.trim());
+    const headers = parseRow(lines[0]), rows = lines.slice(2).map(parseRow);
+    let aq=0, pn=0;
+    const si = headers.findIndex(h=>/statut|status/i.test(h));
+    if (si !== -1) {
+        rows.forEach(r=>{ if(!r[si])return; if(/acquis|obtained|done|ok/i.test(r[si]))aq++;else pn++; });
     }
+    document.getElementById('bl-total').textContent=rows.length;
+    document.getElementById('bl-acquired').textContent=si!==-1?aq:'—';
+    document.getElementById('bl-pending').textContent=si!==-1?pn:'—';
+    let h = '<table class="prospect-table"><thead><tr>';
+    headers.forEach(hd=>{ h+=`<th>${escapeHtml(hd)}</th>`; }); h += '</tr></thead><tbody>';
+    rows.forEach(r=>{ h+='<tr>'; r.forEach((cell,i)=>{
+        if(i===si && si!==-1){ const st=cell.toLowerCase(); const cls=/acquis|obtained|done|ok/i.test(st)?'acquired':/draft|brouillon/i.test(st)?'draft':/contact/i.test(st)?'contacted':'pending';
+            h+=`<td><span class="status-pill ${cls}">${escapeHtml(cell)}</span></td>`; }
+        else h+=`<td>${escapeHtml(cell)}</td>`; }); h+='</tr>'; });
+    h += '</tbody></table>'; ct.innerHTML = h;
 }
 
 async function downloadCsv() {
-    const month = document.getElementById('csv-month').value;
-    const year = document.getElementById('csv-year').value;
+    const m=document.getElementById('csv-month').value, y=document.getElementById('csv-year').value;
+    const btn = document.querySelector('#panel-subscribers .action-btn.blue');
+    const origText = btn ? btn.textContent : '';
+    if (btn) { btn.textContent = 'Téléchargement...'; btn.disabled = true; }
     try {
-        const resp = await fetch(`/api/performance/csv?month=${month}&year=${year}`, {
-            headers: { 'Authorization': `Bearer ${adminPassword}` }
-        });
-        if (!resp.ok) { alert('Erreur téléchargement CSV'); return; }
-        const blob = await resp.blob();
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `performance_${year}_${month.padStart(2, '0')}.csv`;
-        a.click();
-        URL.revokeObjectURL(url);
-    } catch (e) {
-        alert('Erreur: ' + e.message);
-    }
+        const resp = await fetch(`/api/performance/csv?month=${m}&year=${y}`, { headers:{'Authorization':`Bearer ${adminPassword}`} });
+        if (!resp.ok) {
+            const detail = await resp.text().catch(()=>'');
+            alert(`Erreur CSV (${resp.status})${detail ? ' : '+detail : ''}`);
+            return;
+        }
+        const blob=await resp.blob();
+        if (blob.size < 50) { alert('Le fichier CSV est vide — aucune donnée pour cette période.'); return; }
+        const url=URL.createObjectURL(blob), a=document.createElement('a');
+        a.href=url; a.download=`performance_${y}_${String(m).padStart(2,'0')}.csv`; a.click(); URL.revokeObjectURL(url);
+    } catch(e) { alert('Erreur réseau : '+e.message); }
+    finally { if (btn) { btn.textContent = origText; btn.disabled = false; } }
 }
 
-function escapeHtml(str) {
-    if (!str) return '';
-    const div = document.createElement('div');
-    div.appendChild(document.createTextNode(String(str)));
-    return div.innerHTML;
-}
-
-// Hamburger menu toggle
-(function() {
-    const btn = document.getElementById('hamburger-btn');
-    const nav = document.getElementById('main-nav');
-    if (!btn || !nav) return;
-    btn.addEventListener('click', () => {
-        const open = nav.classList.toggle('open');
-        btn.setAttribute('aria-expanded', open);
-    });
-})();
+/* Hamburger */
+(function(){ const b=document.getElementById('hamburger-btn'),n=document.getElementById('main-nav');
+    if(!b||!n)return; b.addEventListener('click',()=>{ const o=n.classList.toggle('open'); b.setAttribute('aria-expanded',o); }); })();
 </script>
-
 </body>
 </html>

@@ -1,4 +1,4 @@
-"""Client RTE eco2mix — prevision de consommation et disponibilite nucleaire.
+"""Client RTE eco2mix — prevision de consommation nationale.
 
 API RTE (data.rte-france.com) avec OAuth2 Bearer token.
 Fournit le signal de consommation nationale, facteur cle pour la decision Tempo.
@@ -6,8 +6,12 @@ Fallback gracieux si pas de credentials configures.
 
 Corrections audit :
   - Fix #3 : type D-1 forecast au lieu de REALISED
-  - Fix #12 : capacite nucleaire configurable
   - Fix #13 : fetches paralleles asyncio.gather
+  - Fix API fev 2026 : suppression appel Generation Forecast.
+    L'API v3 n'accepte que WIND_ONSHORE, WIND_OFFSHORE, SOLAR,
+    AGGREGATED_CPC, MDSE — aucun type ne fournit la disponibilite
+    nucleaire ni la production agregee France. Le scoring fonctionne
+    correctement avec la consommation seule.
 """
 
 import httpx
@@ -35,37 +39,63 @@ def _paris_offset_str(d: date) -> str:
     return f"{sign}{hours:02d}:{minutes:02d}"
 
 
-# Token cache en memoire
-_token_cache = {"token": None, "expires": 0}
-_token_lock = asyncio.Lock()
+# Token caches separes par API (chaque API RTE a sa propre application/credentials)
+_token_conso = {"token": None, "expires": 0}
+_token_generation = {"token": None, "expires": 0}
+_lock_conso = asyncio.Lock()
+_lock_generation = asyncio.Lock()
 
 
 # ================================================================
 # AUTHENTIFICATION OAuth2
 # ================================================================
 
-async def _get_token() -> str | None:
-    """Obtient un token OAuth2 RTE (cache en memoire).
+def _get_credentials(api: str) -> tuple[str, str] | None:
+    """Retourne (client_id, client_secret) pour une API RTE donnee.
 
-    Fix audit v6 : asyncio.Lock pour eviter les race conditions
-    (deux appels simultanes pourraient rafraichir le token en double).
+    Chaque API RTE necessite sa propre application sur le portail.
+    Fallback sur RTE_CLIENT_ID/SECRET si cle specifique absente.
+    """
+    if api == "consumption":
+        cid = Config.RTE_CONSO_CLIENT_ID or Config.RTE_CLIENT_ID
+        sec = Config.RTE_CONSO_CLIENT_SECRET or Config.RTE_CLIENT_SECRET
+    elif api == "generation":
+        cid = Config.RTE_GENERATION_CLIENT_ID or Config.RTE_CLIENT_ID
+        sec = Config.RTE_GENERATION_CLIENT_SECRET or Config.RTE_CLIENT_SECRET
+    else:
+        cid = Config.RTE_CLIENT_ID
+        sec = Config.RTE_CLIENT_SECRET
+
+    if not cid or not sec:
+        return None
+    return (cid, sec)
+
+
+async def _get_token(api: str = "consumption") -> str | None:
+    """Obtient un token OAuth2 RTE pour une API donnee (cache en memoire).
+
+    Chaque API a son propre cache de token car les credentials sont differentes.
+    Fix audit v6 : asyncio.Lock pour eviter les race conditions.
     """
     import time
+
+    cache = _token_conso if api == "consumption" else _token_generation
+    lock = _lock_conso if api == "consumption" else _lock_generation
+
     now = time.time()
-    if _token_cache["token"] and now < _token_cache["expires"]:
-        return _token_cache["token"]
+    if cache["token"] and now < cache["expires"]:
+        return cache["token"]
 
-    async with _token_lock:
-        # Re-verifier apres acquisition du lock
+    async with lock:
         now = time.time()
-        if _token_cache["token"] and now < _token_cache["expires"]:
-            return _token_cache["token"]
+        if cache["token"] and now < cache["expires"]:
+            return cache["token"]
 
-        if not Config.RTE_CLIENT_ID or not Config.RTE_CLIENT_SECRET:
+        creds = _get_credentials(api)
+        if not creds:
             return None
 
-        credentials = f"{Config.RTE_CLIENT_ID}:{Config.RTE_CLIENT_SECRET}"
-        b64 = base64.b64encode(credentials.encode()).decode()
+        b64 = base64.b64encode(f"{creds[0]}:{creds[1]}".encode()).decode()
 
         try:
             async with httpx.AsyncClient(timeout=10) as client:
@@ -79,12 +109,12 @@ async def _get_token() -> str | None:
                 )
                 resp.raise_for_status()
                 data = resp.json()
-                _token_cache["token"] = data["access_token"]
-                _token_cache["expires"] = now + 6600
-                logger.info("[RTE] Token OAuth2 obtenu")
-                return _token_cache["token"]
+                cache["token"] = data["access_token"]
+                cache["expires"] = now + 6600
+                logger.info(f"[RTE] Token OAuth2 obtenu ({api})")
+                return cache["token"]
         except Exception as e:
-            logger.warning(f"[RTE] Erreur authentification: {e}")
+            logger.warning(f"[RTE] Erreur authentification ({api}): {e}")
             return None
 
 
@@ -97,7 +127,7 @@ async def fetch_consumption_forecast() -> dict | None:
 
     Fix #3 : utilise type D-1 (prevision) au lieu de REALISED (passe).
     """
-    token = await _get_token()
+    token = await _get_token("consumption")
     if not token:
         return None
 
@@ -117,8 +147,8 @@ async def fetch_consumption_forecast() -> dict | None:
                 },
             )
             if resp.status_code in (401, 403):
-                _token_cache["token"] = None
-                logger.warning("[RTE] Token expire, retry au prochain appel")
+                _token_conso["token"] = None
+                logger.warning("[RTE] Token conso expire, retry au prochain appel")
                 return None
             resp.raise_for_status()
             data = resp.json()
@@ -142,56 +172,17 @@ async def fetch_consumption_forecast() -> dict | None:
         return None
 
 
-async def fetch_nuclear_availability() -> dict | None:
-    """Recupere la disponibilite du parc nucleaire.
+async def fetch_nuclear_availability() -> None:
+    """DESACTIVEE — la disponibilite nucleaire n'est pas disponible via l'API
+    Generation Forecast RTE (v3).
 
-    Fix #12 : capacite totale configurable via Config.
+    Types valides en entree v3 : WIND_ONSHORE, WIND_OFFSHORE, SOLAR,
+    AGGREGATED_CPC, MDSE. Aucun ne fournit de donnee nucleaire.
+    Il faudrait l'API Actual Generation ou Generation Installed Capacities
+    (non implementee, et non necessaire : le scoring fonctionne bien
+    avec la consommation seule).
     """
-    token = await _get_token()
-    if not token:
-        return None
-
-    try:
-        async with httpx.AsyncClient(timeout=15) as client:
-            today_d = date.today()
-            tomorrow_d = today_d + timedelta(days=1)
-            tz_offset = _paris_offset_str(today_d)
-            resp = await client.get(
-                f"{Config.RTE_API_BASE}/open_api/generation_forecast/v2/forecasts",
-                headers={"Authorization": f"Bearer {token}"},
-                params={
-                    "production_type": "NUCLEAR",
-                    "start_date": f"{today_d.isoformat()}T00:00:00{tz_offset}",
-                    "end_date": f"{tomorrow_d.isoformat()}T00:00:00{tz_offset}",
-                },
-            )
-            if resp.status_code in (401, 403):
-                _token_cache["token"] = None
-                return None
-            resp.raise_for_status()
-            data = resp.json()
-
-            values = []
-            for forecast in data.get("forecasts", []):
-                for val in forecast.get("values", []):
-                    if val.get("value") is not None:
-                        values.append(val["value"])
-
-            if not values:
-                return None
-
-            total_capacity = Config.RTE_NUCLEAR_CAPACITY_MW
-            if total_capacity <= 0:
-                return None
-            available = round(max(values))
-            return {
-                "available_mw": available,
-                "total_mw": total_capacity,
-                "availability_pct": round(available / total_capacity * 100, 1),
-            }
-    except Exception as e:
-        logger.warning(f"[RTE] Erreur nucleaire: {e}")
-        return None
+    return None
 
 
 # ================================================================
@@ -199,56 +190,91 @@ async def fetch_nuclear_availability() -> dict | None:
 # ================================================================
 
 async def get_consumption_score() -> dict:
-    """Calcule un score de risque base sur la consommation prevue.
+    """Calcule un score de risque base sur la prevision de consommation.
 
-    Fix #13 : fetches paralleles avec asyncio.gather.
+    Fix API fev 2026 : le scoring est base uniquement sur la consommation.
+    La disponibilite nucleaire n'est pas disponible via l'API Generation
+    Forecast v3 (aucun type valide ne fournit cette donnee).
     """
-    # Fix #13 : lancer les deux fetches en parallele
-    conso, nuke = await asyncio.gather(
-        fetch_consumption_forecast(),
-        fetch_nuclear_availability(),
-        return_exceptions=True,
-    )
-
-    # Gerer les exceptions retournees par gather
-    if isinstance(conso, Exception):
-        logger.warning(f"[RTE] Erreur consommation dans gather: {conso}")
+    try:
+        conso = await fetch_consumption_forecast()
+    except Exception as e:
+        logger.warning(f"[RTE] Erreur consommation: {e}")
         conso = None
-    if isinstance(nuke, Exception):
-        logger.warning(f"[RTE] Erreur nucleaire dans gather: {nuke}")
-        nuke = None
 
-    if not conso and not nuke:
-        return {"score": 50, "peak_mw": None, "nuke_pct": None, "available": False}
+    if not conso:
+        return {"score": 50, "peak_mw": None, "nuke_pct": None,
+                "nuke_mw": None, "available": False}
 
     score = 0
 
     # Score consommation prevue
-    if conso:
-        peak = conso["peak_mw"]
-        if peak >= Config.RTE_CONSO_SEUIL_CRITIQUE:
-            score += 80
-        elif peak >= Config.RTE_CONSO_SEUIL_HAUT:
-            score += 60
-        elif peak >= Config.RTE_CONSO_SEUIL_MOYEN:
-            score += 35
-        else:
-            score += 10
-
-    # Ajustement disponibilite nucleaire
-    nuke_pct = None
-    if nuke:
-        nuke_pct = nuke["availability_pct"]
-        if nuke_pct < 60:
-            score += 20  # Beaucoup de reacteurs en maintenance
-        elif nuke_pct < 70:
-            score += 10
-        elif nuke_pct > 85:
-            score -= 10  # Parc en forme, risque reduit
+    peak = conso["peak_mw"]
+    if peak >= Config.RTE_CONSO_SEUIL_CRITIQUE:
+        score += 80
+    elif peak >= Config.RTE_CONSO_SEUIL_HAUT:
+        score += 60
+    elif peak >= Config.RTE_CONSO_SEUIL_MOYEN:
+        score += 35
+    else:
+        score += 10
 
     return {
         "score": max(0, min(100, score)),
-        "peak_mw": conso["peak_mw"] if conso else None,
-        "nuke_pct": nuke_pct,
-        "available": conso is not None or nuke is not None,
+        "peak_mw": conso["peak_mw"],
+        "mean_mw": conso["mean_mw"],
+        "nuke_pct": None,
+        "nuke_mw": None,
+        "available": True,
     }
+
+
+async def fetch_realised_consumption(target: date | None = None) -> dict | None:
+    """Recupere la consommation realisee de la veille depuis l'API RTE.
+
+    Stocke le resultat dans rte_daily pour alimenter les features ML lag.
+    Appelee quotidiennement par le scheduler.
+    """
+    token = await _get_token("consumption")
+    if not token:
+        return None
+
+    if target is None:
+        target = date.today() - timedelta(days=1)
+    next_day = target + timedelta(days=1)
+    tz_offset = _paris_offset_str(target)
+
+    try:
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(
+                f"{Config.RTE_API_BASE}/open_api/consumption/v1/short_term",
+                headers={"Authorization": f"Bearer {token}"},
+                params={
+                    "type": "REALISED",
+                    "start_date": f"{target.isoformat()}T00:00:00{tz_offset}",
+                    "end_date": f"{next_day.isoformat()}T00:00:00{tz_offset}",
+                },
+            )
+            if resp.status_code in (401, 403):
+                _token_conso["token"] = None
+                return None
+            resp.raise_for_status()
+            data = resp.json()
+
+            values = []
+            for forecast in data.get("short_term", []):
+                for val in forecast.get("values", []):
+                    if val.get("value") is not None:
+                        values.append(val["value"])
+
+            if not values:
+                return None
+
+            return {
+                "date": target.isoformat(),
+                "conso_peak_mw": round(max(values)),
+                "conso_mean_mw": round(sum(values) / len(values)),
+            }
+    except Exception as e:
+        logger.warning(f"[RTE] Erreur consommation realisee: {e}")
+        return None

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page introuvable — Calendrier Tempo EDF</title>
+    <meta name="description" content="Cette page n'existe pas. Retrouvez le calendrier Tempo EDF, les prévisions des jours rouges et les alertes gratuites.">
+    <meta name="robots" content="noindex">
+    <link rel="canonical" href="https://www.calendrier-tempo.fr/">
+    <link rel="icon" href="/static/favicon.ico" sizes="48x48">
+    <link rel="icon" href="/static/icon-192.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/static/favicon-180.png">
+    <meta name="theme-color" content="#1565C0">
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="/static/css/style.min.css">
+</head>
+<body>
+
+<a href="#main-content" class="skip-link">Aller au contenu principal</a>
+
+<header role="banner">
+    <div class="container header-row">
+        <a href="/" class="header-brand">
+            <svg class="header-logo" viewBox="0 0 100 100" width="32" height="32" aria-hidden="true"><circle cx="50" cy="50" r="45" fill="#fff"/><circle cx="50" cy="50" r="40" fill="#2563EB"/><path d="M50 10A40 40 0 0 1 90 50H10A40 40 0 0 1 50 10z" fill="#DC2626"/><circle cx="50" cy="50" r="16" fill="#fff"/></svg>
+            <span class="header-title">Calendrier Tempo EDF</span>
+        </a>
+        <nav aria-label="Navigation principale">
+            <a href="/">Accueil</a>
+            <a href="/calendrier">Calendrier</a>
+            <a href="/blog/">Blog</a>
+            <button type="button" class="nav-cta" onclick="openSubscribeModal()">Alertes gratuites</button>
+        </nav>
+    </div>
+</header>
+
+<main id="main-content" class="container" role="main" style="max-width:700px;text-align:center;padding:3rem 1rem">
+    <h1>Page introuvable</h1>
+    <p style="font-size:1.15rem;color:#64748b;margin:1.5rem 0">La page que vous recherchez n'existe pas ou a été déplacée.</p>
+    <p style="margin:2rem 0">Voici ce qui pourrait vous intéresser :</p>
+    <div style="display:flex;flex-wrap:wrap;gap:1rem;justify-content:center;margin:2rem 0">
+        <a href="/" class="btn" style="min-width:200px">Calendrier Tempo du jour</a>
+        <a href="/calendrier" class="btn btn-outline" style="min-width:200px">Calendrier mensuel</a>
+        <a href="/blog/" class="btn btn-outline" style="min-width:200px">Blog &amp; guides</a>
+        <button type="button" class="btn btn-outline" style="min-width:200px" onclick="openSubscribeModal()">Alertes gratuites</button>
+    </div>
+</main>
+
+{% include '_subscribe_modal.html' %}
+
+<footer role="contentinfo">
+    <div class="container footer-content">
+        <nav class="footer-links" aria-label="Liens du pied de page">
+            <a href="/">Accueil</a>
+            <a href="/calendrier">Calendrier</a>
+            <a href="/alertes">Alertes</a>
+            <a href="/blog/">Blog</a>
+            <a href="/a-propos">À propos</a>
+            <a href="/mentions-legales">Mentions l&eacute;gales</a>
+        </nav>
+        <p class="footer-note">Service ind&eacute;pendant — non affili&eacute; &agrave; EDF.</p>
+    </div>
+</footer>
+
+</body>
+</html>

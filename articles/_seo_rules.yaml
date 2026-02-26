@@ -1,0 +1,48 @@
+# Regles SEO en vigueur
+# Ce fichier est mis a jour automatiquement par l'agent SEO lors de l'Etape 0.
+# Derniere verification : 2026-02-19
+#
+# Garde-fou : les regles fondamentales ne peuvent PAS etre supprimees.
+# Seules les pratiques techniques (structured data, formats, outils) peuvent etre mises a jour.
+# Les principes (E-E-A-T, contenu utile, pas de bourrage, liens internes) sont permanents.
+
+google_principes_permanents:
+  - "E-E-A-T (Experience, Expertise, Authoritativeness, Trustworthiness) : priorite au contenu demontrant une expertise reelle"
+  - "Helpful Content System : penalise le contenu cree pour le SEO sans valeur utilisateur"
+  - "AI-generated content : accepte tant qu'il est utile, original et de qualite"
+
+google_pratiques_techniques:
+  date_maj: "2026-02"
+  regles:
+    - "Structured Data : JSON-LD recommande pour Article, FAQPage, BreadcrumbList, HowTo"
+    - "Core Web Vitals : LCP < 2.5s, FID < 100ms, CLS < 0.1"
+    - "Mobile-first indexing : 100% des sites indexes en mobile-first"
+    - "Featured Snippets : paragraphes 40-60 mots, listes, tableaux"
+    - "dateModified : signal de fraicheur important — mettre a jour quand le contenu change"
+
+moteurs_ia_pratiques_techniques:
+  date_maj: "2026-02"
+  regles:
+    - "llms.txt : standard emergent pour les crawlers IA"
+    - "Structured data : les moteurs IA s'appuient fortement sur JSON-LD et FAQ"
+    - "Contenu factuel : donnees chiffrees verifiables privilegiees"
+    - "Fraicheur : contenus recemment mis a jour favorises"
+    - "Citations : les moteurs IA citent les sources avec des reponses completes et directes"
+
+bonnes_pratiques_articles:
+  - "H1 unique par page"
+  - "Hierarchie H1 > H2 > H3 stricte"
+  - "Liens internes contextuels (min 3 + pilier)"
+  - "Meta description unique et actionnable"
+  - "URL courte en kebab-case"
+  - "Contenu > 1200 mots pour les piliers, > 800 pour les satellites"
+  - "FAQ pour featured snippets"
+  - "Optimisation featured snippet sur chaque H2"
+
+historique:
+  - date: "2026-02-19"
+    changement: "Creation initiale des regles"
+    source: "Audit SEO complet du site"
+  - date: "2026-02-19"
+    changement: "Ajout topic clusters, featured snippets, maillage bidirectionnel, PAA"
+    source: "Audit agent v2"

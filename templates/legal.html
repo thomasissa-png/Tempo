@@ -3,13 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mentions légales et RGPD — TempoForecast</title>
+    <title>Mentions légales et RGPD — Calendrier Tempo EDF</title>
     <!-- Fix #S6 : meta description pour la page légale -->
-    <meta name="description" content="Mentions légales, politique de confidentialité et RGPD de TempoForecast. Découvrez comment vos données sont protégées et comment vous désinscrire des alertes SMS Tempo.">
-    <link rel="canonical" href="https://tempoforecast.fr/mentions-legales">
-    <link rel="alternate" hreflang="fr" href="https://tempoforecast.fr/mentions-legales">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' fill='%232196F3'/><path d='M50 5A45 45 0 0 1 95 50H5A45 45 0 0 1 50 5z' fill='%23F44336'/><circle cx='50' cy='50' r='20' fill='white'/></svg>" type="image/svg+xml">
-    <link rel="stylesheet" href="/static/css/style.css">
+    <meta name="description" content="Mentions l&eacute;gales, politique de confidentialit&eacute; et RGPD du Calendrier Tempo EDF. D&eacute;couvrez comment vos donn&eacute;es sont prot&eacute;g&eacute;es et comment vous d&eacute;sinscrire des alertes.">
+    <link rel="canonical" href="https://www.calendrier-tempo.fr/mentions-legales">
+    <link rel="alternate" hreflang="fr" href="https://www.calendrier-tempo.fr/mentions-legales">
+    <link rel="icon" href="/static/favicon.ico" sizes="48x48">
+    <link rel="icon" href="/static/icon-192.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/static/favicon-180.png">
+    <meta name="application-name" content="Calendrier Tempo">
+    <meta name="apple-mobile-web-app-title" content="Calendrier Tempo">
+    <meta name="theme-color" content="#1565C0">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="/static/css/style.min.css">
+    <script defer src="https://cloud.umami.is/script.js" data-website-id="1d187359-b4a6-4ba8-ba41-c449b356832f"></script>
 </head>
 <body>
 
@@ -18,7 +28,8 @@
 <header role="banner">
     <div class="container header-row">
         <a href="/" class="header-brand">
-            <h1>TempoForecast</h1>
+            <svg class="header-logo" viewBox="0 0 100 100" width="32" height="32" aria-hidden="true"><circle cx="50" cy="50" r="45" fill="#fff"/><circle cx="50" cy="50" r="40" fill="#2563EB"/><path d="M50 10A40 40 0 0 1 90 50H10A40 40 0 0 1 50 10z" fill="#DC2626"/><circle cx="50" cy="50" r="16" fill="#fff"/></svg>
+            <span class="header-title">Calendrier Tempo EDF</span>
         </a>
         <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu de navigation" aria-expanded="false" aria-controls="main-nav">
             <span class="bar"></span>
@@ -27,20 +38,22 @@
         </button>
         <nav id="main-nav" aria-label="Navigation principale">
             <a href="/">Accueil</a>
-            <a href="/#subscribe">Alertes SMS</a>
-            <a href="/#comment-ca-marche">Comment ça marche ?</a>
-            <a href="/mentions-legales" class="active" aria-current="page">Mentions légales</a>
+            <a href="/calendrier">Calendrier</a>
+            <a href="/blog/">Blog</a>
+            <button type="button" class="nav-cta" onclick="openSubscribeModal()">Alertes gratuites</button>
         </nav>
     </div>
 </header>
 
 <main id="main-content" class="container" role="main" style="max-width:800px">
 
+    <h1>Mentions l&eacute;gales et RGPD</h1>
+
     <!-- Fix #9 : classes CSS au lieu de styles inline -->
     <div class="legal-section">
         <h3>1. Informations générales</h3>
         <p class="legal-text">
-            TempoForecast est un service indépendant de prévision des jours Tempo EDF.
+            Le Calendrier Tempo EDF est un service indépendant de prévision des jours Tempo EDF.
             Ce service n'est <strong>pas affilié à EDF</strong> ni à aucune entité du groupe EDF.
             Les prévisions sont fournies à titre indicatif uniquement et ne constituent pas
             une information officielle. Seul EDF détermine la couleur des jours Tempo.
@@ -52,28 +65,27 @@
         <p class="legal-text">
             <strong>Données collectées :</strong> Numéro de téléphone, stocké sous deux formes :
             un hash SHA-256 (irréversible, pour la déduplication) et un chiffrement Fernet AES-128
-            (réversible, pour l'envoi des SMS). Les 4 derniers chiffres sont conservés en clair
+            (réversible, pour l'envoi des messages). Les 4 derniers chiffres sont conservés en clair
             pour le support.<br><br>
-            <strong>Finalité :</strong> Envoi d'alertes SMS sur les jours Tempo uniquement.<br><br>
+            <strong>Finalité :</strong> Envoi d'alertes sur les jours Tempo uniquement.<br><br>
             <strong>Durée de conservation :</strong> Les données sont conservées tant que l'abonnement
             est actif. Les comptes inactifs depuis plus de 6 mois sont automatiquement supprimés.<br><br>
             <strong>Pas de revente :</strong> Vos données ne sont jamais vendues, partagées ou
-            transmises à des tiers, à l'exception du prestataire d'envoi SMS (Twilio).<br><br>
+            transmises à des tiers, à l'exception du prestataire d'envoi de messages (Meta/WhatsApp Business).<br><br>
             <strong>Vos droits :</strong> Conformément au RGPD, vous disposez d'un droit d'accès,
             de rectification et de suppression de vos données. Vous pouvez exercer ces droits
-            en envoyant STOP par SMS ou en utilisant le formulaire de désinscription.
+            en répondant STOP au message ou en utilisant le lien de gestion dans chaque message.
         </p>
     </div>
 
     <div class="legal-section">
-        <h3>3. Politique SMS</h3>
+        <h3>3. Politique de messagerie</h3>
         <p class="legal-text">
             <strong>Fréquence :</strong> Maximum 1 alerte par jour. Le récapitulatif hebdomadaire
             (optionnel) est envoyé le dimanche soir.<br><br>
-            <strong>Opt-out :</strong> Répondez STOP à n'importe quel SMS pour vous désinscrire
-            immédiatement. Vous pouvez aussi utiliser le formulaire de désinscription sur le site.<br><br>
-            <strong>Coût :</strong> Le service est gratuit. Les SMS reçus sont facturés selon
-            votre forfait mobile (généralement inclus dans les forfaits).
+            <strong>Opt-out :</strong> Répondez STOP à n'importe quel message pour vous désinscrire
+            immédiatement. Vous pouvez aussi utiliser le lien de gestion inclus dans chaque message.<br><br>
+            <strong>Coût :</strong> Le service est entièrement gratuit.
         </p>
     </div>
 
@@ -82,7 +94,7 @@
         <p class="legal-text">
             <strong>Couleurs Tempo :</strong> API officielle
             <a href="https://www.api-couleur-tempo.fr/" target="_blank" rel="noopener">api-couleur-tempo.fr</a><br><br>
-            <strong>Météo :</strong> <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a> (prévisions à 16 jours, 9 villes françaises)<br><br>
+            <strong>Météo :</strong> <a href="https://portail-api.meteofrance.fr/" target="_blank" rel="noopener">Météo France</a> (modèles AROME et ARPEGE, prévisions 5 jours, 9 villes françaises)<br><br>
             <strong>Consommation électrique :</strong> <a href="https://data.rte-france.com/" target="_blank" rel="noopener">RTE éco2mix</a> (données temps réel)<br><br>
             <strong>Algorithme :</strong> Les prévisions sont basées sur un algorithme combinant
             données météorologiques (température, gradient thermique), pression budgétaire saisonnière,
@@ -95,9 +107,9 @@
     <div class="legal-section">
         <h3>5. Limitation de responsabilité</h3>
         <p class="legal-text">
-            Les prévisions fournies par TempoForecast sont des estimations statistiques.
+            Les prévisions fournies par le Calendrier Tempo EDF sont des estimations statistiques.
             Elles ne garantissent pas la couleur réelle qui sera annoncée par EDF.
-            TempoForecast ne saurait être tenu responsable des décisions prises
+            Le Calendrier Tempo EDF ne saurait être tenu responsable des décisions prises
             sur la base de ces prévisions, ni des éventuels surcoûts de consommation électrique.
         </p>
     </div>
@@ -105,7 +117,7 @@
     <div class="legal-section">
         <h3>6. Désinscription</h3>
         <p class="legal-text">
-            Pour vous désinscrire des alertes SMS :
+            Pour vous désinscrire des alertes :
         </p>
         <form id="unsubscribe-form" class="unsub-form">
             <label for="unsub-phone" class="sr-only">Numéro de téléphone</label>
@@ -165,9 +177,23 @@ document.getElementById('unsubscribe-form').addEventListener('submit', async (e)
 
 </main>
 
+{% include '_subscribe_modal.html' %}
+
 <footer role="contentinfo">
-    <div class="container">
-        <p>TempoForecast &mdash; <a href="/">Retour au dashboard</a></p>
+    <div class="footer-inner">
+        <div class="footer-brand">Calendrier Tempo EDF</div>
+        <div class="footer-tagline">Service ind&eacute;pendant et gratuit pour anticiper les jours Tempo.</div>
+        <div class="footer-links">
+            <a href="/">Accueil</a>
+            <a href="/calendrier">Calendrier</a>
+            <a href="/alertes">Alertes</a>
+            <a href="/blog/">Blog</a>
+            <a href="/a-propos">&Agrave; propos</a>
+            <a href="/mentions-legales">Mentions l&eacute;gales</a>
+        </div>
+        <div class="footer-legal">
+            Seule la couleur officielle annonc&eacute;e par EDF fait foi. Nos pr&eacute;visions sont indicatives.
+        </div>
     </div>
 </footer>
 

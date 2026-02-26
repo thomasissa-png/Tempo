@@ -68,7 +68,7 @@ La temperature moyenne est calculee a partir de **9 villes francaises** ponderee
 
 **Fonction** : `_score_budget_v2(remaining, d_left, target_date)`
 
-EDF doit placer exactement **22 jours rouges** et **43 jours blancs** par saison (1er sept. - 31 mai). Ce facteur mesure l'urgence de placement.
+EDF doit placer exactement **22 jours rouges** et **43 jours blancs** par saison (1er sept. - 31 août). Ce facteur mesure l'urgence de placement.
 
 **Profil mensuel historique** (base sur 20 saisons) :
 
@@ -269,7 +269,7 @@ Les sub-scores (score_temperature, score_budget, etc.) sont stockes en DB avec c
 ```
 18h00 (scheduler)
   |
-  +-- Fetch meteo 16 jours (9 villes ponderees, Open-Meteo gratuit)
+  +-- Fetch meteo ~5 jours (9 villes ponderees, Meteo France AROME+ARPEGE)
   +-- Fetch consommation RTE (J+1)
   +-- predict_range(forecasts, rte_score)
   |     |
@@ -296,7 +296,7 @@ Les sub-scores (score_temperature, score_budget, etc.) sont stockes en DB avec c
 | Source                  | API                                      | Usage                        |
 |-------------------------|------------------------------------------|------------------------------|
 | Couleurs officielles    | api-couleur-tempo.fr                     | Verification, override J+1   |
-| Meteo                   | Open-Meteo (9 villes, 16j gratuit)       | Temperature, vent, precipitations |
+| Meteo                   | Meteo France AROME+ARPEGE (9 villes, ~5j) | Temperature, vent, humidite, pression |
 | Consommation electrique | RTE eco2mix (OAuth2)                     | Prevision pointe, nucleaire   |
 | Jours feries            | Calcul interne (algorithme de Meeus)     | Scoring jour semaine          |
 
@@ -308,17 +308,16 @@ Chaque jour de prevision porte un champ `forecast_quality` :
 
 | Qualite        | Source                     | Attenuation du score    | Horizon typique |
 |---------------|----------------------------|-------------------------|-----------------|
-| `api`          | Open-Meteo (modeles NWP)  | Aucune (100% confiance) | J+0 a J+16     |
-| `simulated`    | Moyennes saisonnieres      | 50% vers neutre (50)   | Si Open-Meteo indisponible |
+| `api`          | Meteo France (AROME/ARPEGE) | Aucune (100% confiance) | J+0 a J+5     |
 
-**Open-Meteo** : API gratuite sans cle, fournit 16 jours de previsions journalieres basees sur les modeles meteorologiques nationaux (ICON, GFS, etc.). Toutes les donnees sont des previsions modele fiables, pas d'extrapolation necessaire.
+**Meteo France** : API publique (cle gratuite requise), fournit des previsions haute resolution via le modele AROME (1.3 km, ~51h) et le modele global ARPEGE (10 km, ~114h). Donnees directes du producteur national, incluant humidite relative reelle et pression atmospherique.
 
 ---
 
 ## 12. Limites connues
 
-1. **Horizon J+8 a J+16** : Les modeles meteorologiques perdent en fiabilite au-dela de 7-8 jours. Les predictions a cet horizon sont indicatives.
+1. **Horizon J+3 a J+5** : Au-dela de 3 jours, les previsions ARPEGE perdent en precision. Les predictions a cet horizon sont indicatives.
 2. **Donnees RTE** : Seulement fiables pour J+1, attenuees pour J+2/J+3, ignorees au-dela.
 3. **Profil mensuel** : Base sur un historique de 20 saisons. Un changement de politique EDF invaliderait ce profil.
 4. **Pas de donnees infra-journalieres** : Le scoring utilise des moyennes journalieres, pas les pointes horaires.
-5. **Meteo fallback** : Si Open-Meteo est indisponible, le systeme utilise des moyennes saisonnieres (flag `simulated`, attenuation 50%).
+5. **Meteo fallback** : Si Meteo France est indisponible, aucune prediction n'est generee (pas de donnees simulees).

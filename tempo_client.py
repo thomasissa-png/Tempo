@@ -84,12 +84,23 @@ def store_actual(date_str: str, couleur: str, overwrite: bool = True,
     """
     conn = get_db()
     try:
-        mode = "INSERT OR REPLACE" if overwrite else "INSERT OR IGNORE"
-        conn.execute(
-            f"""{mode} INTO actuals (date, couleur_reelle, synthetic, timestamp_confirmation)
-               VALUES (?, ?, ?, ?)""",
-            (date_str, couleur, 1 if synthetic else 0, datetime.now().isoformat()),
-        )
+        if overwrite:
+            conn.execute(
+                """INSERT INTO actuals (date, couleur_reelle, synthetic, timestamp_confirmation)
+                   VALUES (?, ?, ?, ?)
+                   ON CONFLICT(date) DO UPDATE SET
+                       couleur_reelle = excluded.couleur_reelle,
+                       synthetic = excluded.synthetic,
+                       timestamp_confirmation = excluded.timestamp_confirmation""",
+                (date_str, couleur, 1 if synthetic else 0, datetime.now().isoformat()),
+            )
+        else:
+            conn.execute(
+                """INSERT INTO actuals (date, couleur_reelle, synthetic, timestamp_confirmation)
+                   VALUES (?, ?, ?, ?)
+                   ON CONFLICT(date) DO NOTHING""",
+                (date_str, couleur, 1 if synthetic else 0, datetime.now().isoformat()),
+            )
         conn.commit()
         tag = " [SYNTHETIQUE]" if synthetic else ""
         logger.info(f"[Tempo] Couleur enregistrée : {date_str} = {couleur}{tag}")
@@ -366,12 +377,12 @@ async def backfill_season_actuals():
 
 def get_season_dates() -> tuple[date, date]:
     """Retourne (début, fin) de la saison Tempo en cours.
-    Saison = 1er septembre → 31 mai."""
+    Saison = 1er septembre → 31 août."""
     today = date.today()
-    if today.month >= 6:
-        return date(today.year, 9, 1), date(today.year + 1, 5, 31)
+    if today.month >= 9:
+        return date(today.year, 9, 1), date(today.year + 1, 8, 31)
     else:
-        return date(today.year - 1, 9, 1), date(today.year, 5, 31)
+        return date(today.year - 1, 9, 1), date(today.year, 8, 31)
 
 
 def count_used_days() -> dict:
@@ -423,5 +434,7 @@ def days_left_in_season() -> int:
 
 
 def is_in_season(target_date: date) -> bool:
-    """Vérifie si une date est dans la période Tempo (sept-mai)."""
+    """Vérifie si une date est dans la période active Tempo (sept-mai).
+    Juin-août = toujours BLEU (pas de RED/WHITE), pas besoin de prédire.
+    Note : la saison officielle va de sept à août, mais juin-août est inerte."""
     return target_date.month >= 9 or target_date.month <= 5

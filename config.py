@@ -8,13 +8,32 @@ load_dotenv()
 
 class Config:
     # --- Base de donnees ---
+    DATABASE_URL = os.getenv("DATABASE_URL", "")
     DATABASE_PATH = os.getenv("DATABASE_PATH", "tempo.db")
 
     # --- API Tempo officielle ---
     TEMPO_API_BASE = "https://www.api-couleur-tempo.fr/api"
 
+    # --- Meteo France API ---
+    # Portail : https://portail-api.meteofrance.fr/
+    # Necessite un abonnement (gratuit) aux API AROME, ARPEGE et Vigilance
+    #
+    # Sur le portail, chaque API necessite sa propre application et sa propre cle.
+    # Configurer une cle par modele :
+    #   - METEOFRANCE_AROME_KEY    : cle pour l'API AROME (haute resolution, J+0 a J+2)
+    #   - METEOFRANCE_ARPEGE_KEY   : cle pour l'API ARPEGE (global, J+2 a J+5)
+    #   - METEOFRANCE_VIGILANCE_KEY: cle pour l'API Vigilance (alertes meteo)
+    #
+    # Fallback : METEOFRANCE_API_KEY est utilise si une cle specifique est absente.
+    # Modes d'auth : cle permanente (duree=0) recommandee, ou application_id OAuth2.
+    METEOFRANCE_API_KEY = os.getenv("METEOFRANCE_API_KEY", "")
+    METEOFRANCE_APPLICATION_ID = os.getenv("METEOFRANCE_APPLICATION_ID", "")
+    METEOFRANCE_AROME_KEY = os.getenv("METEOFRANCE_AROME_KEY", "")
+    METEOFRANCE_ARPEGE_KEY = os.getenv("METEOFRANCE_ARPEGE_KEY", "")
+    METEOFRANCE_VIGILANCE_KEY = os.getenv("METEOFRANCE_VIGILANCE_KEY", "")
+
     # --- Villes meteo ponderees par population / parc chauffage electrique ---
-    # API : Open-Meteo (gratuit, 16 jours, sans cle)
+    # API : Meteo France (AROME haute resolution + ARPEGE global)
     # (lat, lon, poids) — poids normalises a 1.0
     # Fix meteo #2 : reequilibrage des poids
     #   - Marseille reduit (climat mediterraneen doux, biaise la moyenne vers le haut)
@@ -34,8 +53,16 @@ class Config:
     ]
 
     # --- RTE eco2mix API ---
+    # Sur le portail RTE, chaque API necessite sa propre application :
+    #   - RTE_CONSO_CLIENT_ID / _SECRET : API Consumption (prevision conso J+1)
+    #   - RTE_GENERATION_CLIENT_ID / _SECRET : API Generation Forecast (nucleaire)
+    # Fallback : RTE_CLIENT_ID / _SECRET utilise si cle specifique absente.
     RTE_CLIENT_ID = os.getenv("RTE_CLIENT_ID", "")
     RTE_CLIENT_SECRET = os.getenv("RTE_CLIENT_SECRET", "")
+    RTE_CONSO_CLIENT_ID = os.getenv("RTE_CONSO_CLIENT_ID", "")
+    RTE_CONSO_CLIENT_SECRET = os.getenv("RTE_CONSO_CLIENT_SECRET", "")
+    RTE_GENERATION_CLIENT_ID = os.getenv("RTE_GENERATION_CLIENT_ID", "")
+    RTE_GENERATION_CLIENT_SECRET = os.getenv("RTE_GENERATION_CLIENT_SECRET", "")
     RTE_API_BASE = "https://digital.iservices.rte-france.com"
     # Seuils de consommation nationale (MW) pour scoring
     RTE_CONSO_SEUIL_CRITIQUE = 80000   # > 80 GW = risque rouge tres eleve
@@ -44,14 +71,31 @@ class Config:
     # Fix #12 : capacite nucleaire configurable (evolue avec fermetures/mises en service)
     RTE_NUCLEAR_CAPACITY_MW = int(os.getenv("RTE_NUCLEAR_CAPACITY_MW", "61370"))
 
-    # --- Twilio ---
-    TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID", "")
-    TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN", "")
-    TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER", "")
+    # --- WhatsApp (Meta Cloud API) ---
+    # Configurer via Facebook Developer > WhatsApp > API Setup
+    WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN", "")
+    WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "")
+    WHATSAPP_VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "")
+    WHATSAPP_APP_SECRET = os.getenv("WHATSAPP_APP_SECRET", "")
+    WHATSAPP_API_VERSION = os.getenv("WHATSAPP_API_VERSION", "v21.0")
+
+    # --- WhatsApp Templates (noms des templates pré-approuvés Meta) ---
+    # Ces noms doivent correspondre exactement aux templates créés dans Meta Business Suite
+    WHATSAPP_TEMPLATE_WELCOME = os.getenv("WHATSAPP_TEMPLATE_WELCOME", "tempo_bienvenue")
+    WHATSAPP_TEMPLATE_ALERT_ROUGE = os.getenv("WHATSAPP_TEMPLATE_ALERT_ROUGE", "tempo_alerte_rouge")
+    WHATSAPP_TEMPLATE_ALERT_BLANC = os.getenv("WHATSAPP_TEMPLATE_ALERT_BLANC", "tempo_alerte_blanc")
+    WHATSAPP_TEMPLATE_CONFIRMATION = os.getenv("WHATSAPP_TEMPLATE_CONFIRMATION", "tempo_confirmation")
+    WHATSAPP_TEMPLATE_CHANGE = os.getenv("WHATSAPP_TEMPLATE_CHANGE", "tempo_changement")
+    WHATSAPP_TEMPLATE_RECAP = os.getenv("WHATSAPP_TEMPLATE_RECAP", "tempo_recap_hebdo")
+    WHATSAPP_TEMPLATE_LANG = os.getenv("WHATSAPP_TEMPLATE_LANG", "fr")
+
+    # --- URL de base du site (pour les liens dans les messages WhatsApp) ---
+    BASE_URL = os.getenv("BASE_URL", "https://www.calendrier-tempo.fr")
 
     # --- Admin ---
     # Fix audit v6 : ne plus utiliser de mot de passe par défaut en dur
-    ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "")
+    # Fallback sur SESSION_SECRET (fourni par Replit) pour avoir un password stable
+    ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "") or os.getenv("SESSION_SECRET", "")
 
     # --- Chiffrement telephone (RGPD) ---
     PHONE_ENCRYPTION_KEY = os.getenv("PHONE_ENCRYPTION_KEY", "")
@@ -62,30 +106,53 @@ class Config:
     # Les jours bleus = total saison - rouges - blancs (varie si annee bissextile)
     # Calculé dynamiquement dans tempo_client.get_blue_days_total()
 
-    # --- Poids initiaux algorithme v2 ---
-    # temperature (nationale ponderee) + budget + jour semaine/feries
-    # + gradient thermique + clustering + consommation RTE
+    # --- Poids algorithme v3.5 (avec modulation saisonnière T4) ---
+    # Poids par défaut (Jan-Mar = pic saison). En Nov-Déc, predict_day()
+    # applique une modulation saisonnière qui réduit le budget et augmente
+    # la température (le budget n'est pas encore discriminant en début de saison).
+    # v3.5 B : C_nette 14→18% (gap 9 pts ROUGE vs BLANC dans zone 2-7°C),
+    #          clustering 6→2% (signal faible, redistribué vers C_nette).
     DEFAULT_WEIGHTS = {
-        "temperature": 0.30,
-        "jours_restants": 0.20,
-        "jour_semaine": 0.10,
-        "gradient_thermique": 0.15,
-        "clustering": 0.10,
-        "consommation_rte": 0.15,
+        "temperature": 0.38,
+        "jours_restants": 0.18,
+        "jour_semaine": 0.08,
+        "gradient_thermique": 0.06,
+        "clustering": 0.02,
+        "consommation_rte": 0.18,
+        "pression": 0.10,
+    }
+
+    # T4 v3.5 : modulation saisonnière Nov-Déc.
+    # En début de saison, le budget est quasi-plein (22 ROUGE sur 22),
+    # donc budget_score est toujours bas et non-discriminant.
+    # Seul le froid extrême déclenche du ROUGE → on booste la température.
+    # La différence est redistribuée de budget (-8%) vers température (+6%) et c_nette (+2%).
+    # v3.5 B : clustering 2% (aligné sur DEFAULT_WEIGHTS), C_nette 20%.
+    WEIGHTS_EARLY_SEASON = {
+        "temperature": 0.44,        # +6 : seul signal discriminant en Nov-Déc
+        "jours_restants": 0.10,     # -8 : non-discriminant début de saison
+        "jour_semaine": 0.08,
+        "gradient_thermique": 0.06,
+        "clustering": 0.02,         # v3.5 B : aligné sur DEFAULT_WEIGHTS
+        "consommation_rte": 0.20,   # v3.5 B : +4% C_nette pour discrimination ROUGE/BLANC
+        "pression": 0.10,
     }
 
     # --- Profil mensuel de distribution des jours rouges ---
     # Base sur 20 saisons d'historique (% des 22 jours rouges par mois)
+    # Fix audit ML #39 : avril et mai mis a 0% car la regle EDF R1 interdit
+    # les jours rouges hors novembre-mars. Les 5% d'avril/mai sont redistribues
+    # proportionnellement sur les mois eligibles.
     MONTHLY_RED_PROFILE = {
         9: 0.00,   # Septembre : 0%
         10: 0.00,  # Octobre : 0%
         11: 0.07,  # Novembre : ~7% (1-2 jours)
-        12: 0.18,  # Decembre : ~18% (3-5 jours)
-        1: 0.35,   # Janvier : ~35% (6-9 jours)
-        2: 0.23,   # Fevrier : ~23% (4-6 jours)
-        3: 0.12,   # Mars : ~12% (1-3 jours)
-        4: 0.04,   # Avril : ~4% (0-1 jour)
-        5: 0.01,   # Mai : ~1% (0-1 jour)
+        12: 0.19,  # Decembre : ~19% (4-5 jours)
+        1: 0.37,   # Janvier : ~37% (7-9 jours)
+        2: 0.24,   # Fevrier : ~24% (4-6 jours)
+        3: 0.13,   # Mars : ~13% (2-3 jours)
+        4: 0.00,   # Avril : INTERDIT (regle R1)
+        5: 0.00,   # Mai : INTERDIT (regle R1)
     }
 
     # Fix ML-20 : validation somme du profil mensuel
@@ -110,8 +177,54 @@ class Config:
         f"MONTHLY_WHITE_PROFILE doit sommer a ~1.0, got {sum(MONTHLY_WHITE_PROFILE.values())}"
 
     # --- Seuils de scoring ---
-    SEUIL_ROUGE = 65   # abaisse de 70 a 65 pour meilleur recall
-    SEUIL_BLANC = 35   # abaisse de 40 a 35
+    SEUIL_ROUGE = 65   # seuil standard (abaisse dynamiquement si froid — voir predictor)
+    SEUIL_BLANC = 40   # v3.4 : remonté de 35→40 (audit: 316 FP BLANC étaient BLEU)
+
+    # --- Seuil BLANC dynamique v3.5 (calibré sur backtest 2365 jours) ---
+    # Le backtest montre 190 BLEU→BLANC FP, concentrés à 5-11°C (score 40-50).
+    # Un seuil unique ne distingue pas les jours doux (>10°C) des jours frais (<7°C)
+    # où BLANC est légitime. Courbe continue température → seuil BLANC.
+    # Plus la température est haute, plus le seuil est strict.
+    SEUIL_BLANC_TEMP_CURVE = [
+        (0, 38),    # grand froid → seuil bas (BLANC facile à déclencher)
+        (5, 40),    # froid → seuil standard
+        (8, 43),    # frais-doux → seuil rehaussé (+3 pts)
+        (11, 47),   # doux → seuil strict (+7 pts)
+        (14, 50),   # très doux → seuil très strict (+10 pts)
+    ]
+
+    # --- Seuil ROUGE dynamique v3.2 (calibré sur backtest 2365 jours) ---
+    # Le backtest montre 71% de ROUGE manqués dans la bande 3-5°C (scores 59-64).
+    # Les seuils step-functions (55/50) ne capturaient que les jours très froids.
+    #
+    # v3.2 : courbe continue température → seuil (piecewise-linear).
+    # Plus la température est basse, plus le seuil est bas.
+    # Activée quand budget_score >= SEUIL_ROUGE_BUDGET_MIN et en saison ROUGE.
+    # Fallback : SEUIL_ROUGE (65) si budget faible ou hors saison.
+    SEUIL_ROUGE_TEMP_CURVE = [
+        (-5, 42),   # grand froid → seuil très bas
+        (0, 48),    # froid intense
+        (3, 53),    # froid modéré (zone critique des ROUGE manqués)
+        (5, 57),    # frais — zone 3-5°C : seuil abaissé de 65→57 (-8 pts)
+        (7, 61),    # frais-doux — léger abaissement
+        (10, 65),   # doux → seuil standard (pas de réduction)
+    ]
+    # Budget minimum pour activer la courbe (évite les faux positifs en début de saison)
+    SEUIL_ROUGE_BUDGET_MIN = 40  # abaissé de 50 à 40 (backtest : manques avec budget 40-50)
+    # Legacy (gardés pour compatibilité des tests existants)
+    SEUIL_ROUGE_FROID = 55
+    SEUIL_ROUGE_TRES_FROID = 50
+    SEUIL_ROUGE_TEMP_TRIGGER = 7
+    SEUIL_ROUGE_TEMP_TRES_FROID = 4
+
+    # --- Probabilites softmax (centres et steepness) ---
+    # Fix audit ML #4 : parametres extraits pour calibration future
+    # Centres des distributions : BLEU bas, BLANC milieu, ROUGE haut
+    # A calibrer sur les distributions reelles apres backtest
+    PROBA_CENTER_BLEU = 15    # zone 0-35
+    PROBA_CENTER_BLANC = 50   # zone 35-65
+    PROBA_CENTER_ROUGE = 85   # zone 65-100
+    PROBA_STEEPNESS = 0.08    # pente des transitions (plus petit = plus progressif)
 
     # --- Cache ---
     PREDICTIONS_CACHE_TTL = 900  # 15 minutes
@@ -119,6 +232,95 @@ class Config:
     # --- Rate limiting ---
     SUBSCRIBE_RATE_LIMIT = 5
     SUBSCRIBE_RATE_WINDOW = 3600
+
+    # --- Agent SEO autonome (publication blog saisonnière) ---
+    # Clé API Anthropic pour l'agent Claude qui rédige les articles.
+    # À configurer dans Replit Secrets (une seule fois).
+    # Si vide, la tâche est silencieusement ignorée.
+    ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+    # Modèle Claude à utiliser (Sonnet = bon rapport qualité/coût)
+    SEO_AGENT_MODEL = os.getenv("SEO_AGENT_MODEL", "claude-sonnet-4-5-20250929")
+    # Nombre max de tours d'interaction agent (sécurité anti-boucle infinie)
+    SEO_AGENT_MAX_TURNS = int(os.getenv("SEO_AGENT_MAX_TURNS", "40"))
+
+    # --- Agent Backlinks autonome (prospection netlinking hebdomadaire) ---
+    # Même clé API que l'agent SEO. Même modèle par défaut.
+    BACKLINKS_AGENT_MAX_TURNS = int(os.getenv("BACKLINKS_AGENT_MAX_TURNS", "35"))
+
+    # Calendrier de publication saisonnier :
+    #   Nov-Mar (saison active)  → chaque mardi (hebdo)
+    #   Sep-Oct (pré-saison)     → 1er et 3e mardi du mois (bimensuel)
+    #   Avr-Mai (post-saison)    → 1er mardi du mois uniquement
+    #   Juin-Août (morte-saison) → pause complète
+    # Valeur = semaines du mois où publier (1=1ère semaine, 2=2ème, etc.)
+    SEO_SEASON_SCHEDULE = {
+        1: "weekly",    # Janvier — saison active
+        2: "weekly",    # Février
+        3: "weekly",    # Mars
+        4: "monthly",   # Avril — post-saison
+        5: "monthly",   # Mai
+        6: "off",       # Juin — morte-saison
+        7: "off",       # Juillet
+        8: "off",       # Août
+        9: "bimonthly", # Septembre — pré-saison
+        10: "bimonthly",# Octobre
+        11: "weekly",   # Novembre — saison active
+        12: "weekly",   # Décembre
+    }
+
+    # --- Dates de mises à jour de l'outil de prédiction ---
+    # Utilisé dans le dashboard admin pour corréler changements algo ↔ précision
+    TOOL_UPDATE_DATES = {
+        "2026-02-15": "Démarrage des prédictions",
+        "2026-02-19": "v3.1 C_nette proxy + seuil dynamique RTE",
+        "2026-02-20": "v3.5 calibration (85→87%, ROUGE 80→96%)",
+        "2026-02-21": "Fix confirmations EDF + météo v19",
+    }
+
+    # Date de début des prédictions réelles (tout avant est ignoré dans les métriques)
+    PREDICTION_START_DATE = "2026-02-15"
+
+    # --- Proxy C_nette (estimation consommation nette depuis météo) ---
+    # Inspiré de l'algorithme RTE officiel : C_nette = Conso - Éolien - Solaire
+    # Permet d'estimer le stress réseau à partir des prévisions météo (temp + vent)
+    # sans dépendre des données RTE qui ne sont fiables que pour J+1.
+    #
+    # Paramètres calibrés sur les données réelles RTE (saisons 2019-2026) :
+    #   - Sensibilité thermique France : ~2.4 GW / °C sous 18°C (chauffage électrique)
+    #   - Capacité éolienne installée : ~22 GW (RTE bilan 2024)
+    #   - Capacité solaire installée : ~20 GW (RTE bilan 2024)
+    C_NETTE_BASE_LOAD_GW = 35.8       # charge de base (GW) — recalibré v3.3 (+2.4 pour compenser piecewise)
+    C_NETTE_HEATING_THRESHOLD = 18.0   # seuil de chauffage (°C)
+    # v3.3 : sensibilité thermique piecewise (audit P6).
+    # Le proxy surestimait C_nette de +2.7 GW pour les jours BLANC (5-10°C)
+    # car la sensibilité était uniforme à 2.4 GW/°C. En réalité :
+    #   - > 10°C : chauffage partiel (pas tous les bâtiments) → ~1.8 GW/°C
+    #   - < 10°C : chauffage complet → ~2.6 GW/°C
+    # base_load recalibré de 33.4 à 35.8 pour conserver biais global ~0.
+    C_NETTE_THERMAL_SENSITIVITY_LOW = 1.8   # GW/°C pour temp >= 10°C (chauffage partiel)
+    C_NETTE_THERMAL_SENSITIVITY_HIGH = 2.6  # GW/°C pour temp < 10°C (chauffage complet)
+    C_NETTE_THERMAL_BREAKPOINT = 10.0       # seuil de transition (°C)
+    C_NETTE_INSTALLED_WIND_GW = 22.0   # capacité éolienne installée
+    C_NETTE_INSTALLED_SOLAR_GW = 20.0  # capacité solaire installée
+    # Facteur de charge solaire mensuel (ensoleillement moyen France)
+    C_NETTE_SOLAR_MONTHLY_CF = {
+        1: 0.07, 2: 0.10, 3: 0.15, 4: 0.18, 5: 0.20, 6: 0.22,
+        7: 0.23, 8: 0.21, 9: 0.17, 10: 0.12, 11: 0.07, 12: 0.05,
+    }
+    # Coefficient puissance éolienne : CF = coeff × wind_ms^3 (plafonné)
+    # Calibré pour CF ~25% à 8 m/s (moyenne nationale annuelle France)
+    C_NETTE_WIND_COEFF = 0.000488
+    C_NETTE_WIND_CF_MAX = 0.55  # facteur de charge max (rated power)
+    # Facteur gust→mean : les données météo fournissent les rafales max,
+    # pas le vent moyen. Production éolienne ∝ vent moyen sur 24h.
+    C_NETTE_GUST_TO_MEAN = 0.50
+
+    # --- Seuil jour_tempo pour modulation saisonnière (RTE-inspired) ---
+    # jour_tempo = nombre de jours depuis le 1er septembre de la saison
+    # Réduction progressive du seuil ROUGE au fil de la saison quand le budget
+    # est tendu (budget_score >= 30), inspirée du coefficient B=-0.010 de RTE.
+    # Max ~6 pts de réduction en fin de mars.
+    SEUIL_ROUGE_SEASON_COEFF = 0.03  # pts de réduction par jour_tempo
 
     # --- Logging ---
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
