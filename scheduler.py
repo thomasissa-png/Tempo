@@ -938,12 +938,20 @@ async def task_morning_alerts():
         conn = get_db()
         try:
             today_str = date.today().isoformat()
+            # CRITICAL: ne sélectionner que la DERNIÈRE prédiction par date
+            # (MAX(id) par date). Sans ça, d'anciennes horizons (J-5 ROUGE)
+            # peuvent déclencher une alerte alors que la dernière (J-3) est BLEU.
             predictions = conn.execute(
-                """SELECT date, couleur_predite, probabilite_rouge,
-                          probabilite_blanc, temp_min_prevue, confirmed
-                   FROM predictions
-                   WHERE date >= ? AND confirmed = 0
-                   ORDER BY date""",
+                """SELECT p.date, p.couleur_predite, p.probabilite_rouge,
+                          p.probabilite_blanc, p.temp_min_prevue, p.confirmed
+                   FROM predictions p
+                   INNER JOIN (
+                       SELECT date, MAX(id) as max_id
+                       FROM predictions
+                       WHERE date >= ? AND confirmed = 0
+                       GROUP BY date
+                   ) latest ON p.id = latest.max_id
+                   ORDER BY p.date""",
                 (today_str,)
             ).fetchall()
         finally:
