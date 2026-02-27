@@ -668,9 +668,16 @@ def predict_day(target_date: date, weather: dict | None = None,
         _red_slack = max(_red_eligible, 1) - remaining["ROUGE"]
 
         if _red_slack <= 1 and (target_date.month >= 11 or target_date.month <= 3):
-            # Densité critique : force ROUGE sur chaque jour éligible
-            couleur = "ROUGE"
-            raison_ml += " · Densité critique ROUGE"
+            # Densité critique : très peu de marge pour placer les ROUGE restants.
+            # slack ≤ 0 : mathématiquement impossible d'éviter ROUGE → force toujours.
+            # slack = 1 : un seul jour de marge → force sauf si trop chaud (> 12°C),
+            # car EDF ne déclenchera jamais ROUGE par 15°C — il trouvera un jour
+            # plus froid dans la marge restante. Sans cette garde, un saut météo
+            # de +10°C sur tous les jours fait exploser le remaining et force
+            # ROUGE sur des jours à 15°C (faux positif absurde).
+            if _red_slack <= 0 or temp_moy <= 12:
+                couleur = "ROUGE"
+                raison_ml += " · Densité critique ROUGE"
         elif _red_eligible > 0 and (target_date.month >= 11 or target_date.month <= 3):
             # Densité progressive : abaissement du seuil RED proportionnel
             _red_density = remaining["ROUGE"] / _red_eligible
