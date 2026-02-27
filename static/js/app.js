@@ -442,7 +442,7 @@ function renderWeekSummary(preds) {
     card.innerHTML = `
         <div class="week-summary-text">${summaryText}</div>
         ${dotsHtml}
-        <button type="button" class="btn btn-cta-summary" onclick="openSubscribeModal()">Recevoir les alertes gratuites</button>
+        <a href="/calendrier" class="btn btn-cta-summary" style="text-decoration:none">Voir les pr\u00e9visions d\u00e9taill\u00e9es des 15 prochains jours \u2192</a>
     `;
     container.innerHTML = '';
     container.appendChild(title);

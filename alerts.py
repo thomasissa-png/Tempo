@@ -688,9 +688,10 @@ def send_alerts_for_prediction(target_date: date, prediction: dict,
 def send_change_alerts(target_date: date, old_color: str, new_color: str):
     """Envoie une alerte quand une prédiction change de couleur.
 
-    Seuls les changements impliquant ROUGE sont notifiés (J+1 à J+3) :
-    - vers ROUGE : critique, l'utilisateur doit reporter ses usages
-    - depuis ROUGE : bonne nouvelle, l'utilisateur peut planifier
+    Notifie un utilisateur si :
+    - Le changement implique ROUGE (vers ou depuis)
+    - L'utilisateur a déjà reçu une alerte initiale pour cette date
+      OU la date est dans sa fenêtre d'alerte (J+1 à delai_alerte)
     """
     if not _is_red_season():
         return
@@ -701,20 +702,27 @@ def send_change_alerts(target_date: date, old_color: str, new_color: str):
         return
 
     delta = (target_date - date.today()).days
-    if delta < 1 or delta > 3:
+    if delta < 1 or delta > 5:
         return
 
     conn = get_db()
     try:
-        # L4 fix: inclure delai_alerte pour respecter les préférences
         users = conn.execute(
             """SELECT id, phone_encrypted, manage_token, delai_alerte
                FROM users WHERE actif = 1 AND seuil_alerte_rouge > 0"""
         ).fetchall()
 
         for user in users:
-            # L4 fix: respecter le délai d'alerte de l'user
-            if delta > user["delai_alerte"]:
+            # Vérifier si l'user a déjà reçu une alerte initiale pour cette date
+            # (prediction_rouge ou prediction_blanc). Si oui, il DOIT recevoir
+            # le change alert même si delta > delai_alerte (il a déjà été informé).
+            was_alerted = conn.execute(
+                """SELECT id FROM sms_logs
+                   WHERE user_id = ? AND date_cible = ?
+                   AND type_alerte IN ('prediction_rouge', 'prediction_blanc')""",
+                (user["id"], target_date.isoformat()),
+            ).fetchone()
+            if not was_alerted and delta > user["delai_alerte"]:
                 continue
             # B6 fix: dédup changement par (user, date_cible)
             existing = conn.execute(
