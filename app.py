@@ -375,6 +375,9 @@ async def add_cache_and_security_headers(request: Request, call_next):
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    # --- Content-Language pour les pages HTML (aide Bing à classifier la langue) ---
+    if path in _CACHE_EXACT or path.startswith("/blog/"):
+        response.headers["Content-Language"] = "fr"
     # --- Cache-Control ---
     # Match exact d'abord (pages HTML)
     if path in _CACHE_EXACT:
@@ -812,6 +815,7 @@ async def manifest_json():
             "background_color": "#ffffff",
             "theme_color": "#1565C0",
             "icons": [
+                {"src": "/static/favicon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
                 {"src": "/static/icon-192.svg", "sizes": "192x192", "type": "image/svg+xml", "purpose": "any"},
                 {"src": "/static/icon-512.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any maskable"},
             ],
@@ -846,7 +850,7 @@ async def robots_txt():
         "Disallow: /api/\n"
         "Disallow: /manage/\n"
         "\n"
-        "# Bing — accès complet aux pages publiques + API prédictions\n"
+        "# Bing — pages publiques uniquement, API restreintes\n"
         "User-agent: bingbot\n"
         "Allow: /\n"
         "Allow: /calendrier\n"
@@ -856,6 +860,7 @@ async def robots_txt():
         "Allow: /api/tomorrow\n"
         "Allow: /api/predictions\n"
         "Disallow: /admin\n"
+        "Disallow: /api/\n"
         "Disallow: /manage/\n"
         "Crawl-delay: 1\n"
         "\n"
@@ -868,6 +873,7 @@ async def robots_txt():
         "Allow: /api/tomorrow\n"
         "Allow: /api/predictions\n"
         "Disallow: /admin\n"
+        "Disallow: /api/\n"
         "Disallow: /manage/\n"
         "Crawl-delay: 1\n"
         "\n"
@@ -1145,18 +1151,25 @@ async def indexnow_ping(url: str | None = None):
         ]
 
     results = []
+    key_location = f"https://{host}/{_INDEXNOW_KEY}.txt"
     async with httpx.AsyncClient(timeout=10) as client:
-        for u in urls_to_submit:
-            try:
-                resp = await client.get(
-                    "https://api.indexnow.org/indexnow",
-                    params={"url": u, "key": _INDEXNOW_KEY},
-                )
-                results.append({"url": u, "status": resp.status_code})
-            except Exception as e:
-                results.append({"url": u, "error": str(e)})
+        # Bulk POST — plus fiable que les GET individuels
+        try:
+            resp = await client.post(
+                "https://api.indexnow.org/indexnow",
+                json={
+                    "host": host,
+                    "key": _INDEXNOW_KEY,
+                    "keyLocation": key_location,
+                    "urlList": urls_to_submit,
+                },
+                headers={"Content-Type": "application/json; charset=utf-8"},
+            )
+            results.append({"urls": urls_to_submit, "status": resp.status_code})
+        except Exception as e:
+            results.append({"urls": urls_to_submit, "error": str(e)})
 
-    return {"submitted": len(results), "results": results}
+    return {"submitted": len(urls_to_submit), "results": results}
 
 
 # ================================================================
