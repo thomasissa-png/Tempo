@@ -1266,6 +1266,21 @@ def get_daily_recap(season: str = "2025-2026") -> list[dict]:
         ).fetchall()
         actuals_map = {r["date"]: r["couleur_reelle"] for r in actual_rows}
 
+        # 2b) Fallback: original predicted colors from performance table
+        # When couleur_originale is empty on confirmed rows (data import race),
+        # performance.couleur_predite has our real prediction (eval runs BEFORE confirm)
+        perf_orig = conn.execute(
+            """SELECT date_cible, jours_avance, couleur_predite
+               FROM performance
+               WHERE date_cible >= ? AND date_cible <= ?""",
+            (since, until),
+        ).fetchall()
+        # {(date, "J-N"): couleur_predite}
+        perf_orig_map = {}
+        for r in perf_orig:
+            key = (r["date_cible"], f"J-{r['jours_avance']}")
+            perf_orig_map[key] = r["couleur_predite"]
+
         # 3) Weather forecast evolution from weather_forecast_log
         weather_log = conn.execute(
             """SELECT target_date, horizon_days, temp_moy
@@ -1310,11 +1325,16 @@ def get_daily_recap(season: str = "2025-2026") -> list[dict]:
                 dates_data[dt] = {}
 
             # Determine the originally predicted color:
-            # - couleur_originale set (truthy) → use it (saved before EDF confirmation)
-            # - couleur_originale empty/NULL → fall back to couleur_predite
-            #   (for confirmed rows this is the EDF color, which is acceptable
-            #    since we still want to show the dot — better than hiding it)
+            # 1. couleur_originale set → use it (saved before EDF confirmation)
+            # 2. Confirmed + couleur_originale empty → check performance table
+            #    (evaluation runs BEFORE confirm, stores our real prediction)
+            # 3. Last resort → couleur_predite (may be EDF color for confirmed rows)
             couleur = r["couleur_originale"] if r["couleur_originale"] else r["couleur_predite"]
+            if r["confirmed"] and not r["couleur_originale"]:
+                horizon = r["horizon"]
+                perf_key = (dt, horizon)
+                if perf_key in perf_orig_map:
+                    couleur = perf_orig_map[perf_key]
             horizon = r["horizon"]  # DB format: J-1, J-2, ... J-15
 
             actual = actuals_map.get(dt)

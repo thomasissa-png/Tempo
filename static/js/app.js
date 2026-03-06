@@ -557,12 +557,6 @@ function createForecastCard(pred) {
         changedHtml = `<div class="fc-changed" title="Notre prévision a changé suite aux nouvelles données météo.">Était ${escapeHtml(pred.couleur_precedente)}</div>`;
     }
 
-    // Tip actionnable pour les jours ROUGE
-    let tipHtml = '';
-    if (couleur === 'ROUGE' && !pred.confirmed) {
-        tipHtml = '<div class="fc-tip">Reportez vos machines !</div>';
-    }
-
     // Confiance en langage humain (% visible dans la barre de proba en dessous)
     const confidenceLabel = confidenceToLabel(confidence);
     const confidenceText = pred.confirmed
@@ -624,7 +618,6 @@ function createForecastCard(pred) {
         ${uncertainHtml}
         ${probaBarHtml}
         ${changedHtml}
-        ${tipHtml}
     `;
 
     // P-22 : animation d'entrée staggerée
