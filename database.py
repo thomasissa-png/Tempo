@@ -92,7 +92,7 @@ def _get_pg_pool():
         if psycopg2 is None:
             raise RuntimeError("psycopg2 not installed but DATABASE_URL is set")
         _pg_pool = psycopg2.pool.ThreadedConnectionPool(
-            minconn=1, maxconn=10, dsn=Config.DATABASE_URL
+            minconn=2, maxconn=20, dsn=Config.DATABASE_URL
         )
         return _pg_pool
 
@@ -259,7 +259,16 @@ class PgConnectionWrapper:
         self._conn = pg_conn
         self._pool = pool
         self._row_factory = None
+        self._closed = False
         self._ensure_schema_version_table()
+
+    def __del__(self):
+        """Safety net: return connection to pool if caller forgot close()."""
+        if not self._closed and self._pool:
+            try:
+                self.close()
+            except Exception:
+                pass
 
     def _ensure_schema_version_table(self):
         """Create schema_version table if it doesn't exist (replaces PRAGMA user_version).
@@ -413,6 +422,9 @@ class PgConnectionWrapper:
         connection in a failed transaction state (psycopg2 does NOT
         auto-rollback on putconn).
         """
+        if self._closed:
+            return
+        self._closed = True
         if self._pool:
             try:
                 self._conn.rollback()

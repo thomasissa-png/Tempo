@@ -1187,9 +1187,11 @@ async def health():
         try:
             from database import get_db
             conn = get_db()
-            conn.execute("SELECT 1").fetchone()
-            db_ok = True
-            conn.close()
+            try:
+                conn.execute("SELECT 1").fetchone()
+                db_ok = True
+            finally:
+                conn.close()
         except Exception:
             pass
     status = "ok" if db_ok else "starting"
