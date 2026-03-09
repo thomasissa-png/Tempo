@@ -288,7 +288,16 @@ async function loadPredictions() {
         }
 
     } catch (e) {
-        container.innerHTML = '<p class="loading-state">Erreur de connexion au serveur<br><button class="retry-btn" onclick="loadPredictions()">Réessayer</button></p>';
+        container.innerHTML = `
+            <div class="maintenance-banner">
+                <div class="maintenance-icon">&#9881;</div>
+                <h3 style="margin:0 0 6px">Maintenance en cours</h3>
+                <p style="margin:0;font-size:.9rem;color:var(--text-secondary)">
+                    Les pr\u00e9visions sont temporairement indisponibles.<br>
+                    Elles seront de retour dans quelques minutes.
+                </p>
+                <button class="retry-btn" onclick="loadPredictions()" style="margin-top:12px">R\u00e9essayer</button>
+            </div>`;
         console.error('Erreur prédictions:', e);
     }
 }
@@ -305,17 +314,29 @@ async function loadWeekSummary() {
     if (!container) return;
     try {
         const resp = await fetchWithTimeout('/api/predictions');
-        if (!resp.ok) return;
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const data = await resp.json();
-        if (!data || data.status !== 'ok') return;
+        if (!data || data.status !== 'ok') throw new Error('status not ok');
         const preds = data.predictions || [];
-        if (preds.length === 0) return;
+        if (preds.length === 0) throw new Error('no predictions');
         if (data.generated_at) {
             updateLastUpdateBar(data.generated_at);
         }
         renderWeekSummary(preds);
     } catch {
-        // SSR fallback reste visible si l'API échoue
+        // Si le SSR a déjà rendu des dots, on les garde. Sinon, afficher un message maintenance.
+        if (!container.querySelector('.week-dot')) {
+            container.innerHTML = `
+                <div class="maintenance-banner">
+                    <div class="maintenance-icon">&#9881;</div>
+                    <h3 style="margin:0 0 6px">Maintenance en cours</h3>
+                    <p style="margin:0;font-size:.9rem;color:var(--text-secondary)">
+                        Le calendrier est temporairement indisponible.<br>
+                        Les pr\u00e9visions seront de retour dans quelques minutes.
+                    </p>
+                    <button class="retry-btn" onclick="loadWeekSummary()" style="margin-top:12px">R\u00e9essayer</button>
+                </div>`;
+        }
     }
 }
 
