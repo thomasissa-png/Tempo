@@ -191,11 +191,10 @@ async def recover_overdue_tasks() -> list[str]:
         ("daily_predictions", task_daily_predictions,
          lambda: now.hour >= 18 and _not_run_today(last_runs, "daily_predictions", today)),
 
-        # Récap hebdo : dimanche >= 20h OU lundi < 12h (rattrapage si Replit
-        # dormait dimanche soir). Mieux vaut envoyer lundi matin que pas du tout.
+        # Récap hebdo : dimanche >= 20h — nécessite un keepalive externe
+        # (UptimeRobot / cron-job.org) pour garantir que Replit est réveillé.
         ("weekly_recap", task_weekly_recap,
-         lambda: ((now.weekday() == 6 and now.hour >= 20)
-                  or (now.weekday() == 0 and now.hour < 12))
+         lambda: now.weekday() == 6 and now.hour >= 20
          and _not_run_this_week(last_runs, "weekly_recap", today)),
 
         # Validation corrections 23h : si passé 23h et pas tourné aujourd'hui
