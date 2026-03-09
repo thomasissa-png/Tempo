@@ -92,7 +92,7 @@ def _get_pg_pool():
         if psycopg2 is None:
             raise RuntimeError("psycopg2 not installed but DATABASE_URL is set")
         _pg_pool = psycopg2.pool.ThreadedConnectionPool(
-            minconn=2, maxconn=20, dsn=Config.DATABASE_URL
+            minconn=2, maxconn=25, dsn=Config.DATABASE_URL
         )
         return _pg_pool
 
