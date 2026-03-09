@@ -307,7 +307,7 @@ def _build_confirmation_template(target_date: date, couleur: str, manage_token: 
     emoji = {"ROUGE": "🔴", "BLANC": "⚪", "BLEU": "🔵"}.get(couleur, "")
     date_fr = _format_date_fr(target_date)
     if couleur == "ROUGE":
-        advice = "Heures pleines 6h-22h à 0,76€/kWh. Reportez vos machines !"
+        advice = "Heures pleines 6h-22h à 0,76€/kWh."
     elif couleur == "BLANC":
         advice = "Tarif intermédiaire. OK pour les machines, évitez le four en heures pleines."
     else:
@@ -325,7 +325,7 @@ def _build_change_template(target_date: date, old_color: str, new_color: str,
     old_str = f"{emoji_old} {old_color}"
     new_str = f"{emoji_new} {new_color}"
     if new_color == "ROUGE":
-        advice = "Heures pleines à 0,76€/kWh. Reportez vos machines !"
+        advice = "Heures pleines à 0,76€/kWh."
     elif new_color == "BLANC" and old_color == "ROUGE":
         advice = "Bonne nouvelle ! Tarif intermédiaire, moins cher que prévu."
     elif new_color == "BLEU" and old_color == "ROUGE":
@@ -376,7 +376,7 @@ def _build_recap_template(predictions: list[dict], manage_token: str) -> tuple[s
     if bleu_days:
         summary_lines.append(f"👉 Lancez vos machines {', '.join(bleu_days)} (bleu).")
     if rouge_days:
-        summary_lines.append(f"👉 Reportez lessive et four {', '.join(rouge_days)} (rouge).")
+        summary_lines.append(f"🔴 Jours rouge : {', '.join(rouge_days)}.")
 
     summary_text = " · ".join(summary_lines)
     manage_url = _manage_link(manage_token) or Config.BASE_URL
@@ -404,9 +404,7 @@ def format_alert_rouge(target_date: date, prediction: dict, manage_token: str = 
         f"⚠️ *Calendrier Tempo EDF*\n\n"
         f"*Jour ROUGE* prévu {date_fr} ({prob}% confiance).\n"
         f"Temp min: {temp_str}.\n\n"
-        f"💰 Heures pleines (6h-22h) à *0,76€/kWh* — jusqu'à 10× le tarif bleu !\n\n"
-        f"👉 Reportez lessive, sèche-linge, four et recharge VE.\n"
-        f"Évitez le chauffage d'appoint."
+        f"💰 Heures pleines (6h-22h) à *0,76€/kWh* — jusqu'à 10× le tarif bleu !"
     )
     msg += "\n\n" + _msg_footer(manage_token)
     return msg
@@ -437,7 +435,6 @@ def format_alert_officiel(target_date: date, couleur: str, manage_token: str = "
     if couleur == "ROUGE":
         msg += (
             "\n✅ Comme anticipé — heures pleines 6h-22h à *0,76€/kWh*."
-            "\n👉 Reportez vos machines !"
         )
     elif couleur == "BLANC":
         msg += (
@@ -463,7 +460,6 @@ def format_change_alert(target_date: date, old_color: str, new_color: str,
     if new_color == "ROUGE":
         msg += (
             "\n\n💰 Heures pleines à *0,76€/kWh*."
-            "\n👉 Reportez vos machines ce jour-là !"
         )
     elif new_color == "BLANC" and old_color == "ROUGE":
         msg += "\n\n✅ Bonne nouvelle ! Tarif intermédiaire, moins cher que prévu."
@@ -516,7 +512,7 @@ def format_recap_hebdo(predictions: list[dict], manage_token: str = "") -> str:
     if bleu_days:
         lines.append(f"👉 Lancez vos machines {', '.join(bleu_days)} (bleu).")
     if rouge_days:
-        lines.append(f"👉 Reportez lessive et four {', '.join(rouge_days)} (rouge).")
+        lines.append(f"🔴 Jours rouge : {', '.join(rouge_days)}.")
     if not rouge_days and not bleu_days:
         lines.append("👉 Semaine intermédiaire, privilégiez les heures creuses.")
 
@@ -643,12 +639,13 @@ def send_alerts_for_prediction(target_date: date, prediction: dict,
                 if user_pref != heure_filter:
                     continue
 
-            # B6 fix: dédup par (user, date_cible, type_alerte) au lieu de date_envoi
-            # Permet d'envoyer ROUGE J+2 et ROUGE J+3 le même jour
+            # B6 fix: dédup par (user, date_cible) — skip si l'user a déjà reçu
+            # une alerte pour cette date (prediction OU changement).
+            # Sans ça, un change alert à 6h49 + prediction alert à 7h34 = spam.
             existing = conn.execute(
                 """SELECT id FROM sms_logs
                    WHERE user_id = ? AND date_cible = ?
-                   AND type_alerte IN ('prediction_rouge', 'prediction_blanc')""",
+                   AND type_alerte IN ('prediction_rouge', 'prediction_blanc', 'changement')""",
                 (user["id"], target_date.isoformat()),
             ).fetchone()
 
