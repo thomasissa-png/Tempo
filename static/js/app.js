@@ -293,8 +293,8 @@ async function loadPredictions() {
                 <div class="maintenance-icon">&#9881;</div>
                 <h3 style="margin:0 0 6px">Maintenance en cours</h3>
                 <p style="margin:0;font-size:.9rem;color:var(--text-secondary)">
-                    Les pr\u00e9visions sont temporairement indisponibles.<br>
-                    Elles seront de retour dans quelques minutes.
+                    Le calendrier est temporairement indisponible.<br>
+                    Les pr\u00e9visions seront de retour tr\u00e8s vite.
                 </p>
                 <button class="retry-btn" onclick="loadPredictions()" style="margin-top:12px">R\u00e9essayer</button>
             </div>`;
@@ -332,7 +332,7 @@ async function loadWeekSummary() {
                     <h3 style="margin:0 0 6px">Maintenance en cours</h3>
                     <p style="margin:0;font-size:.9rem;color:var(--text-secondary)">
                         Le calendrier est temporairement indisponible.<br>
-                        Les pr\u00e9visions seront de retour dans quelques minutes.
+                        Les pr\u00e9visions seront de retour tr\u00e8s vite.
                     </p>
                     <button class="retry-btn" onclick="loadWeekSummary()" style="margin-top:12px">R\u00e9essayer</button>
                 </div>`;
