@@ -1176,7 +1176,7 @@ async def indexnow_ping(url: str | None = None):
 # Fix #24 : HEALTHCHECK
 # ================================================================
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 async def health():
     """Health check endpoint — répond 200 immédiatement (Cloud Run startup probe).
 
