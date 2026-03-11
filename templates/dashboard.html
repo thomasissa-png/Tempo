@@ -294,6 +294,16 @@
             </div>
             <a href="/calendrier" class="btn btn-cta-summary" style="text-decoration:none">Voir les pr&eacute;visions d&eacute;taill&eacute;es des 15 prochains jours &rarr;</a>
         </div>
+        {% else %}
+        <h2 class="section-title" style="margin-top:0">R&eacute;sum&eacute; des 10 prochains jours</h2>
+        <div class="week-summary-loading" id="week-summary-loading">
+            <div class="week-summary-dots" style="justify-content:center;padding:2rem 0">
+                <div class="loading-placeholder" style="display:flex;align-items:center;gap:.5rem;color:var(--text-secondary);font-size:.95rem">
+                    <span class="loading-spinner" aria-hidden="true"></span>
+                    Chargement des pr&eacute;visions&hellip;
+                </div>
+            </div>
+        </div>
         {% endif %}
     </div>
 
