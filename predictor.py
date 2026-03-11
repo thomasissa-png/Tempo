@@ -669,13 +669,15 @@ def predict_day(target_date: date, weather: dict | None = None,
 
         if _red_slack <= 1 and (target_date.month >= 11 or target_date.month <= 3):
             # Densité critique : très peu de marge pour placer les ROUGE restants.
-            # slack ≤ 0 : mathématiquement impossible d'éviter ROUGE → force toujours.
-            # slack = 1 : un seul jour de marge → force sauf si trop chaud (> 10°C),
-            # car EDF ne déclenchera jamais ROUGE par temps doux — il trouvera un
-            # jour plus froid dans la marge restante ou n'utilisera pas les 22 jours.
-            # Mars 2026 chaud : EDF ne va pas forcer ROUGE au-dessus de 10°C
-            # même avec pression budgétaire.
-            if _red_slack <= 0 or temp_moy <= 10:
+            # slack ≤ 0 : mathématiquement impossible d'éviter ROUGE → force
+            #   sauf si temp >= 5°C (EDF n'utilisera pas ses 22 jours par temps doux).
+            # slack = 1 : un seul jour de marge → force seulement si froid (< 5°C).
+            # Mars 2026 : saison chaude, EDF ne va pas forcer ROUGE au-dessus de 5°C
+            # même avec pression budgétaire — il acceptera de ne pas utiliser le quota.
+            if _red_slack <= 0 and temp_moy < 5:
+                couleur = "ROUGE"
+                raison_ml += " · Densité critique ROUGE"
+            elif _red_slack <= 1 and temp_moy < 3:
                 couleur = "ROUGE"
                 raison_ml += " · Densité critique ROUGE"
         elif _red_eligible > 0 and (target_date.month >= 11 or target_date.month <= 3):
@@ -688,12 +690,14 @@ def predict_day(target_date: date, weather: dict | None = None,
             _density_reduction = _piecewise_linear(_red_density, [
                 (0.15, 0), (0.25, 3), (0.40, 10), (0.55, 18), (0.70, 25),
             ])
-            # P4 : atténuation thermique — la densité override ne doit pas
-            # forcer ROUGE sur des jours > 9°C où le score_risque est bas.
-            if temp_moy > 10:
-                _density_reduction = 0  # aucune réduction au-dessus de 10°C
-            elif temp_moy > 7:
-                _density_reduction *= max(0, (10 - temp_moy) / 3)  # atténuation 7-10°C
+            # P4 : garde thermique — EDF ne place jamais ROUGE par temps doux.
+            # En-dessous de 5°C = conditions froides réalistes pour ROUGE.
+            # Au-dessus de 5°C = probabilité quasi nulle historiquement.
+            # Atténuation linéaire entre 3°C et 6°C, blocage total >= 6°C.
+            if temp_moy >= 6:
+                _density_reduction = 0
+            elif temp_moy > 3:
+                _density_reduction *= max(0, (6 - temp_moy) / 3)  # atténuation 3-6°C
             # v3.5 C : garde calendaire Nov-Déc — la densité progressive est
             # non-informative en début de saison (22 ROUGE sur ~90 éligibles = 24%
             # qui trigger la réduction mais les vagues de froid n'ont pas commencé).
@@ -1317,6 +1321,14 @@ def _compute_budget_pressure(actual_remaining: int, d_left: int, month: int,
         score += _piecewise_linear(density, [
             (0.0, 0), (0.1, 3), (0.2, 15), (0.5, 35), (1.0, 50),
         ])
+
+    # Mars 2026 : EDF n'est PAS obligé d'utiliser les 22 jours rouges.
+    # Quand les mois futurs attendent 0 jours (mars = dernier mois rouge),
+    # le score montait à 95+ et forçait ROUGE même par temps doux.
+    # Plafonner à 50 pour que la pression budgétaire seule ne suffise pas
+    # à déclencher ROUGE — il faut aussi un signal météo/RTE cohérent.
+    if expected_remaining <= 0 and actual_remaining > 0:
+        score = min(50, score)
 
     return min(100, score)
 
