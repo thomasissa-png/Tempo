@@ -670,14 +670,12 @@ def predict_day(target_date: date, weather: dict | None = None,
         if _red_slack <= 1 and (target_date.month >= 11 or target_date.month <= 3):
             # Densité critique : très peu de marge pour placer les ROUGE restants.
             # slack ≤ 0 : mathématiquement impossible d'éviter ROUGE → force
-            #   sauf si temp >= 5°C (EDF n'utilisera pas ses 22 jours par temps doux).
+            #   sauf si temp >= 7°C (EDF ne force pas ROUGE par temps doux).
             # slack = 1 : un seul jour de marge → force seulement si froid (< 5°C).
-            # Mars 2026 : saison chaude, EDF ne va pas forcer ROUGE au-dessus de 5°C
-            # même avec pression budgétaire — il acceptera de ne pas utiliser le quota.
-            if _red_slack <= 0 and temp_moy < 5:
+            if _red_slack <= 0 and temp_moy < 7:
                 couleur = "ROUGE"
                 raison_ml += " · Densité critique ROUGE"
-            elif _red_slack <= 1 and temp_moy < 3:
+            elif _red_slack <= 1 and temp_moy < 5:
                 couleur = "ROUGE"
                 raison_ml += " · Densité critique ROUGE"
         elif _red_eligible > 0 and (target_date.month >= 11 or target_date.month <= 3):
@@ -691,13 +689,13 @@ def predict_day(target_date: date, weather: dict | None = None,
                 (0.15, 0), (0.25, 3), (0.40, 10), (0.55, 18), (0.70, 25),
             ])
             # P4 : garde thermique — EDF ne place jamais ROUGE par temps doux.
-            # En-dessous de 5°C = conditions froides réalistes pour ROUGE.
-            # Au-dessus de 5°C = probabilité quasi nulle historiquement.
-            # Atténuation linéaire entre 3°C et 6°C, blocage total >= 6°C.
-            if temp_moy >= 6:
+            # En-dessous de 7°C = conditions froides réalistes pour ROUGE.
+            # Au-dessus de 8°C = probabilité quasi nulle historiquement.
+            # Atténuation linéaire entre 5°C et 8°C, blocage total >= 8°C.
+            if temp_moy >= 8:
                 _density_reduction = 0
-            elif temp_moy > 3:
-                _density_reduction *= max(0, (6 - temp_moy) / 3)  # atténuation 3-6°C
+            elif temp_moy > 5:
+                _density_reduction *= max(0, (8 - temp_moy) / 3)  # atténuation 5-8°C
             # v3.5 C : garde calendaire Nov-Déc — la densité progressive est
             # non-informative en début de saison (22 ROUGE sur ~90 éligibles = 24%
             # qui trigger la réduction mais les vagues de froid n'ont pas commencé).

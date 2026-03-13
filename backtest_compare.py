@@ -330,83 +330,55 @@ def main():
     actuals, weather, rte = load_data()
     print(f"  {len(actuals)} actuals, {len(weather)} météo, {len(rte)} RTE")
 
-    # --- Run NEW (current code) ---
-    print("\n[1/2] Backtest APRÈS (nouveau code)...")
+    # --- Run NEW (current code = 7°C thresholds) ---
+    print("\n[1/2] Backtest APRÈS (nouveau code, seuils 7°C)...")
     new_results = run_single_backtest(actuals, weather, rte, "NEW")
     new_metrics, new_confusion = compute_metrics(new_results, "NEW")
     print(f"  → {new_metrics['total']} jours, accuracy = {new_metrics['accuracy']:.1f}%")
 
-    # --- Patch to OLD behavior and run ---
-    print("\n[2/2] Backtest AVANT (ancien code)...")
+    # --- Patch to OLD behavior (10°C thresholds = original code) and run ---
+    print("\n[2/2] Backtest AVANT (ancien code, seuils 10°C)...")
 
-    # Save current functions
     import predictor
-    original_compute_budget_pressure = predictor._compute_budget_pressure
+    import inspect
+    import types
+    import textwrap
 
-    # Old _compute_budget_pressure: no cap at 50 when expected_remaining <= 0
-    def old_compute_budget_pressure(actual_remaining, d_left, month, monthly_profile, total_days):
-        result = original_compute_budget_pressure(actual_remaining, d_left, month, monthly_profile, total_days)
-        # The NEW code caps at 50 when expected_remaining <= 0.
-        # The OLD code didn't. We need to undo the cap.
-        # Recompute without the cap:
-        expected_pct = monthly_profile.get(month, 0.0)
-        months_ahead = []
-        m = month
-        while True:
-            m = m + 1 if m < 12 else 1
-            if m == 6:
-                break
-            months_ahead.append(m)
-        expected_remaining = sum(monthly_profile.get(mo, 0.0) for mo in months_ahead) * total_days
+    # Strategy: read predict_day source, modify thermal guard constants,
+    # compile a patched version, and use it for the OLD backtest.
+    # This captures ALL threshold changes (density critical + progressive).
 
-        if expected_remaining <= 0 and actual_remaining > 0:
-            # OLD code: no cap. Recompute fully.
-            from predictor import _piecewise_linear
-            score = 60  # base for no future months
-            score += _piecewise_linear(expected_pct, [
-                (0.0, 0), (0.05, 3), (0.15, 8), (0.25, 15), (0.35, 15),
-            ])
-            if actual_remaining > 0 and d_left > 0:
-                density = actual_remaining / d_left
-                score += _piecewise_linear(density, [
-                    (0.0, 0), (0.1, 3), (0.2, 15), (0.5, 35), (1.0, 50),
-                ])
-            return min(100, score)
+    src = inspect.getsource(predictor.predict_day)
+    # Remove leading indentation (it's a top-level function)
+    src = textwrap.dedent(src)
 
-        return result
+    # Patch: revert 7°C thresholds back to original 10°C code
+    # 1. Critical density: temp_moy < 7 → temp_moy < 10 (slack ≤ 0)
+    src = src.replace("_red_slack <= 0 and temp_moy < 7:", "_red_slack <= 0 and temp_moy < 10:")
+    # 2. Critical density: temp_moy < 5 → temp_moy < 8 (slack ≤ 1)
+    src = src.replace("_red_slack <= 1 and temp_moy < 5:", "_red_slack <= 1 and temp_moy < 8:")
+    # 3. Progressive guard: blocage >= 8 → >= 10
+    src = src.replace("if temp_moy >= 8:", "if temp_moy >= 10:")
+    # 4. Progressive guard: atténuation 5-8°C → 7-10°C
+    src = src.replace("elif temp_moy > 5:", "elif temp_moy > 7:")
+    src = src.replace("(8 - temp_moy) / 3", "(10 - temp_moy) / 3")
 
-    # Save original predict_day source to patch density override thresholds
-    # We need to patch the constants inside predict_day
-    # The cleanest approach: temporarily modify the code by patching at module level
+    # Compile the patched function
+    # We need access to all globals from predictor module
+    patched_globals = dict(predictor.__dict__)
+    exec(compile(src, "<old_predict_day>", "exec"), patched_globals)
+    old_predict_day = patched_globals["predict_day"]
 
-    # Store original predict_day
+    # Temporarily replace predict_day
     original_predict_day = predictor.predict_day
-
-    def old_predict_day(*args, **kwargs):
-        """Wrapper that patches density override back to old thresholds."""
-        # Run with old budget pressure
-        result = original_predict_day(*args, **kwargs)
-        return result
-
-    # For a clean A/B, we patch _compute_budget_pressure and
-    # re-run. For the density override thresholds (6°C→10°C),
-    # we need to patch predict_day itself. Since it's complex,
-    # let's use a simpler approach: save/restore the source constants.
-
-    # Actually, the simplest approach: use git to checkout old predictor,
-    # run backtest, then restore. But we can't do that cleanly.
-    # Instead, let's just patch _compute_budget_pressure (the main change)
-    # and document that the density override change is NOT captured here.
-    # The budget cap is the bigger effect.
-
-    predictor._compute_budget_pressure = old_compute_budget_pressure
+    predictor.predict_day = old_predict_day
 
     old_results = run_single_backtest(actuals, weather, rte, "OLD")
     old_metrics, old_confusion = compute_metrics(old_results, "OLD")
     print(f"  → {old_metrics['total']} jours, accuracy = {old_metrics['accuracy']:.1f}%")
 
     # Restore
-    predictor._compute_budget_pressure = original_compute_budget_pressure
+    predictor.predict_day = original_predict_day
 
     # --- Compare ---
     print_comparison(old_metrics, new_metrics, old_confusion, new_confusion)
