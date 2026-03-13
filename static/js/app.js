@@ -468,6 +468,15 @@ function renderWeekSummary(preds) {
     container.innerHTML = '';
     container.appendChild(title);
     container.appendChild(card);
+
+    // Bannière hiver atypique (visible jusqu'au 30 mars 2026)
+    if (new Date() <= new Date('2026-03-30T23:59:59')) {
+        const notice = document.createElement('div');
+        notice.className = 'winter-notice';
+        notice.style.cssText = 'margin-top:12px;padding:12px 16px;background:#FFF8E1;border:1px solid #FFD54F;border-radius:var(--radius-sm);font-size:.88rem;color:#5D4037;line-height:1.6';
+        notice.innerHTML = '<strong>Hiver 2025-2026 atypique\u00a0:</strong> les temp\u00e9ratures exceptionnellement douces et la bonne disponibilit\u00e9 \u00e9nerg\u00e9tique rendent peu probable l\u2019utilisation de tous les jours rouges restants. La d\u00e9cision finale revient \u00e0 RTE, ce qui rend les pr\u00e9visions plus incertaines que d\u2019habitude.';
+        container.appendChild(notice);
+    }
 }
 
 // ================================================================

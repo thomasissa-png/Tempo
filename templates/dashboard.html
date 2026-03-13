@@ -294,6 +294,11 @@
             </div>
             <a href="/calendrier" class="btn btn-cta-summary" style="text-decoration:none">Voir les pr&eacute;visions d&eacute;taill&eacute;es des 15 prochains jours &rarr;</a>
         </div>
+        {% if ssr.show_winter_notice %}
+        <div class="winter-notice" style="margin-top:12px;padding:12px 16px;background:#FFF8E1;border:1px solid #FFD54F;border-radius:var(--radius-sm);font-size:.88rem;color:#5D4037;line-height:1.6">
+            <strong>Hiver 2025-2026 atypique&nbsp;:</strong> les temp&eacute;ratures exceptionnellement douces et la bonne disponibilit&eacute; &eacute;nerg&eacute;tique rendent peu probable l&rsquo;utilisation de tous les jours rouges restants. La d&eacute;cision finale revient &agrave; RTE, ce qui rend les pr&eacute;visions plus incertaines que d&rsquo;habitude.
+        </div>
+        {% endif %}
         {% else %}
         <h2 class="section-title" style="margin-top:0">R&eacute;sum&eacute; des 10 prochains jours</h2>
         <div class="week-summary-loading" id="week-summary-loading">

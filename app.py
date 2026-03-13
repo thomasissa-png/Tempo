@@ -471,6 +471,7 @@ def _get_ssr_data() -> dict:
         "today_color": None, "tomorrow_color": None,
         "remaining": None, "predictions": [], "week_summary": [],
         "last_update": None,
+        "show_winter_notice": date.today() <= date(2026, 3, 30),
     }
     if not _db_ready.is_set():
         return ssr
