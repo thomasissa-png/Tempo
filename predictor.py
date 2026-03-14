@@ -667,12 +667,12 @@ def predict_day(target_date: date, weather: dict | None = None,
         _red_eligible = _count_eligible_days(target_date, _red_deadline, "rouge")
         _red_slack = max(_red_eligible, 1) - remaining["ROUGE"]
 
-        if _red_slack <= 0 and (target_date.month >= 11 or target_date.month <= 3):
+        if _red_slack <= 0 and (target_date.month >= 11 or target_date.month <= 3) and temp_moy <= 10:
             # Densité critique : slack ≤ 0 = plus de jours éligibles que de ROUGE
-            # restants → mathématiquement impossible d'éviter ROUGE → force toujours.
-            # slack ≥ 1 : il reste de la marge, on laisse le scoring normal décider.
-            # EDF n'est pas obligé d'utiliser les 22 RED (c'est un max, pas un quota),
-            # surtout en fin de saison chaude (mars 2026).
+            # restants → mathématiquement impossible d'éviter ROUGE → force.
+            # Garde thermique : même en slack ≤ 0, EDF ne déclenchera jamais ROUGE
+            # au-dessus de 10°C — il préfère ne pas utiliser les 22 RED (c'est un
+            # budget max, pas un quota obligatoire).
             couleur = "ROUGE"
             raison_ml += " · Densité critique ROUGE"
         elif _red_eligible > 0 and (target_date.month >= 11 or target_date.month <= 3):
