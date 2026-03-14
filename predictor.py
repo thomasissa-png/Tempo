@@ -667,17 +667,14 @@ def predict_day(target_date: date, weather: dict | None = None,
         _red_eligible = _count_eligible_days(target_date, _red_deadline, "rouge")
         _red_slack = max(_red_eligible, 1) - remaining["ROUGE"]
 
-        if _red_slack <= 1 and (target_date.month >= 11 or target_date.month <= 3):
-            # Densité critique : très peu de marge pour placer les ROUGE restants.
-            # slack ≤ 0 : mathématiquement impossible d'éviter ROUGE → force toujours.
-            # slack = 1 : un seul jour de marge → force sauf si trop chaud (> 10°C),
-            # car EDF ne déclenchera jamais ROUGE par temps doux — il trouvera un
-            # jour plus froid dans la marge restante ou n'utilisera pas les 22 jours.
-            # Mars 2026 chaud : EDF ne va pas forcer ROUGE au-dessus de 10°C
-            # même avec pression budgétaire.
-            if _red_slack <= 0 or temp_moy <= 10:
-                couleur = "ROUGE"
-                raison_ml += " · Densité critique ROUGE"
+        if _red_slack <= 0 and (target_date.month >= 11 or target_date.month <= 3):
+            # Densité critique : slack ≤ 0 = plus de jours éligibles que de ROUGE
+            # restants → mathématiquement impossible d'éviter ROUGE → force toujours.
+            # slack ≥ 1 : il reste de la marge, on laisse le scoring normal décider.
+            # EDF n'est pas obligé d'utiliser les 22 RED (c'est un max, pas un quota),
+            # surtout en fin de saison chaude (mars 2026).
+            couleur = "ROUGE"
+            raison_ml += " · Densité critique ROUGE"
         elif _red_eligible > 0 and (target_date.month >= 11 or target_date.month <= 3):
             # Densité progressive : abaissement du seuil RED proportionnel
             _red_density = remaining["ROUGE"] / _red_eligible
