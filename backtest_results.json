@@ -1,45 +1,45 @@
 {
   "global": {
     "total": 712,
-    "correct": 470,
-    "accuracy": 66.0,
-    "rouge_recall": 42.3,
-    "rouge_precision": 26.5,
-    "rouge_f1": 32.6,
+    "correct": 485,
+    "accuracy": 68.1,
+    "rouge_recall": 46.2,
+    "rouge_precision": 27.9,
+    "rouge_f1": 34.8,
     "blanc_recall": 58.3,
-    "rouge_fn": 30,
-    "rouge_fp": 61
+    "rouge_fn": 28,
+    "rouge_fp": 62
   },
   "seasons": {
     "2023/2024": {
-      "accuracy": 67.2,
-      "rouge_recall": 45.5,
-      "rouge_precision": 43.5,
-      "rouge_f1": 44.5,
+      "accuracy": 69.0,
+      "rouge_recall": 54.5,
+      "rouge_precision": 46.2,
+      "rouge_f1": 50.0,
       "blanc_recall": 58.1,
-      "blanc_precision": 27.2,
+      "blanc_precision": 28.7,
       "stats": {
         "total": 274,
-        "correct": 184,
-        "blanc_fp": 67,
+        "correct": 189,
+        "blanc_fp": 62,
         "blanc_tp": 25,
-        "rouge_fn": 12,
-        "rouge_fp": 13,
+        "rouge_fn": 10,
+        "rouge_fp": 14,
         "blanc_fn": 18,
-        "rouge_tp": 10
+        "rouge_tp": 12
       }
     },
     "2024/2025": {
-      "accuracy": 75.1,
+      "accuracy": 77.3,
       "rouge_recall": 22.7,
       "rouge_precision": 41.7,
       "rouge_f1": 29.4,
       "blanc_recall": 76.7,
-      "blanc_precision": 37.1,
+      "blanc_precision": 39.8,
       "stats": {
         "total": 273,
-        "correct": 205,
-        "blanc_fp": 56,
+        "correct": 211,
+        "blanc_fp": 50,
         "blanc_tp": 33,
         "rouge_fn": 17,
         "rouge_fp": 7,
@@ -48,16 +48,16 @@
       }
     },
     "2025/2026": {
-      "accuracy": 49.1,
+      "accuracy": 51.5,
       "rouge_recall": 87.5,
       "rouge_precision": 14.6,
       "rouge_f1": 25.0,
       "blanc_recall": 31.0,
-      "blanc_precision": 17.3,
+      "blanc_precision": 18.8,
       "stats": {
         "total": 165,
-        "correct": 81,
-        "blanc_fp": 43,
+        "correct": 85,
+        "blanc_fp": 39,
         "blanc_tp": 9,
         "rouge_fp": 41,
         "blanc_fn": 20,

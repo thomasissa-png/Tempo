@@ -464,18 +464,17 @@ def predict_day(target_date: date, weather: dict | None = None,
         cluster_score = _apply_factor_correction(cluster_score, factor_corrections, "clustering")
         rte_s = _apply_factor_correction(rte_s, factor_corrections, "rte")
 
-    # === T3 v3.4 : anti-spirale budget (v2 mars 2026) ===
-    # Atténue la contribution du budget quand il fait doux, pour éviter que la
-    # pression budgétaire force ROUGE/BLANC sur des jours où EDF ne placerait pas.
-    # v2 : plage élargie 8-12°C (au lieu de 6-8°C), plancher 60% (au lieu de 50%).
-    # Cela conserve assez de pression pour que les jours mi-froids (8-10°C de mars)
-    # puissent basculer en BLANC si la densité l'exige.
+    # === T3 v3.4 : anti-spirale budget ===
+    # Quand temp > 8°C, le budget ne devrait pas pousser le score vers ROUGE.
+    # En saison douce (2025/2026), la non-consommation de ROUGE crée un budget_score
+    # élevé qui force ROUGE sur des jours doux → 23 FP. Le cap réduit la contribution
+    # du budget à 50% quand temp > 8°C et linéairement entre 6 et 8°C.
     effective_budget_score = budget_score
-    if temp_moy >= 12:
-        effective_budget_score = budget_score * 0.60
-    elif temp_moy > 8:
-        # Transition 8-12°C : de 100% à 60%
-        cap_factor = 1.0 - 0.40 * (temp_moy - 8) / 4
+    if temp_moy > 8:
+        effective_budget_score = budget_score * 0.5
+    elif temp_moy > 6:
+        # Transition 6-8°C : de 100% à 50%
+        cap_factor = 1.0 - 0.5 * (temp_moy - 6) / 2
         effective_budget_score = budget_score * cap_factor
 
     # === Score composite pondere ===
@@ -670,13 +669,13 @@ def predict_day(target_date: date, weather: dict | None = None,
 
         if _red_slack <= 1 and (target_date.month >= 11 or target_date.month <= 3):
             # Densité critique : très peu de marge pour placer les ROUGE restants.
-            # slack ≤ 0 : mathématiquement impossible d'éviter ROUGE → force
-            #   sauf si temp >= 7°C (EDF ne force pas ROUGE par temps doux).
-            # slack = 1 : un seul jour de marge → force seulement si froid (< 5°C).
-            if _red_slack <= 0 and temp_moy < 7:
-                couleur = "ROUGE"
-                raison_ml += " · Densité critique ROUGE"
-            elif _red_slack <= 1 and temp_moy < 5:
+            # slack ≤ 0 : mathématiquement impossible d'éviter ROUGE → force toujours.
+            # slack = 1 : un seul jour de marge → force sauf si trop chaud (> 10°C),
+            # car EDF ne déclenchera jamais ROUGE par temps doux — il trouvera un
+            # jour plus froid dans la marge restante ou n'utilisera pas les 22 jours.
+            # Mars 2026 chaud : EDF ne va pas forcer ROUGE au-dessus de 10°C
+            # même avec pression budgétaire.
+            if _red_slack <= 0 or temp_moy <= 10:
                 couleur = "ROUGE"
                 raison_ml += " · Densité critique ROUGE"
         elif _red_eligible > 0 and (target_date.month >= 11 or target_date.month <= 3):
@@ -689,14 +688,12 @@ def predict_day(target_date: date, weather: dict | None = None,
             _density_reduction = _piecewise_linear(_red_density, [
                 (0.15, 0), (0.25, 3), (0.40, 10), (0.55, 18), (0.70, 25),
             ])
-            # P4 : garde thermique — EDF ne place jamais ROUGE par temps doux.
-            # En-dessous de 7°C = conditions froides réalistes pour ROUGE.
-            # Au-dessus de 8°C = probabilité quasi nulle historiquement.
-            # Atténuation linéaire entre 5°C et 8°C, blocage total >= 8°C.
-            if temp_moy >= 8:
-                _density_reduction = 0
-            elif temp_moy > 5:
-                _density_reduction *= max(0, (8 - temp_moy) / 3)  # atténuation 5-8°C
+            # P4 : atténuation thermique — la densité override ne doit pas
+            # forcer ROUGE sur des jours > 9°C où le score_risque est bas.
+            if temp_moy > 10:
+                _density_reduction = 0  # aucune réduction au-dessus de 10°C
+            elif temp_moy > 7:
+                _density_reduction *= max(0, (10 - temp_moy) / 3)  # atténuation 7-10°C
             # v3.5 C : garde calendaire Nov-Déc — la densité progressive est
             # non-informative en début de saison (22 ROUGE sur ~90 éligibles = 24%
             # qui trigger la réduction mais les vagues de froid n'ont pas commencé).
@@ -1320,13 +1317,6 @@ def _compute_budget_pressure(actual_remaining: int, d_left: int, month: int,
         score += _piecewise_linear(density, [
             (0.0, 0), (0.1, 3), (0.2, 15), (0.5, 35), (1.0, 50),
         ])
-
-    # Fin de saison : EDF n'est PAS obligé d'utiliser tous les jours restants,
-    # mais en placera vraisemblablement quelques-uns. Plafonner à 75 pour
-    # éviter le forçage systématique (score=95+) tout en laissant assez de
-    # pression pour que les jours froids/denses basculent en BLANC/ROUGE.
-    if expected_remaining <= 0 and actual_remaining > 0:
-        score = min(75, score)
 
     return min(100, score)
 
