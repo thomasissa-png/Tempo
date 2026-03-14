@@ -546,11 +546,11 @@ def predict_day(target_date: date, weather: dict | None = None,
     # P2 v3.2 : modulation saisonnière étendue (temp < 10°C avec atténuation).
     # Le coefficient de RTE abaisse le seuil au fil de la saison,
     # encourageant EDF à placer les jours ROUGE tôt plutôt qu'en fin de période.
-    # v3.2 : étendu de < 7°C à < 10°C avec facteur d'atténuation thermique.
-    # Plus la temp est proche de 10°C, plus la réduction est faible.
-    if _in_red_season and budget_score >= 40 and temp_moy < 10:
+    # v3.2 : facteur d'atténuation thermique. Seuil abaissé à 7°C — au-dessus,
+    # la réduction saisonnière ne s'applique pas (EDF ne place pas ROUGE par temps doux).
+    if _in_red_season and budget_score >= 40 and temp_moy < 7:
         jt = _jour_tempo_number(target_date)
-        temp_factor = max(0.3, min(1.0, (10 - temp_moy) / 7))
+        temp_factor = max(0.3, min(1.0, (7 - temp_moy) / 4))
         season_reduction = min(6.0, jt * Config.SEUIL_ROUGE_SEASON_COEFF * temp_factor)
         seuil_rouge_effectif -= season_reduction
 
@@ -670,12 +670,10 @@ def predict_day(target_date: date, weather: dict | None = None,
         if _red_slack <= 1 and (target_date.month >= 11 or target_date.month <= 3):
             # Densité critique : très peu de marge pour placer les ROUGE restants.
             # slack ≤ 0 : mathématiquement impossible d'éviter ROUGE → force toujours.
-            # slack = 1 : un seul jour de marge → force sauf si trop chaud (> 10°C),
+            # slack = 1 : un seul jour de marge → force sauf si trop chaud (> 7°C),
             # car EDF ne déclenchera jamais ROUGE par temps doux — il trouvera un
             # jour plus froid dans la marge restante ou n'utilisera pas les 22 jours.
-            # Mars 2026 chaud : EDF ne va pas forcer ROUGE au-dessus de 10°C
-            # même avec pression budgétaire.
-            if _red_slack <= 0 or temp_moy <= 10:
+            if _red_slack <= 0 or temp_moy <= 7:
                 couleur = "ROUGE"
                 raison_ml += " · Densité critique ROUGE"
         elif _red_eligible > 0 and (target_date.month >= 11 or target_date.month <= 3):
@@ -689,11 +687,11 @@ def predict_day(target_date: date, weather: dict | None = None,
                 (0.15, 0), (0.25, 3), (0.40, 10), (0.55, 18), (0.70, 25),
             ])
             # P4 : atténuation thermique — la densité override ne doit pas
-            # forcer ROUGE sur des jours > 9°C où le score_risque est bas.
-            if temp_moy > 10:
-                _density_reduction = 0  # aucune réduction au-dessus de 10°C
-            elif temp_moy > 7:
-                _density_reduction *= max(0, (10 - temp_moy) / 3)  # atténuation 7-10°C
+            # forcer ROUGE sur des jours doux (> 7°C).
+            if temp_moy > 7:
+                _density_reduction = 0  # aucune réduction au-dessus de 7°C
+            elif temp_moy > 5:
+                _density_reduction *= max(0, (7 - temp_moy) / 2)  # atténuation 5-7°C
             # v3.5 C : garde calendaire Nov-Déc — la densité progressive est
             # non-informative en début de saison (22 ROUGE sur ~90 éligibles = 24%
             # qui trigger la réduction mais les vagues de froid n'ont pas commencé).
