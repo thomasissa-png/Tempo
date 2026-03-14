@@ -28,7 +28,7 @@ Voici les tarifs actuels de l'option Tempo pour un compteur 9 kVA (TTC) :
 | **BLANC** | 0,1499 €/kWh | 0,1871 €/kWh |
 | **ROUGE** | 0,1575 €/kWh | **0,7060 €/kWh** |
 
-Le point clé : en heures pleines d'un jour rouge, le prix atteint **0,7060 €/kWh**, soit près de **6 fois** le tarif d'un jour bleu. C'est ce différentiel qui fait tout l'intérêt (et le risque) de l'offre Tempo.
+Le point clé : en heures pleines d'un jour rouge, le prix atteint **0,7060 €/kWh**, soit près de **5 fois** le tarif d'un jour bleu. C'est ce différentiel qui fait tout l'intérêt (et le risque) de l'offre Tempo.
 
 ## Quand tombent les jours rouges ?
 
