@@ -66,11 +66,11 @@ tarifs_tempo:
   saison: "2025-2026"
   abonnement_mensuel: "15.96"
   bleu_hp: "0.1612"
-  bleu_hc: "0.1272"
-  blanc_hp: "0.1853"
-  blanc_hc: "0.1430"
-  rouge_hp: "0.7562"
-  rouge_hc: "0.2068"
+  bleu_hc: "0.1325"
+  blanc_hp: "0.1871"
+  blanc_hc: "0.1499"
+  rouge_hp: "0.7060"
+  rouge_hc: "0.1575"
   note: "Les tarifs changent generalement en fevrier. Lors de l'Etape 0, si la date_maj a plus de 12 mois, l'agent DOIT verifier les tarifs en vigueur via web_search('tarif tempo edf {annee}') et mettre a jour cette section."
 
 saison_tempo:

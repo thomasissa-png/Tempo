@@ -353,9 +353,9 @@ Toutes les 4 semaines, au lieu d'écrire un nouvel article, rafraîchissez un ar
 
 | Jour | Heures Pleines (6h-22h) | Heures Creuses (22h-6h) |
 |------|------------------------|------------------------|
-| **Bleu** | 0,1612 €/kWh | 0,1272 €/kWh |
-| **Blanc** | 0,1853 €/kWh | 0,1430 €/kWh |
-| **Rouge** | 0,7562 €/kWh | 0,2068 €/kWh |
+| **Bleu** | 0,1612 €/kWh | 0,1325 €/kWh |
+| **Blanc** | 0,1871 €/kWh | 0,1499 €/kWh |
+| **Rouge** | 0,7060 €/kWh | 0,1575 €/kWh |
 
 ## Référence — Mots-clés cibles
 

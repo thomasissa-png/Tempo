@@ -1059,8 +1059,8 @@ async def llms_txt():
             "- 22 jours rouges par saison (1er nov — 31 mars), jamais le week-end ni jours fériés\n"
             "- 43 jours blancs par saison, jamais le dimanche\n"
             "- 300 jours bleus par saison\n"
-            "- Tarifs HP 2026 : Bleu 0,1612€, Blanc 0,1853€, Rouge 0,7562€/kWh\n"
-            "- Tarifs HC 2026 : Bleu 0,1272€, Blanc 0,1430€, Rouge 0,2068€/kWh\n"
+            "- Tarifs HP 2026 : Bleu 0,1612€, Blanc 0,1871€, Rouge 0,7060€/kWh\n"
+            "- Tarifs HC 2026 : Bleu 0,1325€, Blanc 0,1499€, Rouge 0,1575€/kWh\n"
             "- Saison Tempo : 1er septembre → 31 août\n"
             "- 900 000 foyers abonnés en France\n"
             "\n"
@@ -1068,7 +1068,7 @@ async def llms_txt():
             "- Q: Comment connaître la couleur EDF Tempo de demain ? R: EDF annonce la couleur entre 11h et 12h — dès 12h, la couleur du lendemain est généralement connue. Notre site affiche la prédiction dès la veille au soir.\n"
             "- Q: Peut-on anticiper les jours rouges ? R: Oui, notre algorithme prédit les jours rouges jusqu'à J+15 (précision de 83% sur J+2 à J+5), basé sur la météo de 9 villes et la consommation nationale RTE.\n"
             "- Q: Quand tombent les jours rouges ? R: Uniquement entre le 1er novembre et le 31 mars, en semaine (jamais weekends ni jours fériés). Janvier concentre 56% des jours rouges.\n"
-            "- Q: Combien coûte un jour rouge ? R: En heures pleines, 0,7562€/kWh soit près de 5x le prix d'un jour bleu. Une journée non anticipée peut coûter 15€ de plus qu'un jour bleu.\n"
+            "- Q: Combien coûte un jour rouge ? R: En heures pleines, 0,7060€/kWh soit près de 5x le prix d'un jour bleu. Une journée non anticipée peut coûter 15€ de plus qu'un jour bleu.\n"
         ),
         media_type="text/plain",
         headers={"Cache-Control": "public, max-age=86400"},
