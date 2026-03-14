@@ -464,17 +464,18 @@ def predict_day(target_date: date, weather: dict | None = None,
         cluster_score = _apply_factor_correction(cluster_score, factor_corrections, "clustering")
         rte_s = _apply_factor_correction(rte_s, factor_corrections, "rte")
 
-    # === T3 v3.4 : anti-spirale budget ===
-    # Quand temp > 8°C, le budget ne devrait pas pousser le score vers ROUGE.
-    # En saison douce (2025/2026), la non-consommation de ROUGE crée un budget_score
-    # élevé qui force ROUGE sur des jours doux → 23 FP. Le cap réduit la contribution
-    # du budget à 50% quand temp > 8°C et linéairement entre 6 et 8°C.
+    # === T3 v3.4 : anti-spirale budget (v2 mars 2026) ===
+    # Atténue la contribution du budget quand il fait doux, pour éviter que la
+    # pression budgétaire force ROUGE/BLANC sur des jours où EDF ne placerait pas.
+    # v2 : plage élargie 8-12°C (au lieu de 6-8°C), plancher 60% (au lieu de 50%).
+    # Cela conserve assez de pression pour que les jours mi-froids (8-10°C de mars)
+    # puissent basculer en BLANC si la densité l'exige.
     effective_budget_score = budget_score
-    if temp_moy > 8:
-        effective_budget_score = budget_score * 0.5
-    elif temp_moy > 6:
-        # Transition 6-8°C : de 100% à 50%
-        cap_factor = 1.0 - 0.5 * (temp_moy - 6) / 2
+    if temp_moy >= 12:
+        effective_budget_score = budget_score * 0.60
+    elif temp_moy > 8:
+        # Transition 8-12°C : de 100% à 60%
+        cap_factor = 1.0 - 0.40 * (temp_moy - 8) / 4
         effective_budget_score = budget_score * cap_factor
 
     # === Score composite pondere ===
@@ -1320,13 +1321,12 @@ def _compute_budget_pressure(actual_remaining: int, d_left: int, month: int,
             (0.0, 0), (0.1, 3), (0.2, 15), (0.5, 35), (1.0, 50),
         ])
 
-    # Mars 2026 : EDF n'est PAS obligé d'utiliser les 22 jours rouges.
-    # Quand les mois futurs attendent 0 jours (mars = dernier mois rouge),
-    # le score montait à 95+ et forçait ROUGE même par temps doux.
-    # Plafonner à 50 pour que la pression budgétaire seule ne suffise pas
-    # à déclencher ROUGE — il faut aussi un signal météo/RTE cohérent.
+    # Fin de saison : EDF n'est PAS obligé d'utiliser tous les jours restants,
+    # mais en placera vraisemblablement quelques-uns. Plafonner à 75 pour
+    # éviter le forçage systématique (score=95+) tout en laissant assez de
+    # pression pour que les jours froids/denses basculent en BLANC/ROUGE.
     if expected_remaining <= 0 and actual_remaining > 0:
-        score = min(50, score)
+        score = min(75, score)
 
     return min(100, score)
 
