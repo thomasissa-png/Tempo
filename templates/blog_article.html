@@ -7,6 +7,7 @@
     <meta name="description" content="{{ article.description }}">
     <meta name="keywords" content="{{ article.keywords }}">
     {% if bing_verification %}<meta name="msvalidate.01" content="{{ bing_verification }}">{% endif %}
+    {% if google_verification %}<meta name="google-site-verification" content="{{ google_verification }}">{% endif %}
     <meta name="geo.region" content="FR">
     <meta name="geo.placename" content="France">
     <link rel="alternate" type="application/rss+xml" title="Blog Calendrier Tempo EDF" href="https://www.calendrier-tempo.fr/feed.xml">
@@ -54,7 +55,13 @@
         "publisher": {
             "@type": "Organization",
             "name": "Calendrier Tempo EDF",
-            "url": "https://www.calendrier-tempo.fr/"
+            "url": "https://www.calendrier-tempo.fr/",
+            "logo": {
+                "@type": "ImageObject",
+                "url": "https://www.calendrier-tempo.fr/static/icon-512.svg",
+                "width": 512,
+                "height": 512
+            }
         },
         "mainEntityOfPage": {
             "@type": "WebPage",

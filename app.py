@@ -296,10 +296,12 @@ app.add_middleware(GZipMiddleware, minimum_size=500)  # Compresse CSS/JS/JSON > 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-# === SEO Bing : variables globales Jinja2 pour les meta tags ===
+# === SEO : variables globales Jinja2 pour les meta tags de vérification ===
 _BING_VERIFY = os.getenv("BING_SITE_VERIFICATION", "")
+_GOOGLE_VERIFY = os.getenv("GOOGLE_SITE_VERIFICATION", "")
 if hasattr(templates, "env"):
     templates.env.globals["bing_verification"] = _BING_VERIFY
+    templates.env.globals["google_verification"] = _GOOGLE_VERIFY
 
 
 # === SEO : page 404 personnalisée (HTML au lieu de JSON brut) ===
@@ -1002,6 +1004,12 @@ async def sitemap_xml():
         f"    <lastmod>{_STATIC_LASTMOD}</lastmod>\n"
         "    <changefreq>monthly</changefreq>\n"
         "    <priority>0.3</priority>\n"
+        "  </url>",
+        "  <url>\n"
+        "    <loc>https://www.calendrier-tempo.fr/feed.xml</loc>\n"
+        f"    <lastmod>{_STATIC_LASTMOD}</lastmod>\n"
+        "    <changefreq>weekly</changefreq>\n"
+        "    <priority>0.2</priority>\n"
         "  </url>",
     ]
     # Blog index
