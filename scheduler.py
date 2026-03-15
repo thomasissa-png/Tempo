@@ -575,7 +575,45 @@ async def _refresh_predictions(trigger: str, send_sms: bool = False) -> int:
     logger.info(f"[{trigger}] {len(predictions)} prédictions recalculées (cycle={cycle_id})")
 
     invalidate_predictions_cache()
+
+    # SEO Bing : notifier IndexNow après chaque cycle de prédictions
+    # pour que Bing re-crawle rapidement les pages mises à jour.
+    await _ping_indexnow(trigger)
+
     return len(predictions)
+
+
+async def _ping_indexnow(trigger: str) -> None:
+    """Notifie Bing/Yandex via IndexNow que les pages ont été mises à jour.
+
+    Best-effort : un échec ne bloque pas le cycle de prédictions.
+    """
+    import os
+    try:
+        import httpx
+    except ImportError:
+        return
+    key = os.getenv("INDEXNOW_KEY", "calendrier-tempo-indexnow-key")
+    host = "www.calendrier-tempo.fr"
+    urls = [
+        f"https://{host}/",
+        f"https://{host}/calendrier",
+    ]
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.post(
+                "https://api.indexnow.org/indexnow",
+                json={
+                    "host": host,
+                    "key": key,
+                    "keyLocation": f"https://{host}/{key}.txt",
+                    "urlList": urls,
+                },
+                headers={"Content-Type": "application/json; charset=utf-8"},
+            )
+            logger.debug(f"[{trigger}] IndexNow ping: {resp.status_code}")
+    except Exception as e:
+        logger.debug(f"[{trigger}] IndexNow ping failed (non-blocking): {e}")
 
 
 def _store_weather_cache(forecasts: list[dict]) -> None:

@@ -296,6 +296,11 @@ app.add_middleware(GZipMiddleware, minimum_size=500)  # Compresse CSS/JS/JSON > 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
+# === SEO Bing : variables globales Jinja2 pour les meta tags ===
+_BING_VERIFY = os.getenv("BING_SITE_VERIFICATION", "")
+if hasattr(templates, "env"):
+    templates.env.globals["bing_verification"] = _BING_VERIFY
+
 
 # === SEO : page 404 personnalisée (HTML au lieu de JSON brut) ===
 @app.exception_handler(404)
@@ -957,9 +962,16 @@ async def robots_txt():
 
 @app.get("/sitemap.xml", response_class=PlainTextResponse)
 async def sitemap_xml():
-    """Sitemap XML dynamique — inclut les articles de blog publiés."""
+    """Sitemap XML dynamique — inclut les articles de blog publiés.
+
+    Bing pénalise les lastmod artificiels : seules les pages à contenu
+    dynamique (homepage, calendrier) utilisent today. Les pages statiques
+    utilisent une date fixe de dernière modification réelle.
+    """
     from blog import get_all_article_slugs
     today = date.today().isoformat()
+    # Pages statiques : date de dernière modification réelle du contenu
+    _STATIC_LASTMOD = "2026-03-15"
     urls = [
         "  <url>\n"
         "    <loc>https://www.calendrier-tempo.fr/</loc>\n"
@@ -975,19 +987,19 @@ async def sitemap_xml():
         "  </url>",
         "  <url>\n"
         "    <loc>https://www.calendrier-tempo.fr/alertes</loc>\n"
-        f"    <lastmod>{today}</lastmod>\n"
+        f"    <lastmod>{_STATIC_LASTMOD}</lastmod>\n"
         "    <changefreq>monthly</changefreq>\n"
         "    <priority>0.8</priority>\n"
         "  </url>",
         "  <url>\n"
         "    <loc>https://www.calendrier-tempo.fr/a-propos</loc>\n"
-        f"    <lastmod>{today}</lastmod>\n"
+        f"    <lastmod>{_STATIC_LASTMOD}</lastmod>\n"
         "    <changefreq>monthly</changefreq>\n"
         "    <priority>0.5</priority>\n"
         "  </url>",
         "  <url>\n"
         "    <loc>https://www.calendrier-tempo.fr/mentions-legales</loc>\n"
-        f"    <lastmod>{today}</lastmod>\n"
+        f"    <lastmod>{_STATIC_LASTMOD}</lastmod>\n"
         "    <changefreq>monthly</changefreq>\n"
         "    <priority>0.3</priority>\n"
         "  </url>",
