@@ -36,6 +36,7 @@ class Article:
     reading_time: int  # minutes
     updated_date: date | None = None  # date de dernière mise à jour (si différente de publish_date)
     cluster: str = ""  # topic cluster (pilier ou satellite)
+    faq_items: list | None = None  # [(question, answer), ...] extracted from FAQ section
 
 
 def _parse_frontmatter(raw: str) -> tuple[dict[str, str], str]:
@@ -56,6 +57,37 @@ def _estimate_reading_time(text: str) -> int:
     """Estime le temps de lecture (~220 mots/min en français)."""
     words = len(text.split())
     return max(1, round(words / 220))
+
+
+_FAQ_SECTION_RE = re.compile(
+    r"^## (?:FAQ|Questions)[^\n]*\n(.*?)(?=\n## |\n---|\Z)",
+    re.DOTALL | re.MULTILINE,
+)
+_FAQ_QA_RE = re.compile(
+    r"^### ([^\n]+\?)\s*\n\n(.+?)(?=\n### |\n## |\n---|\Z)",
+    re.DOTALL | re.MULTILINE,
+)
+
+
+def _extract_faq(body: str) -> list[tuple[str, str]] | None:
+    """Extrait les paires Q/A de la section FAQ d'un article Markdown.
+
+    Format attendu : ## FAQ ... ### Question ? \\n\\n Réponse
+    Retourne None si aucune FAQ trouvée.
+    """
+    m = _FAQ_SECTION_RE.search(body)
+    if not m:
+        return None
+    faq_text = m.group(1)
+    items = []
+    for qa in _FAQ_QA_RE.finditer(faq_text):
+        question = qa.group(1).strip()
+        # Nettoyer le Markdown de la réponse (retirer ** et [] links)
+        answer = qa.group(2).strip()
+        answer = re.sub(r"\*\*([^*]+)\*\*", r"\1", answer)
+        answer = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", answer)
+        items.append((question, answer))
+    return items if items else None
 
 
 def _load_article(filepath: Path) -> Article | None:
@@ -80,6 +112,7 @@ def _load_article(filepath: Path) -> Article | None:
             pass
     md = markdown.Markdown(extensions=_MD_EXTENSIONS)
     content_html = md.convert(body)
+    faq_items = _extract_faq(body)
     return Article(
         slug=filepath.stem,
         title=meta["title"],
@@ -90,6 +123,7 @@ def _load_article(filepath: Path) -> Article | None:
         reading_time=_estimate_reading_time(body),
         updated_date=updated,
         cluster=meta.get("cluster", ""),
+        faq_items=faq_items,
     )
 
 
@@ -127,4 +161,17 @@ def get_all_article_slugs() -> list[tuple[str, date]]:
         art = _load_article(f)
         if art and art.publish_date <= date.today():
             result.append((art.slug, art.publish_date))
+    return result
+
+
+def get_all_article_meta() -> list[tuple[str, str, str, date]]:
+    """Retourne (slug, title, description, publish_date) des articles publiés pour llms.txt."""
+    result: list[tuple[str, str, str, date]] = []
+    if not _ARTICLES_DIR.is_dir():
+        return result
+    for f in sorted(_ARTICLES_DIR.glob("*.md")):
+        art = _load_article(f)
+        if art and art.publish_date <= date.today():
+            result.append((art.slug, art.title, art.description, art.publish_date))
+    result.sort(key=lambda x: x[3], reverse=True)
     return result

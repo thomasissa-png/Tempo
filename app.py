@@ -865,6 +865,9 @@ async def robots_txt():
         "Allow: /calendrier\n"
         "Allow: /alertes\n"
         "Allow: /blog/\n"
+        "Allow: /llms.txt\n"
+        "Allow: /llms-full.txt\n"
+        "Allow: /feed.xml\n"
         "Allow: /api/today\n"
         "Allow: /api/tomorrow\n"
         "Allow: /api/predictions\n"
@@ -878,6 +881,9 @@ async def robots_txt():
         "Allow: /calendrier\n"
         "Allow: /alertes\n"
         "Allow: /blog/\n"
+        "Allow: /llms.txt\n"
+        "Allow: /llms-full.txt\n"
+        "Allow: /feed.xml\n"
         "Allow: /api/today\n"
         "Allow: /api/tomorrow\n"
         "Allow: /api/predictions\n"
@@ -1156,15 +1162,15 @@ async def llms_txt():
     Format spec : https://llmstxt.org/
     H1 (requis) → blockquote résumé → sections H2 avec listes de liens.
     """
-    from blog import get_all_article_slugs
+    from blog import get_all_article_meta
     today_str = date.today().isoformat()
 
-    # Articles de blog publiés
+    # Articles de blog publiés — avec titre et description pour les LLMs
     blog_links = ""
-    for slug, pub_date in get_all_article_slugs():
+    for slug, title, description, _pub in get_all_article_meta():
+        desc_part = f": {description}" if description else ""
         blog_links += (
-            f"- [/blog/{slug}](https://www.calendrier-tempo.fr/blog/{slug}): "
-            f"Article publié le {pub_date.isoformat()}\n"
+            f"- [{title}](https://www.calendrier-tempo.fr/blog/{slug}){desc_part}\n"
         )
 
     return PlainTextResponse(

@@ -36,6 +36,10 @@
     <meta property="og:image:alt" content="{{ article.title }}">
     <meta property="article:published_time" content="{{ article.publish_date.isoformat() }}">
     <meta property="article:modified_time" content="{{ (article.updated_date or article.publish_date).isoformat() }}">
+    <meta property="article:section" content="{{ article.cluster or 'Tempo EDF' }}">
+    {% for tag in article.keywords.split(', ') if tag.strip() %}
+    <meta property="article:tag" content="{{ tag.strip() }}">
+    {% endfor %}
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="{{ article.title }}">
@@ -90,6 +94,27 @@
         ]
     }
     </script>
+    {% if article.faq_items %}
+    <!-- JSON-LD FAQPage — rich results Google -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            {% for question, answer in article.faq_items %}
+            {
+                "@type": "Question",
+                "name": "{{ question }}",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "{{ answer | e }}"
+                }
+            }{% if not loop.last %},{% endif %}
+            {% endfor %}
+        ]
+    }
+    </script>
+    {% endif %}
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
