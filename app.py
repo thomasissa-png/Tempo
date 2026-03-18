@@ -759,21 +759,26 @@ async def page_a_propos(request: Request):
     return templates.TemplateResponse("a_propos.html", {"request": request})
 
 
-@app.get("/blog", response_class=RedirectResponse)
-async def redirect_blog():
-    """Redirige /blog vers /blog/ (trailing slash canonique)."""
-    return RedirectResponse(url="/blog/", status_code=301)
-
-
-@app.get("/blog/", response_class=HTMLResponse)
-async def page_blog_index(request: Request):
-    """Page index du blog — liste les articles publiés."""
+async def _render_blog_index(request: Request):
+    """Render blog index page (shared by /blog and /blog/)."""
     from blog import get_published_articles
     articles = get_published_articles()
     return templates.TemplateResponse("blog_index.html", {
         "request": request,
         "articles": articles,
     })
+
+
+@app.get("/blog", response_class=HTMLResponse, include_in_schema=False)
+async def page_blog(request: Request):
+    """Sert /blog directement (évite le 301 redirect)."""
+    return await _render_blog_index(request)
+
+
+@app.get("/blog/", response_class=HTMLResponse)
+async def page_blog_index(request: Request):
+    """Page index du blog — liste les articles publiés."""
+    return await _render_blog_index(request)
 
 
 @app.get("/blog/{slug}", response_class=HTMLResponse)
@@ -838,6 +843,17 @@ async def favicon():
     return FileResponse(
         Path(__file__).parent / "static" / "favicon.ico",
         media_type="image/x-icon",
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
+
+
+# Browsers auto-request these at root level — serve the real file to avoid 404s
+@app.get("/apple-touch-icon.png", include_in_schema=False)
+@app.get("/apple-touch-icon-precomposed.png", include_in_schema=False)
+async def apple_touch_icon():
+    return FileResponse(
+        Path(__file__).parent / "static" / "favicon-180.png",
+        media_type="image/png",
         headers={"Cache-Control": "public, max-age=86400"},
     )
 
