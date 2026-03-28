@@ -1,0 +1,168 @@
+# Calendrier éditorial — Blog Calendrier Tempo EDF
+# Mis à jour automatiquement chaque mardi par l'agent SEO.
+# Dernière mise à jour : 2026-02-25
+
+articles_publies:
+  - date: "2026-02-17"
+    slug: economiser-tempo-edf
+    titre: "Comment économiser avec Tempo EDF en 2026"
+    mot_cle: "économiser tempo edf"
+    cluster: tempo-guide
+    statut: publié
+
+  - date: "2026-02-17"
+    slug: tempo-edf-2026-guide-complet
+    titre: "Tempo EDF en 2026 : le guide complet pour les abonnés"
+    mot_cle: "tempo edf 2026"
+    cluster: tempo-guide
+    type: pilier
+    statut: publié
+
+  - date: "2026-02-17"
+    slug: calendrier-tempo-historique-saisons
+    titre: "Historique du calendrier Tempo EDF : toutes les saisons depuis 2020"
+    mot_cle: "historique tempo edf"
+    cluster: calendrier
+    type: pilier
+    statut: publié
+
+  - date: "2026-02-24"
+    slug: jours-rouges-tempo-guide
+    titre: "Jours rouges Tempo EDF : le guide complet 2025-2026"
+    mot_cle: "jours rouges tempo"
+    cluster: jours-rouges
+    type: pilier
+    statut: publié
+
+  - date: "2026-03-03"
+    slug: tempo-vs-heures-creuses-edf-bleu
+    titre: "Tempo vs Heures Creuses vs EDF Bleu : quel contrat choisir ?"
+    mot_cle: "tempo vs heures creuses"
+    cluster: tempo-guide
+    statut: programmé
+
+  - date: "2026-03-10"
+    slug: calendrier-tempo-2025-2026-dates
+    titre: "Calendrier Tempo 2025-2026 : toutes les dates et couleurs"
+    mot_cle: "calendrier tempo 2025-2026"
+    cluster: calendrier
+    statut: programmé
+
+  - date: "2026-03-17"
+    slug: alerte-jour-rouge-tempo
+    titre: "Alerte jour rouge Tempo : comment être prévenu à temps"
+    mot_cle: "alerte jour rouge tempo"
+    cluster: jours-rouges
+    statut: programmé
+
+  - date: "2026-03-24"
+    slug: chauffage-jour-rouge-tempo-astuces
+    titre: "Chauffage et jour rouge Tempo : 10 astuces pour réduire la facture"
+    mot_cle: "chauffage jour rouge tempo"
+    cluster: jours-rouges
+    statut: programmé
+
+prochaines_semaines:
+  - numero: 1
+    date: "2026-03-31"
+    slug: fin-saison-rouge-tempo-bilan
+    titre: "Fin de saison rouge Tempo : bilan et derniers jours"
+    mot_cle: "fin saison tempo rouge"
+    cluster: jours-rouges
+    type: nouveau
+    statut: à rédiger
+
+  - numero: 2
+    date: "2026-04-07"
+    slug: bilan-saison-tempo-2025-2026
+    titre: "Bilan saison Tempo 2025-2026 : statistiques et leçons"
+    mot_cle: "bilan tempo 2025-2026"
+    cluster: calendrier
+    type: nouveau
+    statut: à rédiger
+
+  - numero: 3
+    date: "2026-04-14"
+    slug: null
+    titre: "REFRESH : mise à jour tempo-edf-2026-guide-complet"
+    mot_cle: "tempo edf 2026"
+    cluster: tempo-guide
+    type: refresh
+    statut: à rédiger
+
+  - numero: 4
+    date: "2026-04-21"
+    slug: preparer-saison-tempo-2026-2027
+    titre: "Préparer la saison Tempo 2026-2027 : checklist avant septembre"
+    mot_cle: "préparer saison tempo"
+    cluster: preparation
+    type: nouveau
+    statut: à rédiger
+
+  - numero: 5
+    date: "2026-04-28"
+    slug: tempo-edf-avis-retour-experience
+    titre: "Tempo EDF avis : est-ce vraiment rentable en 2026 ?"
+    mot_cle: "tempo edf avis"
+    cluster: tempo-guide
+    type: nouveau
+    statut: à rédiger
+
+  - numero: 6
+    date: "2026-05-05"
+    slug: linky-tempo-suivre-consommation
+    titre: "Linky et Tempo EDF : suivre sa consommation en temps réel"
+    mot_cle: "linky tempo"
+    cluster: equipements
+    type: nouveau
+    statut: à rédiger
+
+  - numero: 7
+    date: "2026-05-12"
+    slug: null
+    titre: "REFRESH : mise à jour jours-rouges-tempo-guide (post-saison)"
+    mot_cle: "jours rouges tempo"
+    cluster: jours-rouges
+    type: refresh
+    statut: à rédiger
+
+  - numero: 8
+    date: "2026-05-19"
+    slug: pompe-a-chaleur-tempo-edf
+    titre: "Pompe à chaleur et Tempo EDF : compatibilité et stratégies"
+    mot_cle: "pompe à chaleur tempo"
+    cluster: equipements
+    type: nouveau
+    statut: à rédiger
+
+  - numero: 9
+    date: "2026-05-26"
+    slug: recharge-vehicule-electrique-tempo
+    titre: "Véhicule électrique et Tempo : optimiser la recharge"
+    mot_cle: "voiture électrique tempo"
+    cluster: equipements
+    type: nouveau
+    statut: à rédiger
+
+  - numero: 10
+    date: "2026-06-02"
+    slug: simulation-tempo-edf-economies
+    titre: "Tempo EDF simulation : estimez vos économies annuelles"
+    mot_cle: "simulation tempo edf"
+    cluster: tempo-guide
+    type: nouveau
+    statut: à rédiger
+
+regles:
+  frequence: "1 article chaque mardi"
+  alternance: "3 articles neufs, 1 semaine de rafraîchissement (REFRESH)"
+  longueur: "1200-2000 mots (5-8 min de lecture)"
+  style: "vouvoiement, ton expert accessible"
+  saisonnalite:
+    nov_mars: "jours rouges, chauffage, alertes, gestion quotidienne"
+    avril_aout: "bilans, préparation, comparatifs, équipements, evergreen"
+    sept_oct: "rentrée Tempo, guides nouveaux abonnés"
+  clusters: "chaque article rattaché à un cluster ; satellite → lien vers pilier obligatoire"
+  maillage: "min 5 liens internes par article (3 blog + /calendrier + /#subscribe + pilier)"
+  anti_cannibalisation: "pas de doublon d'intention de recherche"
+  featured_snippets: "au moins 1 élément optimisé par article (tableau, liste, définition 40-60 mots)"

@@ -50,7 +50,7 @@ TempoForecast/
 ├── config.py               # Configuration centralisée (.env)
 ├── database.py             # SQLite — 6 tables, init, utilitaires
 ├── tempo_client.py         # Client API Tempo officielle
-├── weather_client.py       # Client Open-Meteo (previsions 16 jours)
+├── weather_client.py       # Client Meteo France (AROME + ARPEGE + Vigilance)
 ├── predictor.py            # Algorithme de prédiction v1 (scoring par points)
 ├── performance_tracker.py  # Auto-amélioration, métriques, recalcul poids
 ├── alerts.py               # Alertes SMS Twilio, gestion users
@@ -123,15 +123,19 @@ Les poids sont recalculés automatiquement chaque mois via régression logistiqu
 Dans l'onglet "Secrets" de Replit, ajouter :
 
 ```
+METEOFRANCE_API_KEY=votre_cle_api_meteofrance
 TWILIO_ACCOUNT_SID=votre_sid_twilio
 TWILIO_AUTH_TOKEN=votre_token_twilio
 TWILIO_PHONE_NUMBER=+33xxxxxxxxx
 ADMIN_PASSWORD=votre_mot_de_passe_admin
 ```
 
-> **Note** : La météo utilise [Open-Meteo](https://open-meteo.com/) (gratuit, 16 jours, aucune clé API nécessaire).
-
 ### 3. Obtenir les clés API
+
+**Météo France** (météo — AROME/ARPEGE/Vigilance) :
+1. Créer un compte sur [portail-api.meteofrance.fr](https://portail-api.meteofrance.fr/)
+2. S'abonner aux API : AROME, ARPEGE, Vigilance (gratuit)
+3. Générer un token via "Mes APIs" → "Générer token"
 
 **Twilio** (SMS) :
 1. Créer un compte sur [twilio.com](https://www.twilio.com/)
@@ -144,7 +148,7 @@ pip install -r requirements.txt
 python main.py
 ```
 
-L'app sera accessible sur le port 8000. Le scheduler démarre automatiquement.
+L'app sera accessible sur le port 5000 (configurable via `PORT`). Le scheduler démarre automatiquement.
 
 ---
 
@@ -197,4 +201,4 @@ L'app sera accessible sur le port 8000. Le scheduler démarre automatiquement.
 - **SMS** : Twilio
 - **Scheduler** : APScheduler (AsyncIO)
 - **Frontend** : HTML5, CSS3, JavaScript vanilla, Chart.js
-- **APIs externes** : API Tempo officielle, Open-Meteo (meteo 16j gratuit), RTE eco2mix
+- **APIs externes** : API Tempo officielle, Météo France (AROME/ARPEGE/Vigilance), RTE eco2mix

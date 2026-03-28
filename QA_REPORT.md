@@ -81,7 +81,7 @@
 | 4.8 | **confirm_prediction écrase les données originales** | ❌ | Haute | `confirm_prediction()` (predictor.py) remplace `couleur_predite`, score, probabilités par la vérité officielle. **Les données de prédiction originales sont perdues.** Si l'évaluation de performance n'a pas encore tourné, impossible de mesurer la qualité de la prédiction. |
 | 4.9 | **Race condition evaluation ↔ confirmation** | ❌ | Haute | Le scheduler 11h30 fait : `evaluate_predictions_for_date()` → `confirm_prediction()`. L'ordre est correct **si** le même cycle s'exécute atomiquement. Mais `evaluate_predictions_for_date()` line 52 **skip les predictions confirmées**. Si 2 exécutions concurrentes (retry), la 2ème appelle `evaluate` après `confirm` de la 1ère → 0 prédictions évaluées. |
 | 4.10 | Prédictions hors saison (juin-août) → BLEU | ✅ | — | Return immédiat dans `predict_day()` |
-| 4.11 | Saison correcte (1er sept → 31 mai) | ✅ | — | `get_season_dates()` gère le chevauchement d'années |
+| 4.11 | Saison correcte (1er sept → 31 août) | ✅ | — | `get_season_dates()` gère le chevauchement d'années |
 | 4.12 | **Date affichée off-by-one en JS (timezone UTC)** | ⚠️ | Moyenne | `new Date("2026-02-10")` en JS est interprété en UTC. Pour un user en France (UTC+1), `getDay()` peut renvoyer le jour précédent si l'heure locale est entre 0h et 1h. Ex: "2026-02-10" → Date(UTC 00:00) → en France c'est encore le 9 → mauvais jour de la semaine affiché. |
 | 4.13 | Groupement prédictions ("3 prochains jours" / "cette semaine") | ✅ | — | Slicing correct (0-3, 3-7, 7+) |
 
@@ -94,7 +94,7 @@
 | 5.1 | Hors saison (juin-août) → tout BLEU | ✅ | — | `predict_day()` line 98 |
 | 5.2 | Quotas rouges épuisés → pas de rouge prédit | ✅ | — | `remaining["ROUGE"] == 0` → skip ROUGE |
 | 5.3 | Quotas rouge ET blanc épuisés → tout BLEU | ✅ | — | Early return line 106 |
-| 5.4 | API météo down → fallback données simulées | ✅ | — | `weather_client.py` fallback + warning affiché |
+| 5.4 | API météo down → pas de prédiction (plus de fallback simulé) | ✅ | — | `weather_client.py` retourne [] si Météo France indisponible |
 | 5.5 | API Tempo down → "Données non disponibles" | ✅ | — | `/api/today` retourne `status: "unavailable"` |
 | 5.6 | API RTE down → prédiction sans score RTE | ✅ | — | `rte_score = None`, facteur ignoré |
 | 5.7 | Cache prédictions (5 min) | ✅ | — | Lock asyncio + double-check |

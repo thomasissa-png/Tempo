@@ -1,0 +1,92 @@
+# Regles SEO en vigueur
+# Ce fichier est mis a jour automatiquement par l'agent SEO lors de l'Etape 0.
+# Derniere verification : 2026-02-19
+#
+# Garde-fou : les regles fondamentales ne peuvent PAS etre supprimees.
+# Seules les pratiques techniques (structured data, formats, outils) peuvent etre mises a jour.
+# Les principes (E-E-A-T, contenu utile, pas de bourrage, liens internes) sont permanents.
+
+google_principes_permanents:
+  - "E-E-A-T (Experience, Expertise, Authoritativeness, Trustworthiness) : priorite au contenu demontrant une expertise reelle"
+  - "Helpful Content System : penalise le contenu cree pour le SEO sans valeur utilisateur"
+  - "AI-generated content : accepte tant qu'il est utile, original et de qualite"
+
+google_pratiques_techniques:
+  date_maj: "2026-02"
+  regles:
+    - "Structured Data : JSON-LD recommande pour Article, FAQPage, BreadcrumbList, HowTo"
+    - "Core Web Vitals : LCP < 2.5s, FID < 100ms, CLS < 0.1"
+    - "Mobile-first indexing : 100% des sites indexes en mobile-first"
+    - "Featured Snippets : paragraphes 40-60 mots, listes, tableaux"
+    - "dateModified : signal de fraicheur important — mettre a jour quand le contenu change"
+
+moteurs_ia_pratiques_techniques:
+  date_maj: "2026-02"
+  regles:
+    - "llms.txt : standard emergent pour les crawlers IA"
+    - "Structured data : les moteurs IA s'appuient fortement sur JSON-LD et FAQ"
+    - "Contenu factuel : donnees chiffrees verifiables privilegiees"
+    - "Fraicheur : contenus recemment mis a jour favorises"
+    - "Citations : les moteurs IA citent les sources avec des reponses completes et directes"
+
+bonnes_pratiques_articles:
+  - "H1 unique par page"
+  - "Hierarchie H1 > H2 > H3 stricte"
+  - "Liens internes contextuels (min 3 + pilier)"
+  - "Meta description unique et actionnable"
+  - "URL courte en kebab-case"
+  - "Contenu > 1200 mots pour les piliers, > 800 pour les satellites"
+  - "FAQ pour featured snippets"
+  - "Optimisation featured snippet sur chaque H2"
+
+mots_cles_cibles:
+  date_maj: "2026-02-25"
+  source: "Audit SEO proprietaire"
+  priorite_1_volume_eleve:
+    - "tempo edf"
+    - "edf tempo"
+    - "calendrier tempo edf"
+    - "edf tempo calendrier"
+    - "edf tempo couleur du jour"
+    - "tarif tempo edf"
+    - "tempo edf couleur du jour"
+    - "couleur du jour tempo edf"
+    - "couleur edf tempo"
+    - "jour tempo edf"
+    - "jours tempo edf"
+    - "edf jours tempos"
+    - "tempo edf calendrier"
+    - "edf tempo calendrier 2025"
+    - "edf tempo calendrier 2026"
+    - "edf tempo couleur du jour et du lendemain des 12h"
+  note: "IMPORTANT - les requetes 'EDF Tempo' (ordre inverse) representent ~40% du volume. Chaque page doit inclure naturellement les deux ordres."
+
+tarifs_tempo:
+  date_maj: "2026-02"
+  saison: "2025-2026"
+  abonnement_mensuel: "15.96"
+  bleu_hp: "0.1612"
+  bleu_hc: "0.1325"
+  blanc_hp: "0.1871"
+  blanc_hc: "0.1499"
+  rouge_hp: "0.7060"
+  rouge_hc: "0.1575"
+  note: "Les tarifs changent generalement en fevrier. Lors de l'Etape 0, si la date_maj a plus de 12 mois, l'agent DOIT verifier les tarifs en vigueur via web_search('tarif tempo edf {annee}') et mettre a jour cette section."
+
+saison_tempo:
+  saison_courante: "2025-2026"
+  debut: "2025-09-01"
+  fin: "2026-08-31"
+  periode_rouge: "2025-11-01 au 2026-03-31"
+  note: "En septembre, l'agent doit mettre a jour la saison_courante et les dates. Les articles de la nouvelle saison (guides, calendrier) doivent etre prioritaires en pre-saison (sept-oct)."
+
+historique:
+  - date: "2026-02-19"
+    changement: "Creation initiale des regles"
+    source: "Audit SEO complet du site"
+  - date: "2026-02-19"
+    changement: "Ajout topic clusters, featured snippets, maillage bidirectionnel, PAA"
+    source: "Audit agent v2"
+  - date: "2026-02-25"
+    changement: "Ajout mots-cles cibles proprietaire (16 requetes, incl. variantes EDF Tempo inversees et requetes avec annee)"
+    source: "Audit SEO complet avec proprietaire"

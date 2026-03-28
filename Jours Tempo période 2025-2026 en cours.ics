@@ -1,0 +1,2189 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:Jours Tempo - Arthur Maroulier
+NAME:Jours Tempo
+X-WR-CALNAME:Jours Tempo
+DESCRIPTION:Calendrier donnant la couleur Tempo quotidienne.\n\nPour plus d
+ 'informations\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vo
+ us pouvez soutenir mon travail ici : https://www.buymeacoffee.com/arthurma
+ roulier?l=fr
+X-WR-CALDESC:Calendrier donnant la couleur Tempo quotidienne.\n\nPour plus 
+ d'informations\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, v
+ ous pouvez soutenir mon travail ici : https://www.buymeacoffee.com/arthurm
+ aroulier?l=fr
+SOURCE;VALUE=URI:https://jours-tempo.fr/souscription/calendrier/bleu-blanc-
+ rouge
+REFRESH-INTERVAL;VALUE=DURATION:PT60M
+X-PUBLISHED-TTL:PT60M
+BEGIN:VTIMEZONE
+TZID:Europe/Paris
+BEGIN:DAYLIGHT
+DTSTART:20250330T010000
+TZOFFSETFROM:+0100
+TZOFFSETTO:+0200
+END:DAYLIGHT
+BEGIN:STANDARD
+DTSTART:20251026T030000
+TZOFFSETFROM:+0200
+TZOFFSETTO:+0100
+END:STANDARD
+BEGIN:DAYLIGHT
+DTSTART:20260329T010000
+TZOFFSETFROM:+0100
+TZOFFSETTO:+0200
+END:DAYLIGHT
+END:VTIMEZONE
+BEGIN:VTIMEZONE
+TZID:UTC
+BEGIN:STANDARD
+DTSTART:20250517T050933
+TZOFFSETFROM:+0000
+TZOFFSETTO:+0000
+END:STANDARD
+END:VTIMEZONE
+BEGIN:VEVENT
+UID:698c0f0d19bbb
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20250901
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19d04
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20250902
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19d19
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20250903
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19d26
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20250904
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19d31
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20250905
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19d3b
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20250906
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19d45
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20250907
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19d4e
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20250908
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19d57
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20250909
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19d61
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20250910
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19d6b
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20250911
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19d77
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20250912
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19d86
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20250913
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19d93
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20250914
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19d9c
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20250915
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19da6
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20250916
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19daf
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20250917
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19dbb
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20250918
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19dc5
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20250919
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19dcf
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20250920
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19dd8
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20250921
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19de2
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20250922
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19def
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20250923
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19df9
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20250924
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19e02
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20250925
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19e0b
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20250926
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19e15
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20250927
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19e1e
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20250928
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19e27
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20250929
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19e30
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20250930
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19e3b
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251001
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19e49
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251002
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19e56
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251003
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19e60
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251004
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19e6a
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251005
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19e73
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251006
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19e7d
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251007
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19e86
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251008
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19e90
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251009
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19e9d
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251010
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19ea7
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251011
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19eb0
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251012
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19eb9
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251013
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19ec2
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251014
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19ecb
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251015
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19ed4
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251016
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19edd
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251017
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19ee7
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251018
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19ef4
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251019
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19f01
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251020
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19f0d
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251021
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19f1a
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251022
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19f27
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251023
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19f32
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251024
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19f3c
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251025
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19f45
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251026
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19f4e
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251027
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19f5a
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251028
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19f66
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251029
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19f74
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251030
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19f82
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251031
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19f8f
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251101
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19f99
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251102
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19fa2
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251103
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19fac
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251104
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19fb6
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251105
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19fc0
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251106
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19fcc
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251107
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19fd9
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251108
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19fe3
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251109
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19fec
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251110
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19ff5
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251111
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d19ffe
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251112
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a007
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251113
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a010
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251114
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a019
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251115
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a022
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251116
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a02b
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251117
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a034
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251118
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a03e
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251119
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a048
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Blanc
+DESCRIPTION:La couleur Tempo du jour est Blanc.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251120
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a051
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Blanc
+DESCRIPTION:La couleur Tempo du jour est Blanc.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251121
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a05a
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251122
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a063
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251123
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a06c
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251124
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a075
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251125
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a07e
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Blanc
+DESCRIPTION:La couleur Tempo du jour est Blanc.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251126
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a089
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Blanc
+DESCRIPTION:La couleur Tempo du jour est Blanc.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251127
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a092
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251128
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a09b
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251129
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a0a4
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251130
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a0ad
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251201
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a0b5
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Blanc
+DESCRIPTION:La couleur Tempo du jour est Blanc.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251202
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a0be
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Blanc
+DESCRIPTION:La couleur Tempo du jour est Blanc.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251203
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a0c7
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251204
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a0d0
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251205
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a0d9
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251206
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a0e2
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251207
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a0ec
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251208
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a0f7
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251209
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a103
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251210
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a10c
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251211
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a116
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Blanc
+DESCRIPTION:La couleur Tempo du jour est Blanc.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251212
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a121
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251213
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a12d
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251214
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a13a
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251215
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a148
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Blanc
+DESCRIPTION:La couleur Tempo du jour est Blanc.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251216
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a15c
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Blanc
+DESCRIPTION:La couleur Tempo du jour est Blanc.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251217
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a16a
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251218
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a174
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Blanc
+DESCRIPTION:La couleur Tempo du jour est Blanc.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251219
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a17e
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251220
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a18b
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251221
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a197
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Blanc
+DESCRIPTION:La couleur Tempo du jour est Blanc.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251222
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a1a1
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251223
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a1ab
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251224
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a1b7
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251225
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a1c0
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Blanc
+DESCRIPTION:La couleur Tempo du jour est Blanc.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251226
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a1c9
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Blanc
+DESCRIPTION:La couleur Tempo du jour est Blanc.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251227
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a1d2
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251228
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a1dc
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Rouge
+DESCRIPTION:La couleur Tempo du jour est Rouge.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251229
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a1e6
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Blanc
+DESCRIPTION:La couleur Tempo du jour est Blanc.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251230
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a1ef
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Rouge
+DESCRIPTION:La couleur Tempo du jour est Rouge.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20251231
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a1f8
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Blanc
+DESCRIPTION:La couleur Tempo du jour est Blanc.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260101
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a201
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Blanc
+DESCRIPTION:La couleur Tempo du jour est Blanc.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260102
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a20a
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Blanc
+DESCRIPTION:La couleur Tempo du jour est Blanc.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260103
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a213
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260104
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a21c
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Rouge
+DESCRIPTION:La couleur Tempo du jour est Rouge.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260105
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a225
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Rouge
+DESCRIPTION:La couleur Tempo du jour est Rouge.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260106
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a22f
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Rouge
+DESCRIPTION:La couleur Tempo du jour est Rouge.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260107
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a238
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Blanc
+DESCRIPTION:La couleur Tempo du jour est Blanc.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260108
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a241
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260109
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a24a
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Blanc
+DESCRIPTION:La couleur Tempo du jour est Blanc.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260110
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a256
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260111
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a262
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260112
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a26b
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260113
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a274
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Blanc
+DESCRIPTION:La couleur Tempo du jour est Blanc.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260114
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a27d
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260115
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a286
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Blanc
+DESCRIPTION:La couleur Tempo du jour est Blanc.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260116
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a28f
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260117
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a29a
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260118
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a2a4
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Blanc
+DESCRIPTION:La couleur Tempo du jour est Blanc.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260119
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a2ad
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Blanc
+DESCRIPTION:La couleur Tempo du jour est Blanc.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260120
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a2b6
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260121
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a2bf
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Blanc
+DESCRIPTION:La couleur Tempo du jour est Blanc.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260122
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a2cb
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260123
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a2d4
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260124
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a2e0
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260125
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a2ea
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Rouge
+DESCRIPTION:La couleur Tempo du jour est Rouge.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260126
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a2f4
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Blanc
+DESCRIPTION:La couleur Tempo du jour est Blanc.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260127
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a2fd
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Rouge
+DESCRIPTION:La couleur Tempo du jour est Rouge.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260128
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a306
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Rouge
+DESCRIPTION:La couleur Tempo du jour est Rouge.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260129
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a310
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260130
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a319
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Blanc
+DESCRIPTION:La couleur Tempo du jour est Blanc.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260131
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a322
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260201
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a32c
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Blanc
+DESCRIPTION:La couleur Tempo du jour est Blanc.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260202
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a335
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Blanc
+DESCRIPTION:La couleur Tempo du jour est Blanc.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260203
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a33e
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260204
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a347
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260205
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a350
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260206
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a359
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260207
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a363
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260208
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a36c
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Blanc
+DESCRIPTION:La couleur Tempo du jour est Blanc.\nLes Heures Pleines sont de
+  6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informa
+ tions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouve
+ z soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?
+ l=fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260209
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a375
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260210
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a37e
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260211
+END:VEVENT
+BEGIN:VEVENT
+UID:698c0f0d1a38b
+DTSTAMP:20260211T050933Z
+SUMMARY:Tempo : Bleu
+DESCRIPTION:La couleur Tempo du jour est Bleu.\nLes Heures Pleines sont de 
+ 6H à 22H et les Heures Creuses sont de 22H à 6H.\n\nPour plus d'informat
+ ions\, visitez https://jours-tempo.fr\n\nSi vous le désirez\, vous pouvez
+  soutenir mon travail ici : https://www.buymeacoffee.com/arthurmaroulier?l
+ =fr
+X-MICROSOFT-CDO-ALLDAYEVENT:TRUE
+ATTACH:https://jours-tempo.fr/images/social_sharing_image.jpg
+DTSTART;TZID=Europe/Paris;VALUE=DATE:20260212
+END:VEVENT
+END:VCALENDAR

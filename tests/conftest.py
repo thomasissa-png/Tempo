@@ -15,6 +15,8 @@ def use_test_db(tmp_path, monkeypatch):
     """Utilise une base de données temporaire pour chaque test."""
     db_path = str(tmp_path / "test_tempo.db")
     monkeypatch.setattr("config.Config.DATABASE_PATH", db_path)
+    # Disable start date filter in tests (test data uses arbitrary dates)
+    monkeypatch.setattr("config.Config.PREDICTION_START_DATE", "2000-01-01")
     from database import init_db
     init_db()
     yield db_path
@@ -42,11 +44,17 @@ def sample_weather():
 
 @pytest.fixture
 def cold_weather():
-    """Données météo très froides (vague de froid)."""
+    """Données météo très froides (vague de froid).
+    Commence un lundi pour éviter les règles EDF weekends (R2/R3)."""
     today = date.today()
+    # Trouver le prochain lundi (weekday=0)
+    days_until_monday = (7 - today.weekday()) % 7
+    if days_until_monday == 0:
+        days_until_monday = 7
+    start = today + timedelta(days=days_until_monday)
     return [
         {
-            "date": (today + timedelta(days=i)).isoformat(),
+            "date": (start + timedelta(days=i)).isoformat(),
             "temp_min": -6,
             "temp_max": -2,
             "temp_moy": -4,
@@ -56,7 +64,7 @@ def cold_weather():
             "description": "grand froid",
             "forecast_quality": "api",
         }
-        for i in range(1, 6)
+        for i in range(5)
     ]
 
 

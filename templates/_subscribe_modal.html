@@ -1,0 +1,345 @@
+<!-- Modal inscription alertes — partial inclus dans toutes les pages -->
+<div id="subscribe"></div>
+<div class="subscribe-modal-overlay" id="subscribe-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" style="display:none">
+    <div class="subscribe-modal">
+        <button class="modal-close" id="modal-close" aria-label="Fermer">&times;</button>
+        <h2 id="modal-title">Anticipez les 7 prochains jours Tempo <span class="beta-badge">En test</span></h2>
+        <p class="sub-desc">
+            100% gratuit, sans engagement, 1 message par jour maximum.
+            <span class="beta-notice">Nouvelle fonctionnalit&eacute; &mdash; des perturbations ponctuelles sont possibles.</span>
+        </p>
+        <div class="sms-preview" id="modal-sms-preview">
+            <div class="sms-preview-label">&#128172; Exemple de message que vous recevrez :</div>
+            <div class="sms-bubble" id="modal-sms-bubble">
+                <!-- Content generated dynamically by updateSmsBubble() -->
+            </div>
+        </div>
+        <form id="modal-subscribe-form">
+            <!-- Anti-bot: honeypot field (invisible to humans, filled by bots) -->
+            <div style="position:absolute;left:-9999px" aria-hidden="true">
+                <input type="text" name="website" tabindex="-1" autocomplete="off" id="modal-hp">
+            </div>
+            <input type="hidden" name="t" id="modal-ts" value="">
+            <div class="form-simple">
+                <div class="form-group">
+                    <label for="modal-phone">Votre num&eacute;ro de mobile</label>
+                    <input type="tel" id="modal-phone" name="phone" placeholder="06 12 34 56 78" required autocomplete="tel" inputmode="tel">
+                    <span class="phone-feedback" id="modal-phone-feedback" aria-live="polite"></span>
+                </div>
+                <div class="form-group" style="margin-top:10px">
+                    <label style="font-size:.88rem;font-weight:600;margin-bottom:4px;display:block">Quelles alertes souhaitez-vous&nbsp;?</label>
+                    <div style="display:flex;flex-direction:column;gap:6px">
+                        <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;cursor:pointer">
+                            <input type="checkbox" name="alerte_rouge" id="modal-alerte-rouge" checked>
+                            <span>Alertes jours <strong>rouge</strong></span>
+                        </label>
+                        <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;cursor:pointer">
+                            <input type="checkbox" name="alerte_blanc" id="modal-alerte-blanc">
+                            <span>Alertes jours <strong>blanc</strong></span>
+                        </label>
+                        <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;cursor:pointer">
+                            <input type="checkbox" name="recap_hebdo" id="modal-recap-hebdo" checked>
+                            <span>R&eacute;cap hebdomadaire (chaque dimanche)</span>
+                        </label>
+                    </div>
+                    <span class="form-hint" style="margin-top:6px;display:block">Alertes actives du 1<sup>er</sup> novembre au 31 mars. Modifiables &agrave; tout moment.</span>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-subscribe" id="modal-subscribe-btn">Recevoir mon alerte gratuite</button>
+            <p class="form-legal">
+                <strong class="social-proof">D&eacute;j&agrave; plus de 2&nbsp;500 foyers Tempo alert&eacute;s dans toute la France.</strong><br>
+                Votre num&eacute;ro est prot&eacute;g&eacute; et ne sera jamais partag&eacute;.
+                D&eacute;sinscription en 1 clic &agrave; tout moment.
+                <a href="/mentions-legales">Politique de confidentialit&eacute;</a>
+            </p>
+        </form>
+        <div id="modal-form-result" class="form-result"></div>
+        <div class="modal-manage-section">
+            <span style="font-size:.82rem;color:var(--text-secondary)">D&eacute;j&agrave; inscrit&nbsp;?</span>
+            <button type="button" class="modal-manage-link-btn" id="modal-manage-toggle">G&eacute;rer mon abonnement</button>
+            <div id="modal-manage-form" style="display:none;margin-top:8px">
+                <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+                    <input type="tel" id="modal-manage-phone" placeholder="06 12 34 56 78" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:.85rem;max-width:180px" inputmode="tel">
+                    <button type="button" class="btn" id="modal-manage-btn" style="margin-top:0;padding:6px 14px;font-size:.82rem">Envoyer</button>
+                </div>
+                <div id="modal-manage-result" style="display:none;margin-top:6px;font-size:.82rem"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    var JOURS = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+    var MOIS = ['janvier','f\u00e9vrier','mars','avril','mai','juin','juillet','ao\u00fbt','septembre','octobre','novembre','d\u00e9cembre'];
+
+    // Supported countries: FR (+33, 9 digits), BE (+32, 8-9 digits),
+    // CH (+41, 9 digits), LU (+352, 6-9 digits), DE (+49, 10-11 digits)
+    var PHONE_RULES = [
+        { cc: '33',  local: /^[67]\d{8}$/,   nat: /^0[67]\d{8}$/, strip: 1 },
+        { cc: '32',  local: /^4\d{7,8}$/,    nat: /^04\d{7,8}$/,  strip: 1 },
+        { cc: '41',  local: /^7[5-9]\d{7}$/, nat: /^07[5-9]\d{7}$/,strip: 1 },
+        { cc: '352', local: /^\d{6,9}$/,     nat: null,            strip: 0 },
+        { cc: '49',  local: /^1[5-7]\d{8,9}$/,nat: /^01[5-7]\d{8,9}$/,strip: 1 }
+    ];
+
+    function normalizePhoneLocal(raw) {
+        var v = raw.replace(/[\s.\-()]/g, '');
+        // French national format (06/07)
+        if (/^0[67]\d{8}$/.test(v)) return '+33' + v.substring(1);
+        // International format: +CC or CC prefix
+        var intl = v;
+        if (intl.charAt(0) === '+') intl = intl.substring(1);
+        for (var i = 0; i < PHONE_RULES.length; i++) {
+            var r = PHONE_RULES[i];
+            if (intl.indexOf(r.cc) === 0) {
+                var digits = intl.substring(r.cc.length);
+                if (r.local.test(digits)) return '+' + r.cc + digits;
+            }
+        }
+        // Belgian/Swiss/German national format
+        for (var j = 0; j < PHONE_RULES.length; j++) {
+            var r2 = PHONE_RULES[j];
+            if (r2.nat && r2.nat.test(v)) return '+' + r2.cc + v.substring(r2.strip);
+        }
+        return null;
+    }
+
+    function trackEvent(name, data) {
+        if (typeof umami !== 'undefined' && umami.track) {
+            umami.track(name, data || {});
+        }
+    }
+
+    function showResult(el, type, msg) {
+        el.className = 'form-result ' + type;
+        el.textContent = msg;
+        el.style.display = 'block';
+    }
+
+    // Color pattern for 7 days Mon→Sun: respects EDF rules
+    // RED only on weekdays (R2), WHITE never on Sunday (R3)
+    var PREVIEW_COLORS = [
+        { emoji: '\uD83D\uDD34', label: 'ROUGE' },   // Mon
+        { emoji: '\u26AA',       label: 'BLANC' },    // Tue
+        { emoji: '\uD83D\uDD35', label: 'BLEU' },     // Wed
+        { emoji: '\uD83D\uDD35', label: 'BLEU' },     // Thu
+        { emoji: '\uD83D\uDD34', label: 'ROUGE' },    // Fri
+        { emoji: '\uD83D\uDD35', label: 'BLEU' },     // Sat
+        { emoji: '\uD83D\uDD35', label: 'BLEU' }      // Sun
+    ];
+
+    function updateSmsBubble() {
+        var JOURS_COURT = ['dim.','lun.','mar.','mer.','jeu.','ven.','sam.'];
+        var MOIS_COURT = ['jan.','f\u00e9v.','mars','avr.','mai','juin','juil.','ao\u00fbt','sept.','oct.','nov.','d\u00e9c.'];
+
+        // Find next Monday
+        var now = new Date();
+        var d = new Date(now);
+        var dayOfWeek = d.getDay(); // 0=Sun, 1=Mon
+        var daysUntilMon = (dayOfWeek === 0) ? 1 : (dayOfWeek === 1) ? 7 : (8 - dayOfWeek);
+        d.setDate(d.getDate() + daysUntilMon);
+
+        var redCount = 0;
+        var lines = [];
+        for (var i = 0; i < 7; i++) {
+            var c = PREVIEW_COLORS[i];
+            var dayStr = JOURS_COURT[d.getDay()] + ' ' + d.getDate() + ' ' + MOIS_COURT[d.getMonth()];
+            lines.push(c.emoji + ' ' + dayStr);
+            if (c.label === 'ROUGE') redCount++;
+            d.setDate(d.getDate() + 1);
+        }
+
+        var bubble = document.getElementById('modal-sms-bubble');
+        if (!bubble) return;
+        var html = '\uD83D\uDCC8 <strong>Calendrier Tempo EDF \u2014 Semaine \u00e0 venir</strong><br><br>';
+        html += lines.join('<br>');
+        html += '<br><br>\u26A0\uFE0F ' + redCount + ' jour' + (redCount > 1 ? 's' : '') + ' rouge' + (redCount > 1 ? 's' : '') + ' pr\u00e9vu' + (redCount > 1 ? 's' : '') + ' cette semaine.';
+        html += '<br>\uD83D\uDC49 Anticipez vos machines et chauffage\u00a0!';
+        bubble.innerHTML = html;
+    }
+
+    window.openSubscribeModal = function() {
+        var modal = document.getElementById('subscribe-modal');
+        if (!modal) return;
+        _previouslyFocused = document.activeElement;
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        updateSmsBubble();
+        // Anti-bot: record open timestamp
+        var tsField = document.getElementById('modal-ts');
+        if (tsField) tsField.value = String(Math.floor(Date.now() / 1000));
+        trackEvent('modal_open', { page: window.location.pathname });
+        var phoneInput = document.getElementById('modal-phone');
+        if (phoneInput) setTimeout(function() { phoneInput.focus(); }, 100);
+    };
+
+    var _previouslyFocused = null;
+
+    window.closeSubscribeModal = function() {
+        var modal = document.getElementById('subscribe-modal');
+        if (!modal) return;
+        trackEvent('modal_close', { page: window.location.pathname });
+        modal.style.display = 'none';
+        document.body.style.overflow = '';
+        if (_previouslyFocused) { _previouslyFocused.focus(); _previouslyFocused = null; }
+    };
+
+    document.addEventListener('DOMContentLoaded', function() {
+        // Close handlers
+        var closeBtn = document.getElementById('modal-close');
+        if (closeBtn) closeBtn.addEventListener('click', closeSubscribeModal);
+
+        var modal = document.getElementById('subscribe-modal');
+        if (modal) modal.addEventListener('click', function(e) { if (e.target === modal) closeSubscribeModal(); });
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeSubscribeModal();
+            // Focus trap: keep Tab cycling within modal
+            if (e.key === 'Tab') {
+                var m = document.getElementById('subscribe-modal');
+                if (!m || m.style.display === 'none') return;
+                var focusable = m.querySelectorAll('button, input, a, [tabindex]:not([tabindex="-1"])');
+                if (!focusable.length) return;
+                var first = focusable[0], last = focusable[focusable.length - 1];
+                if (e.shiftKey) { if (document.activeElement === first) { e.preventDefault(); last.focus(); } }
+                else { if (document.activeElement === last) { e.preventDefault(); first.focus(); } }
+            }
+        });
+
+        // Phone validation (international)
+        var phone = document.getElementById('modal-phone');
+        var feedback = document.getElementById('modal-phone-feedback');
+        if (phone && feedback) {
+            phone.addEventListener('input', function() {
+                var val = phone.value.replace(/[\s.\-()]/g, '');
+                if (!val || val.length < 2) { feedback.textContent = ''; feedback.className = 'phone-feedback'; return; }
+                // Try normalization — if it works, number is valid
+                var normalized = normalizePhoneLocal(val);
+                if (normalized) { feedback.textContent = 'Num\u00e9ro valide'; feedback.className = 'phone-feedback valid'; return; }
+                // Partial input — show helpful feedback
+                if (/^0[67]/.test(val)) {
+                    if (val.length < 10) { feedback.textContent = 'Encore ' + (10 - val.length) + ' chiffre(s)'; feedback.className = 'phone-feedback'; }
+                    else { feedback.textContent = 'Trop de chiffres'; feedback.className = 'phone-feedback invalid'; }
+                    return;
+                }
+                if (/^\+?\d{2,4}/.test(val) && val.length < 15) {
+                    feedback.textContent = 'Continuez\u2026'; feedback.className = 'phone-feedback'; return;
+                }
+                feedback.textContent = 'Ex: 06 12 34 56 78 ou +32 4xx xx xx xx';
+                feedback.className = 'phone-feedback invalid';
+            });
+        }
+
+        // Form submit
+        var form = document.getElementById('modal-subscribe-form');
+        if (form) {
+            var submitting = false;
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                if (submitting) return;
+                submitting = true;
+                var resultEl = document.getElementById('modal-form-result');
+                var btn = document.getElementById('modal-subscribe-btn');
+                resultEl.className = 'form-result';
+                resultEl.style.display = 'none';
+
+                var rawPhone = document.getElementById('modal-phone').value;
+                var normalized = (typeof normalizePhone === 'function') ? normalizePhone(rawPhone) : normalizePhoneLocal(rawPhone);
+                if (!normalized) {
+                    showResult(resultEl, 'error', 'Num\u00e9ro non reconnu. Formats accept\u00e9s\u00a0: 06/07, +33, +32, +41, +352, +49');
+                    submitting = false;
+                    return;
+                }
+
+                var originalText = btn.textContent;
+                btn.disabled = true;
+                btn.innerHTML = '<span class="btn-spinner"></span> Inscription en cours...';
+
+                var formData = new FormData(form);
+                formData.set('phone', normalized);
+                // Explicitly set checkbox values (unchecked checkboxes are not in FormData)
+                var alerteRouge = document.getElementById('modal-alerte-rouge');
+                var alerteBlanc = document.getElementById('modal-alerte-blanc');
+                var recapHebdo = document.getElementById('modal-recap-hebdo');
+                // seuil_rouge=0 disables red alerts, seuil_rouge=70 is default threshold
+                formData.set('seuil_rouge', alerteRouge && alerteRouge.checked ? '70' : '0');
+                formData.set('alerte_blanc', alerteBlanc && alerteBlanc.checked ? 'true' : 'false');
+                formData.set('recap_hebdo', recapHebdo && recapHebdo.checked ? 'true' : 'false');
+                fetch('/api/subscribe', { method: 'POST', body: formData })
+                    .then(function(resp) {
+                        return resp.json().then(function(data) { return { ok: resp.ok, data: data }; });
+                    })
+                    .then(function(result) {
+                        if (result.ok) {
+                            trackEvent('modal_submit', { page: window.location.pathname });
+                            resultEl.className = 'form-result success';
+                            resultEl.innerHTML = '<span class="success-check">\u2713</span> ' +
+                                "V\u00e9rifiez votre WhatsApp\u00a0! Vous devriez recevoir un message dans les 30 secondes.";
+                            resultEl.style.display = 'block';
+                            form.reset();
+                            setTimeout(function() { closeSubscribeModal(); }, 4000);
+                        } else {
+                            trackEvent('modal_error', { page: window.location.pathname, reason: result.data.detail || 'api_error' });
+                            showResult(resultEl, 'error', result.data.detail || "Erreur lors de l'inscription");
+                        }
+                    })
+                    .catch(function() {
+                        trackEvent('modal_error', { page: window.location.pathname, reason: 'network' });
+                        showResult(resultEl, 'error', 'Erreur de connexion au serveur');
+                    })
+                    .finally(function() {
+                        btn.disabled = false;
+                        btn.innerHTML = originalText;
+                        submitting = false;
+                    });
+            });
+        }
+
+        // "Déjà inscrit ? Gérer mon abonnement" toggle + send
+        var manageToggle = document.getElementById('modal-manage-toggle');
+        var manageForm = document.getElementById('modal-manage-form');
+        if (manageToggle && manageForm) {
+            manageToggle.addEventListener('click', function() {
+                manageForm.style.display = manageForm.style.display === 'none' ? 'block' : 'none';
+            });
+        }
+        var manageBtn = document.getElementById('modal-manage-btn');
+        if (manageBtn) {
+            manageBtn.addEventListener('click', function() {
+                var phoneInput = document.getElementById('modal-manage-phone');
+                var resultEl = document.getElementById('modal-manage-result');
+                var raw = phoneInput ? phoneInput.value : '';
+                var normalized = normalizePhoneLocal(raw);
+                if (!normalized) {
+                    resultEl.style.display = 'block';
+                    resultEl.style.color = '#b91c1c';
+                    resultEl.textContent = 'Num\u00e9ro non reconnu.';
+                    return;
+                }
+                manageBtn.disabled = true;
+                var formData = new FormData();
+                formData.set('phone', normalized);
+                fetch('/api/resend-manage-link', { method: 'POST', body: formData })
+                    .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+                    .then(function(res) {
+                        resultEl.style.display = 'block';
+                        if (res.ok) {
+                            resultEl.style.color = '#2e7d32';
+                            resultEl.textContent = res.data.message || 'Lien envoy\u00e9 par WhatsApp\u00a0!';
+                        } else {
+                            resultEl.style.color = '#b91c1c';
+                            resultEl.textContent = res.data.detail || 'Erreur.';
+                        }
+                    })
+                    .catch(function() {
+                        resultEl.style.display = 'block';
+                        resultEl.style.color = '#b91c1c';
+                        resultEl.textContent = 'Erreur de connexion.';
+                    })
+                    .finally(function() { manageBtn.disabled = false; });
+            });
+        }
+    });
+})();
+</script>

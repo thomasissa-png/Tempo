@@ -1,0 +1,69 @@
+{
+  "global": {
+    "total": 712,
+    "correct": 485,
+    "accuracy": 68.1,
+    "rouge_recall": 46.2,
+    "rouge_precision": 27.9,
+    "rouge_f1": 34.8,
+    "blanc_recall": 58.3,
+    "rouge_fn": 28,
+    "rouge_fp": 62
+  },
+  "seasons": {
+    "2023/2024": {
+      "accuracy": 69.0,
+      "rouge_recall": 54.5,
+      "rouge_precision": 46.2,
+      "rouge_f1": 50.0,
+      "blanc_recall": 58.1,
+      "blanc_precision": 28.7,
+      "stats": {
+        "total": 274,
+        "correct": 189,
+        "blanc_fp": 62,
+        "blanc_tp": 25,
+        "rouge_fn": 10,
+        "rouge_fp": 14,
+        "blanc_fn": 18,
+        "rouge_tp": 12
+      }
+    },
+    "2024/2025": {
+      "accuracy": 77.3,
+      "rouge_recall": 22.7,
+      "rouge_precision": 41.7,
+      "rouge_f1": 29.4,
+      "blanc_recall": 76.7,
+      "blanc_precision": 39.8,
+      "stats": {
+        "total": 273,
+        "correct": 211,
+        "blanc_fp": 50,
+        "blanc_tp": 33,
+        "rouge_fn": 17,
+        "rouge_fp": 7,
+        "blanc_fn": 10,
+        "rouge_tp": 5
+      }
+    },
+    "2025/2026": {
+      "accuracy": 51.5,
+      "rouge_recall": 87.5,
+      "rouge_precision": 14.6,
+      "rouge_f1": 25.0,
+      "blanc_recall": 31.0,
+      "blanc_precision": 18.8,
+      "stats": {
+        "total": 165,
+        "correct": 85,
+        "blanc_fp": 39,
+        "blanc_tp": 9,
+        "rouge_fp": 41,
+        "blanc_fn": 20,
+        "rouge_fn": 1,
+        "rouge_tp": 7
+      }
+    }
+  }
+}
