@@ -123,7 +123,7 @@ Oui, le service est entièrement gratuit, sans engagement et sans publicité. L'
 
 ### Les prévisions de jours rouges sont-elles fiables plusieurs jours à l'avance ?
 
-Notre algorithme combine plusieurs sources de données pour établir ses prévisions : météo nationale (températures, pression atmosphérique), consommation électrique prévue par RTE, historique des décisions EDF, et budget restant de jours rouges et blancs dans la saison. Pour J+2 et J+3, la fiabilité est élevée car les données météorologiques à court terme sont précises. Pour J+4 et J+5, la fiabilité diminue légèrement mais reste utile pour la planification. Chaque prévision est accompagnée d'un indicateur de confiance, et la couleur n'est présentée comme certaine que lorsqu'EDF l'a officiellement confirmée. Vous pouvez [consulter les prévisions](/) à tout moment sur notre tableau de bord.
+Notre algorithme combine plusieurs sources de données pour établir ses prévisions : météo nationale (températures, pression atmosphérique), consommation électrique prévue par RTE, historique des décisions EDF, et budget restant de jours rouges et blancs dans la saison. Pour J+2 et J+3, la fiabilité est élevée car les données météorologiques à court terme sont précises. Pour J+4 et J+5, la fiabilité diminue légèrement mais reste utile pour la planification. Chaque prévision est accompagnée d'un indicateur de confiance, et la couleur n'est présentée comme certaine que lorsqu'EDF l'a officiellement confirmée. Vous pouvez [consulter le calendrier Tempo](/calendrier) à tout moment sur notre tableau de bord.
 
 ---
 

@@ -19,7 +19,7 @@ Concrètement, montez votre thermostat de 1 à 2°C au-dessus de votre consigne 
 
 ### Economies estimées
 
-En décalant 4 à 6 heures de chauffage du jour rouge vers les heures creuses de la veille, vous économisez entre **4 à 7 euros par jour rouge**, selon la surface de votre logement et votre isolation. Pour anticiper les jours rouges à venir, pensez à [consulter le calendrier](/) de nos prévisions.
+En décalant 4 à 6 heures de chauffage du jour rouge vers les heures creuses de la veille, vous économisez entre **4 à 7 euros par jour rouge**, selon la surface de votre logement et votre isolation. Pour anticiper les jours rouges à venir, pensez à [consulter le calendrier](/calendrier) de nos prévisions.
 
 **Difficulté : facile** -- il suffit de programmer votre thermostat ou de monter manuellement la consigne la veille au soir.
 
@@ -133,7 +133,7 @@ La stratégie : préparez vos plats mijotés les jours bleus (ragouts, soupes, g
 
 En éliminant la cuisson au four et aux plaques les jours rouges (2 repas/jour), vous économisez environ **2 à 3 euros par jour rouge**, soit **44 à 66 euros par saison**. La mijoteuse est un investissement de 25 à 50 euros, rentabilisé en une demi-saison.
 
-**Difficulté : facile** -- demande un peu d'organisation et de planification des repas, mais [consulter le calendrier](/) pour connaître les prochains jours rouges facilite grandement la planification.
+**Difficulté : facile** -- demande un peu d'organisation et de planification des repas, mais [consulter le calendrier](/calendrier) pour connaître les prochains jours rouges facilite grandement la planification.
 
 ## Astuce 10 : Vérifier et améliorer l'isolation avant l'hiver
 
@@ -180,7 +180,7 @@ Il est déconseillé de couper totalement le chauffage si les températures ext�
 
 ### Les radiateurs à inertie sont-ils plus adaptés à Tempo que les convecteurs ?
 
-Oui, nettement. Les radiateurs à inertie (pierre, fonte, céramique ou fluide caloporteur) stockent la chaleur dans leur masse et continuent à la restituer pendant 2 à 4 heures après leur extinction. Cela les rend parfaitement adaptés à une stratégie Tempo : vous les chargez en chaleur pendant les heures creuses (22h-6h, à 0,1575 euros/kWh même en jour rouge) et ils chauffent gratuitement pendant une partie des heures pleines. Les convecteurs classiques (grille-pain), en revanche, ne produisent de la chaleur que lorsqu'ils sont alimentés et n'offrent aucune inertie. Si vous rénovez vos radiateurs, privilégiez l'inertie : l'investissement supplémentaire (200 à 400 euros par radiateur) est rentabilisé en 2 à 3 saisons Tempo. Consultez le [calendrier Tempo](/) pour planifier vos journées de chauffe.
+Oui, nettement. Les radiateurs à inertie (pierre, fonte, céramique ou fluide caloporteur) stockent la chaleur dans leur masse et continuent à la restituer pendant 2 à 4 heures après leur extinction. Cela les rend parfaitement adaptés à une stratégie Tempo : vous les chargez en chaleur pendant les heures creuses (22h-6h, à 0,1575 euros/kWh même en jour rouge) et ils chauffent gratuitement pendant une partie des heures pleines. Les convecteurs classiques (grille-pain), en revanche, ne produisent de la chaleur que lorsqu'ils sont alimentés et n'offrent aucune inertie. Si vous rénovez vos radiateurs, privilégiez l'inertie : l'investissement supplémentaire (200 à 400 euros par radiateur) est rentabilisé en 2 à 3 saisons Tempo. Consultez le [calendrier Tempo](/calendrier) pour planifier vos journées de chauffe.
 
 ### Comment savoir à l'avance quand tomberont les prochains jours rouges ?
 
@@ -188,4 +188,4 @@ EDF n'annonce officiellement que la couleur du lendemain, chaque jour vers 17h. 
 
 ---
 
-*Dernière mise à jour : 24 mars 2026. Les tarifs indiqués correspondent à l'offre Tempo EDF saison 2025-2026 (prix TTC). Consultez le [calendrier Tempo](/) pour suivre les couleurs du jour en temps réel, [recevoir les alertes](/#subscribe) avant chaque jour rouge, ou comparer Tempo avec d'autres offres dans notre [comparatif Tempo vs Heures Creuses](/blog/tempo-vs-heures-creuses-edf-bleu).*
+*Dernière mise à jour : 24 mars 2026. Les tarifs indiqués correspondent à l'offre Tempo EDF saison 2025-2026 (prix TTC). Consultez le [calendrier Tempo](/calendrier) pour suivre les couleurs du jour en temps réel, [recevoir les alertes](/#subscribe) avant chaque jour rouge, ou comparer Tempo avec d'autres offres dans notre [comparatif Tempo vs Heures Creuses](/blog/tempo-vs-heures-creuses-edf-bleu).*

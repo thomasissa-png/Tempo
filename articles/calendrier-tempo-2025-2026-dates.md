@@ -112,7 +112,7 @@ Quand vous voyez une vague de froid annoncée et qu'il reste encore beaucoup de 
 
 ### Quand sont les prochains jours rouges Tempo 2025-2026 ?
 
-Les jours rouges de la saison 2025-2026 sont placés exclusivement entre le 1er novembre 2025 et le 31 mars 2026, sur des jours ouvrables hors jours fériés. EDF annonce la couleur du lendemain chaque jour vers 17h. Pour connaître les prévisions à plus long terme (J+2 à J+5), vous pouvez [consulter les prévisions](/) sur notre site, mises à jour quotidiennement grâce à notre algorithme combinant météo, consommation RTE et machine learning.
+Les jours rouges de la saison 2025-2026 sont placés exclusivement entre le 1er novembre 2025 et le 31 mars 2026, sur des jours ouvrables hors jours fériés. EDF annonce la couleur du lendemain chaque jour vers 17h. Pour connaître les prévisions à plus long terme (J+2 à J+5), vous pouvez [consulter notre calendrier Tempo](/calendrier) sur notre site, mis à jour quotidiennement grâce à notre algorithme combinant météo, consommation RTE et machine learning.
 
 ### Combien reste-t-il de jours rouges à placer cette saison ?
 

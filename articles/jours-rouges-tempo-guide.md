@@ -100,7 +100,7 @@ C'est là que TempoForecast entre en jeu. Notre algorithme combine plusieurs sou
 - **Budget saisonnier** : notre modèle intègre le nombre de jours rouges restants à placer et le nombre de jours éligibles restants dans la saison, pour calculer la pression budgétaire d'EDF.
 - **Machine learning** : un algorithme d'apprentissage automatique, entraîné sur les 6 dernières saisons Tempo, affine les prédictions en détectant des patterns complexes dans les données.
 
-Consultez [nos prévisions à 15 jours](/) pour connaître les jours rouges à venir et organiser votre consommation en conséquence.
+Consultez [notre calendrier Tempo](/calendrier) pour connaître les jours rouges à venir et organiser votre consommation en conséquence.
 
 ### Recevoir une alerte avant chaque jour rouge
 

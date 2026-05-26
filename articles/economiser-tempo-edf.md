@@ -95,7 +95,7 @@ Des prises connectées programmables (15 à 30 €) permettent d'automatiser la 
 
 ### 5. S'inscrire aux alertes Tempo pour ne jamais être pris au dépourvu
 
-L'erreur la plus coûteuse avec Tempo est de ne pas savoir quelle couleur s'applique. Le [Calendrier Tempo EDF](/) de calendrier-tempo.fr vous donne une vision claire des jours passés et des prévisions à venir. Mieux encore : inscrivez-vous aux [alertes WhatsApp gratuites](/#subscribe) pour recevoir chaque jour la couleur du lendemain directement sur votre téléphone. Gratuit, instantané, et sans application à installer.
+L'erreur la plus coûteuse avec Tempo est de ne pas savoir quelle couleur s'applique. Le [Calendrier Tempo EDF](/calendrier) de calendrier-tempo.fr vous donne une vision claire des jours passés et des prévisions à venir. Mieux encore : inscrivez-vous aux [alertes WhatsApp gratuites](/#subscribe) pour recevoir chaque jour la couleur du lendemain directement sur votre téléphone. Gratuit, instantané, et sans application à installer.
 
 ## Tempo EDF : pour qui est-ce vraiment rentable ?
 
@@ -118,7 +118,7 @@ Le seul tarif qui dépasse le TRV est le rouge HP à 0,7060 €/kWh, soit plus d
 
 ### Peut-on vraiment économiser 350 € par an avec Tempo EDF ?
 
-Oui, c'est réaliste pour un foyer consommant entre 8 000 et 12 000 kWh par an, à condition de bien adapter sa consommation. Les économies proviennent essentiellement des 300 jours bleus où le tarif en heures creuses (0,1325 €/kWh) est nettement inférieur au tarif réglementé. Un foyer qui concentre 80 % de sa consommation sur les jours bleus et réduit fortement les jours rouges peut atteindre 250 à 350 € d'économies annuelles. Consultez le [Calendrier Tempo EDF](/) pour suivre les couleurs en temps réel.
+Oui, c'est réaliste pour un foyer consommant entre 8 000 et 12 000 kWh par an, à condition de bien adapter sa consommation. Les économies proviennent essentiellement des 300 jours bleus où le tarif en heures creuses (0,1325 €/kWh) est nettement inférieur au tarif réglementé. Un foyer qui concentre 80 % de sa consommation sur les jours bleus et réduit fortement les jours rouges peut atteindre 250 à 350 € d'économies annuelles. Consultez le [Calendrier Tempo EDF](/calendrier) pour suivre les couleurs en temps réel.
 
 ### Comment savoir si demain est un jour rouge Tempo ?
 
@@ -130,4 +130,4 @@ En priorité, ciblez les appareils qui consomment le plus : le chauffe-eau (coup
 
 ---
 
-*Dernière mise à jour : 17 février 2026. Les tarifs indiqués sont ceux en vigueur pour l'option Tempo EDF en 2026. Consultez le [Calendrier Tempo EDF](/) pour suivre les couleurs du jour en temps réel et notre [guide complet Tempo EDF 2026](/blog/tempo-edf-2026-guide-complet) pour tout savoir sur l'offre.*
+*Dernière mise à jour : 17 février 2026. Les tarifs indiqués sont ceux en vigueur pour l'option Tempo EDF en 2026. Consultez le [Calendrier Tempo EDF](/calendrier) pour suivre les couleurs du jour en temps réel et notre [guide complet Tempo EDF 2026](/blog/tempo-edf-2026-guide-complet) pour tout savoir sur l'offre.*

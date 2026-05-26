@@ -7,7 +7,7 @@ cluster: tempo-guide
 ---
 Choisir entre l'offre **Tempo EDF**, le tarif **Heures Creuses / Heures Pleines** et le **Tarif Bleu réglementé** peut sembler complexe. Ces trois formules s'adressent pourtant à des profils de consommation très différents. Dans ce comparatif complet, nous détaillons les tarifs, simulons les économies réelles sur une année et vous aidons à identifier le contrat le plus avantageux pour votre foyer.
 
-Consultez notre [Calendrier Tempo EDF](/) mis à jour quotidiennement pour ne jamais rater un changement de couleur.
+Consultez notre [Calendrier Tempo EDF](/calendrier) mis à jour quotidiennement pour ne jamais rater un changement de couleur.
 
 ## Présentation des trois offres EDF
 
@@ -161,7 +161,7 @@ Pour ne jamais être pris au dépourvu, inscrivez-vous à nos [alertes WhatsApp 
 1. **Programmez votre chauffe-eau** pour qu'il fonctionne exclusivement en heures creuses, et coupez-le les jours rouges si votre ballon a une autonomie de 24 à 48h.
 2. **Investissez dans un poêle à bois** ou des bûches compressées pour chauffer votre logement les 22 jours rouges.
 3. **Automatisez** : des prises connectées et un thermostat intelligent peuvent couper automatiquement les appareils énergivores en jour rouge.
-4. **Consultez le [Calendrier Tempo EDF](/)** chaque soir pour anticiper la couleur du lendemain et planifier votre consommation.
+4. **Consultez le [Calendrier Tempo EDF](/calendrier)** chaque soir pour anticiper la couleur du lendemain et planifier votre consommation.
 5. **Concentrez vos lessives et cuissons** sur les jours bleus en heures creuses pour bénéficier du tarif le plus bas.
 
 ## FAQ : Tempo vs Heures Creuses vs Tarif Bleu
@@ -176,7 +176,7 @@ Sans réduction de consommation les jours rouges, l'offre Tempo peut devenir **p
 
 ### Comment connaître la couleur Tempo du lendemain ?
 
-EDF annonce la couleur du lendemain chaque jour aux alentours de 17h. Vous pouvez la consulter sur notre [Calendrier Tempo EDF](/) qui est mis à jour automatiquement, ou recevoir une notification instantanée en vous inscrivant à nos [alertes WhatsApp gratuites](/#subscribe). Notre système de prévision vous donne également une estimation de la couleur pour les jours J+2 à J+5, vous permettant d'anticiper encore davantage.
+EDF annonce la couleur du lendemain chaque jour aux alentours de 17h. Vous pouvez la consulter sur notre [Calendrier Tempo EDF](/calendrier) qui est mis à jour automatiquement, ou recevoir une notification instantanée en vous inscrivant à nos [alertes WhatsApp gratuites](/#subscribe). Notre système de prévision vous donne également une estimation de la couleur pour les jours J+2 à J+5, vous permettant d'anticiper encore davantage.
 
 ## Conclusion : notre recommandation
 
@@ -184,4 +184,4 @@ Pour la majorité des foyers français qui peuvent s'adapter, **l'offre Tempo re
 
 Si cette flexibilité vous semble contraignante, le tarif **Heures Creuses / Heures Pleines** offre un compromis raisonnable avec une petite économie sans risque. Le **Tarif Base** reste le choix de la tranquillité absolue, au prix d'une facture légèrement plus élevée.
 
-Quel que soit votre choix, suivez l'évolution des tarifs et la couleur du jour sur notre [Calendrier Tempo EDF](/) pour rester informé et optimiser votre consommation au quotidien. Pour aller plus loin, consultez notre [guide complet Tempo EDF 2026](/blog/tempo-edf-2026-guide-complet) et le [calendrier Tempo avec toutes les dates de la saison](/blog/calendrier-tempo-2025-2026-dates).
+Quel que soit votre choix, suivez l'évolution des tarifs et la couleur du jour sur notre [Calendrier Tempo EDF](/calendrier) pour rester informé et optimiser votre consommation au quotidien. Pour aller plus loin, consultez notre [guide complet Tempo EDF 2026](/blog/tempo-edf-2026-guide-complet) et le [calendrier Tempo avec toutes les dates de la saison](/blog/calendrier-tempo-2025-2026-dates).
