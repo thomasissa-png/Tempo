@@ -1308,7 +1308,13 @@ async def task_seo_agent():
     """
     import os
     if not os.getenv("ANTHROPIC_API_KEY"):
-        logger.debug("[Agent SEO] ANTHROPIC_API_KEY non configurée, tâche ignorée")
+        if _should_publish_today():
+            logger.error(
+                "[Agent SEO] Publication prévue aujourd'hui mais ANTHROPIC_API_KEY "
+                "non configurée — AUCUN article publié. Configurez la clé dans les secrets."
+            )
+        else:
+            logger.warning("[Agent SEO] ANTHROPIC_API_KEY non configurée, tâche ignorée")
         return
 
     if not _should_publish_today():
@@ -1357,7 +1363,13 @@ async def task_backlinks_agent():
     """
     import os
     if not os.getenv("ANTHROPIC_API_KEY"):
-        logger.debug("[Agent Backlinks] ANTHROPIC_API_KEY non configurée, tâche ignorée")
+        if _should_publish_today():
+            logger.error(
+                "[Agent Backlinks] Prospection prévue aujourd'hui mais ANTHROPIC_API_KEY "
+                "non configurée — tâche ignorée. Configurez la clé dans les secrets."
+            )
+        else:
+            logger.warning("[Agent Backlinks] ANTHROPIC_API_KEY non configurée, tâche ignorée")
         return
 
     if not _should_publish_today():
