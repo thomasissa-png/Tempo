@@ -118,20 +118,20 @@ prochaines_semaines:
   - numero: 1
     date: "2026-06-09"
     slug: recharge-vehicule-electrique-tempo
-    titre: "Véhicule électrique et Tempo : optimiser la recharge"
-    mot_cle: "voiture électrique tempo"
+    titre: "Véhicule électrique Tempo : optimiser la recharge et payer moins"
+    mot_cle: "véhicule électrique tempo"
     cluster: equipements
     type: nouveau
-    statut: à rédiger
+    statut: rédigé
 
   - numero: 2
     date: "2026-06-23"
     slug: simulation-tempo-edf-economies
-    titre: "Tempo EDF simulation : estimez vos économies annuelles"
+    titre: "Simulation Tempo EDF : estimez vos économies annuelles"
     mot_cle: "simulation tempo edf"
     cluster: tempo-guide
     type: nouveau
-    statut: à rédiger
+    statut: rédigé
 
   - numero: 3
     date: "2026-07-07"
@@ -145,20 +145,20 @@ prochaines_semaines:
   - numero: 4
     date: "2026-07-21"
     slug: ballon-eau-chaude-tempo
-    titre: "Ballon d'eau chaude et Tempo : programmer pour économiser"
-    mot_cle: "ballon eau chaude tempo"
+    titre: "Ballon d'eau chaude Tempo : programmer pour économiser"
+    mot_cle: "ballon d'eau chaude tempo"
     cluster: equipements
     type: nouveau
-    statut: à rédiger
+    statut: rédigé
 
   - numero: 5
     date: "2026-08-04"
     slug: climatisation-tempo-edf-ete
-    titre: "Climatisation et Tempo l'été : faut-il s'en soucier ?"
+    titre: "Climatisation Tempo EDF : faut-il s'en soucier l'été ?"
     mot_cle: "climatisation tempo edf"
     cluster: equipements
     type: nouveau
-    statut: à rédiger
+    statut: rédigé
 
   - numero: 6
     date: "2026-08-18"
@@ -172,29 +172,29 @@ prochaines_semaines:
   - numero: 7
     date: "2026-09-01"
     slug: rentree-tempo-2026-2027
-    titre: "Rentrée Tempo 2026-2027 : tout ce qui change"
+    titre: "Rentrée Tempo EDF 2026-2027 : tout ce qui change"
     mot_cle: "tempo edf 2026-2027"
     cluster: tempo-guide
     type: nouveau
-    statut: à rédiger
+    statut: rédigé
 
   - numero: 8
     date: "2026-09-15"
     slug: souscrire-tempo-edf-guide
-    titre: "Souscrire à Tempo EDF : le guide pour les nouveaux abonnés"
+    titre: "Souscrire Tempo EDF : le guide pour les nouveaux abonnés"
     mot_cle: "souscrire tempo edf"
     cluster: tempo-guide
     type: nouveau
-    statut: à rédiger
+    statut: rédigé
 
   - numero: 9
     date: "2026-09-29"
     slug: premiers-jours-blancs-tempo
-    titre: "Premiers jours blancs Tempo : à quoi s'attendre en automne"
+    titre: "Jours blancs Tempo : à quoi s'attendre en automne"
     mot_cle: "jours blancs tempo"
     cluster: jours-rouges
     type: nouveau
-    statut: à rédiger
+    statut: rédigé
 
   - numero: 10
     date: "2026-10-13"
@@ -203,7 +203,7 @@ prochaines_semaines:
     mot_cle: "calendrier tempo 2026-2027"
     cluster: calendrier
     type: nouveau
-    statut: à rédiger
+    statut: rédigé
 
 regles:
   frequence: "rattrapage hebdomadaire jusqu'à mi-avril, puis 1 article toutes les 2 semaines"

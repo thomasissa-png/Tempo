@@ -249,20 +249,19 @@ class Config:
     BACKLINKS_AGENT_MAX_TURNS = int(os.getenv("BACKLINKS_AGENT_MAX_TURNS", "35"))
 
     # Calendrier de publication saisonnier :
-    #   Nov-Mar (saison active)  → chaque mardi (hebdo)
-    #   Sep-Oct (pré-saison)     → 1er et 3e mardi du mois (bimensuel)
-    #   Avr-Mai (post-saison)    → 1er mardi du mois uniquement
-    #   Juin-Août (morte-saison) → pause complète
+    #   Nov-Mar (saison active)   → chaque mardi (hebdo)
+    #   Avr-Août (hors saison)    → 1er et 3e mardi du mois (bimensuel, evergreen)
+    #   Sep-Oct (pré-saison)      → 1er et 3e mardi du mois (bimensuel)
     # Valeur = semaines du mois où publier (1=1ère semaine, 2=2ème, etc.)
     SEO_SEASON_SCHEDULE = {
         1: "weekly",    # Janvier — saison active
         2: "weekly",    # Février
         3: "weekly",    # Mars
-        4: "monthly",   # Avril — post-saison
-        5: "monthly",   # Mai
-        6: "off",       # Juin — morte-saison
-        7: "off",       # Juillet
-        8: "off",       # Août
+        4: "bimonthly", # Avril — hors saison (bimensuel)
+        5: "bimonthly", # Mai
+        6: "bimonthly", # Juin — publication estivale (evergreen)
+        7: "bimonthly", # Juillet
+        8: "bimonthly", # Août
         9: "bimonthly", # Septembre — pré-saison
         10: "bimonthly",# Octobre
         11: "weekly",   # Novembre — saison active

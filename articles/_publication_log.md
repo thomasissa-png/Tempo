@@ -25,3 +25,22 @@
 - **Total articles** : 14 (8 + 6). Tous validés par `validate_article.py` (0 erreur).
 - **Garde-fou** : le skip silencieux de `task_seo_agent`/`task_backlinks_agent` passe en `warning` (clé absente) et `error` (clé absente un jour de publication prévu) pour rendre la panne visible.
 - **À faire (hors code)** : configurer `ANTHROPIC_API_KEY` dans les secrets de prod pour réactiver la génération autonome.
+
+---
+
+## 2026-05-26 — Pré-rédaction de la file estivale (8 articles, agents @copywriter/@seo + revue @reviewer)
+
+- **Contexte** : clé `ANTHROPIC_API_KEY` configurée en prod. Cadence estivale activée (`SEO_SEASON_SCHEDULE` avril→août = bimensuel au lieu de off).
+- **Action** : rédaction anticipée des 8 articles « neufs » planifiés (dates de publication futures, parution automatique à échéance) :
+  - 2026-06-09 — `recharge-vehicule-electrique-tempo` (equipements)
+  - 2026-06-23 — `simulation-tempo-edf-economies` (tempo-guide)
+  - 2026-07-21 — `ballon-eau-chaude-tempo` (equipements)
+  - 2026-08-04 — `climatisation-tempo-edf-ete` (equipements)
+  - 2026-09-01 — `rentree-tempo-2026-2027` (tempo-guide)
+  - 2026-09-15 — `souscrire-tempo-edf-guide` (tempo-guide)
+  - 2026-09-29 — `premiers-jours-blancs-tempo` (jours-rouges)
+  - 2026-10-13 — `calendrier-tempo-2026-2027-dates` (calendrier)
+- **Process qualité** : 1 agent rédacteur (@copywriter+@seo) par article → auto-validation `validate_article.py` 0/0 → passe @reviewer indépendante notée /10 sur les gates (G13 zéro donnée inventée, G15 zéro placeholder, G17 spécificité projet) → itération jusqu'à 10/10 réel. Corrections notables : retrait d'une déduction de prix bleu non public, fix arithmétique chauffe-eau, harmonisation mot-clé exact dans titre/description/H2.
+- **Zéro donnée inventée** : aucun prix bleu/blanc en €/kWh (non public), aucune date rouge ni tarif 2026-2027 inventés (renvoi grille EDF + `/calendrier` live).
+- **Restant planifié** : 2 REFRESH (`tempo-edf-2026-guide-complet` le 2026-07-07, `economiser-tempo-edf` le 2026-08-18) — laissés « à rédiger » pour l'agent autonome.
+- **Total articles** : 22 (14 publiés/backfill + 8 pré-rédigés programmés).
