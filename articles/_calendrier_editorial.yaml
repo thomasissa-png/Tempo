@@ -116,7 +116,7 @@ articles_publies:
 # Si la cadence bimensuelle doit continuer l'été, aligner SEO_SEASON_SCHEDULE.
 prochaines_semaines:
   - numero: 1
-    date: "2026-06-09"
+    date: "2026-06-23"
     slug: recharge-vehicule-electrique-tempo
     titre: "Véhicule électrique Tempo : optimiser la recharge et payer moins"
     mot_cle: "véhicule électrique tempo"
@@ -125,7 +125,7 @@ prochaines_semaines:
     statut: rédigé
 
   - numero: 2
-    date: "2026-06-23"
+    date: "2026-06-09"
     slug: simulation-tempo-edf-economies
     titre: "Simulation Tempo EDF : estimez vos économies annuelles"
     mot_cle: "simulation tempo edf"

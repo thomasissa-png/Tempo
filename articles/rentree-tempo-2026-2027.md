@@ -20,7 +20,7 @@ Concrètement, voici ce qui se réinitialise pour la saison 2026-2027 :
 | **BLANC** | 43 jours | Toute la saison, jamais le dimanche |
 | **BLEU** | ~300 jours | Toute la saison |
 
-Le point essentiel à retenir : même si la nouvelle saison commence le 1er septembre, **aucun jour rouge ne peut tomber avant le 1er novembre**. Septembre et octobre sont donc une période de répit, presque exclusivement composée de jours bleus, parfaite pour reprendre vos repères en douceur. Pour comprendre comment se comportent les premières journées plus chères, lisez notre article sur les [premiers jours blancs de la saison Tempo](/blog/premiers-jours-blancs-tempo).
+Le point essentiel à retenir : même si la nouvelle saison commence le 1er septembre, **aucun jour rouge ne peut tomber avant le 1er novembre**. Septembre et octobre sont donc une période de répit, presque exclusivement composée de jours bleus, parfaite pour reprendre vos repères en douceur. Pour comprendre comment se sont réparties les journées les plus chères l'an dernier, consultez notre [calendrier Tempo 2025-2026](/blog/calendrier-tempo-2025-2026-dates).
 
 ## Un rappel des règles Tempo qui ne changent pas
 
