@@ -14,16 +14,16 @@ Anticiper les jours rouges Tempo EDF, est-ce que ça vaut le temps que vous y co
 
 L'option Tempo répartit l'année en trois couleurs avec un budget fixe : 22 jours rouges, 43 jours blancs et environ 300 jours bleus, du 1er septembre au 31 août. Les jours rouges ne tombent que du 1er novembre au 31 mars, jamais le week-end ni un jour férié, et au maximum 5 jours consécutifs. Sur une saison, 22 journées concentrent donc l'essentiel du risque tarifaire.
 
-La mécanique économique tient à un chiffre : en 2025-2026, le kWh rouge en heures pleines coûte **0,7060 €/kWh** TTC, contre environ **0,16 €/kWh** pour le bleu en heures pleines. Ratio : **4,4×**. Un kilowattheure consommé entre 6h et 22h un jour rouge vaut quatre kWh et demi consommés à la même heure un jour bleu. Les heures creuses (22h-6h) restent abordables même en rouge — environ **0,1575 €/kWh**, proche du bleu HP. Le levier d'économie : déplacer la consommation de « rouge HP » vers « rouge HC » ou « bleu », autant que votre logement le permet.
+La mécanique économique tient à un chiffre : en 2025-2026, le kWh rouge en heures pleines coûte **0,7060 €/kWh** TTC, contre environ **0,16 €/kWh** pour le bleu en heures pleines. Ratio **4,4×**. Les heures creuses (22h-6h) restent abordables même en rouge — environ **0,1575 €/kWh**, proche du bleu HP. Le levier : déplacer la consommation de « rouge HP » vers « rouge HC » ou « bleu », autant que votre logement le permet.
 
 ## Anticiper les jours rouges Tempo : la méthode du calcul
 
 Pour mesurer le gain, on compare deux scénarios sur les mêmes 22 jours rouges :
 
-- **Scénario A — « je subis »** : vous découvrez la couleur via le SMS EDF la veille au soir, ou le matin même. Vous limitez ce qui est limitable dans la journée, mais le chauffage tourne sur sa courbe habituelle, le ballon d'eau chaude s'est rechargé en heures pleines, le lave-vaisselle a tourné le matin.
-- **Scénario B — « j'anticipe »** : vous savez 2 à 5 jours à l'avance qu'un rouge arrive. Vous préchauffez la veille en heures creuses, vous programmez le ballon d'eau chaude sur la nuit précédente uniquement, vous décalez l'électroménager, et vous limitez la pointe 7h-9h et 18h-21h le jour J.
+- **Scénario A — « je subis »** : vous découvrez la couleur via le SMS EDF la veille au soir. Le chauffage tourne sur sa courbe habituelle, le ballon d'eau chaude s'est rechargé en heures pleines, le lave-vaisselle a tourné le matin.
+- **Scénario B — « j'anticipe »** : vous savez 2 à 5 jours à l'avance qu'un rouge arrive. Vous préchauffez la veille en heures creuses, programmez le ballon sur la nuit précédente, décalez l'électroménager, et limitez la pointe 7h-9h / 18h-21h le jour J.
 
-Le gain par jour rouge se calcule simplement : pour chaque kWh décalé d'un créneau « rouge HP » vers « bleu HP » ou « rouge HC », vous économisez **0,7060 − 0,16 = 0,5460 €/kWh** (vers le bleu HP) ou **0,7060 − 0,1575 = 0,5485 €/kWh** (vers le rouge HC). Valeur pivot retenue, arrondie pour simplifier les estimations : **≈ 0,55 € économisés par kWh déplacé**. C'est la brique élémentaire du raisonnement.
+Le gain par kWh décalé se calcule simplement : **0,7060 − 0,16 = 0,5460 €/kWh** (vers bleu HP) ou **0,7060 − 0,1575 = 0,5485 €/kWh** (vers rouge HC). Valeur pivot arrondie pour les estimations : **≈ 0,55 € économisés par kWh déplacé**. C'est la brique élémentaire du raisonnement.
 
 ## Combien gagne-t-on, geste par geste, un jour rouge anticipé
 
@@ -38,7 +38,7 @@ Sans véhicule électrique, un foyer qui actionne les trois premiers leviers dé
 
 ## Tableau de simulation : gain annuel selon le profil de foyer
 
-Les chiffres ci-dessous sont des **estimations** calibrées sur les hypothèses précédentes (0,55 € économisé par kWh déplacé, 22 jours rouges sur la saison). Ils donnent un ordre de grandeur ; votre cas réel dépendra de votre logement, de votre équipement et de votre disponibilité pour appliquer les gestes.
+Estimations calibrées sur les hypothèses précédentes (0,55 €/kWh déplacé, 22 jours rouges). Ordres de grandeur ; votre cas réel dépendra du logement, de l'équipement et de votre régularité d'application.
 
 | Profil de foyer | Conso annuelle indicative | kWh déplaçables / jour rouge | Gain estimé / jour rouge | Gain estimé sur 22 jours rouges |
 |---|---|---|---|---|
@@ -48,11 +48,13 @@ Les chiffres ci-dessous sont des **estimations** calibrées sur les hypothèses 
 
 *Estimations — fourchettes indicatives, hors gestes exceptionnels.*
 
-Lecture du tableau : pour un foyer médian (profil T4), anticiper correctement les 22 jours rouges représente **entre 175 et 365 € d'économie annuelle**. Pour un foyer équipé d'un véhicule électrique, la fourchette dépasse facilement les 400 €. À l'inverse, dans un petit logement bien isolé sans chauffage électrique principal, le gain reste modeste — autour de 60 à 120 € — mais il existe.
+Lecture : pour un foyer médian (profil T4), anticiper les 22 jours rouges représente **175 à 365 € d'économie annuelle**. Avec véhicule électrique, la fourchette dépasse 400 €. Dans un petit logement bien isolé sans chauffage électrique principal, le gain reste modeste (60 à 120 €) mais existe.
 
 ## Comment on s'organise en pratique sur une saison
 
-Anticiper, c'est ne pas être pris au dépourvu. EDF annonce la couleur du lendemain (J+1) vers 17h la veille, ce qui laisse peu de temps pour préchauffer la nuit suivante en heures creuses sans s'y être préparé. L'horizon long est donc déterminant : si vous savez 3 ou 4 jours à l'avance qu'une vague de froid risque de déclencher une série rouge, vous calez lessives, batch-cooking et recharge de véhicule en conséquence. Pour cela, il existe des calendriers avec prédictions J+2 à J+5, tels que [calendrier-tempo.fr](https://calendrier-tempo.fr/calendrier), qui combinent prévisions météo et données de consommation nationale pour estimer la couleur des prochains jours.
+Anticiper, c'est ne pas être pris au dépourvu. EDF annonce officiellement la couleur du lendemain (J+1) vers 17h la veille, via SMS, application ou serveur vocal. C'est suffisant pour adapter le soir et la nuit qui viennent, mais trop court pour caler une recharge de véhicule électrique, un batch-cooking ou une grosse lessive : ces gestes se planifient 2 à 4 jours à l'avance.
+
+D'où l'intérêt d'un horizon plus long que J+1. Les jours rouges étant déclenchés par les vagues de froid, la prévision météo à 3-5 jours est le meilleur indicateur avancé disponible. Il existe des calendriers avec prédictions J+2 à J+5, tels que [calendrier-tempo.fr](https://calendrier-tempo.fr/calendrier), qui combinent prévisions météo et données de consommation nationale pour estimer la couleur des prochains jours. Vous pouvez aussi tenir votre propre suivi en croisant simplement les prévisions Météo France (températures sous saisonnières = risque rouge) avec le rythme observé : EDF lisse les rouges sur la saison, et n'en pose jamais le week-end ni les jours fériés.
 
 Une routine simple suffit : un coup d'œil aux prévisions le dimanche soir pour caler la semaine, un second en milieu de semaine pour ajuster. Dix minutes hebdomadaires sur cinq mois (novembre-mars), soit deux à trois heures sur la saison — à comparer aux fourchettes ci-dessus pour estimer votre rentabilité horaire.
 
