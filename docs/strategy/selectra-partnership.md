@@ -248,7 +248,7 @@ Sans accès WebFetch sur les 2 articles d'exemple fournis (`energie-reduc.com/ec
 
 ---
 
-## Email à envoyer à Selectra (décision porteur 2026-05-26 : GO sur insertion home + A1 + B3)
+## Email à envoyer à Selectra (décision porteur 2026-05-26 : GO sur insertion home + A2 + B3)
 
 > Objet : Re: échange de visibilité calendrier-tempo.fr × Selectra
 >
@@ -256,22 +256,82 @@ Sans accès WebFetch sur les 2 articles d'exemple fournis (`energie-reduc.com/ec
 >
 > Merci pour la proposition, qui me convient.
 >
-> **Votre insertion est en place sur calendrier-tempo.fr.** Je l'ai ajoutée à la FAQ « Combien coûte réellement un jour rouge ? » de la page d'accueil, à la suite du paragraphe que vous suggériez. La formulation publiée :
+> ### Votre insertion est en place sur calendrier-tempo.fr
+>
+> Je l'ai ajoutée à la FAQ « Combien coûte réellement un jour rouge ? » de la page d'accueil, à la suite du paragraphe que vous suggériez. Formulation publiée :
 >
 > > Vous pouvez consulter cette page de Selectra qui donne la grille tarifaire en fonction de votre abonnement ou votre contrat EDF.
 >
 > L'ancre « cette page de Selectra » renvoie vers https://selectra.info/energie/fournisseurs/edf/tempo#tarifs, en `rel="sponsored"` (bonne pratique Google pour un lien partenaire). Vous pouvez vérifier dès à présent.
 >
-> **Articles invités — deux angles proposés.** De mon côté, je vous propose deux articles différenciés, qui s'appuient sur la donnée d'anticipation J+2 à J+5 que je suis seul à publier :
+> ### Articles invités — deux angles détaillés
 >
-> 1. **Pour energie-reduc.com — « Tempo EDF : 4 réflexes pour transformer un jour rouge en économie ».** 1100-1400 mots, 4 leviers concrets chiffrés (chauffage, eau chaude, cuisson, électroménager). Pédagogique, aligné sur votre approche « guides économies ».
-> 2. **Pour agence-energie.com — « Jour rouge Tempo : la check-list de la veille pour ne rien subir ».** 1000-1300 mots, structure check-list en 4 séquences horaires (11h05 vérifier l'annonce EDF, 11h30 programmer les équipements, 17h-22h limiter la consommation, lendemain vérifier l'effet). Opérationnel, format FAQ-friendly.
+> De mon côté, je vous propose deux articles construits autour de la donnée que je suis seul à publier en France : les **prédictions J+2 à J+5** des couleurs Tempo EDF (algorithme combinant météo 9 villes Météo France, consommation RTE et modèle de machine learning, mis à jour chaque jour).
 >
-> Pour les deux : ton neutre et factuel, sourcing EDF officiel uniquement, **un lien retour unique en bio auteur** vers calendrier-tempo.fr (ancre marque), rédaction sous mon contrôle éditorial.
+> ---
 >
-> **Liens retour que vous proposiez.** Vous évoquiez aussi des liens depuis observatoires.net et electricite.net en plus des deux sites cibles. Pouvez-vous préciser le format que vous envisagez côté de ces deux sites (mention éditoriale, insertion dans un article existant…) ? Cela m'aidera à calibrer l'ensemble.
+> **Article 1 — pour `energie-reduc.com`**
 >
-> **Étapes suivantes.** Vous me confirmez les deux angles, je rédige, je vous transmets en relecture format (pas sur le fond), vous publiez avec le lien retour en bio auteur. Pour l'instant je m'en tiens à ces deux articles ; on évaluera ensuite si une suite a du sens.
+> **Titre proposé :** *Anticiper les jours rouges Tempo EDF : combien ça rapporte vraiment sur une saison ?*
+>
+> **Promesse au lecteur :** un calcul honnête et chiffré du gain annuel possible quand on anticipe correctement les 22 jours rouges d'une saison Tempo, comparé à la situation « je les subis ». Le lecteur repart avec une fourchette d'économie réaliste calibrée sur son profil de foyer.
+>
+> **Pourquoi cet angle :** c'est la question qui précède l'action (« est-ce que ça vaut le coup d'investir du temps dans le suivi quotidien ? »), et c'est un sujet quasiment absent du web — la plupart des articles parlent de gestes, peu de ROI quantifié. Avec mes historiques de prédiction, je peux produire un chiffre crédible.
+>
+> **Format :**
+> - 1 100-1 400 mots, 4-5 H2, ton pédagogique expert (vouvoiement), aligné sur votre éditorial « guides économies »
+> - **1 tableau de simulation** : 3 profils foyer (par ex. T2 électrique, T4 électrique, T5 électrique + ECS) × gain annuel estimé sur 22 jours rouges
+> - **FAQ 3 questions** calées sur les People Also Ask
+> - Sources : grille tarifaire EDF officielle uniquement, fourchettes labellisées « estimation »
+>
+> **Insertion de calendrier-tempo.fr dans l'article (mécanique de notre lien retour) :**
+> - **1 mention contextuelle dans le corps**, au moment où l'on évoque l'outil concret pour faire l'anticipation. Exemple de phrase : *« pour visualiser l'anticipation en pratique, calendrier-tempo.fr propose un calendrier avec prédictions J+2 à J+5, mis à jour chaque jour et gratuit. »*
+>   - Ancre cliquable : « calendrier avec prédictions J+2 à J+5 »
+>   - URL de destination : `https://calendrier-tempo.fr/calendrier`
+> - **1 mention courte en bio auteur en fin d'article** : *« Article proposé par l'équipe de calendrier-tempo.fr, service gratuit d'anticipation des couleurs Tempo EDF. »*
+>   - Ancre cliquable : « calendrier-tempo.fr »
+>   - URL de destination : `https://calendrier-tempo.fr/`
+>
+> ---
+>
+> **Article 2 — pour `agence-energie.com`**
+>
+> **Titre proposé :** *Jour rouge Tempo : la check-list de la veille pour ne rien subir*
+>
+> **Promesse au lecteur :** un protocole horaire concret pour bien gérer la veille d'un jour rouge — savoir à 11h, programmer à 11h30, limiter à 17h, vérifier le lendemain. Le lecteur repart avec une routine opérationnelle reproductible.
+>
+> **Pourquoi cet angle :** EDF annonce J+1 vers 11h, et la fenêtre 11h-22h conditionne tout le confort financier du lendemain. Je date cette mécanique mieux que personne (et ma prédiction J+2 permet même de devancer EDF d'un jour). Format compatible avec votre éditorial FAQ / guide pratique.
+>
+> **Format :**
+> - 1 000-1 300 mots, ton opérationnel (vouvoiement expert)
+> - **Structure en check-list** sur 4 sections horaires : « 11h05 — vérifier l'annonce EDF », « 11h30 — programmer les équipements », « 17h-22h — limiter la consommation », « lendemain — vérifier l'effet sur la facture »
+> - **1 encadré « le piège classique »** (l'erreur fréquente qu'on voit en pratique)
+> - FAQ 2 questions
+> - Sources : EDF officiel uniquement pour la fenêtre d'annonce et les tarifs
+>
+> **Insertion de calendrier-tempo.fr dans l'article (mécanique de notre lien retour) :**
+> - **1 mention contextuelle dans le corps**, dans la section « 11h05 — vérifier l'annonce EDF ». Exemple de phrase : *« pour éviter d'avoir à vérifier vous-même chaque matin, calendrier-tempo.fr envoie une alerte WhatsApp gratuite la veille dès que J+1 est confirmé. »*
+>   - Ancre cliquable : « alerte WhatsApp gratuite la veille »
+>   - URL de destination : `https://calendrier-tempo.fr/alertes`
+> - **1 mention courte en bio auteur en fin d'article** : *« Article proposé par l'équipe de calendrier-tempo.fr, service gratuit d'anticipation des couleurs Tempo EDF. »*
+>   - Ancre cliquable : « calendrier-tempo.fr »
+>   - URL de destination : `https://calendrier-tempo.fr/`
+>
+> ---
+>
+> ### Conditions de mon côté
+>
+> - Rédaction sous mon contrôle éditorial complet : vous validez le format (longueur, structure, métadonnées), pas le fond.
+> - Ton neutre et factuel, sourcing EDF officiel uniquement, aucune mention d'un autre acteur du marché.
+> - **2 liens retour par article** tels que décrits ci-dessus (1 contextuel à fort signal SEO + 1 mention en bio auteur). Si votre charte n'autorise qu'un seul lien, je privilégie le lien contextuel.
+>
+> ### Sur les liens retour côté Selectra
+>
+> Vous évoquiez aussi `observatoires.net` et `electricite.net` en plus des deux sites cibles. Quelle forme prendraient ces deux liens supplémentaires (mention éditoriale dans un article existant, insertion dans une ressource…) ? Cela m'aidera à calibrer l'ensemble du dispositif.
+>
+> ### Étapes suivantes
+>
+> Vous me confirmez les deux angles et les modalités d'insertion. Je rédige sous 1-2 semaines et vous transmets en relecture format (pas sur le fond), vous publiez avec les deux liens retour décrits ci-dessus. Pour l'instant on s'en tient à ces deux articles ; selon le retour de ce premier cycle, on évaluera la suite.
 >
 > Cordialement,
 > [Votre nom]
