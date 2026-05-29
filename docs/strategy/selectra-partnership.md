@@ -248,7 +248,37 @@ Sans accès WebFetch sur les 2 articles d'exemple fournis (`energie-reduc.com/ec
 
 ---
 
-## Brouillon de réponse à Selectra (à valider par le porteur)
+## Email à envoyer à Selectra (décision porteur 2026-05-26 : GO sur insertion home + A1 + B3)
+
+> Objet : Re: échange de visibilité calendrier-tempo.fr × Selectra
+>
+> Bonjour,
+>
+> Merci pour la proposition, qui me convient.
+>
+> **Votre insertion est en place sur calendrier-tempo.fr.** Je l'ai ajoutée à la FAQ « Combien coûte réellement un jour rouge ? » de la page d'accueil, à la suite du paragraphe que vous suggériez. La formulation publiée :
+>
+> > Vous pouvez consulter cette page de Selectra qui donne la grille tarifaire en fonction de votre abonnement ou votre contrat EDF.
+>
+> L'ancre « cette page de Selectra » renvoie vers https://selectra.info/energie/fournisseurs/edf/tempo#tarifs, en `rel="sponsored"` (bonne pratique Google pour un lien partenaire). Vous pouvez vérifier dès à présent.
+>
+> **Articles invités — deux angles proposés.** De mon côté, je vous propose deux articles différenciés, qui s'appuient sur la donnée d'anticipation J+2 à J+5 que je suis seul à publier :
+>
+> 1. **Pour energie-reduc.com — « Tempo EDF : 4 réflexes pour transformer un jour rouge en économie ».** 1100-1400 mots, 4 leviers concrets chiffrés (chauffage, eau chaude, cuisson, électroménager). Pédagogique, aligné sur votre approche « guides économies ».
+> 2. **Pour agence-energie.com — « Jour rouge Tempo : la check-list de la veille pour ne rien subir ».** 1000-1300 mots, structure check-list en 4 séquences horaires (11h05 vérifier l'annonce EDF, 11h30 programmer les équipements, 17h-22h limiter la consommation, lendemain vérifier l'effet). Opérationnel, format FAQ-friendly.
+>
+> Pour les deux : ton neutre et factuel, sourcing EDF officiel uniquement, **un lien retour unique en bio auteur** vers calendrier-tempo.fr (ancre marque), rédaction sous mon contrôle éditorial.
+>
+> **Liens retour que vous proposiez.** Vous évoquiez aussi des liens depuis observatoires.net et electricite.net en plus des deux sites cibles. Pouvez-vous préciser le format que vous envisagez côté de ces deux sites (mention éditoriale, insertion dans un article existant…) ? Cela m'aidera à calibrer l'ensemble.
+>
+> **Étapes suivantes.** Vous me confirmez les deux angles, je rédige, je vous transmets en relecture format (pas sur le fond), vous publiez avec le lien retour en bio auteur. Pour l'instant je m'en tiens à ces deux articles ; on évaluera ensuite si une suite a du sens.
+>
+> Cordialement,
+> [Votre nom]
+
+---
+
+## Brouillon initial (NO-GO insertion — archivé, non utilisé)
 
 > Bonjour,
 >
