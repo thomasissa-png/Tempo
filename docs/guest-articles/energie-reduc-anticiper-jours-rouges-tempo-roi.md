@@ -8,7 +8,7 @@ publish_url: à confirmer côté energie-reduc.com
 backlinks_to_us: 2 (1 contextuel /calendrier + 1 bio auteur /)
 ---
 
-Anticiper les jours rouges Tempo EDF, est-ce que ça vaut le temps que vous y consacrez ? La question revient chaque automne chez les foyers abonnés à l'option Tempo. On lit partout que les 22 jours rouges « coûtent une fortune », mais rarement combien on récupère concrètement en s'organisant. Cet article propose un calcul honnête et chiffré du gain annuel atteignable selon votre profil de logement. L'objectif n'est pas de promettre des économies miracles : c'est de poser deux scénarios face à face — « je subis » contre « j'anticipe » — et d'en sortir une fourchette réaliste. Vous repartirez avec un ordre de grandeur calibré sur votre foyer, et une méthodologie réapplicable à votre propre facture.
+Anticiper les jours rouges Tempo EDF, est-ce que ça vaut le temps que vous y consacrez ? Que vous soyez déjà abonné à l'option Tempo ou en train de l'évaluer pour basculer, la vraie question n'est pas « combien coûtent les 22 jours rouges » mais « combien récupère-t-on concrètement en s'organisant ». Cet article pose deux scénarios face à face — « je subis » contre « j'anticipe » — et chiffre la fourchette de gain annuel atteignable selon trois profils de foyer. Pas de promesse d'économies miracles : une méthodologie transparente, des ordres de grandeur honnêtes, et un calcul que vous pourrez refaire sur votre propre facture.
 
 ## Pourquoi les jours rouges Tempo pèsent autant sur la facture
 
@@ -52,7 +52,7 @@ Lecture du tableau : pour un foyer médian (profil T4), anticiper correctement l
 
 ## Comment on s'organise en pratique sur une saison
 
-Anticiper, c'est ne pas être pris au dépourvu. EDF annonce la couleur du lendemain (J+1) vers 17h la veille, ce qui laisse peu de temps pour préchauffer la nuit suivante en heures creuses sans s'y être préparé. L'horizon long est donc déterminant : si vous savez 3 ou 4 jours à l'avance qu'une vague de froid risque de déclencher une série rouge, vous calez lessives, batch-cooking et recharge de véhicule en conséquence. Pour cela, il existe un [calendrier avec prédictions J+2 à J+5](https://calendrier-tempo.fr/calendrier) qui combine météo et données de consommation nationale pour estimer la couleur des prochains jours.
+Anticiper, c'est ne pas être pris au dépourvu. EDF annonce la couleur du lendemain (J+1) vers 17h la veille, ce qui laisse peu de temps pour préchauffer la nuit suivante en heures creuses sans s'y être préparé. L'horizon long est donc déterminant : si vous savez 3 ou 4 jours à l'avance qu'une vague de froid risque de déclencher une série rouge, vous calez lessives, batch-cooking et recharge de véhicule en conséquence. Pour cela, il existe des calendriers avec prédictions J+2 à J+5, tels que [calendrier-tempo.fr](https://calendrier-tempo.fr/calendrier), qui combinent prévisions météo et données de consommation nationale pour estimer la couleur des prochains jours.
 
 Une routine simple suffit : un coup d'œil aux prévisions le dimanche soir pour caler la semaine, un second en milieu de semaine pour ajuster. Dix minutes hebdomadaires sur cinq mois (novembre-mars), soit deux à trois heures sur la saison — à comparer aux fourchettes ci-dessus pour estimer votre rentabilité horaire.
 
