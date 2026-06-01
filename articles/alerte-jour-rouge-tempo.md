@@ -17,7 +17,7 @@ Prenons un exemple concret. Un foyer qui consomme 25 kWh en heures pleines un jo
 
 Multipliez cette erreur par ne serait-ce que 5 jours rouges ratés dans la saison, et ce sont **65 à 80 € d'économies envolées**. L'alerte Tempo n'est pas un confort : c'est une nécessité financière pour tout abonné Tempo. Pour mieux comprendre le fonctionnement et les règles de ces journées critiques, consultez notre [guide complet des jours rouges Tempo](/blog/jours-rouges-tempo-guide).
 
-### Le problème : EDF ne prévient que la veille vers 17h
+### Le problème : EDF ne prévient que la veille vers 11h
 
 EDF publie la couleur du lendemain aux alentours de 17 heures. Si vous ne consultez pas activement leur site ou leur application ce soir-là, vous découvrirez le jour rouge le lendemain matin, quand le compteur tourne déjà au tarif fort. De plus, aucune notification automatique n'est envoyée par EDF à moins d'avoir installé leur application et activé les notifications, ce que beaucoup d'abonnés ne font pas.
 
@@ -65,7 +65,7 @@ Pas de mot de passe à retenir, pas de compte à créer, pas d'application à t�
 
 Chaque alerte contient les informations essentielles pour agir immédiatement :
 
-- **La couleur confirmée par EDF** pour le lendemain (quand elle est disponible, généralement après 17h)
+- **La couleur confirmée par EDF** pour le lendemain (quand elle est disponible, généralement après 11h)
 - **Les prévisions pour les jours suivants** (J+2 à J+5), basées sur notre algorithme prédictif qui analyse la météo, la consommation nationale et les données historiques
 - **Un conseil d'action concret** : reporter les machines à laver, baisser le chauffage, décaler la recharge du véhicule électrique
 - **Un lien de gestion** pour modifier vos préférences ou vous désinscrire en un clic
@@ -115,7 +115,7 @@ De plus, notre service de prévision anticipe les jours rouges **jusqu'à 5 jour
 
 ### À quelle heure reçoit-on l'alerte jour rouge Tempo ?
 
-L'alerte est envoyée dès que la couleur du lendemain est confirmée par EDF, généralement entre 17h et 17h30. Pour les prévisions à plus long terme (J+2 à J+5), les mises à jour sont intégrées au récapitulatif hebdomadaire du dimanche soir et aux alertes quotidiennes. Vous avez ainsi toute la soirée pour adapter votre consommation du lendemain : programmer le chauffe-eau, préparer le chauffage d'appoint, et planifier vos repas sans four électrique.
+L'alerte est envoyée dès que la couleur du lendemain est confirmée par EDF, généralement entre 11h et 11h30. Pour les prévisions à plus long terme (J+2 à J+5), les mises à jour sont intégrées au récapitulatif hebdomadaire du dimanche soir et aux alertes quotidiennes. Vous avez ainsi toute la soirée pour adapter votre consommation du lendemain : programmer le chauffe-eau, préparer le chauffage d'appoint, et planifier vos repas sans four électrique.
 
 ### Est-ce que le service d'alerte Tempo est vraiment gratuit ?
 

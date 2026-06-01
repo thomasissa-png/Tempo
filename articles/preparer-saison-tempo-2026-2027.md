@@ -59,7 +59,7 @@ Les équipements ne suffisent pas sans réflexes. Préparez-vous mentalement à 
 - **Décaler les gros usages** : lave-linge, lave-vaisselle, sèche-linge et recharge de véhicule de préférence en heures creuses, surtout les jours rouges et blancs.
 - **Cuisiner malin** : privilégier les cuissons groupées et éviter le four électrique en heures pleines rouges.
 - **Chauffer juste** : baisser la consigne des pièces peu occupées, fermer les portes.
-- **Anticiper la veille** : EDF annonce la couleur du lendemain (J+1) vers 17h. Préparez votre soirée en conséquence.
+- **Anticiper la veille** : EDF annonce la couleur du lendemain (J+1) vers 11h. Préparez votre soirée en conséquence.
 
 Pour structurer durablement ces gestes, notre dossier [comment économiser avec Tempo EDF](/blog/economiser-tempo-edf) regroupe les arbitrages les plus efficaces.
 
@@ -98,6 +98,6 @@ Le thermostat programmable arrive en tête, car il abaisse automatiquement le ch
 
 ### Comment connaître à l'avance les jours rouges de la prochaine saison ?
 
-EDF annonce la couleur du lendemain (J+1) vers 17h. Notre site va plus loin en prédisant les couleurs de J+2 à J+5, et vous pouvez consulter les prévisions et l'historique sur le [calendrier Tempo](/calendrier). Activez les alertes pour être prévenu automatiquement avant chaque jour rouge.
+EDF annonce la couleur du lendemain (J+1) vers 11h. Notre site va plus loin en prédisant les couleurs de J+2 à J+5, et vous pouvez consulter les prévisions et l'historique sur le [calendrier Tempo](/calendrier). Activez les alertes pour être prévenu automatiquement avant chaque jour rouge.
 
 *Note : les tarifs et le calendrier évoluent chaque saison. Vérifiez toujours les couleurs officielles et les prix en vigueur à la rentrée 2026 avant de prendre vos décisions.*

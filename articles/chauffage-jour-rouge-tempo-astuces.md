@@ -184,7 +184,7 @@ Oui, nettement. Les radiateurs à inertie (pierre, fonte, céramique ou fluide c
 
 ### Comment savoir à l'avance quand tomberont les prochains jours rouges ?
 
-EDF n'annonce officiellement que la couleur du lendemain, chaque jour vers 17h. Pour anticiper au-delà, notre algorithme de prévision analyse les données météo (températures sur 9 villes), la consommation nationale (données RTE) et le budget saisonnier restant (nombre de jours rouges encore à placer) pour produire des prévisions à J+2 jusqu'à J+5. Inscrivez-vous à nos [alertes gratuites](/#subscribe) pour recevoir une notification dès qu'un jour rouge est prévu. Cela vous laisse le temps de préchauffer votre logement, de lancer vos appareils énergivores la veille et de préparer vos repas à l'avance.
+EDF n'annonce officiellement que la couleur du lendemain, chaque jour vers 11h. Pour anticiper au-delà, notre algorithme de prévision analyse les données météo (températures sur 9 villes), la consommation nationale (données RTE) et le budget saisonnier restant (nombre de jours rouges encore à placer) pour produire des prévisions à J+2 jusqu'à J+5. Inscrivez-vous à nos [alertes gratuites](/#subscribe) pour recevoir une notification dès qu'un jour rouge est prévu. Cela vous laisse le temps de préchauffer votre logement, de lancer vos appareils énergivores la veille et de préparer vos repas à l'avance.
 
 ---
 

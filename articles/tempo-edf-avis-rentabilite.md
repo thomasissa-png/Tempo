@@ -59,7 +59,7 @@ L'important n'est pas un chiffre magique, mais le constat suivant : **plus vous 
 
 C'est le point que la plupart des avis négligent. Tempo ne devient vraiment rentable que si vous anticipez les jours rouges, car c'est là que se gagne ou se perd l'essentiel.
 
-EDF annonce la couleur du lendemain (J+1) vers 17h. C'est utile, mais souvent trop tardif pour réorganiser sereinement une semaine : décaler un gros lessivage, prévoir le bois, ajuster une recharge de voiture. C'est précisément le rôle de notre service : à partir de la météo, des données de consommation RTE et d'un modèle de prédiction, nous estimons les couleurs de **J+2 à J+5**, pour vous laisser le temps de vous organiser.
+EDF annonce la couleur du lendemain (J+1) vers 11h. C'est utile, mais souvent trop tardif pour réorganiser sereinement une semaine : décaler un gros lessivage, prévoir le bois, ajuster une recharge de voiture. C'est précisément le rôle de notre service : à partir de la météo, des données de consommation RTE et d'un modèle de prédiction, nous estimons les couleurs de **J+2 à J+5**, pour vous laisser le temps de vous organiser.
 
 Vous pouvez consulter les couleurs en direct et la tendance des prochains jours sur notre [calendrier Tempo](/calendrier) mis à jour automatiquement. Pour comprendre comment fonctionnent ces jours coûteux, lisez aussi notre [guide des jours rouges Tempo](/blog/jours-rouges-tempo-guide). Un foyer qui anticipe transforme la contrainte des 22 rouges en simple routine ; un foyer pris au dépourvu subit le plein tarif.
 
@@ -85,6 +85,6 @@ Il n'existe pas de seuil universel, car tout dépend de votre consommation et de
 
 ### Faut-il vraiment anticiper, ou l'annonce de J+1 suffit-elle ?
 
-L'annonce d'EDF vers 17h pour le lendemain est utile mais souvent tardive pour s'organiser. Anticiper J+2 à J+5 vous laisse le temps de planifier vos lessives, votre chauffage d'appoint ou une recharge de véhicule. Recevez ces prévisions en vous inscrivant à nos [alertes gratuites](/#subscribe) et préparez chaque semaine sereinement.
+L'annonce d'EDF vers 11h pour le lendemain est utile mais souvent tardive pour s'organiser. Anticiper J+2 à J+5 vous laisse le temps de planifier vos lessives, votre chauffage d'appoint ou une recharge de véhicule. Recevez ces prévisions en vous inscrivant à nos [alertes gratuites](/#subscribe) et préparez chaque semaine sereinement.
 
 *Cet article propose un avis général et des estimations illustratives ; il ne remplace pas un calcul personnalisé basé sur votre propre consommation. Consultez le [calendrier](/calendrier) pour les couleurs en direct.*

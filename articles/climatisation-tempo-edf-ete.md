@@ -65,7 +65,7 @@ Tout l'enjeu de Tempo se joue en hiver, sur les 22 jours rouges où l'heure plei
 
 Vous pouvez aussi profiter de l'été pour anticiper l'hiver suivant. Notre dossier [préparer la saison Tempo 2026-2027](/blog/preparer-saison-tempo-2026-2027) liste les bons gestes à mettre en place dès maintenant, et notre [bilan de fin de saison rouge](/blog/fin-saison-rouge-tempo-bilan) tire les leçons des mois passés.
 
-Enfin, même hors saison rouge, garder un œil sur les couleurs du lendemain reste utile pour traquer les rares jours blancs. Inscrivez-vous à nos [alertes Tempo gratuites](/#subscribe) : EDF annonce la couleur du jour suivant vers 17h, et notre plateforme prédit en plus les couleurs de J+2 à J+5 pour vous laisser le temps d'organiser vos usages.
+Enfin, même hors saison rouge, garder un œil sur les couleurs du lendemain reste utile pour traquer les rares jours blancs. Inscrivez-vous à nos [alertes Tempo gratuites](/#subscribe) : EDF annonce la couleur du jour suivant vers 11h, et notre plateforme prédit en plus les couleurs de J+2 à J+5 pour vous laisser le temps d'organiser vos usages.
 
 ## FAQ : climatisation et Tempo EDF l'été
 

@@ -73,7 +73,7 @@ La bonne nouvelle, c'est que les bons gestes pour les jours blancs sont les mêm
 
 ### L'annonce officielle d'EDF (J+1) et nos prévisions (J+2 à J+5)
 
-EDF annonce la couleur du **lendemain (J+1) chaque jour vers 17h**. C'est utile, mais cela ne laisse que la soirée pour s'organiser, et aucune visibilité au-delà.
+EDF annonce la couleur du **lendemain (J+1) chaque jour vers 11h**. C'est utile, mais cela ne laisse que la soirée pour s'organiser, et aucune visibilité au-delà.
 
 C'est là que TempoForecast apporte sa valeur : notre algorithme prédit la couleur Tempo **de J+2 à J+5**, en croisant les prévisions météo de 9 grandes villes françaises, les prévisions de consommation RTE et le budget saisonnier restant. Vous savez ainsi plusieurs jours à l'avance si une journée blanche ou rouge se profile, et vous pouvez planifier vos lessives, vos courses ou votre télétravail en conséquence.
 

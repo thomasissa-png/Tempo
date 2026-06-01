@@ -94,7 +94,7 @@ Pour [consulter les prévisions](/) actualisées chaque jour, rendez-vous sur no
 
 ### Consultez les prévisions chaque soir
 
-EDF annonce la couleur du lendemain (J+1) chaque jour vers 17h. Mais pour anticiper davantage, notre outil fournit des prévisions de J+2 à J+5 dès la veille au soir. Cela vous laisse le temps de planifier votre consommation : lancer le lave-linge, programmer le chauffe-eau ou reporter une session de cuisson au four.
+EDF annonce la couleur du lendemain (J+1) chaque jour vers 11h. Mais pour anticiper davantage, notre outil fournit des prévisions de J+2 à J+5 dès la veille au soir. Cela vous laisse le temps de planifier votre consommation : lancer le lave-linge, programmer le chauffe-eau ou reporter une session de cuisson au four.
 
 ### Activez les alertes
 
@@ -112,7 +112,7 @@ Quand vous voyez une vague de froid annoncée et qu'il reste encore beaucoup de 
 
 ### Quand sont les prochains jours rouges Tempo 2025-2026 ?
 
-Les jours rouges de la saison 2025-2026 sont placés exclusivement entre le 1er novembre 2025 et le 31 mars 2026, sur des jours ouvrables hors jours fériés. EDF annonce la couleur du lendemain chaque jour vers 17h. Pour connaître les prévisions à plus long terme (J+2 à J+5), vous pouvez [consulter notre calendrier Tempo](/calendrier) sur notre site, mis à jour quotidiennement grâce à notre algorithme combinant météo, consommation RTE et machine learning.
+Les jours rouges de la saison 2025-2026 sont placés exclusivement entre le 1er novembre 2025 et le 31 mars 2026, sur des jours ouvrables hors jours fériés. EDF annonce la couleur du lendemain chaque jour vers 11h. Pour connaître les prévisions à plus long terme (J+2 à J+5), vous pouvez [consulter notre calendrier Tempo](/calendrier) sur notre site, mis à jour quotidiennement grâce à notre algorithme combinant météo, consommation RTE et machine learning.
 
 ### Combien reste-t-il de jours rouges à placer cette saison ?
 

@@ -15,7 +15,7 @@ Avant de parler d'économies, il faut comprendre le principe de Tempo. Chaque jo
 - **Jours BLANCS** (43 jours/an) : tarifs intermédiaires, généralement en période de consommation nationale modérée.
 - **Jours ROUGES** (22 jours/an) : les plus chers, uniquement entre le 1er novembre et le 31 mars, jamais le week-end ni les jours fériés.
 
-La couleur du lendemain est annoncée chaque jour vers 17h par EDF. C'est cette information qui vous permet d'anticiper et d'adapter votre consommation. Pour ne jamais rater une alerte, vous pouvez vous inscrire aux [alertes WhatsApp gratuites](/#subscribe) de notre plateforme.
+La couleur du lendemain est annoncée chaque jour vers 11h par EDF. C'est cette information qui vous permet d'anticiper et d'adapter votre consommation. Pour ne jamais rater une alerte, vous pouvez vous inscrire aux [alertes WhatsApp gratuites](/#subscribe) de notre plateforme.
 
 ## Les tarifs Tempo EDF en 2026
 
@@ -122,7 +122,7 @@ Oui, c'est réaliste pour un foyer consommant entre 8 000 et 12 000 kWh par an, 
 
 ### Comment savoir si demain est un jour rouge Tempo ?
 
-EDF annonce la couleur du lendemain chaque jour aux alentours de 17h. Plutôt que de vérifier manuellement, nous vous recommandons de vous inscrire aux [alertes WhatsApp gratuites](/#subscribe) de calendrier-tempo.fr. Vous recevrez automatiquement une notification chaque soir avec la couleur du lendemain et pourrez anticiper votre consommation en conséquence. C'est le moyen le plus simple de ne jamais être surpris par un jour rouge.
+EDF annonce la couleur du lendemain chaque jour aux alentours de 11h. Plutôt que de vérifier manuellement, nous vous recommandons de vous inscrire aux [alertes WhatsApp gratuites](/#subscribe) de calendrier-tempo.fr. Vous recevrez automatiquement une notification chaque soir avec la couleur du lendemain et pourrez anticiper votre consommation en conséquence. C'est le moyen le plus simple de ne jamais être surpris par un jour rouge.
 
 ### Quels appareils faut-il couper en priorité les jours rouges ?
 

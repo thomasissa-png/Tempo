@@ -68,7 +68,7 @@ La clé du seuil de rentabilité tient en une phrase : **plus la part déplaçab
 
 ## Anticiper pour que la simulation devienne réalité
 
-Une simulation favorable ne vaut que si vous savez QUAND tombent les jours rouges. EDF annonce la couleur du lendemain (J+1) chaque jour vers 17h. Pour aller plus loin, notre plateforme prédit les couleurs de J+2 à J+5, ce qui vous laisse le temps d'organiser vos lessives, vos recharges et votre chauffage.
+Une simulation favorable ne vaut que si vous savez QUAND tombent les jours rouges. EDF annonce la couleur du lendemain (J+1) chaque jour vers 11h. Pour aller plus loin, notre plateforme prédit les couleurs de J+2 à J+5, ce qui vous laisse le temps d'organiser vos lessives, vos recharges et votre chauffage.
 
 Concrètement : consultez le [calendrier Tempo](/calendrier) pour visualiser les couleurs passées et les prévisions à venir, puis inscrivez-vous aux [alertes WhatsApp gratuites](/#subscribe) pour recevoir chaque soir la couleur du lendemain. C'est ce qui transforme une économie « théorique » sur le papier en économie réelle sur votre facture.
 

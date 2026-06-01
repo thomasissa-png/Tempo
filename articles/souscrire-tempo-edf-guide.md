@@ -58,7 +58,7 @@ Aucune coupure d'électricité n'est nécessaire pour activer Tempo sur un compt
 
 Une fois l'option active, votre quotidien évolue sur quelques points concrets :
 
-- **Vous suivez la couleur du jour et du lendemain.** EDF annonce la couleur du lendemain chaque jour vers 17h. C'est l'information clé pour organiser vos usages.
+- **Vous suivez la couleur du jour et du lendemain.** EDF annonce la couleur du lendemain chaque jour vers 11h. C'est l'information clé pour organiser vos usages.
 - **Votre facturation devient « colorée ».** Chaque kilowattheure est facturé selon la couleur du jour et la plage horaire. Vos relevés Linky distinguent désormais six niveaux tarifaires.
 - **Vous gagnez à concentrer vos usages sur les jours bleus.** Lessives, cuissons, recharge de véhicule électrique, chauffe-eau : tout ce qui peut attendre un jour bleu en heures creuses vous fait économiser.
 - **Vous devez anticiper les jours rouges.** C'est là que se joue la rentabilité de l'offre.
@@ -88,6 +88,6 @@ Cela dépend entièrement de votre capacité à réduire votre consommation les 
 
 ### Comment connaître la couleur Tempo à l'avance après avoir souscrit ?
 
-EDF annonce la couleur du lendemain chaque jour vers 17h. Pour aller plus loin, notre [calendrier Tempo](/calendrier) affiche les couleurs passées et les prévisions, et notre système prédit les couleurs de J+2 à J+5. Vous pouvez aussi activer les [alertes WhatsApp gratuites](/#subscribe) pour être prévenu automatiquement, sans rien consulter manuellement.
+EDF annonce la couleur du lendemain chaque jour vers 11h. Pour aller plus loin, notre [calendrier Tempo](/calendrier) affiche les couleurs passées et les prévisions, et notre système prédit les couleurs de J+2 à J+5. Vous pouvez aussi activer les [alertes WhatsApp gratuites](/#subscribe) pour être prévenu automatiquement, sans rien consulter manuellement.
 
 *Note : les tarifs cités sont ceux de la saison 2025-2026 (TTC). Les modalités précises de souscription et les conditions tarifaires sont susceptibles d'évoluer — vérifiez toujours les informations à jour sur le site officiel EDF avant de souscrire.*

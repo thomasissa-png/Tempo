@@ -61,7 +61,7 @@ La stratégie en trois temps :
 
 L'intérêt majeur : même si vous oubliez de couper le ballon, le pire scénario reste une chauffe en heures creuses rouges à 0,1575 euros/kWh, déjà bien plus douce que les heures pleines. Mais en coupant explicitement la journée, vous évitez toute relance intempestive en heures pleines (par exemple après une grosse consommation d'eau chaude en milieu de journée).
 
-Le seul vrai obstacle, c'est de savoir à l'avance quels jours seront rouges. EDF n'annonce officiellement que la couleur du lendemain, chaque jour vers 17h. Pour anticiper plus loin et chauffer la veille sereinement, notre site prédit les couleurs de **J+2 à J+5**. Inscrivez-vous à nos [alertes gratuites](/#subscribe) pour être prévenu avant chaque jour rouge.
+Le seul vrai obstacle, c'est de savoir à l'avance quels jours seront rouges. EDF n'annonce officiellement que la couleur du lendemain, chaque jour vers 11h. Pour anticiper plus loin et chauffer la veille sereinement, notre site prédit les couleurs de **J+2 à J+5**. Inscrivez-vous à nos [alertes gratuites](/#subscribe) pour être prévenu avant chaque jour rouge.
 
 ## Isoler le ballon pour prolonger la réserve d'eau chaude
 

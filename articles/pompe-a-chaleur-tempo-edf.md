@@ -38,7 +38,7 @@ Cette approche fonctionne d'autant mieux que :
 - vous disposez d'un plancher chauffant ou de radiateurs à forte inertie ;
 - vous savez à l'avance qu'un jour rouge arrive.
 
-C'est ce dernier point qui fait toute la différence. EDF annonce la couleur de J+1 vers 17h seulement — trop tard pour préchauffer sereinement la nuit précédente si vous ne l'aviez pas anticipé. Notre site prédit les couleurs de J+2 à J+5 (à partir de la météo de 9 villes, des données RTE et d'un modèle d'apprentissage) pour vous laisser le temps d'organiser votre préchauffage. Consultez les couleurs à venir sur le [calendrier Tempo](/calendrier) et activez les [alertes jour rouge gratuites](/#subscribe) pour ne jamais être pris au dépourvu.
+C'est ce dernier point qui fait toute la différence. EDF annonce la couleur de J+1 vers 11h seulement — trop tard pour préchauffer sereinement la nuit précédente si vous ne l'aviez pas anticipé. Notre site prédit les couleurs de J+2 à J+5 (à partir de la météo de 9 villes, des données RTE et d'un modèle d'apprentissage) pour vous laisser le temps d'organiser votre préchauffage. Consultez les couleurs à venir sur le [calendrier Tempo](/calendrier) et activez les [alertes jour rouge gratuites](/#subscribe) pour ne jamais être pris au dépourvu.
 
 ## Stratégie n°2 : abaisser la consigne et limiter la PAC en heures pleines rouges
 
@@ -72,7 +72,7 @@ Oui, à condition de la piloter. Voici une synthèse honnête :
 
 - **Atout** : sur l'année, le COP de la PAC réduit massivement votre consommation sur les ~300 jours bleus, où l'électricité est très bon marché. C'est là que se joue l'essentiel de votre facture annuelle.
 - **Point de vigilance** : les 22 jours rouges concentrent un coût élevé, aggravé par la baisse du COP par grand froid. Sans pilotage, ils peuvent effacer une partie des économies réalisées le reste de l'année.
-- **Conclusion** : PAC + Tempo forme un excellent couple **si** vous anticipez les jours rouges (préchauffage la veille en heures creuses, consigne réduite le jour J, éventuel appoint) et **si** vous automatisez via un thermostat. L'anticipation est la clé, puisqu'EDF n'annonce J+1 que la veille à 17h.
+- **Conclusion** : PAC + Tempo forme un excellent couple **si** vous anticipez les jours rouges (préchauffage la veille en heures creuses, consigne réduite le jour J, éventuel appoint) et **si** vous automatisez via un thermostat. L'anticipation est la clé, puisqu'EDF n'annonce J+1 que la veille à 11h.
 
 Pour bien démarrer la prochaine saison froide, jetez aussi un œil à notre article pour [préparer la saison Tempo 2026-2027](/blog/preparer-saison-tempo-2026-2027).
 
@@ -88,6 +88,6 @@ Oui, en général. Le COP diminue quand la température extérieure chute, et le
 
 ### Comment savoir à l'avance quand préchauffer mon logement ?
 
-EDF n'annonce la couleur du lendemain que vers 17h, ce qui laisse peu de marge pour préchauffer la nuit précédente. Notre site prédit les couleurs de J+2 à J+5 à partir des prévisions météo, des données RTE et d'un modèle d'apprentissage. En vous abonnant aux [alertes gratuites](/#subscribe), vous recevez l'information assez tôt pour lancer votre préchauffage sereinement.
+EDF n'annonce la couleur du lendemain que vers 11h, ce qui laisse peu de marge pour préchauffer la nuit précédente. Notre site prédit les couleurs de J+2 à J+5 à partir des prévisions météo, des données RTE et d'un modèle d'apprentissage. En vous abonnant aux [alertes gratuites](/#subscribe), vous recevez l'information assez tôt pour lancer votre préchauffage sereinement.
 
 *Note : les valeurs de COP, coûts et économies évoqués ici sont des ordres de grandeur, variables selon votre logement, votre matériel et la météo. Pour connaître les couleurs réelles à venir, consultez toujours le [calendrier Tempo](/calendrier).*

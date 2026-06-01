@@ -28,7 +28,7 @@ Le système Tempo obéit à des règles strictes qu'EDF ne peut pas enfreindre. 
 - Les jours rouges ne tombent **jamais le week-end ni les jours fériés**.
 - Les jours blancs ne tombent **jamais le dimanche**.
 - Il ne peut y avoir **au maximum 5 jours rouges consécutifs**.
-- EDF annonce la couleur du lendemain (J+1) **vers 17h** chaque jour.
+- EDF annonce la couleur du lendemain (J+1) **vers 11h** chaque jour.
 
 Ces règles ont des conséquences pratiques très utiles. Un samedi, un dimanche ou un 1er janvier ne sera jamais rouge : vous pouvez lancer vos appareils gourmands sans crainte. À l'inverse, un mardi de janvier glacial mérite toute votre vigilance. Pour approfondir ces mécanismes, notre [guide complet des jours rouges Tempo](/blog/jours-rouges-tempo-guide) détaille chaque cas de figure.
 
@@ -69,7 +69,7 @@ L'écart est saisissant : en heures pleines un jour rouge, l'électricité coût
 
 Au-delà des chiffres, voici les enseignements concrets à retenir de cette saison Tempo :
 
-- **L'anticipation bat la réaction.** EDF n'annonce le rouge que la veille à 17h. Mais vous pouvez réorganiser une semaine entière si vous voyez venir un pic de froid plusieurs jours à l'avance.
+- **L'anticipation bat la réaction.** EDF n'annonce le rouge que la veille à 11h. Mais vous pouvez réorganiser une semaine entière si vous voyez venir un pic de froid plusieurs jours à l'avance.
 - **Janvier mérite une discipline renforcée.** C'est le mois où le moindre relâchement coûte cher. Préparez-vous mentalement à un mois de vigilance.
 - **Les heures creuses sont votre filet de sécurité.** Même un jour rouge, la nuit reste abordable. Programmez vos appareils en conséquence.
 - **Le bleu domine l'année.** Ne tombez pas dans la paranoïa : 300 jours sur 365 sont bleus. Profitez-en pleinement.
@@ -100,6 +100,6 @@ Non. Les jours rouges ne tombent que du 1er novembre au 31 mars. À partir du 1e
 
 ### Comment savoir à l'avance quand un jour rouge approche ?
 
-EDF n'annonce officiellement la couleur que la veille vers 17h. Notre site va plus loin : il prédit les couleurs des jours J+2 à J+5 en croisant les prévisions météo de 9 villes, les données de consommation RTE et un modèle d'apprentissage automatique. Vous pouvez ainsi anticiper plusieurs jours avant l'annonce d'EDF.
+EDF n'annonce officiellement la couleur que la veille vers 11h. Notre site va plus loin : il prédit les couleurs des jours J+2 à J+5 en croisant les prévisions météo de 9 villes, les données de consommation RTE et un modèle d'apprentissage automatique. Vous pouvez ainsi anticiper plusieurs jours avant l'annonce d'EDF.
 
 *Ce bilan s'appuie sur les règles officielles d'EDF et sur les moyennes historiques ; les chiffres exacts de la saison sont disponibles sur notre calendrier en direct.*

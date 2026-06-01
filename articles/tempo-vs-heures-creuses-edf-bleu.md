@@ -31,7 +31,7 @@ Tempo est l'offre la plus sophistiquée d'EDF. Chaque jour de l'année reçoit u
 - **Blanc** (43 jours) : tarif intermédiaire
 - **Rouge** (22 jours) : tarif très élevé, surtout en heures pleines
 
-Chaque couleur se décline en Heures Creuses et Heures Pleines, soit **6 niveaux tarifaires**. La couleur du lendemain est annoncée chaque jour vers 17h sur le site EDF et via notre système d'[alertes WhatsApp gratuites](/#subscribe).
+Chaque couleur se décline en Heures Creuses et Heures Pleines, soit **6 niveaux tarifaires**. La couleur du lendemain est annoncée chaque jour vers 11h sur le site EDF et via notre système d'[alertes WhatsApp gratuites](/#subscribe).
 
 **Pour qui ?** Les foyers flexibles, capables de réduire drastiquement leur consommation les jours rouges.
 
@@ -131,7 +131,7 @@ L'offre Tempo génère une économie significative, à condition de réduire for
 | Économies potentielles de 20 à 30 % | Jour rouge HP très coûteux (0,7060 EUR/kWh) |
 | 300 jours bleus à prix bas | Nécessite vigilance et adaptation |
 | Incitatif à la sobriété énergétique | Incompatible avec chauffage 100 % électrique sans alternative |
-| Écologique : réduit la demande en pointe | Couleur connue seulement la veille à 17h |
+| Écologique : réduit la demande en pointe | Couleur connue seulement la veille à 11h |
 
 ## Quel profil pour quelle offre ?
 
@@ -176,7 +176,7 @@ Sans réduction de consommation les jours rouges, l'offre Tempo peut devenir **p
 
 ### Comment connaître la couleur Tempo du lendemain ?
 
-EDF annonce la couleur du lendemain chaque jour aux alentours de 17h. Vous pouvez la consulter sur notre [Calendrier Tempo EDF](/calendrier) qui est mis à jour automatiquement, ou recevoir une notification instantanée en vous inscrivant à nos [alertes WhatsApp gratuites](/#subscribe). Notre système de prévision vous donne également une estimation de la couleur pour les jours J+2 à J+5, vous permettant d'anticiper encore davantage.
+EDF annonce la couleur du lendemain chaque jour aux alentours de 11h. Vous pouvez la consulter sur notre [Calendrier Tempo EDF](/calendrier) qui est mis à jour automatiquement, ou recevoir une notification instantanée en vous inscrivant à nos [alertes WhatsApp gratuites](/#subscribe). Notre système de prévision vous donne également une estimation de la couleur pour les jours J+2 à J+5, vous permettant d'anticiper encore davantage.
 
 ## Conclusion : notre recommandation
 

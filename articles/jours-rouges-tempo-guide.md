@@ -89,7 +89,7 @@ D'autres facteurs entrent en jeu : la nébulosité (moins de soleil = plus de ch
 
 ### L'annonce officielle d'EDF
 
-EDF annonce la couleur du lendemain chaque jour vers 17h. Cela ne laisse que la soirée pour s'organiser. Pour le surlendemain et au-delà, aucune information officielle n'est disponible.
+EDF annonce la couleur du lendemain chaque jour vers 11h. Cela ne laisse que la soirée pour s'organiser. Pour le surlendemain et au-delà, aucune information officielle n'est disponible.
 
 ### Notre algorithme de prévision à 15 jours
 
@@ -122,7 +122,7 @@ Il y a exactement **22 jours rouges par saison Tempo** (du 1er septembre au 31 a
 
 ### Peut-on connaître les jours rouges Tempo à l'avance ?
 
-EDF n'annonce officiellement que la couleur du **lendemain**, chaque jour vers 17h. Il n'existe pas de calendrier officiel prédéfini. Cependant, des services comme TempoForecast utilisent la météo, les données de consommation RTE et le machine learning pour **prédire les jours rouges jusqu'à 5 jours à l'avance**. Consultez [nos prévisions à 15 jours](/) pour anticiper et adapter votre consommation.
+EDF n'annonce officiellement que la couleur du **lendemain**, chaque jour vers 11h. Il n'existe pas de calendrier officiel prédéfini. Cependant, des services comme TempoForecast utilisent la météo, les données de consommation RTE et le machine learning pour **prédire les jours rouges jusqu'à 5 jours à l'avance**. Consultez [nos prévisions à 15 jours](/) pour anticiper et adapter votre consommation.
 
 ### Combien peut-on économiser en évitant de consommer les jours rouges ?
 

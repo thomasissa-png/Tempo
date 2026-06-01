@@ -63,7 +63,7 @@ Le Linky vous aide à confirmer ces hypothèses : en observant votre courbe de c
 
 Suivre, c'est bien ; agir, c'est mieux. Voici la marche à suivre une fois vos données en main :
 
-1. **Anticiper la couleur du jour.** EDF annonce la couleur de J+1 vers 17h. Pour aller plus loin, notre site prédit les couleurs de **J+2 à J+5** — consultez le [calendrier Tempo en direct](/calendrier) pour planifier votre semaine.
+1. **Anticiper la couleur du jour.** EDF annonce la couleur de J+1 vers 11h. Pour aller plus loin, notre site prédit les couleurs de **J+2 à J+5** — consultez le [calendrier Tempo en direct](/calendrier) pour planifier votre semaine.
 2. **Décaler les gros postes** (chauffe-eau, lave-linge, sèche-linge, lave-vaisselle) sur les heures creuses 22h-6h, et surtout les jours rouges.
 3. **Réduire le chauffage** sur les créneaux 6h-22h des jours rouges, premier poste de dépense l'hiver. Notre article sur le [chauffage les jours rouges](/blog/chauffage-jour-rouge-tempo-astuces) détaille les réglages gagnants.
 4. **Vérifier l'impact** la semaine suivante dans votre suivi Linky : la consommation HP des jours rouges doit baisser, celle des heures creuses peut monter — c'est le signe que vous avez réussi à déplacer vos usages.

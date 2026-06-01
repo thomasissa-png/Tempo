@@ -63,7 +63,7 @@ La période d'avril à août est aussi celle où l'on relâche souvent ses effor
 
 La saison rouge suivante recommencera le 1er novembre. Le printemps et l'été sont le moment idéal pour vous préparer sans pression : vérifier l'isolation de votre logement, envisager un chauffage d'appoint au bois, installer un thermostat connecté ou simplement réviser votre stratégie d'anticipation. Pour un plan d'action complet, consultez notre guide pour [préparer la saison Tempo 2026-2027](/blog/preparer-saison-tempo-2026-2027).
 
-Et pour ne plus jamais être surpris par un jour rouge l'hiver prochain, le plus simple reste de [vous inscrire à nos alertes gratuites](/#subscribe). Notre système prédit les couleurs Tempo de J+2 à J+5 en s'appuyant sur la météo de 9 villes (Météo France AROME/ARPEGE, avec repli Open-Meteo), les prévisions de consommation de RTE et un modèle d'apprentissage automatique. Vous recevez ainsi un signal d'anticipation que EDF, qui n'annonce que la couleur du lendemain vers 17h, ne vous fournit pas.
+Et pour ne plus jamais être surpris par un jour rouge l'hiver prochain, le plus simple reste de [vous inscrire à nos alertes gratuites](/#subscribe). Notre système prédit les couleurs Tempo de J+2 à J+5 en s'appuyant sur la météo de 9 villes (Météo France AROME/ARPEGE, avec repli Open-Meteo), les prévisions de consommation de RTE et un modèle d'apprentissage automatique. Vous recevez ainsi un signal d'anticipation que EDF, qui n'annonce que la couleur du lendemain vers 11h, ne vous fournit pas.
 
 ## Questions fréquentes sur la fin de saison rouge Tempo
 

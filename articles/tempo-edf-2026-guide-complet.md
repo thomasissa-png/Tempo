@@ -16,7 +16,7 @@ Tempo est une **option tarifaire d'EDF** qui existe depuis 1996. Son principe es
 - **Jours BLANCS** (43 par an) : un tarif intermédiaire, proche du tarif de base
 - **Jours ROUGES** (22 par an) : le tarif le plus élevé, réservé aux jours de forte demande en hiver
 
-La couleur du lendemain est annoncée par EDF chaque jour vers 17h. Le jour Tempo commence à **6h du matin** et se termine à **6h le lendemain** (et non de minuit à minuit).
+La couleur du lendemain est annoncée par EDF chaque jour vers 11h. Le jour Tempo commence à **6h du matin** et se termine à **6h le lendemain** (et non de minuit à minuit).
 
 ## Les tarifs Tempo EDF en 2026
 
@@ -89,7 +89,7 @@ Le montant exact dépend de votre profil de consommation et de votre capacité �
 
 ## Comment être prévenu des jours rouges ?
 
-EDF annonce la couleur du lendemain vers 17h, ce qui laisse peu de temps pour s'organiser. Pour anticiper davantage, plusieurs solutions :
+EDF annonce la couleur du lendemain vers 11h, ce qui laisse peu de temps pour s'organiser. Pour anticiper davantage, plusieurs solutions :
 
 1. **Notre service d'alertes WhatsApp** : recevez un message gratuit avec les prévisions jusqu'à J+15 avant chaque jour rouge. [Inscrivez-vous ici](/alertes) ou découvrez [comment fonctionnent nos alertes jour rouge](/blog/alerte-jour-rouge-tempo).
 2. **Le [calendrier Tempo](/calendrier)** : consultez la vue mensuelle pour voir les couleurs passées et nos prévisions futures.
@@ -101,7 +101,7 @@ Soyons transparents, Tempo a aussi ses limites :
 
 - **Contraignant** : il faut surveiller les couleurs et adapter ses habitudes quotidiennement en hiver
 - **Risque financier** : un jour rouge "oublié" peut coûter très cher (50-150 €)
-- **Incertitude** : EDF ne prévient que la veille à 17h (d'où l'utilité de nos prévisions à 15 jours)
+- **Incertitude** : EDF ne prévient que la veille à 11h (d'où l'utilité de nos prévisions à 15 jours)
 - **Pas pour tous** : les foyers tout-électrique sans alternative de chauffage y perdent souvent
 
 ## Tempo vs. autres offres EDF
@@ -124,7 +124,7 @@ Cela dépend de votre capacité à réduire votre consommation les jours rouges.
 
 ### Comment connaître la couleur Tempo du jour et du lendemain ?
 
-EDF annonce la couleur du lendemain chaque jour vers **17h**. Pour anticiper davantage (J+2 à J+5), consultez notre [calendrier Tempo](/calendrier) mis à jour quotidiennement. Vous pouvez aussi [recevoir des alertes WhatsApp gratuites](/#subscribe) avant chaque jour rouge.
+EDF annonce la couleur du lendemain chaque jour vers **11h**. Pour anticiper davantage (J+2 à J+5), consultez notre [calendrier Tempo](/calendrier) mis à jour quotidiennement. Vous pouvez aussi [recevoir des alertes WhatsApp gratuites](/#subscribe) avant chaque jour rouge.
 
 ### Peut-on revenir au tarif réglementé après avoir souscrit Tempo ?
 

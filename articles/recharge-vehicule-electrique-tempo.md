@@ -56,7 +56,7 @@ Les jours rouges ne surviennent jamais le week-end ni les jours fériés, et uni
 
 ## Planifier grâce aux prévisions J+2 à J+5
 
-C'est ici que l'anticipation fait toute la différence. EDF n'annonce officiellement que la couleur du lendemain (J+1), chaque jour vers 17h. Pour un automobiliste, savoir la veille au soir qu'on est en jour rouge, c'est souvent trop tard pour réorganiser ses recharges et ses trajets.
+C'est ici que l'anticipation fait toute la différence. EDF n'annonce officiellement que la couleur du lendemain (J+1), chaque jour vers 11h. Pour un automobiliste, savoir la veille au soir qu'on est en jour rouge, c'est souvent trop tard pour réorganiser ses recharges et ses trajets.
 
 Notre algorithme va plus loin : il analyse les prévisions météo de 9 villes (données Météo France), la consommation nationale prévue (données RTE) et le budget saisonnier restant pour produire des prévisions de **J+2 à J+5**. Concrètement, vous pouvez savoir dès le début de semaine que jeudi sera probablement rouge, et donc planifier une grosse recharge mercredi soir.
 
@@ -88,7 +88,7 @@ Trois options existent. La plus simple est la programmation horaire intégrée �
 
 ### Les prévisions J+2 à J+5 sont-elles fiables pour planifier mes trajets ?
 
-Elles constituent une aide précieuse mais restent des estimations. EDF ne confirme officiellement que la couleur du lendemain, vers 17h. Notre algorithme prolonge cette visibilité jusqu'à J+5 en combinant météo (9 villes), consommation RTE et budget saisonnier de jours rouges. La fiabilité est meilleure à J+2 qu'à J+5. Utilisez ces prévisions pour anticiper une grosse recharge, mais consultez toujours le [calendrier](/calendrier) et confirmez avec l'annonce officielle de J+1 avant une décision importante.
+Elles constituent une aide précieuse mais restent des estimations. EDF ne confirme officiellement que la couleur du lendemain, vers 11h. Notre algorithme prolonge cette visibilité jusqu'à J+5 en combinant météo (9 villes), consommation RTE et budget saisonnier de jours rouges. La fiabilité est meilleure à J+2 qu'à J+5. Utilisez ces prévisions pour anticiper une grosse recharge, mais consultez toujours le [calendrier](/calendrier) et confirmez avec l'annonce officielle de J+1 avant une décision importante.
 
 ---
 
