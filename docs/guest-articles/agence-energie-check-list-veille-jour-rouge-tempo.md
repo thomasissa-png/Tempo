@@ -8,7 +8,7 @@ publish_url: à confirmer côté agence-energie.com
 backlinks_to_us: 2 (1 contextuel /alertes + 1 bio auteur /)
 ---
 
-Un jour rouge Tempo se gagne ou se perd la veille, pas le jour même. Que vous soyez abonné Tempo aguerri cherchant à professionnaliser votre routine ou nouveau venu qui s'organise pour ses premiers jours rouges, la mécanique est la même : à 11h vous savez, à 11h30 vous programmez, entre 17h et 22h vous limitez, le lendemain vous vérifiez. Cette check-list horaire transforme une journée à 0,7060 €/kWh en non-événement budgétaire. Elle tient en quatre rendez-vous chronométrés, reproductibles toute la saison rouge (1er novembre au 31 mars). L'objectif n'est pas de tout couper — c'est de déplacer les bons kWh vers les bonnes heures, sans subir.
+Un jour rouge Tempo se gagne ou se perd la veille, pas le jour même. Que vous soyez abonné Tempo aguerri ou nouveau venu, la mécanique est la même : à 11h vous savez, à 11h30 vous programmez, entre 17h et 22h vous limitez, le lendemain vous vérifiez. Cette check-list horaire transforme une journée à 0,7060 €/kWh en non-événement budgétaire. Quatre rendez-vous chronométrés, reproductibles toute la saison rouge (1er novembre au 31 mars). L'objectif n'est pas de tout couper — c'est de déplacer les bons kWh vers les bonnes heures.
 
 ## 11h05 — vérifier l'annonce EDF
 
@@ -20,16 +20,18 @@ Pourquoi cette heure précise compte ? Parce que toute la chaîne d'actions qui 
 
 ## 11h30 — programmer les équipements
 
-Vous savez. Vous avez 30 minutes pour transformer cette information en programmation concrète. Cette fenêtre 11h-12h est le vrai pivot opérationnel de la check-list : tout ce qui n'est pas programmé maintenant deviendra une décision en urgence ce soir.
+Vous avez 30 minutes pour transformer cette information en programmation concrète. La fenêtre 11h-12h est le pivot opérationnel de la check-list : tout ce qui n'est pas programmé maintenant deviendra une décision en urgence ce soir.
 
-Quatre gestes à enchaîner, dans l'ordre de rentabilité décroissante :
+Quatre gestes à enchaîner, dans l'ordre de rentabilité décroissante. Note importante sur le calcul : la veille d'un jour rouge est presque toujours bleue (les rouges se déclenchent isolément), donc la nuit précédente est facturée en **HC bleu à 0,1325 €/kWh**. Le delta utile par kWh déplacé devient **0,7060 − 0,1325 = 0,5735 €/kWh**.
 
-- **Ballon d'eau chaude (ECS)** : forcer la chauffe en heures creuses la nuit précédente (22h-6h), contacteur HC coupé en journée du jour rouge. Pour un ballon 200 L typique, on déplace 6 à 10 kWh d'un créneau rouge HP (0,7060 €/kWh) vers un créneau rouge HC (0,1575 €/kWh). Gain par kWh décalé : **0,7060 − 0,1575 = 0,5485 €/kWh**. Sur 8 kWh, cela représente **8 × 0,5485 = 4,39 €** d'économie sur la seule ECS, en un clic sur le tableau électrique.
-- **Chauffage électrique** : remonter la consigne de +1 à +2 °C entre 22h et 6h pour préchauffer le logement, puis redescendre la consigne le jour J. Selon l'inertie du logement, 5 à 15 kWh sont ainsi déplacés. Calcul : **10 kWh × 0,5485 = 5,49 €** par jour rouge.
-- **Électroménager** : programmation différée du lave-vaisselle, lave-linge et sèche-linge sur la plage 22h-6h. La plupart des appareils récents ont une fonction « départ différé » qui suffit. 3 à 5 kWh décalés, soit **1,65 à 2,75 €** de gain.
-- **Recharge véhicule électrique** : si vous rechargez à domicile, planifier la recharge **complète** avant 6h le matin du jour rouge (ou la reporter à la nuit suivante si la batterie tient). 30 kWh décalés × 0,5485 = **environ 16,45 €** sur une seule charge.
+- **Ballon d'eau chaude (ECS)** : forcer la chauffe en heures creuses la nuit précédente (22h-6h), contacteur HC coupé en journée du jour rouge. Pour un ballon 200 L typique, on déplace 6 à 10 kWh d'un créneau rouge HP (0,7060 €/kWh) vers un créneau bleu HC (0,1325 €/kWh). Sur 8 kWh, cela représente **8 × 0,5735 = 4,59 €** d'économie sur la seule ECS, en un clic sur le tableau électrique.
+- **Chauffage électrique** : remonter la consigne de +1 à +2 °C entre 22h et 6h pour préchauffer le logement, puis redescendre la consigne le jour J. Selon l'inertie du logement, 5 à 15 kWh sont ainsi déplacés. Calcul : **10 kWh × 0,5735 = 5,74 €** par jour rouge.
+- **Électroménager** : programmation différée du lave-vaisselle, lave-linge et sèche-linge sur la plage 22h-6h. La plupart des appareils récents ont une fonction « départ différé » qui suffit. 3 à 5 kWh décalés, soit **1,72 à 2,87 €** de gain.
+- **Recharge véhicule électrique** : si vous rechargez à domicile, planifier la recharge **complète** avant 6h le matin du jour rouge (ou la reporter à la nuit suivante si la batterie tient). 30 kWh décalés × 0,5735 = **environ 17,21 €** sur une seule charge.
 
 Total ordre de grandeur pour un foyer T4 électrique sans véhicule : **10 à 15 €/jour rouge** capturés en quinze minutes de programmation. Avec véhicule électrique, on franchit facilement les 25 €.
+
+Cas particulier — deux rouges consécutifs : la « veille » est alors elle-même rouge, donc la nuit est facturée en **HC rouge à 0,1575 €/kWh**. Le delta retombe à **0,7060 − 0,1575 = 0,5485 €/kWh**, soit environ 4 % de gain en moins par kWh décalé. La logique reste intacte, le calcul s'ajuste.
 
 ## 17h-22h — limiter la consommation
 
@@ -57,15 +59,15 @@ Boucler la check-list, c'est mesurer ce qu'on a gagné — sinon on optimise à 
 
 **Application EDF & Moi** : la courbe de consommation horaire J-1 est disponible dès le surlendemain. Les pics 7h-9h et 18h-21h doivent être visiblement écrasés. Si la courbe rouge ressemble à la courbe d'un jour bleu ordinaire, la check-list a fait son travail.
 
-Ce contrôle prend trois minutes le matin du jour J+1 — café à la main. Il alimente la boucle d'apprentissage : un foyer qui vérifie ajuste, un foyer qui ne vérifie pas reproduit les mêmes pertes les 21 jours rouges suivants. Le ratio coût-bénéfice est imbattable : trois minutes pour valider 10 à 25 € capturés la veille.
+Trois minutes le matin J+1, café à la main. Un foyer qui vérifie ajuste ; un foyer qui ne vérifie pas reproduit les mêmes pertes les 21 jours rouges suivants. Trois minutes pour valider 10 à 25 € capturés la veille — le meilleur ratio coût-bénéfice de la saison.
 
-## FAQ
+## FAQ jour rouge Tempo
 
-### Que faire si je ne suis pas chez moi un jour rouge ?
-Absence = jour rouge facile. L'essentiel des leviers (ballon en HC nocturne, chauffage abaissé en consigne d'absence, électroménager non utilisé) tourne automatiquement à votre avantage. Programmez la veille à 11h30 comme d'habitude, et vérifiez simplement que le contacteur ECS est bien en position « heures creuses uniquement ». Vous gagnerez environ autant qu'un jour rouge actif, sans aucun effort le jour J.
+### Comment savoir si demain est un jour rouge Tempo ?
+EDF annonce la couleur du lendemain chaque jour vers 11h via SMS, l'application EDF & Moi et le serveur vocal 3004. L'annonce ne porte que sur J+1 — au-delà, aucune certitude officielle, seulement des estimations basées sur la météo et le calendrier (1er novembre au 31 mars, hors week-ends et jours fériés). Pour anticiper plus loin, croisez la prévision Météo France à 5 jours avec le compteur de rouges restants dans votre espace EDF.
 
-### Le préchauffage la veille en heures creuses ne fait-il pas monter la facture globale ?
-Non, et c'est précisément la logique économique de Tempo. Vous déplacez les mêmes kWh d'un créneau à 0,7060 €/kWh vers un créneau à 0,1325 €/kWh (bleu HC) ou 0,1575 €/kWh (rouge HC). Les pertes thermiques marginales du préchauffage (5 à 10 % selon l'isolation) sont largement absorbées par l'écart tarifaire d'environ 4,4 fois entre rouge HP et bleu HC. Sur un logement BBC ou correctement isolé, la facture annuelle baisse mécaniquement à chaque jour rouge anticipé.
+### Le préchauffage la veille fait-il monter la facture totale d'électricité ?
+Non : c'est exactement le mécanisme que le tarif Tempo récompense. Vous déplacez les mêmes kWh d'un créneau à 0,7060 €/kWh (rouge HP) vers un créneau à 0,1325 €/kWh (bleu HC), soit un rapport d'environ 5,3 fois moins cher. Les pertes thermiques marginales du préchauffage (5 à 10 % selon l'isolation) sont largement absorbées par l'écart tarifaire. Sur un logement correctement isolé, chaque jour rouge anticipé fait baisser la facture annuelle — pas l'inverse.
 
 ---
 
