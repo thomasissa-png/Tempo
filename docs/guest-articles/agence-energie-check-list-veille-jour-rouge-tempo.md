@@ -16,7 +16,7 @@ EDF publie la couleur du lendemain (J+1) **chaque jour vers 11h**, jamais à 17h
 
 Pourquoi cette heure précise compte ? Parce que toute la chaîne d'actions qui suit dépend d'une certitude acquise avant midi. Si vous attendez 18h pour découvrir la couleur, vous avez perdu la fenêtre des heures creuses de la nuit précédente — celle qui rend le préchauffage rentable.
 
-**Anticiper au-delà de J+1.** EDF n'annonce que le lendemain, ce qui suffit pour la soirée qui vient mais reste trop court pour caler une recharge de véhicule électrique ou un batch-cooking. Il existe des outils qui automatisent cette vérification quotidienne, comme [calendrier-tempo.fr](https://calendrier-tempo.fr/alertes), qui envoie une alerte WhatsApp gratuite dès que la couleur du lendemain est confirmée. Vous pouvez aussi tenir votre propre veille DIY : ouverture quotidienne de l'app EDF & Moi à 11h05, croisée le dimanche soir avec les prévisions Météo France (températures sous saisonnières sur 5 jours = signal de risque rouge). Les deux approches sont valables — l'automatisation libère simplement la charge mentale.
+**Anticiper au-delà de J+1.** EDF n'annonce que le lendemain, ce qui suffit pour la soirée qui vient mais reste trop court pour caler une recharge de véhicule électrique ou un batch-cooking. Il existe des outils qui automatisent cette vérification quotidienne, comme [calendrier-tempo.fr](https://calendrier-tempo.fr/alertes), qui envoie une alerte WhatsApp gratuite dès que la couleur du lendemain est confirmée. Vous pouvez aussi tenir votre propre veille DIY : ouverture quotidienne de l'app EDF & Moi à 11h05, croisée le dimanche soir avec les prévisions Météo France (températures sous saisonnières sur 5 jours = signal de risque rouge). Les deux approches sont valables — l'automatisation libère la charge mentale.
 
 ## 11h30 — programmer les équipements
 
@@ -59,7 +59,7 @@ Boucler la check-list, c'est mesurer ce qu'on a gagné — sinon on optimise à 
 
 **Application EDF & Moi** : la courbe de consommation horaire J-1 est disponible dès le surlendemain. Les pics 7h-9h et 18h-21h doivent être visiblement écrasés. Si la courbe rouge ressemble à la courbe d'un jour bleu ordinaire, la check-list a fait son travail.
 
-Trois minutes le matin J+1, café à la main. Un foyer qui vérifie ajuste ; un foyer qui ne vérifie pas reproduit les mêmes pertes les 21 jours rouges suivants. Trois minutes pour valider 10 à 25 € capturés la veille — le meilleur ratio coût-bénéfice de la saison.
+Trois minutes le matin J+1, café à la main. Un foyer qui vérifie ajuste ; un foyer qui ne vérifie pas reproduit les mêmes pertes les 21 jours rouges suivants. C'est tout ce qui sépare un jour rouge subi d'un jour rouge neutralisé : quatre rendez-vous tenus, 10 à 25 € capturés, plus aucune surprise sur la facture de février.
 
 ## FAQ jour rouge Tempo
 
