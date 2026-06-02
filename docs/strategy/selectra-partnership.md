@@ -262,7 +262,7 @@ Sans accès WebFetch sur les 2 articles d'exemple fournis (`energie-reduc.com/ec
 >
 > > Vous pouvez consulter cette page de Selectra qui donne la grille tarifaire en fonction de votre abonnement ou votre contrat EDF.
 >
-> L'ancre « cette page de Selectra » renvoie vers https://selectra.info/energie/fournisseurs/edf/tempo#tarifs, en `rel="sponsored"` (bonne pratique Google pour un lien partenaire). Vous pouvez vérifier dès à présent.
+> L'ancre « cette page de Selectra » renvoie vers https://selectra.info/energie/fournisseurs/edf/tempo#tarifs, en lien éditorial standard (format symétrique à celui que vous appliquez sur votre lien retour vers calendrier-tempo.fr). Vous pouvez vérifier dès à présent.
 >
 > ### Articles invités — deux angles détaillés
 >
