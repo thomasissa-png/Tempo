@@ -2,10 +2,11 @@
 title: Véhicule électrique Tempo : optimiser la recharge et payer moins
 description: Véhicule électrique Tempo : programmez la recharge en heures creuses et évitez les jours rouges pour diviser le coût du plein. Stratégies et estimations.
 publish_date: 2026-06-23
+updated_date: 2026-08-09
 keywords: véhicule électrique tempo, recharge voiture électrique tempo, borne recharge tempo edf, recharge heures creuses tempo
 cluster: equipements
 ---
-Recharger un véhicule électrique Tempo est l'un des meilleurs leviers d'économie de l'offre EDF, à condition de programmer la recharge au bon moment. La logique est simple : votre voiture consomme plusieurs dizaines de kilowattheures à chaque « plein », et ce volume est suffisamment important pour que le choix de l'heure et de la couleur du jour change radicalement la facture. En heures creuses (22h-6h), même un jour rouge, l'électricité reste à **0,1575 euros/kWh** ; en heures pleines d'un jour rouge, elle grimpe à **0,7060 euros/kWh**, soit environ quatre fois et demie le tarif des heures creuses. Autrement dit, deux recharges identiques peuvent coûter du simple au quadruple, voire davantage, selon le moment où vous branchez. Cet article vous explique comment exploiter les heures creuses, éviter les heures pleines des jours rouges et utiliser nos prévisions J+2 à J+5 pour planifier sereinement.
+Recharger un véhicule électrique Tempo est l'un des meilleurs leviers d'économie de l'offre EDF, à condition de programmer la recharge au bon moment. La logique est simple : votre voiture consomme plusieurs dizaines de kilowattheures à chaque « plein », et ce volume est suffisamment important pour que le choix de l'heure et de la couleur du jour change radicalement la facture. En heures creuses (22h-6h), même un jour rouge, l'électricité reste à **0,1615 euros/kWh** ; en heures pleines d'un jour rouge, elle grimpe à **0,7295 euros/kWh**, soit environ quatre fois et demie le tarif des heures creuses. Autrement dit, deux recharges identiques peuvent coûter du simple au quadruple, voire davantage, selon le moment où vous branchez. Cet article vous explique comment exploiter les heures creuses, éviter les heures pleines des jours rouges et utiliser nos prévisions J+2 à J+5 pour planifier sereinement.
 
 Si vous débutez avec l'offre, commencez par notre [guide complet Tempo EDF 2026](/blog/tempo-edf-2026-guide-complet) pour comprendre le fonctionnement général des trois couleurs et des deux plages horaires.
 
@@ -15,12 +16,12 @@ La voiture électrique cumule deux atouts qui en font le compagnon parfait de l'
 
 À titre d'ordre de grandeur, une recharge pour parcourir environ 300 km demande de l'ordre de **40 à 50 kWh**, mais ce chiffre varie fortement selon le modèle, la météo et votre conduite — considérez-le comme une estimation. Ce qui compte, c'est que vous rechargez le plus souvent la nuit, à domicile, pendant que la voiture est immobilisée plusieurs heures. Or les heures creuses Tempo (22h-6h) tombent justement la nuit : vous avez donc rarement besoin de recharger en heures pleines.
 
-Comparons les ordres de grandeur d'un « plein » d'environ 45 kWh selon le créneau choisi (estimations sur la base des tarifs 2025-2026) :
+Comparons les ordres de grandeur d'un « plein » d'environ 45 kWh selon le créneau choisi (estimations sur la base des tarifs en vigueur depuis le 1er août 2026) :
 
 | Créneau de recharge | Tarif TTC indicatif | Coût estimé d'un plein (~45 kWh) |
 |---------------------|---------------------|----------------------------------|
-| Jour rouge, heures pleines (6h-22h) | 0,7060 euros/kWh | environ 32 euros |
-| Jour rouge, heures creuses (22h-6h) | 0,1575 euros/kWh | environ 7 euros |
+| Jour rouge, heures pleines (6h-22h) | 0,7295 euros/kWh | environ 33 euros |
+| Jour rouge, heures creuses (22h-6h) | 0,1615 euros/kWh | environ 7 euros |
 | Jour bleu / blanc, heures creuses | tarif réduit (non communiqué ici) | nettement inférieur au jour rouge HP |
 
 La leçon est limpide : recharger un jour rouge en heures pleines est le pire scénario possible, alors que la même recharge en heures creuses revient environ **quatre à cinq fois moins cher**. Retenez la hiérarchie : heures creuses toujours, heures pleines jamais un jour rouge.
@@ -49,7 +50,7 @@ Les heures creuses règlent l'essentiel du problème. Reste le cas délicat : vo
 
 - **Anticiper la veille.** Si un jour rouge approche, rechargez à fond la nuit précédente (souvent un jour bleu ou blanc) pour l'aborder avec une bonne autonomie.
 - **Ne recharger que le strict nécessaire.** Si vous devez brancher un jour rouge en journée, limitez la charge au kilométrage du jour plutôt que de viser 100 %.
-- **Reporter sur les heures creuses.** Même un jour rouge, la plage 22h-6h reste à 0,1575 euros/kWh : rentrer le soir et programmer la charge pour 22h reste très avantageux.
+- **Reporter sur les heures creuses.** Même un jour rouge, la plage 22h-6h reste à 0,1615 euros/kWh : rentrer le soir et programmer la charge pour 22h reste très avantageux.
 - **Recharger ailleurs.** Borne au bureau, parkings ou supermarchés : un jour rouge, ces alternatives deviennent particulièrement rentables.
 
 Les jours rouges ne surviennent jamais le week-end ni les jours fériés, et uniquement entre le 1er novembre et le 31 mars. En semaine hivernale, gardez donc le réflexe : on ne recharge pas en journée. Pour approfondir la logique de déclenchement, consultez notre [guide des jours rouges Tempo](/blog/jours-rouges-tempo-guide).
@@ -72,7 +73,7 @@ Rappelons que les prévisions J+2 à J+5 restent des estimations : la fiabilité
 
 Faisons un calcul d'ordre de grandeur, sachant que tout dépend de votre kilométrage et de votre modèle. Imaginons un foyer qui recharge l'équivalent d'environ 45 kWh deux fois par semaine, soit une centaine de recharges par an.
 
-En heures creuses plutôt qu'en heures pleines de jour rouge, l'écart par recharge approche les **25 euros** (32 euros contre 7 euros, estimations). On ne recharge évidemment pas systématiquement un jour rouge en pleine journée : le gain réel se concentre sur les jours rouges et blancs où le réflexe « heures creuses » évite le tarif fort. Même prudent, décaler la recharge sur la nuit représente facilement **plus de 100 euros d'économies par saison** pour un usage régulier — un montant à affiner selon votre situation.
+En heures creuses plutôt qu'en heures pleines de jour rouge, l'écart par recharge approche les **26 euros** (33 euros contre 7 euros, estimations). On ne recharge évidemment pas systématiquement un jour rouge en pleine journée : le gain réel se concentre sur les jours rouges et blancs où le réflexe « heures creuses » évite le tarif fort. Même prudent, décaler la recharge sur la nuit représente facilement **plus de 100 euros d'économies par saison** pour un usage régulier — un montant à affiner selon votre situation.
 
 Pour une vision chiffrée et personnalisée de votre cas, notre [simulateur d'économies Tempo](/blog/simulation-tempo-edf-economies) vous aide à estimer le gain global de l'offre, recharge comprise. Et si vous voulez confronter Tempo à l'offre Heures Creuses classique, notre [comparatif Tempo vs Heures Creuses](/blog/tempo-vs-heures-creuses-edf-bleu) éclaire le choix selon votre profil.
 
@@ -80,7 +81,7 @@ Pour une vision chiffrée et personnalisée de votre cas, notre [simulateur d'é
 
 ### Faut-il vraiment éviter de recharger en journée les jours rouges ?
 
-Oui, autant que possible. En heures pleines d'un jour rouge, le kilowattheure est à 0,7060 euros TTC, soit environ quatre fois et demie le tarif des heures creuses rouges (0,1575 euros/kWh). Sur un « plein » de plusieurs dizaines de kWh, l'écart se chiffre en dizaines d'euros. Si vous devez absolument recharger, limitez-vous au minimum nécessaire et reportez le complément sur la plage 22h-6h, qui reste avantageuse même un jour rouge.
+Oui, autant que possible. En heures pleines d'un jour rouge, le kilowattheure est à 0,7295 euros TTC, soit environ quatre fois et demie le tarif des heures creuses rouges (0,1615 euros/kWh). Sur un « plein » de plusieurs dizaines de kWh, l'écart se chiffre en dizaines d'euros. Si vous devez absolument recharger, limitez-vous au minimum nécessaire et reportez le complément sur la plage 22h-6h, qui reste avantageuse même un jour rouge.
 
 ### Comment programmer ma recharge pour ne charger qu'en heures creuses ?
 
@@ -92,4 +93,4 @@ Elles constituent une aide précieuse mais restent des estimations. EDF ne confi
 
 ---
 
-*Dernière mise à jour : 9 juin 2026. Les tarifs indiqués correspondent à l'offre Tempo EDF saison 2025-2026 (prix TTC) ; les coûts de recharge sont des ordres de grandeur qui varient selon le modèle de véhicule. Consultez le [calendrier Tempo](/calendrier) pour suivre les couleurs en temps réel et [recevez les alertes](/#subscribe) avant chaque jour rouge.*
+*Dernière mise à jour : 9 août 2026. Les tarifs indiqués correspondent au barème Tempo EDF en vigueur depuis le 1er août 2026 (prix TTC) ; les coûts de recharge sont des ordres de grandeur qui varient selon le modèle de véhicule. Consultez le [calendrier Tempo](/calendrier) pour suivre les couleurs en temps réel et [recevez les alertes](/#subscribe) avant chaque jour rouge.*

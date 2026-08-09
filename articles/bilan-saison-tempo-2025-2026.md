@@ -2,6 +2,7 @@
 title: Bilan saison Tempo 2025-2026 : ce qu'il faut retenir
 description: Bilan de la saison Tempo 2025-2026 : budget des jours rouges, règles EDF, répartition mensuelle et leçons pour anticiper la prochaine saison.
 publish_date: 2026-04-07
+updated_date: 2026-08-09
 keywords: bilan saison tempo 2025-2026, bilan tempo edf, saison tempo 2025-2026, jours rouges tempo bilan
 cluster: calendrier
 ---
@@ -60,8 +61,10 @@ Cette mécanique de densité est précisément ce que notre site modélise pour 
 
 Pourquoi tant d'attention pour ces 22 journées ? Parce que leur tarif est sans commune mesure avec le reste de l'année. Pour la saison 2025-2026, les tarifs réglementés Tempo TTC étaient (à titre d'estimation indicative) :
 
-- **Jour rouge, heures pleines (6h-22h) : environ 0,7060 €/kWh.**
-- **Jour rouge, heures creuses (22h-6h) : environ 0,1575 €/kWh.**
+- **Jour rouge, heures pleines (6h-22h) : environ 0,7060 €/kWh, tarif alors en vigueur.**
+- **Jour rouge, heures creuses (22h-6h) : environ 0,1575 €/kWh, tarif alors en vigueur.**
+
+Ces montants sont ceux qui s'appliquaient pendant la saison 2025-2026. Depuis la revalorisation du 1er août 2026, l'heure pleine rouge est passée à 0,7295 €/kWh et l'heure creuse rouge à 0,1615 €/kWh.
 
 L'écart est saisissant : en heures pleines un jour rouge, l'électricité coûte plus de quatre fois le prix des heures creuses du même jour. Concrètement, lancer un cycle de chauffage électrique intensif un après-midi rouge peut coûter plusieurs euros en quelques heures. C'est pourquoi décaler ses usages vers les heures creuses, ou mieux encore vers un jour bleu, fait toute la différence. Nos astuces de [chauffage en jour rouge Tempo](/blog/chauffage-jour-rouge-tempo-astuces) vous montrent comment limiter la casse les jours où vous ne pouvez pas couper le chauffage.
 

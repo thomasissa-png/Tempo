@@ -34,16 +34,16 @@ Le budget se réinitialise, mais les règles de placement des couleurs restent i
 
 Ces contraintes ont une conséquence directe : les 22 jours rouges doivent tous être « casés » entre novembre et mars, sur des jours ouvrés hors fériés. Plus l'hiver avance sans vague de froid, plus la densité de rouges restants augmente sur les jours éligibles encore disponibles. C'est exactement ce mécanisme que notre outil exploite pour anticiper. Pour aller plus loin sur ces journées critiques, consultez notre [guide complet des jours rouges Tempo](/blog/jours-rouges-tempo-guide).
 
-## Les tarifs Tempo 2026-2027 : à confirmer côté EDF
+## Les tarifs Tempo 2026-2027 : la grille du 1er août 2026
 
-EDF révise périodiquement la grille tarifaire de l'option Tempo. **Les tarifs applicables à la saison 2026-2027 doivent être confirmés sur la grille officielle EDF** : nous ne les inventons pas ici. À titre de référence, voici les tarifs en vigueur lors de la saison 2025-2026 (TTC), qui donnent un bon ordre de grandeur :
+EDF révise périodiquement la grille tarifaire de l'option Tempo. **Les tarifs Tempo ont été revalorisés le 1er août 2026, de +2,3 % à +3,3 % selon la couleur et la plage horaire.** Ce sont ces montants (TTC) qui s'appliquent à l'entrée dans la saison 2026-2027 :
 
-- **Jour rouge, heures pleines (6h-22h)** : 0,7060 €/kWh
-- **Jour rouge, heures creuses (22h-6h)** : 0,1575 €/kWh
+- **Jour rouge, heures pleines (6h-22h)** : 0,7295 €/kWh
+- **Jour rouge, heures creuses (22h-6h)** : 0,1615 €/kWh
 
 L'écart est spectaculaire : en heures pleines un jour rouge, le kilowatt-heure peut coûter plusieurs fois le prix d'un jour bleu. Les heures pleines courent de **6h à 22h** et les heures creuses de **22h à 6h**. C'est ce différentiel qui rend l'anticipation si rentable — et l'oubli si coûteux.
 
-*Note : les tarifs ci-dessus sont ceux de la saison 2025-2026 et servent uniquement de référence. Vérifiez toujours la grille officielle EDF pour connaître les tarifs réellement appliqués à votre contrat en 2026-2027.*
+*Note : ces montants correspondent à la grille en vigueur depuis le 1er août 2026. EDF pouvant réviser ses tarifs en cours de saison, vérifiez toujours la grille officielle pour connaître les prix réellement appliqués à votre contrat.*
 
 Pour replacer ces montants dans une stratégie d'ensemble, notre [guide complet Tempo EDF 2026](/blog/tempo-edf-2026-guide-complet) détaille le fonctionnement de l'offre et le profil des foyers pour qui elle est rentable.
 
@@ -97,4 +97,4 @@ Non. La règle est stricte : **aucun jour rouge ne peut être déclenché avant 
 
 Non, le budget ne se reporte jamais. Chaque 1er septembre, le compteur repart de zéro avec exactement 22 rouges et 43 blancs, quel que soit le nombre de jours réellement utilisés la saison précédente. Pour comparer le placement des couleurs d'une année sur l'autre, consultez l'[historique des saisons Tempo](/blog/calendrier-tempo-historique-saisons).
 
-*Cet article est mis à jour à chaque rentrée Tempo. Les tarifs 2025-2026 cités sont donnés à titre de référence : vérifiez toujours la grille officielle EDF pour les montants appliqués en 2026-2027.*
+*Cet article est mis à jour à chaque rentrée Tempo. Les tarifs cités sont ceux de la grille du 1er août 2026 : vérifiez toujours la grille officielle EDF pour les montants appliqués à votre contrat.*

@@ -342,20 +342,25 @@ Toutes les 4 semaines, au lieu d'écrire un nouvel article, rafraîchissez un ar
 - **Jamais de blanc** le dimanche (dimanches = toujours bleu)
 - Maximum **5 jours rouges consécutifs**
 - EDF annonce la couleur du lendemain vers **17h**
-- Abonnement mensuel Tempo : ~15,96 €/mois
+- Abonnement mensuel Tempo : ~15,96 €/mois (valeur non reconfirmée en août 2026 — vérifier sur edf.fr avant réutilisation)
 
 ## Référence — Tarifs Tempo
 
 > **Les tarifs à jour sont dans `articles/_seo_rules.yaml` → section `tarifs_tempo`.**
 > Lisez ce fichier à l'Étape 0 pour obtenir les tarifs en vigueur. Ne vous fiez pas aux valeurs ci-dessous si elles sont obsolètes.
 >
-> Valeurs de référence (février 2026) :
+> Valeurs de référence (grille en vigueur depuis le 1er août 2026) :
 
 | Jour | Heures Pleines (6h-22h) | Heures Creuses (22h-6h) |
 |------|------------------------|------------------------|
-| **Bleu** | 0,1612 €/kWh | 0,1325 €/kWh |
-| **Blanc** | 0,1871 €/kWh | 0,1499 €/kWh |
-| **Rouge** | 0,7060 €/kWh | 0,1575 €/kWh |
+| **Bleu** | 0,1654 €/kWh | 0,1356 €/kWh |
+| **Blanc** | 0,1921 €/kWh | 0,1536 €/kWh |
+| **Rouge** | 0,7295 €/kWh | 0,1615 €/kWh |
+
+> Barème précédent (1er février 2026), à n'utiliser que pour les passages rétrospectifs sur la saison 2025-2026 :
+> bleu 0,1612 / 0,1325 — blanc 0,1871 / 0,1499 — rouge 0,7060 / 0,1575.
+> Règle : n'appliquez le barème courant qu'aux affirmations au présent. Un chiffre décrivant une saison passée reste
+> celui de l'époque, suffixé « tarif alors en vigueur ».
 
 ## Référence — Mots-clés cibles
 

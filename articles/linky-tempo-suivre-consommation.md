@@ -3,10 +3,11 @@ title: Linky et Tempo EDF : suivre sa consommation en temps réel
 description: Linky et Tempo EDF : comment suivre sa consommation en temps réel, lire les heures pleines/creuses et repérer les postes coûteux des jours rouges.
 keywords: linky tempo, linky tempo edf, suivre consommation tempo, linky heures creuses tempo
 publish_date: 2026-05-12
+updated_date: 2026-08-09
 cluster: equipements
 ---
 
-Le compteur Linky et l'option Tempo forment un duo redoutablement efficace pour qui veut payer son électricité moins cher. Avec **linky tempo**, vous ne subissez plus votre facture : vous la pilotez. Le compteur communicant mesure votre consommation heure par heure, distingue automatiquement les heures pleines des heures creuses, et vous donne les chiffres nécessaires pour comprendre où part votre argent — surtout les fameux jours rouges où le kilowattheure atteint 0,7060 €/kWh en heures pleines. Dans ce guide, vous allez apprendre à lire votre Linky, à exploiter les outils de suivi (appli EDF & Moi, espace client Enedis), à séparer heures pleines et heures creuses, et à identifier les appareils qui plombent vos jours rouges.
+Le compteur Linky et l'option Tempo forment un duo redoutablement efficace pour qui veut payer son électricité moins cher. Avec **linky tempo**, vous ne subissez plus votre facture : vous la pilotez. Le compteur communicant mesure votre consommation heure par heure, distingue automatiquement les heures pleines des heures creuses, et vous donne les chiffres nécessaires pour comprendre où part votre argent — surtout les fameux jours rouges où le kilowattheure atteint 0,7295 €/kWh en heures pleines. Dans ce guide, vous allez apprendre à lire votre Linky, à exploiter les outils de suivi (appli EDF & Moi, espace client Enedis), à séparer heures pleines et heures creuses, et à identifier les appareils qui plombent vos jours rouges.
 
 ## Pourquoi le Linky change tout pour un abonné Tempo
 
@@ -29,7 +30,7 @@ C'est le point le plus important à intégrer. En Tempo, le découpage est simpl
 | Heures pleines (HP) | 6h00 → 22h00 | Tarif le plus élevé |
 | Heures creuses (HC) | 22h00 → 6h00 | Tarif réduit |
 
-Sur un jour rouge, l'écart est spectaculaire : environ **0,7060 €/kWh en heures pleines** contre **0,1575 €/kWh en heures creuses**. Autrement dit, le même kilowattheure coûte près de **4,5 fois plus cher** entre 6h et 22h qu'entre 22h et 6h. Toute consommation que vous parvenez à déplacer après 22h un jour rouge représente une économie immédiate et massive.
+Sur un jour rouge, l'écart est spectaculaire : environ **0,7295 €/kWh en heures pleines** contre **0,1615 €/kWh en heures creuses**. Autrement dit, le même kilowattheure coûte près de **4,5 fois plus cher** entre 6h et 22h qu'entre 22h et 6h. Toute consommation que vous parvenez à déplacer après 22h un jour rouge représente une économie immédiate et massive.
 
 Votre Linky comptabilise séparément ces deux compteurs (HP et HC). Quand vous relevez vos index, vous verrez donc deux valeurs distinctes par couleur de jour. C'est ce qui vous permet de vérifier, noir sur blanc, que vos efforts de décalage portent leurs fruits.
 
@@ -55,7 +56,7 @@ Tous les appareils ne se valent pas. Pour optimiser, il faut savoir lesquels pè
 | Four électrique | environ 2 à 2,5 kWh par heure | Pic ponctuel mais intense |
 | Plaques, sèche-linge, lave-vaisselle | quelques kWh par cycle | Décalables en heures creuses |
 
-Le raisonnement est simple : un jour rouge, chaque kWh consommé entre 6h et 22h coûte environ 0,7060 €. Faire tourner un four une heure en pleine journée rouge, c'est donc de l'ordre de **1,40 à 1,75 €** rien que pour la cuisson. Décaler ce même usage après 22h le ramène à quelques dizaines de centimes.
+Le raisonnement est simple : un jour rouge, chaque kWh consommé entre 6h et 22h coûte environ 0,7295 €. Faire tourner un four une heure en pleine journée rouge, c'est donc de l'ordre de **1,46 à 1,82 €** rien que pour la cuisson. Décaler ce même usage après 22h le ramène à quelques dizaines de centimes.
 
 Le Linky vous aide à confirmer ces hypothèses : en observant votre courbe de charge un jour rouge, vous verrez des pics correspondre à vos usages (le matin avec le chauffe-eau, le soir avec la cuisine). Vous saurez alors précisément quoi décaler ou couper.
 
@@ -88,7 +89,7 @@ Les heures creuses Tempo sont de **22h à 6h**, tous les jours, quelle que soit 
 
 ### Comment savoir combien m'a coûté un jour rouge ?
 
-Multipliez votre consommation en heures pleines de ce jour (relevée via le Linky ou l'appli EDF) par environ 0,7060 €/kWh, et votre consommation en heures creuses par environ 0,1575 €/kWh. La somme vous donne le coût électricité de la journée. C'est l'exercice idéal pour mesurer vos progrès d'un jour rouge à l'autre.
+Multipliez votre consommation en heures pleines de ce jour (relevée via le Linky ou l'appli EDF) par environ 0,7295 €/kWh, et votre consommation en heures creuses par environ 0,1615 €/kWh. La somme vous donne le coût électricité de la journée. C'est l'exercice idéal pour mesurer vos progrès d'un jour rouge à l'autre.
 
 ### Puis-je voir ma consommation à l'heure près ?
 
@@ -96,4 +97,4 @@ Oui, via la courbe de charge mise à disposition par Enedis (au pas demi-horaire
 
 Pour aller plus loin sur la stratégie globale, consultez notre [guide des jours rouges Tempo](/blog/jours-rouges-tempo-guide) : il complète parfaitement le suivi Linky en expliquant quand et pourquoi les jours rouges tombent.
 
-*Note : les tarifs et ordres de grandeur de consommation cités sont indicatifs (barème 2025-2026, estimations variables selon votre logement). Vérifiez toujours les couleurs à venir sur la page /calendrier avant d'agir.*
+*Note : les tarifs et ordres de grandeur de consommation cités sont indicatifs (barème en vigueur depuis le 1er août 2026, estimations variables selon votre logement). Vérifiez toujours les couleurs à venir sur la page /calendrier avant d'agir.*

@@ -2,10 +2,11 @@
 title: Ballon d'eau chaude Tempo : programmer pour économiser
 description: Ballon d'eau chaude Tempo : programmez la chauffe en heures creuses, coupez les jours rouges et réduisez la facture. Réglages, contacteur HC et estimations.
 publish_date: 2026-07-21
+updated_date: 2026-08-09
 keywords: ballon d'eau chaude tempo, chauffe-eau tempo edf, contacteur heures creuses tempo, programmer chauffe-eau tempo
 cluster: equipements
 ---
-Le chauffe-eau électrique est l'un des plus gros postes silencieux de votre facture : il représente environ **15 % de la consommation** d'un foyer, et il fonctionne souvent sans que vous y pensiez. Avec l'offre Tempo EDF, ce détail devient stratégique. Bien réglé, un **ballon d'eau chaude Tempo** chauffe au tarif le plus bas de la grille (les heures creuses, à 0,1575 euros/kWh même un jour rouge) et reste éteint pendant les heures pleines rouges, facturées 0,7060 euros/kWh, soit plus de quatre fois plus cher. Mal réglé, il fait exactement l'inverse.
+Le chauffe-eau électrique est l'un des plus gros postes silencieux de votre facture : il représente environ **15 % de la consommation** d'un foyer, et il fonctionne souvent sans que vous y pensiez. Avec l'offre Tempo EDF, ce détail devient stratégique. Bien réglé, un **ballon d'eau chaude Tempo** chauffe au tarif le plus bas de la grille (les heures creuses, à 0,1615 euros/kWh même un jour rouge) et reste éteint pendant les heures pleines rouges, facturées 0,7295 euros/kWh, soit plus de quatre fois plus cher. Mal réglé, il fait exactement l'inverse.
 
 L'objectif de cet article est simple : vous donner les réglages concrets pour que votre chauffe-eau ne chauffe jamais au mauvais moment. Nous verrons comment utiliser le contacteur heures creuses, caler la chauffe sur 22h-6h, couper le ballon les jours rouges en ayant chauffé la veille, et quelques ordres de grandeur d'économie. Pour une vue d'ensemble des autres équipements à optimiser, consultez notre guide pour [économiser avec Tempo EDF](/blog/economiser-tempo-edf).
 
@@ -20,10 +21,10 @@ C'est en heures creuses que l'électricité est la moins chère, et l'écart est
 
 | Plage horaire | Tarif rouge (TTC) | Coût d'un cycle de 4 kWh |
 |---------------|-------------------|--------------------------|
-| Heures pleines (6h-22h) | 0,7060 euros/kWh | environ 2,82 euros |
-| Heures creuses (22h-6h) | 0,1575 euros/kWh | environ 0,63 euros |
+| Heures pleines (6h-22h) | 0,7295 euros/kWh | environ 2,92 euros |
+| Heures creuses (22h-6h) | 0,1615 euros/kWh | environ 0,65 euros |
 
-Un ballon de 200 litres consomme environ **3 à 4 kWh par jour** pour réchauffer l'eau utilisée. Ce cycle coûte donc environ 2,82 euros en heures pleines un jour rouge, contre environ 0,63 euros en heures creuses. Pour savoir quels jours seront rouges et donc à éviter, gardez un oeil sur le [calendrier Tempo](/calendrier).
+Un ballon de 200 litres consomme environ **3 à 4 kWh par jour** pour réchauffer l'eau utilisée. Ce cycle coûte donc environ 2,92 euros en heures pleines un jour rouge, contre environ 0,65 euros en heures creuses. Pour savoir quels jours seront rouges et donc à éviter, gardez un oeil sur le [calendrier Tempo](/calendrier).
 
 ## Le contacteur heures creuses : votre meilleur allié
 
@@ -59,7 +60,7 @@ La stratégie en trois temps :
 2. **Le jour rouge**, basculez le contacteur sur **0 (Arrêt)**, ou coupez le programmateur. Le ballon ne chauffe pas et vous puisez dans la réserve de la veille.
 3. **Le soir du jour rouge**, remettez le contacteur sur « Auto ». Le ballon rechargera en heures creuses, à cheval entre le jour rouge finissant et le lendemain.
 
-L'intérêt majeur : même si vous oubliez de couper le ballon, le pire scénario reste une chauffe en heures creuses rouges à 0,1575 euros/kWh, déjà bien plus douce que les heures pleines. Mais en coupant explicitement la journée, vous évitez toute relance intempestive en heures pleines (par exemple après une grosse consommation d'eau chaude en milieu de journée).
+L'intérêt majeur : même si vous oubliez de couper le ballon, le pire scénario reste une chauffe en heures creuses rouges à 0,1615 euros/kWh, déjà bien plus douce que les heures pleines. Mais en coupant explicitement la journée, vous évitez toute relance intempestive en heures pleines (par exemple après une grosse consommation d'eau chaude en milieu de journée).
 
 Le seul vrai obstacle, c'est de savoir à l'avance quels jours seront rouges. EDF n'annonce officiellement que la couleur du lendemain, chaque jour vers 11h. Pour anticiper plus loin et chauffer la veille sereinement, notre site prédit les couleurs de **J+2 à J+5**. Inscrivez-vous à nos [alertes gratuites](/#subscribe) pour être prévenu avant chaque jour rouge.
 
@@ -78,9 +79,9 @@ Un ballon bien isolé qui tient ses 24 à 48 heures vous permet d'enchaîner plu
 
 Mettons des chiffres approximatifs sur tout cela. Les estimations ci-dessous concernent un ballon de 200 litres consommant environ 4 kWh par jour, sur une saison Tempo comptant 22 jours rouges :
 
-- **Cycle en heures pleines rouges** : environ 2,82 euros par jour.
-- **Cycle en heures creuses (rouge ou non)** : environ 0,63 euros par jour.
-- **Économie en décalant systématiquement la chauffe vers les heures creuses les jours rouges** : environ **2,19 euros par jour rouge**, soit de l'ordre de **50 euros sur la saison**.
+- **Cycle en heures pleines rouges** : environ 2,92 euros par jour.
+- **Cycle en heures creuses (rouge ou non)** : environ 0,65 euros par jour.
+- **Économie en décalant systématiquement la chauffe vers les heures creuses les jours rouges** : environ **2,27 euros par jour rouge**, soit de l'ordre de **50 euros sur la saison**.
 
 C'est une estimation : le résultat dépend de la taille du ballon, de votre consommation d'eau chaude et de votre isolation. Mais l'ordre de grandeur est clair, et l'effort est minime une fois le contacteur réglé. Combiné à d'autres optimisations, l'effet cumulé devient significatif : notre article sur le [chauffage les jours rouges Tempo](/blog/chauffage-jour-rouge-tempo-astuces) détaille dix autres leviers complémentaires.
 
@@ -88,7 +89,7 @@ C'est une estimation : le résultat dépend de la taille du ballon, de votre con
 
 ### Faut-il couper le ballon d'eau chaude tous les jours rouges ?
 
-Ce n'est pas indispensable, mais c'est la solution la plus sûre. Si votre contacteur est réglé sur « Auto », le ballon ne chauffe déjà qu'en heures creuses (22h-6h), à 0,1575 euros/kWh même un jour rouge. Couper explicitement le ballon (position 0) la journée garantit toutefois qu'aucune relance ne se déclenche par erreur en heures pleines. Comme un ballon bien isolé tient 24 à 48 heures, chauffer la veille puis couper le jour rouge ne pose aucun problème de confort. Consultez le [calendrier Tempo](/calendrier) pour repérer les jours rouges à venir.
+Ce n'est pas indispensable, mais c'est la solution la plus sûre. Si votre contacteur est réglé sur « Auto », le ballon ne chauffe déjà qu'en heures creuses (22h-6h), à 0,1615 euros/kWh même un jour rouge. Couper explicitement le ballon (position 0) la journée garantit toutefois qu'aucune relance ne se déclenche par erreur en heures pleines. Comme un ballon bien isolé tient 24 à 48 heures, chauffer la veille puis couper le jour rouge ne pose aucun problème de confort. Consultez le [calendrier Tempo](/calendrier) pour repérer les jours rouges à venir.
 
 ### Mon ballon n'a pas de contacteur heures creuses, comment faire ?
 
@@ -96,8 +97,8 @@ Vous avez deux options. La première consiste à faire installer un contacteur h
 
 ### Combien peut-on économiser avec un ballon d'eau chaude bien réglé ?
 
-Pour un ballon de 200 litres consommant environ 4 kWh par jour, décaler la chauffe vers les heures creuses les jours rouges fait économiser de l'ordre de 2,19 euros par jour rouge, soit environ 50 euros sur les 22 jours rouges de la saison. Ce chiffre est une estimation qui varie selon la taille du ballon, votre consommation et l'isolation. Un programmateur ou une jaquette isolante se rentabilise en une saison, et le réglage du contacteur ne coûte rien.
+Pour un ballon de 200 litres consommant environ 4 kWh par jour, décaler la chauffe vers les heures creuses les jours rouges fait économiser de l'ordre de 2,27 euros par jour rouge, soit environ 50 euros sur les 22 jours rouges de la saison. Ce chiffre est une estimation qui varie selon la taille du ballon, votre consommation et l'isolation. Un programmateur ou une jaquette isolante se rentabilise en une saison, et le réglage du contacteur ne coûte rien.
 
 ---
 
-*Dernière mise à jour : 21 juillet 2026. Les tarifs indiqués correspondent à l'offre Tempo EDF saison 2025-2026 (prix TTC). Consultez le [calendrier Tempo](/calendrier) pour suivre les couleurs du jour, [recevez nos alertes gratuites](/#subscribe) avant chaque jour rouge, et découvrez d'autres leviers d'économie dans notre guide pour [économiser avec Tempo EDF](/blog/economiser-tempo-edf).*
+*Dernière mise à jour : 9 août 2026. Les tarifs indiqués correspondent au barème Tempo EDF en vigueur depuis le 1er août 2026 (prix TTC). Consultez le [calendrier Tempo](/calendrier) pour suivre les couleurs du jour, [recevez nos alertes gratuites](/#subscribe) avant chaque jour rouge, et découvrez d'autres leviers d'économie dans notre guide pour [économiser avec Tempo EDF](/blog/economiser-tempo-edf).*

@@ -2,10 +2,11 @@
 title: Chauffage jour rouge Tempo : 10 astuces pour économiser
 description: 10 astuces pour chauffer votre logement sans exploser la facture les jours rouges Tempo EDF. Inertie, programmation, alternatives.
 publish_date: 2026-03-24
+updated_date: 2026-08-09
 keywords: chauffage jour rouge tempo, économie chauffage tempo, réduire consommation jour rouge, astuces tempo edf chauffage
 cluster: equipements
 ---
-Le chauffage représente le premier poste de dépense électrique des foyers français en hiver. Avec l'offre Tempo EDF, les 22 jours rouges de la saison transforment ce poste en véritable gouffre financier : **0,7060 euros/kWh en heures pleines**, soit plus de quatre fois le tarif d'un jour bleu. Pour un logement de 80 m2 chauffé à l'électricité, une journée rouge non anticipée peut coûter plus de 16 euros rien qu'en chauffage. Sur l'ensemble de la saison, la différence entre un foyer qui subit les jours rouges et un foyer qui les anticipe peut dépasser **300 euros**. Pour comprendre quand et pourquoi EDF déclenche ces journées, consultez notre [guide complet des jours rouges Tempo](/blog/jours-rouges-tempo-guide).
+Le chauffage représente le premier poste de dépense électrique des foyers français en hiver. Avec l'offre Tempo EDF, les 22 jours rouges de la saison transforment ce poste en véritable gouffre financier : **0,7295 euros/kWh en heures pleines**, soit plus de quatre fois le tarif d'un jour bleu. Ce tarif intègre la revalorisation des prix réglementés du 1er août 2026, qui a fait progresser le barème Tempo de 2,3 % à 3,3 % selon la couleur et la plage horaire. Pour un logement de 80 m2 chauffé à l'électricité, une journée rouge non anticipée peut coûter plus de 17 euros rien qu'en chauffage. Sur l'ensemble de la saison, la différence entre un foyer qui subit les jours rouges et un foyer qui les anticipe peut atteindre **300 euros**. Pour comprendre quand et pourquoi EDF déclenche ces journées, consultez notre [guide complet des jours rouges Tempo](/blog/jours-rouges-tempo-guide).
 
 La bonne nouvelle, c'est qu'il existe des solutions concrètes pour maintenir un confort thermique acceptable tout en réduisant drastiquement votre consommation les jours rouges. Voici 10 astuces testées et chiffrées, classées par difficulté de mise en oeuvre.
 
@@ -33,7 +34,7 @@ Programmez votre thermostat pour basculer automatiquement sur un mode "éco" ou 
 
 ### Economies estimées
 
-Pour un logement consommant 40 kWh/jour en chauffage, baisser de 3°C réduit la consommation d'environ 8,4 kWh. En heures pleines rouges, cela représente une économie d'environ **6 euros par jour rouge**, soit **environ 130 euros sur la saison** si appliqué systématiquement.
+Pour un logement consommant 40 kWh/jour en chauffage, baisser de 3°C réduit la consommation d'environ 8,4 kWh. En heures pleines rouges, cela représente une économie d'environ **6,10 euros par jour rouge**, soit **environ 135 euros sur la saison** si appliqué systématiquement.
 
 **Difficulté : facile** -- un thermostat programmable suffit (investissement de 30 à 80 euros pour un modèle basique).
 
@@ -41,7 +42,7 @@ Pour un logement consommant 40 kWh/jour en chauffage, baisser de 3°C réduit la
 
 ### Pourquoi ça marche
 
-Le bois est l'énergie de chauffage la moins chère de France : entre 0,04 et 0,06 euros/kWh pour les bûches, contre 0,7060 euros/kWh en heure pleine rouge. Le rapport est de 1 à 15. Un poêle à bois de puissance moyenne (8-10 kW) peut chauffer à lui seul un espace de 80 à 100 m2 pendant toute une journée rouge, en consommant environ 15 kg de bûches (soit 4 à 5 euros de combustible).
+Le bois est l'énergie de chauffage la moins chère de France : entre 0,04 et 0,06 euros/kWh pour les bûches, contre 0,7295 euros/kWh en heure pleine rouge. Le rapport est de 1 à 15. Un poêle à bois de puissance moyenne (8-10 kW) peut chauffer à lui seul un espace de 80 à 100 m2 pendant toute une journée rouge, en consommant environ 15 kg de bûches (soit 4 à 5 euros de combustible).
 
 Si vous disposez déjà d'un conduit de cheminée, l'installation d'un insert ou d'un poêle à bûches est un investissement qui se rentabilise en 2 à 3 saisons Tempo. Des aides financières (MaPrimeRenov, CEE) peuvent couvrir jusqu'à 40 % du coût d'installation.
 
@@ -69,13 +70,13 @@ L'ensemble rideaux thermiques + bas de porte peut réduire la consommation de ch
 
 ### Pourquoi ça marche
 
-Le chauffe-eau électrique représente environ **15 % de la consommation** d'un foyer, soit 3 à 4 kWh par jour pour un ballon de 200 litres. En jour rouge, chauffer l'eau en heures pleines coûte 2,82 euros (4 kWh x 0,7060 euros). En heures creuses d'un jour bleu, le même cycle coûte 0,53 euros : **plus de cinq fois moins cher**.
+Le chauffe-eau électrique représente environ **15 % de la consommation** d'un foyer, soit 3 à 4 kWh par jour pour un ballon de 200 litres. En jour rouge, chauffer l'eau en heures pleines coûte 2,92 euros (4 kWh x 0,7295 euros). En heures creuses d'un jour bleu, le même cycle coûte 0,54 euros : **plus de cinq fois moins cher**.
 
 Un ballon bien isolé maintient l'eau à température pendant 24 à 48 heures sans apport d'énergie. Vous pouvez donc chauffer l'eau la veille du jour rouge et couper le chauffe-eau pendant toute la journée rouge sans manquer d'eau chaude. Installez un contacteur heures creuses (souvent déjà présent sur votre tableau électrique) ou un programmateur mécanique simple.
 
 ### Economies estimées
 
-Couper le chauffe-eau pendant les 22 jours rouges (en le faisant fonctionner la veille en heures creuses) économise environ **2,29 euros par jour rouge**, soit **50 euros sur la saison**.
+Couper le chauffe-eau pendant les 22 jours rouges (en le faisant fonctionner la veille en heures creuses) économise environ **2,38 euros par jour rouge**, soit **52 euros sur la saison**.
 
 **Difficulté : facile** -- un programmateur coûte 15 à 25 euros et se branche en 5 minutes.
 
@@ -83,13 +84,13 @@ Couper le chauffe-eau pendant les 22 jours rouges (en le faisant fonctionner la 
 
 ### Pourquoi ça marche
 
-Même sans thermostat central, vous pouvez contrôler individuellement chaque radiateur électrique avec un programmateur (prise programmable ou fil pilote). L'objectif est d'éteindre complètement les radiateurs pendant les heures pleines rouges (6h-22h) et de les relancer uniquement en heures creuses (22h-6h), où le tarif rouge reste modéré à 0,1575 euros/kWh.
+Même sans thermostat central, vous pouvez contrôler individuellement chaque radiateur électrique avec un programmateur (prise programmable ou fil pilote). L'objectif est d'éteindre complètement les radiateurs pendant les heures pleines rouges (6h-22h) et de les relancer uniquement en heures creuses (22h-6h), où le tarif rouge reste modéré à 0,1615 euros/kWh.
 
 Les radiateurs à inertie (pierre, fonte, céramique) sont particulièrement adaptés : chargés en chaleur pendant les heures creuses, ils continuent à rayonner pendant 2 à 4 heures après leur extinction. Combinez cette astuce avec le préchauffage de la veille (astuce 1) pour maximiser l'effet.
 
 ### Economies estimées
 
-En concentrant 100 % du chauffage sur les heures creuses les jours rouges, un foyer consommant 30 kWh/jour en chauffage économise environ **10 euros par jour rouge** par rapport à un fonctionnement en heures pleines. Sur la saison : **jusqu'à 220 euros**.
+En concentrant 100 % du chauffage sur les heures creuses les jours rouges, un foyer consommant 30 kWh/jour en chauffage économise environ **10,20 euros par jour rouge** par rapport à un fonctionnement en heures pleines. Sur la saison : **jusqu'à 225 euros**.
 
 **Difficulté : facile** -- les prises programmables coûtent 10 à 20 euros par radiateur.
 
@@ -111,7 +112,7 @@ Réduire la surface chauffée de 40 % diminue la consommation de chauffage d'env
 
 ### Pourquoi ça marche
 
-Un radiateur de chambre consomme entre 1 000 et 2 000 watts pour maintenir une pièce de 12 m2 à 19°C. Une couverture chauffante électrique consomme entre **50 et 100 watts**, soit 15 à 20 fois moins. En jour rouge, chauffer une chambre pendant 8 heures en heures pleines coûte entre 5 et 10 euros. La même période avec une couverture chauffante revient à **0,35 à 0,55 euros**.
+Un radiateur de chambre consomme entre 1 000 et 2 000 watts pour maintenir une pièce de 12 m2 à 19°C. Une couverture chauffante électrique consomme entre **50 et 100 watts**, soit 15 à 20 fois moins. En jour rouge, chauffer une chambre pendant 8 heures en heures pleines coûte entre 5 et 10 euros. La même période avec une couverture chauffante revient à **0,36 à 0,57 euros**.
 
 L'ADEME recommande d'ailleurs une température de 16 à 17°C dans les chambres pour un sommeil de qualité. Coupez le radiateur de la chambre, glissez-vous sous votre couverture chauffante et laissez la pièce descendre naturellement. Votre sommeil sera meilleur et votre facture aussi.
 
@@ -125,9 +126,9 @@ Remplacer le chauffage de la chambre par une couverture chauffante les 22 jours 
 
 ### Pourquoi ça marche
 
-Un four électrique classique consomme 2 à 2,5 kWh pour une heure de cuisson. En heure pleine rouge, cela représente 1,41 à 1,77 euros pour un seul plat. Une mijoteuse (slow cooker) consomme environ 0,2 à 0,3 kWh par heure, soit 1,5 kWh pour un cycle de 6 heures.
+Un four électrique classique consomme 2 à 2,5 kWh pour une heure de cuisson. En heure pleine rouge, cela représente 1,46 à 1,82 euros pour un seul plat. Une mijoteuse (slow cooker) consomme environ 0,2 à 0,3 kWh par heure, soit 1,5 kWh pour un cycle de 6 heures.
 
-La stratégie : préparez vos plats mijotés les jours bleus (ragouts, soupes, gratins, plats en sauce) et stockez-les au réfrigérateur. Les jours rouges, un passage de 3 à 5 minutes au micro-ondes (0,05 kWh, soit 0,04 euros en jour rouge) suffit pour réchauffer votre repas. Vous passez d'un coût de cuisson de 1,77 euros à 0,04 euros.
+La stratégie : préparez vos plats mijotés les jours bleus (ragouts, soupes, gratins, plats en sauce) et stockez-les au réfrigérateur. Les jours rouges, un passage de 3 à 5 minutes au micro-ondes (0,05 kWh, soit 0,04 euros en jour rouge) suffit pour réchauffer votre repas. Vous passez d'un coût de cuisson de 1,82 euros à 0,04 euros.
 
 ### Economies estimées
 
@@ -160,11 +161,11 @@ Une amélioration de l'isolation de 15 % sur un logement consommant 8 000 kWh/an
 | Astuce | Economie par jour rouge | Economie par saison | Difficulté | Investissement |
 |--------|------------------------|---------------------|------------|----------------|
 | 1. Préchauffage la veille | 4 - 7 euros | 88 - 154 euros | Facile | 0 euros |
-| 2. Thermostat -3°C | 6 euros | 130 euros | Facile | 30 - 80 euros |
+| 2. Thermostat -3°C | 6,10 euros | 135 euros | Facile | 30 - 80 euros |
 | 3. Poêle à bois | 10 - 14 euros | 220 - 310 euros | Elevée | 1 500 - 4 000 euros |
 | 4. Rideaux + bas de porte | 1 - 2 euros | 22 - 44 euros | Très facile | 50 - 150 euros |
-| 5. Chauffe-eau décalé | 2,29 euros | 50 euros | Facile | 15 - 25 euros |
-| 6. Programmateur radiateurs | 10 euros | 220 euros | Facile | 10 - 20 euros/unité |
+| 5. Chauffe-eau décalé | 2,38 euros | 52 euros | Facile | 15 - 25 euros |
+| 6. Programmateur radiateurs | 10,20 euros | 225 euros | Facile | 10 - 20 euros/unité |
 | 7. Fermer les pièces | 3 - 5 euros | 66 - 110 euros | Très facile | 0 euros |
 | 8. Couverture chauffante | 4 - 7 euros | 88 - 154 euros | Très facile | 30 - 60 euros |
 | 9. Mijoteuse jour bleu | 2 - 3 euros | 44 - 66 euros | Facile | 25 - 50 euros |
@@ -180,7 +181,7 @@ Il est déconseillé de couper totalement le chauffage si les températures ext�
 
 ### Les radiateurs à inertie sont-ils plus adaptés à Tempo que les convecteurs ?
 
-Oui, nettement. Les radiateurs à inertie (pierre, fonte, céramique ou fluide caloporteur) stockent la chaleur dans leur masse et continuent à la restituer pendant 2 à 4 heures après leur extinction. Cela les rend parfaitement adaptés à une stratégie Tempo : vous les chargez en chaleur pendant les heures creuses (22h-6h, à 0,1575 euros/kWh même en jour rouge) et ils chauffent gratuitement pendant une partie des heures pleines. Les convecteurs classiques (grille-pain), en revanche, ne produisent de la chaleur que lorsqu'ils sont alimentés et n'offrent aucune inertie. Si vous rénovez vos radiateurs, privilégiez l'inertie : l'investissement supplémentaire (200 à 400 euros par radiateur) est rentabilisé en 2 à 3 saisons Tempo. Consultez le [calendrier Tempo](/calendrier) pour planifier vos journées de chauffe.
+Oui, nettement. Les radiateurs à inertie (pierre, fonte, céramique ou fluide caloporteur) stockent la chaleur dans leur masse et continuent à la restituer pendant 2 à 4 heures après leur extinction. Cela les rend parfaitement adaptés à une stratégie Tempo : vous les chargez en chaleur pendant les heures creuses (22h-6h, à 0,1615 euros/kWh même en jour rouge) et ils chauffent gratuitement pendant une partie des heures pleines. Les convecteurs classiques (grille-pain), en revanche, ne produisent de la chaleur que lorsqu'ils sont alimentés et n'offrent aucune inertie. Si vous rénovez vos radiateurs, privilégiez l'inertie : l'investissement supplémentaire (200 à 400 euros par radiateur) est rentabilisé en 2 à 3 saisons Tempo. Consultez le [calendrier Tempo](/calendrier) pour planifier vos journées de chauffe.
 
 ### Comment savoir à l'avance quand tomberont les prochains jours rouges ?
 
@@ -188,4 +189,4 @@ EDF n'annonce officiellement que la couleur du lendemain, chaque jour vers 11h. 
 
 ---
 
-*Dernière mise à jour : 24 mars 2026. Les tarifs indiqués correspondent à l'offre Tempo EDF saison 2025-2026 (prix TTC). Consultez le [calendrier Tempo](/calendrier) pour suivre les couleurs du jour en temps réel, [recevoir les alertes](/#subscribe) avant chaque jour rouge, ou comparer Tempo avec d'autres offres dans notre [comparatif Tempo vs Heures Creuses](/blog/tempo-vs-heures-creuses-edf-bleu).*
+*Dernière mise à jour : 9 août 2026. Les tarifs indiqués correspondent au barème Tempo EDF en vigueur depuis le 1er août 2026 (prix TTC). Consultez le [calendrier Tempo](/calendrier) pour suivre les couleurs du jour en temps réel, [recevoir les alertes](/#subscribe) avant chaque jour rouge, ou comparer Tempo avec d'autres offres dans notre [comparatif Tempo vs Heures Creuses](/blog/tempo-vs-heures-creuses-edf-bleu).*

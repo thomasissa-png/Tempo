@@ -2,6 +2,7 @@
 title: Climatisation Tempo EDF : faut-il s'en soucier l'été ?
 description: Climatisation Tempo EDF : pas de jours rouges l'été, mais heures pleines et creuses comptent. Quand faire tourner la clim et comment limiter la facture.
 publish_date: 2026-08-04
+updated_date: 2026-08-09
 keywords: climatisation tempo edf, clim tempo edf été, climatiseur tempo, climatisation jour bleu tempo
 cluster: equipements
 ---
@@ -25,7 +26,7 @@ Puisque le rouge disparaît, le risque de facture salée s'efface. Mais une méc
 - **Heures pleines : 6h-22h**
 - **Heures creuses : 22h-6h**
 
-Même un jour bleu, l'électricité consommée en journée (heures pleines) coûte un peu plus cher que la même électricité consommée la nuit (heures creuses). L'écart bleu HP/HC est sans commune mesure avec le gouffre du rouge en hiver (où l'heure pleine grimpe à **0,7060 €/kWh** contre **0,1575 €/kWh** en heure creuse), mais sur la durée d'un été caniculaire, décaler un maximum de consommation vers la nuit reste payant.
+Même un jour bleu, l'électricité consommée en journée (heures pleines) coûte un peu plus cher que la même électricité consommée la nuit (heures creuses). L'écart bleu HP/HC est sans commune mesure avec le gouffre du rouge en hiver (où l'heure pleine grimpe à **0,7295 €/kWh** contre **0,1615 €/kWh** en heure creuse), mais sur la durée d'un été caniculaire, décaler un maximum de consommation vers la nuit reste payant.
 
 C'est là que la climatisation entre en jeu : c'est souvent le plus gros poste électrique de l'été. La piloter intelligemment selon les plages horaires, et non selon la couleur (qui sera de toute façon bleue la plupart du temps), suffit à maîtriser votre budget. Pour bien comprendre le rôle des plages horaires, notre comparatif [Tempo vs Heures Creuses classique](/blog/tempo-vs-heures-creuses-edf-bleu) éclaire le sujet.
 
@@ -61,7 +62,7 @@ Ces principes de pilotage par les plages horaires valent pour tous les gros équ
 
 ## L'été, la saison la plus sereine sous Tempo
 
-Tout l'enjeu de Tempo se joue en hiver, sur les 22 jours rouges où l'heure pleine atteint 0,7060 €/kWh. L'été, ce risque n'existe pas : vous bénéficiez du tarif bleu presque tous les jours, et le seul réflexe à garder est de décaler vos consommations lourdes vers les heures creuses quand c'est possible. C'est précisément la saison idéale pour faire tourner sereinement clim, lave-linge, lave-vaisselle ou recharge de véhicule électrique.
+Tout l'enjeu de Tempo se joue en hiver, sur les 22 jours rouges où l'heure pleine atteint 0,7295 €/kWh. L'été, ce risque n'existe pas : vous bénéficiez du tarif bleu presque tous les jours, et le seul réflexe à garder est de décaler vos consommations lourdes vers les heures creuses quand c'est possible. C'est précisément la saison idéale pour faire tourner sereinement clim, lave-linge, lave-vaisselle ou recharge de véhicule électrique.
 
 Vous pouvez aussi profiter de l'été pour anticiper l'hiver suivant. Notre dossier [préparer la saison Tempo 2026-2027](/blog/preparer-saison-tempo-2026-2027) liste les bons gestes à mettre en place dès maintenant, et notre [bilan de fin de saison rouge](/blog/fin-saison-rouge-tempo-bilan) tire les leçons des mois passés.
 
@@ -71,7 +72,7 @@ Enfin, même hors saison rouge, garder un œil sur les couleurs du lendemain res
 
 ### Peut-on avoir un jour rouge Tempo en été ?
 
-Non. Les jours rouges Tempo ne peuvent tomber qu'entre le 1er novembre et le 31 mars. D'avril à octobre, EDF ne classe aucune journée en rouge : votre été se compose uniquement de jours bleus, les moins chers, et de quelques jours blancs. Faire tourner la climatisation l'été ne vous expose donc jamais au tarif rouge à 0,7060 €/kWh. Vous pouvez vérifier chaque couleur sur le [calendrier Tempo](/calendrier).
+Non. Les jours rouges Tempo ne peuvent tomber qu'entre le 1er novembre et le 31 mars. D'avril à octobre, EDF ne classe aucune journée en rouge : votre été se compose uniquement de jours bleus, les moins chers, et de quelques jours blancs. Faire tourner la climatisation l'été ne vous expose donc jamais au tarif rouge à 0,7295 €/kWh. Vous pouvez vérifier chaque couleur sur le [calendrier Tempo](/calendrier).
 
 ### À quelle heure faut-il faire tourner la clim pour payer moins cher ?
 
@@ -83,4 +84,4 @@ Cela dépend entièrement de la surface, de l'isolation et du modèle : on parle
 
 ---
 
-*Dernière mise à jour : 4 août 2026. Les tarifs rouges cités (0,7060 €/kWh en heure pleine, 0,1575 €/kWh en heure creuse) sont ceux de l'option Tempo EDF 2025-2026 et ne s'appliquent pas l'été, faute de jour rouge. Les consommations de climatisation sont des estimations à adapter à votre logement. Consultez le [calendrier Tempo](/calendrier) pour suivre les couleurs en temps réel.*
+*Dernière mise à jour : 9 août 2026. Les tarifs rouges cités (0,7295 €/kWh en heure pleine, 0,1615 €/kWh en heure creuse) sont ceux du barème Tempo EDF en vigueur depuis le 1er août 2026 et ne s'appliquent pas l'été, faute de jour rouge. Les consommations de climatisation sont des estimations à adapter à votre logement. Consultez le [calendrier Tempo](/calendrier) pour suivre les couleurs en temps réel.*

@@ -13,7 +13,7 @@
 - Every day, we must produce predictions for J+2 through J+5 with the highest possible accuracy.
 
 ### RED Day Accuracy is #1 Priority
-- Getting RED days correct is the most important goal (most expensive for users: 0.7060€/kWh peak).
+- Getting RED days correct is the most important goal (most expensive for users: 0.7295€/kWh peak).
 - RED recall (not missing a RED day) is more critical than RED precision (false alarms are less costly than missed REDs).
 - Current challenge: 22 RED days in ~180 season days = 12% prevalence, making them hard to predict.
 

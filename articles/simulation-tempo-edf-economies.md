@@ -2,6 +2,7 @@
 title: Simulation Tempo EDF : estimez vos économies annuelles
 description: Simulation Tempo EDF : la méthode pour estimer vos économies annuelles selon votre consommation, avec un exemple chiffré et les variables clés.
 publish_date: 2026-06-09
+updated_date: 2026-08-09
 keywords: simulation tempo edf, estimer économies tempo, tempo edf rentabilité calcul, simulateur tempo edf
 cluster: tempo-guide
 ---
@@ -33,14 +34,14 @@ Pour suivre votre consommation heure par heure et affiner ces parts, l'outil le 
 Trois leviers déterminent la quasi-totalité de l'écart entre une bonne et une mauvaise simulation :
 
 - **Le pourcentage de consommation déplaçable.** Un chauffe-eau programmable, une recharge de véhicule électrique nocturne, des lessives décalées : plus vous pouvez basculer vers les heures creuses bleues, plus la facture baisse. C'est la variable n°1.
-- **Le comportement les jours rouges.** Avec un tarif HP rouge à **0,7060 €/kWh**, chaque kWh non maîtrisé un jour rouge coûte très cher. Réduire le chauffage et couper les gros appareils ces 22 jours transforme radicalement le résultat. Notre [guide des jours rouges Tempo](/blog/jours-rouges-tempo-guide) détaille les gestes prioritaires.
+- **Le comportement les jours rouges.** Avec un tarif HP rouge à **0,7295 €/kWh**, chaque kWh non maîtrisé un jour rouge coûte très cher. Réduire le chauffage et couper les gros appareils ces 22 jours transforme radicalement le résultat. Notre [guide des jours rouges Tempo](/blog/jours-rouges-tempo-guide) détaille les gestes prioritaires.
 - **Le volume total annuel.** Plus la consommation est élevée (chauffage électrique, grand logement), plus l'effet de levier des jours bleus est important — à condition de maîtriser les rouges.
 
 À l'inverse, un foyer qui ne peut rien déplacer et qui chauffe tout à l'électricité sans alternative les jours rouges risque de voir son avantage fondre. La simulation sert justement à révéler ce risque AVANT de s'engager.
 
 ## Exemple chiffré illustratif, pas à pas
 
-*Exemple illustratif* — les valeurs ci-dessous servent uniquement à montrer la méthode de calcul. Elles ne constituent ni une promesse de gain, ni un tarif officiel pour les jours bleus et blancs (dont les prix exacts ne sont pas reproduits ici). Seuls les tarifs rouges sont des valeurs réelles 2025-2026.
+*Exemple illustratif* — les valeurs ci-dessous servent uniquement à montrer la méthode de calcul. Elles ne constituent ni une promesse de gain, ni un tarif officiel pour les jours bleus et blancs (dont les prix exacts ne sont pas reproduits ici). Seuls les tarifs rouges sont des valeurs réelles, en vigueur depuis le 1er août 2026.
 
 Imaginons un foyer dont la consommation annuelle serait répartie comme suit, après ventilation par couleur et par plage horaire :
 
@@ -49,10 +50,12 @@ Imaginons un foyer dont la consommation annuelle serait répartie comme suit, ap
 | Jours bleus — HC (22h-6h) | majorité du volume | tarif bleu HC (le plus bas) |
 | Jours bleus — HP (6h-22h) | part modérée | tarif bleu HP |
 | Jours blancs — HC/HP | volume limité (43 j) | tarif blanc (intermédiaire) |
-| Jours rouges — HC (22h-6h) | volume réduit volontairement | 0,1575 €/kWh |
-| Jours rouges — HP (6h-22h) | volume minimal | **0,7060 €/kWh** |
+| Jours rouges — HC (22h-6h) | volume réduit volontairement | 0,1615 €/kWh |
+| Jours rouges — HP (6h-22h) | volume minimal | **0,7295 €/kWh** |
 
-La méthode de calcul est toujours la même : `coût d'un bloc = kWh du bloc × tarif du bloc`, puis on additionne les cinq blocs. L'enjeu saute aux yeux sur le dernier : sur un seul jour rouge, **25 kWh consommés en heures pleines** reviennent à `25 × 0,7060 = 17,65 €`, contre `25 × 0,1575 = 3,94 €` si la même énergie était reportée en heures creuses du même jour rouge. Sur 22 jours rouges, l'écart se chiffre en dizaines d'euros uniquement par le déplacement horaire.
+Ces tarifs rouges intègrent la revalorisation entrée en vigueur le **1er août 2026** (+2,3 % à +3,3 % selon la couleur et la plage horaire) : une simulation réalisée avant cette date mérite d'être refaite.
+
+La méthode de calcul est toujours la même : `coût d'un bloc = kWh du bloc × tarif du bloc`, puis on additionne les cinq blocs. L'enjeu saute aux yeux sur le dernier : sur un seul jour rouge, **25 kWh consommés en heures pleines** reviennent à `25 × 0,7295 = 18,24 €`, contre `25 × 0,1615 = 4,04 €` si la même énergie était reportée en heures creuses du même jour rouge. Sur 22 jours rouges, l'écart se chiffre en dizaines d'euros uniquement par le déplacement horaire.
 
 C'est exactement ce que matérialise une simulation : elle additionne ces blocs pour votre profil réel, puis soustrait le résultat de votre facture actuelle. Le « gain » n'est pas garanti — il dépend de votre discipline. Pour comparer Tempo à une offre heures creuses classique, lisez notre [comparatif Tempo vs Heures Creuses](/blog/tempo-vs-heures-creuses-edf-bleu).
 
@@ -80,7 +83,7 @@ Non. Une simulation applique une méthode de calcul à votre consommation, mais 
 
 ### Comment estimer la part de ma consommation sur les jours rouges ?
 
-Partez des 22 jours rouges, tous situés entre le 1er novembre et le 31 mars, jamais le week-end ni les jours fériés. Comme ces jours tombent en plein hiver, ils concentrent souvent plus de consommation que leur simple proportion calendaire (22 jours sur 365). Votre historique Linky permet d'affiner : repérez vos consommations des jours d'hiver en semaine et appliquez les tarifs rouges (HP 0,7060 €/kWh, HC 0,1575 €/kWh). Notre [guide des jours rouges Tempo](/blog/jours-rouges-tempo-guide) aide à anticiper ces journées.
+Partez des 22 jours rouges, tous situés entre le 1er novembre et le 31 mars, jamais le week-end ni les jours fériés. Comme ces jours tombent en plein hiver, ils concentrent souvent plus de consommation que leur simple proportion calendaire (22 jours sur 365). Votre historique Linky permet d'affiner : repérez vos consommations des jours d'hiver en semaine et appliquez les tarifs rouges (HP 0,7295 €/kWh, HC 0,1615 €/kWh). Notre [guide des jours rouges Tempo](/blog/jours-rouges-tempo-guide) aide à anticiper ces journées.
 
 ### Faut-il un simulateur en ligne pour estimer ses économies Tempo ?
 
@@ -88,4 +91,4 @@ Un simulateur automatise les calculs, mais la méthode reste la même : ventiler
 
 ---
 
-*Note : cet article est un guide de méthode. L'exemple chiffré est strictement illustratif et ne constitue pas une promesse d'économie. Seuls les tarifs des jours rouges (HP 0,7060 €/kWh, HC 0,1575 €/kWh, en vigueur 2025-2026) sont des valeurs réelles. Consultez le [calendrier Tempo](/calendrier) pour suivre les couleurs en temps réel et inscrivez-vous aux [alertes WhatsApp gratuites](/#subscribe) pour ne jamais manquer un jour rouge.*
+*Note : cet article est un guide de méthode. L'exemple chiffré est strictement illustratif et ne constitue pas une promesse d'économie. Seuls les tarifs des jours rouges (HP 0,7295 €/kWh, HC 0,1615 €/kWh, en vigueur depuis le 1er août 2026) sont des valeurs réelles. Consultez le [calendrier Tempo](/calendrier) pour suivre les couleurs en temps réel et inscrivez-vous aux [alertes WhatsApp gratuites](/#subscribe) pour ne jamais manquer un jour rouge.*

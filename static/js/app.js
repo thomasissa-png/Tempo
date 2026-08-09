@@ -10,11 +10,11 @@ const JOURS_FULL = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi
 const MOIS = ['jan', 'fév', 'mar', 'avr', 'mai', 'jun', 'jul', 'aoû', 'sep', 'oct', 'nov', 'déc'];
 const MOIS_FULL = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 
-// Tarifs indicatifs Tempo au 1er février 2026 (€/kWh TTC — vérifiez sur votre contrat EDF)
+// Tarifs indicatifs Tempo au 1er août 2026 (€/kWh TTC — vérifiez sur votre contrat EDF)
 const TARIFS = {
-    BLEU:  { hp: 0.1612, hc: 0.1325 },
-    BLANC: { hp: 0.1871, hc: 0.1499 },
-    ROUGE: { hp: 0.7060, hc: 0.1575 },
+    BLEU:  { hp: 0.1654, hc: 0.1356 },
+    BLANC: { hp: 0.1921, hc: 0.1536 },
+    ROUGE: { hp: 0.7295, hc: 0.1615 },
 };
 
 // M-04 QA : helper fetch avec timeout (10s par défaut)

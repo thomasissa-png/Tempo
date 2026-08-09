@@ -5,7 +5,7 @@ keywords: calendrier tempo 2026-2027, dates jours rouges tempo 2026-2027, saison
 publish_date: 2026-10-13
 cluster: calendrier
 ---
-La nouvelle saison Tempo approche, et avec elle la question que se posent tous les abonnés à l'option : quand tomberont les jours rouges, ces journées où le kilowattheure grimpe à 0,7060 euros en heures pleines ? Ce guide consacré au **calendrier tempo 2026-2027** vous explique la structure de la saison qui débute le 1er septembre 2026, le budget de jours imposé par EDF, les règles qui encadrent leur placement, et surtout comment suivre les couleurs en temps réel grâce à nos prévisions quotidiennes. Important : à l'heure où nous écrivons, cette saison n'a pas encore eu lieu — nous ne pouvons donc pas vous donner de dates rouges précises, mais nous vous donnons tout pour les anticiper jour après jour.
+La nouvelle saison Tempo approche, et avec elle la question que se posent tous les abonnés à l'option : quand tomberont les jours rouges, ces journées où le kilowattheure grimpe à 0,7295 euros en heures pleines ? Ce guide consacré au **calendrier tempo 2026-2027** vous explique la structure de la saison qui débute le 1er septembre 2026, le budget de jours imposé par EDF, les règles qui encadrent leur placement, et surtout comment suivre les couleurs en temps réel grâce à nos prévisions quotidiennes. Important : à l'heure où nous écrivons, cette saison n'a pas encore eu lieu — nous ne pouvons donc pas vous donner de dates rouges précises, mais nous vous donnons tout pour les anticiper jour après jour.
 
 ## La structure de la saison Tempo 2026-2027
 
@@ -13,7 +13,7 @@ La nouvelle saison Tempo approche, et avec elle la question que se posent tous l
 
 La saison Tempo ne suit jamais l'année civile. Elle s'étend du **1er septembre 2026 au 31 août 2027**, soit 365 jours pendant lesquels EDF répartit trois couleurs selon un quota strict et immuable :
 
-- **22 jours rouges** : les plus chers, activés lors des pics de tension sur le réseau. En référence tarifaire 2025-2026 (à confirmer côté EDF pour 2026-2027), le kWh atteint 0,7060 euros en heures pleines (6h-22h) et 0,1575 euros en heures creuses (22h-6h), soit plus de quatre fois le tarif bleu en heures pleines.
+- **22 jours rouges** : les plus chers, activés lors des pics de tension sur le réseau. Selon le barème en vigueur depuis le 1er août 2026, le kWh atteint 0,7295 euros en heures pleines (6h-22h) et 0,1615 euros en heures creuses (22h-6h), soit plus de quatre fois le tarif bleu en heures pleines.
 - **43 jours blancs** : un tarif intermédiaire, positionné sur les journées à demande modérément élevée.
 - **Environ 300 jours bleus** : le tarif le plus bas, qui constitue l'immense majorité de l'année. C'est ce volume de jours bleus qui rend l'option Tempo réellement rentable.
 

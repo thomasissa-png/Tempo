@@ -3,6 +3,7 @@ title: Tempo EDF avis : est-ce vraiment rentable en 2026 ?
 description: Tempo EDF avis 2026 : pour qui l'option est rentable, pour qui elle ne l'est pas, et comment estimer vos économies réelles selon votre profil.
 keywords: tempo edf avis, tempo edf rentable, avis tempo edf 2026, tempo edf vaut le coup
 publish_date: 2026-04-28
+updated_date: 2026-08-09
 cluster: tempo-guide
 ---
 
@@ -18,7 +19,7 @@ Pour juger de la rentabilité, il faut comprendre la mécanique. Sur une saison 
 - **43 jours blancs** : prix intermédiaire, jamais un dimanche.
 - **Environ 300 jours bleus** : très avantageux, c'est le cœur du système.
 
-Les tarifs 2025-2026 (TTC) illustrent l'écart : un jour rouge en heures pleines atteint **0,7060 €/kWh** (de 6h à 22h), contre **0,1575 €/kWh** en heures creuses rouges (22h à 6h). Le jour bleu, lui, est nettement moins cher que le tarif de base pour qui consomme surtout en bleu. Concrètement, une heure pleine rouge coûte plus de **4 fois** le prix d'une heure bleue. Tout l'enjeu de Tempo tient dans cette phrase : vous gagnez énormément sur 300 jours bleus, à condition de tenir bon sur 22 jours rouges.
+Les tarifs en vigueur depuis la revalorisation du 1er août 2026 (TTC, hausse de +2,3 % à +3,3 % selon la couleur) illustrent l'écart : un jour rouge en heures pleines atteint **0,7295 €/kWh** (de 6h à 22h), contre **0,1615 €/kWh** en heures creuses rouges (22h à 6h). Le jour bleu, lui, est nettement moins cher que le tarif de base pour qui consomme surtout en bleu. Concrètement, une heure pleine rouge coûte plus de **4 fois** le prix d'une heure bleue. Tout l'enjeu de Tempo tient dans cette phrase : vous gagnez énormément sur 300 jours bleus, à condition de tenir bon sur 22 jours rouges.
 
 ## Pour qui Tempo est rentable (et pour qui il ne l'est pas)
 

@@ -210,7 +210,7 @@ def evaluate_predictions_for_date(target_date: date, couleur_reelle: str):
         logger.info(f"[Perf] {target_date}: {nb_stored} prédictions évaluées")
 
         # Audit DS P2-G : alerter quand on rate un jour ROUGE
-        # Un ROUGE raté est très coûteux (0.7060€/kWh). On log un WARNING
+        # Un ROUGE raté est très coûteux (0.7295€/kWh). On log un WARNING
         # spécifique pour faciliter le monitoring et le post-mortem.
         if couleur_reelle == "ROUGE":
             row = conn.execute(
@@ -1930,7 +1930,7 @@ def recalculate_weights():
         X_scaled = scaler.fit_transform(X)
 
         # Audit DS : cost-sensitive training — rater un ROUGE est beaucoup
-        # plus coûteux (0.7060€/kWh) qu'une fausse alarme. Le poids ROUGE=25
+        # plus coûteux (0.7295€/kWh) qu'une fausse alarme. Le poids ROUGE=25
         # (au lieu de ~2.5 avec "balanced") force le modèle à prioriser le
         # recall ROUGE, quitte à avoir plus de fausses alertes.
         model = LogisticRegression(
@@ -2544,7 +2544,7 @@ def _analyze_color_confusion(rows: list[dict]) -> list[dict]:
         rate = count / total_pred
         direction = "over" if _color_rank(predicted) > _color_rank(actual) else "under"
         # Audit DS : corrections asymétriques — rater un ROUGE coûte bien
-        # plus cher (0.7060€/kWh) qu'une fausse alarme ROUGE.
+        # plus cher (0.7295€/kWh) qu'une fausse alarme ROUGE.
         # ROUGE raté (under, actual=ROUGE) → max_correction=10
         # Fausse alarme ROUGE (over, predicted=ROUGE) → max_correction=4
         # Autres confusions → max_correction=6 (défaut)

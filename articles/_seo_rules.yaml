@@ -62,16 +62,17 @@ mots_cles_cibles:
   note: "IMPORTANT - les requetes 'EDF Tempo' (ordre inverse) representent ~40% du volume. Chaque page doit inclure naturellement les deux ordres."
 
 tarifs_tempo:
-  date_maj: "2026-02"
+  date_maj: "2026-08"
   saison: "2025-2026"
   abonnement_mensuel: "15.96"
-  bleu_hp: "0.1612"
-  bleu_hc: "0.1325"
-  blanc_hp: "0.1871"
-  blanc_hc: "0.1499"
-  rouge_hp: "0.7060"
-  rouge_hc: "0.1575"
-  note: "Les tarifs changent generalement en fevrier. Lors de l'Etape 0, si la date_maj a plus de 12 mois, l'agent DOIT verifier les tarifs en vigueur via web_search('tarif tempo edf {annee}') et mettre a jour cette section."
+  abonnement_a_verifier: "Valeur non confirmee au 2026-08 - sources contradictoires, a verifier sur edf.fr avant reutilisation"
+  bleu_hp: "0.1654"
+  bleu_hc: "0.1356"
+  blanc_hp: "0.1921"
+  blanc_hc: "0.1536"
+  rouge_hp: "0.7295"
+  rouge_hc: "0.1615"
+  note: "Grille en vigueur depuis le 1er aout 2026. Les tarifs changent generalement en fevrier et en aout. Lors de l'Etape 0, si la date_maj a plus de 12 mois, l'agent DOIT verifier les tarifs en vigueur via web_search('tarif tempo edf {annee}') et mettre a jour cette section."
 
 saison_tempo:
   saison_courante: "2025-2026"
@@ -90,3 +91,6 @@ historique:
   - date: "2026-02-25"
     changement: "Ajout mots-cles cibles proprietaire (16 requetes, incl. variantes EDF Tempo inversees et requetes avec annee)"
     source: "Audit SEO complet avec proprietaire"
+  - date: "2026-08-09"
+    changement: "Mise a jour grille tarifaire Tempo au 1er aout 2026 (hausse +2,3% a +3,3%)"
+    source: "Verification web multi-sources"

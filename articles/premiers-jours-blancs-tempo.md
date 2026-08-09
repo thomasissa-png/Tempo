@@ -13,7 +13,7 @@ L'offre Tempo d'EDF fait varier le prix de l'électricité chaque jour selon tro
 
 - **Jour bleu** : le tarif le plus avantageux. C'est la couleur par défaut, environ 300 jours par saison.
 - **Jour blanc** : un tarif intermédiaire. Ni catastrophique, ni économique : un entre-deux à surveiller. 43 jours par saison.
-- **Jour rouge** : le tarif le plus cher, réservé aux pics de tension du réseau. 22 jours par saison, avec un tarif qui atteint **0,7060 euros/kWh en heures pleines** (et 0,1575 euros/kWh en heures creuses).
+- **Jour rouge** : le tarif le plus cher, réservé aux pics de tension du réseau. 22 jours par saison, avec un tarif qui atteint **0,7295 euros/kWh en heures pleines** (et 0,1615 euros/kWh en heures creuses), selon la grille en vigueur depuis le 1er août 2026.
 
 Comme pour toutes les couleurs Tempo, une journée blanche s'étend de 6h du matin à 6h le lendemain. Le tarif distingue les **heures pleines (6h-22h)**, les plus coûteuses, et les **heures creuses (22h-6h)**, plus abordables. Pour comprendre l'ensemble du fonctionnement, notre [guide complet Tempo EDF 2026](/blog/tempo-edf-2026-guide-complet) détaille chaque mécanisme du système.
 
@@ -37,7 +37,7 @@ Pour bien gérer son budget, il faut visualiser clairement la hiérarchie des tr
 |---------|----------------|------------------|---------|--------------------------|
 | **Bleu** | Le moins cher | ~300 jours | Toute l'année | Aucune |
 | **Blanc** | Intermédiaire | 43 jours | Surtout saison froide, possible toute l'année | Jamais le dimanche (R3) |
-| **Rouge** | Le plus cher (0,7060 €/kWh HP) | 22 jours | 1er nov. → 31 mars | Jamais week-end ni jours fériés (R2), max 5 d'affilée (R4) |
+| **Rouge** | Le plus cher (0,7295 €/kWh HP) | 22 jours | 1er nov. → 31 mars | Jamais week-end ni jours fériés (R2), max 5 d'affilée (R4) |
 
 La grande différence pratique tient à l'intensité de l'effort à fournir :
 

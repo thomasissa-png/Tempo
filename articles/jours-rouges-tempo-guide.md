@@ -2,18 +2,19 @@
 title: Jours rouges Tempo EDF : le guide complet 2025-2026
 description: Jours rouges Tempo EDF : quand tombent-ils, combien coûtent-ils et comment les anticiper. Calendrier saison 2025-2026.
 publish_date: 2026-02-24
+updated_date: 2026-08-09
 keywords: jours rouges tempo, jour rouge edf, calendrier jours rouges tempo 2026, tarif jour rouge tempo
 cluster: jours-rouges
 ---
-Les jours rouges Tempo sont la bête noire des 900 000 foyers abonnés à l'offre Tempo d'EDF. Avec un tarif en heures pleines qui atteint **0,7060 euros/kWh**, soit **plus de quatre fois le prix d'un jour bleu en heures pleines**, ces 22 journées par saison peuvent transformer une facture d'électricité en cauchemar si l'on n'y est pas préparé. Dans ce guide, nous vous expliquons tout : les règles qui les encadrent, leur coût réel, les périodes où ils tombent, et surtout comment les anticiper pour protéger votre budget.
+Les jours rouges Tempo sont la bête noire des 900 000 foyers abonnés à l'offre Tempo d'EDF. Avec un tarif en heures pleines qui atteint **0,7295 euros/kWh**, soit **plus de quatre fois le prix d'un jour bleu en heures pleines**, ces 22 journées par saison peuvent transformer une facture d'électricité en cauchemar si l'on n'y est pas préparé. Depuis la revalorisation des tarifs réglementés du 1er août 2026, les prix Tempo ont augmenté de 2,3 % à 3,3 % selon la couleur et la plage horaire. Dans ce guide, nous vous expliquons tout : les règles qui les encadrent, leur coût réel, les périodes où ils tombent, et surtout comment les anticiper pour protéger votre budget.
 
 ## Qu'est-ce qu'un jour rouge Tempo ?
 
 L'offre Tempo d'EDF propose un tarif de l'électricité qui varie chaque jour selon trois couleurs :
 
-- **Jour bleu** (300 jours/an) : le tarif le plus avantageux, à 0,1612 euros/kWh en heures pleines et 0,1325 euros/kWh en heures creuses.
-- **Jour blanc** (43 jours/an) : un tarif intermédiaire, à 0,1871 euros/kWh en heures pleines et 0,1499 euros/kWh en heures creuses.
-- **Jour rouge** (22 jours/an) : le tarif le plus cher, à **0,7060 euros/kWh** en heures pleines et 0,1575 euros/kWh en heures creuses.
+- **Jour bleu** (300 jours/an) : le tarif le plus avantageux, à 0,1654 euros/kWh en heures pleines et 0,1356 euros/kWh en heures creuses.
+- **Jour blanc** (43 jours/an) : un tarif intermédiaire, à 0,1921 euros/kWh en heures pleines et 0,1536 euros/kWh en heures creuses.
+- **Jour rouge** (22 jours/an) : le tarif le plus cher, à **0,7295 euros/kWh** en heures pleines et 0,1615 euros/kWh en heures creuses.
 
 Les jours rouges signalent les journées de très forte tension sur le réseau électrique français. EDF les déclenche lorsque la demande nationale est au plus haut, principalement lors des vagues de froid hivernales. Pour le consommateur averti, ces jours-là imposent une seule stratégie : **réduire sa consommation au strict minimum** pendant les heures pleines (6h-22h).
 
@@ -41,7 +42,7 @@ Même lors d'une vague de froid intense, EDF ne peut pas enchaîner plus de **5 
 
 ## Combien coûte réellement un jour rouge ?
 
-Le chiffre de 0,7060 euros/kWh en heures pleines peut sembler abstrait. Voici des exemples concrets pour mesurer l'impact sur votre budget quotidien.
+Le chiffre de 0,7295 euros/kWh en heures pleines peut sembler abstrait. Voici des exemples concrets pour mesurer l'impact sur votre budget quotidien.
 
 ### Le coût d'une machine à laver
 
@@ -49,9 +50,9 @@ Un cycle de lave-linge consomme en moyenne 1,5 kWh. Voici le coût selon la coul
 
 | Couleur | Coût du cycle (HP) | Différence vs Bleu |
 |---------|-------------------|-------------------|
-| **Bleu** | 0,24 euros | - |
-| **Blanc** | 0,28 euros | +17 % |
-| **Rouge** | **1,06 euros** | **+342 %** |
+| **Bleu** | 0,25 euros | - |
+| **Blanc** | 0,29 euros | +16 % |
+| **Rouge** | **1,09 euros** | **+341 %** |
 
 Lancer sa machine à laver en heures pleines un jour rouge coûte donc **plus de quatre fois plus cher** qu'un jour bleu. L'économie est simple : reportez vos lessives aux heures creuses (22h-6h) ou attendez un jour bleu.
 
@@ -59,14 +60,14 @@ Lancer sa machine à laver en heures pleines un jour rouge coûte donc **plus de
 
 Un logement de 80 m2 chauffé à l'électricité consomme environ 40 kWh par jour en hiver. En heures pleines (environ 60 % de la consommation quotidienne, soit 24 kWh), l'impact est spectaculaire :
 
-- **Jour bleu** : 24 x 0,1612 = **3,87 euros**
-- **Jour rouge** : 24 x 0,7060 = **16,94 euros**
+- **Jour bleu** : 24 x 0,1654 = **3,97 euros**
+- **Jour rouge** : 24 x 0,7295 = **17,51 euros**
 
-La différence est de **13 euros en une seule journée**. Sur les 22 jours rouges de la saison, ne pas adapter sa consommation peut représenter un surcoût de plus de **286 euros** par rapport à un comportement optimisé.
+La différence est de **13,5 euros en une seule journée**. Sur les 22 jours rouges de la saison, ne pas adapter sa consommation peut représenter un surcoût de près de **300 euros** par rapport à un comportement optimisé.
 
 ### Heures creuses : le refuge des jours rouges
 
-Bonne nouvelle : les heures creuses des jours rouges restent abordables à 0,1575 euros/kWh, soit environ 19 % de plus qu'un jour bleu en heures creuses. La stratégie gagnante est donc de **basculer un maximum de consommation vers les heures creuses** (22h-6h) les jours rouges : lave-linge, lave-vaisselle, chauffe-eau, recharge de véhicule électrique.
+Bonne nouvelle : les heures creuses des jours rouges restent abordables à 0,1615 euros/kWh, soit environ 19 % de plus qu'un jour bleu en heures creuses. La stratégie gagnante est donc de **basculer un maximum de consommation vers les heures creuses** (22h-6h) les jours rouges : lave-linge, lave-vaisselle, chauffe-eau, recharge de véhicule électrique.
 
 ## Quand tombent les jours rouges ?
 
@@ -126,8 +127,8 @@ EDF n'annonce officiellement que la couleur du **lendemain**, chaque jour vers 1
 
 ### Combien peut-on économiser en évitant de consommer les jours rouges ?
 
-L'économie dépend de votre profil de consommation, mais elle est significative. Pour un foyer avec chauffage électrique consommant 40 kWh/jour, décaler 60 % de sa consommation des heures pleines vers les heures creuses un jour rouge permet d'économiser environ **13 euros par jour rouge**. Sur une saison entière (22 jours rouges), cela représente une économie potentielle de plus de **290 euros**. Pour comparer Tempo avec d'autres offres, consultez notre [comparatif Tempo vs Heures Creuses vs EDF Bleu](/blog/tempo-vs-heures-creuses-edf-bleu). Inscrivez-vous à nos [alertes WhatsApp](/#subscribe) pour ne plus jamais rater un jour rouge.
+L'économie dépend de votre profil de consommation, mais elle est significative. Pour un foyer avec chauffage électrique consommant 40 kWh/jour, décaler 60 % de sa consommation des heures pleines vers les heures creuses un jour rouge permet d'économiser environ **13,5 euros par jour rouge**. Sur une saison entière (22 jours rouges), cela représente une économie potentielle de près de **300 euros**. Pour comparer Tempo avec d'autres offres, consultez notre [comparatif Tempo vs Heures Creuses vs EDF Bleu](/blog/tempo-vs-heures-creuses-edf-bleu). Inscrivez-vous à nos [alertes WhatsApp](/#subscribe) pour ne plus jamais rater un jour rouge.
 
 ---
 
-*Article mis à jour le 24 février 2026. Les tarifs indiqués sont ceux en vigueur pour la saison Tempo 2025-2026 et peuvent évoluer. Consultez le site EDF pour les tarifs officiels.*
+*Article mis à jour le 9 août 2026. Les tarifs indiqués sont ceux du barème réglementé en vigueur depuis le 1er août 2026 et peuvent évoluer. Consultez le site EDF pour les tarifs officiels.*

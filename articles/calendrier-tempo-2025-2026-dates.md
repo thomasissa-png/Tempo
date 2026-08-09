@@ -2,10 +2,11 @@
 title: Calendrier Tempo 2025-2026 : toutes les dates et couleurs
 description: Calendrier Tempo EDF 2025-2026 complet : jours rouges, blancs, bleus et prévisions à 15 jours mises à jour chaque jour.
 publish_date: 2026-03-10
+updated_date: 2026-08-09
 keywords: calendrier tempo 2025 2026, dates jours rouges tempo, historique tempo edf, saison tempo 2026
 cluster: calendrier
 ---
-L'option tarifaire Tempo d'EDF reste l'un des contrats d'électricité les plus avantageux pour les consommateurs avertis. Avec ses jours bleus facturés à prix réduit et ses jours rouges où le kilowattheure atteint 0,7060 euros en heures pleines, connaître à l'avance la couleur du jour est devenu un enjeu financier majeur. Ce guide complet du **calendrier Tempo 2025-2026** vous donne toutes les clés pour suivre la saison en cours, comprendre la répartition des jours et anticiper les prochaines dates.
+L'option tarifaire Tempo d'EDF reste l'un des contrats d'électricité les plus avantageux pour les consommateurs avertis. Avec ses jours bleus facturés à prix réduit et ses jours rouges où le kilowattheure atteint 0,7295 euros en heures pleines (tarif en vigueur depuis le 1er août 2026), connaître à l'avance la couleur du jour est devenu un enjeu financier majeur. Ce guide complet du **calendrier Tempo 2025-2026** vous donne toutes les clés pour suivre la saison en cours, comprendre la répartition des jours et anticiper les prochaines dates.
 
 ## Comment fonctionne la saison Tempo EDF 2025-2026
 
@@ -13,7 +14,7 @@ L'option tarifaire Tempo d'EDF reste l'un des contrats d'électricité les plus 
 
 Contrairement à ce que beaucoup pensent, la saison Tempo ne suit pas l'année civile. Elle débute le **1er septembre 2025** et s'achève le **31 août 2026**, soit une durée de 365 jours. Sur cette période, EDF répartit trois types de jours selon un quota fixe et immuable :
 
-- **22 jours rouges** : les plus chers, réservés aux périodes de forte tension sur le réseau électrique. Le tarif en heures pleines atteint 0,7060 euros/kWh, soit plus de quatre fois le tarif bleu.
+- **22 jours rouges** : les plus chers, réservés aux périodes de forte tension sur le réseau électrique. Le tarif en heures pleines atteint 0,7295 euros/kWh depuis la revalorisation du 1er août 2026 — il était de 0,7060 euros/kWh pendant l'essentiel de la saison 2025-2026, tarif alors en vigueur. Dans les deux cas, cela représente plus de quatre fois le tarif bleu.
 - **43 jours blancs** : un tarif intermédiaire, placés lors de demandes modérément élevées.
 - **Environ 300 jours bleus** : le tarif le plus bas, qui représente la grande majorité de l'année. C'est là où l'option Tempo devient réellement avantageuse par rapport à un contrat classique.
 

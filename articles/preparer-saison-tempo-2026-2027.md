@@ -3,12 +3,15 @@ title: Préparer la saison Tempo 2026-2027 : la checklist complète
 description: La checklist pour préparer la saison Tempo 2026-2027 avant septembre : équipements, isolation, habitudes et alertes pour anticiper les jours rouges.
 keywords: préparer saison tempo, checklist tempo edf, saison tempo 2026-2027, anticiper jours rouges tempo
 publish_date: 2026-04-14
+updated_date: 2026-08-09
 cluster: preparation
 ---
 
 ## Pourquoi préparer la saison Tempo dès maintenant
 
 L'été est le meilleur moment pour **préparer la saison Tempo** 2026-2027, bien avant son démarrage le 1er septembre. La logique est simple : les jours rouges, les plus coûteux de l'option Tempo, n'arrivent qu'entre le 1er novembre et le 31 mars. Vous disposez donc de plusieurs mois de calme pour installer vos équipements, vérifier votre isolation et adopter les bons réflexes. Une saison Tempo bien préparée, c'est une saison où l'on subit beaucoup moins les pics de prix.
+
+À noter avant de vous lancer : les tarifs Tempo ont été revalorisés le 1er août 2026, de +2,3 % à +3,3 % selon la couleur et la plage horaire.
 
 Pour rappel, une saison Tempo court du 1er septembre au 31 août. Le budget EDF est fixe : **22 jours rouges, 43 jours blancs et environ 300 jours bleus**. Les jours rouges ne tombent jamais un week-end ni un jour férié, et il ne peut pas y avoir plus de 5 jours rouges consécutifs. Connaître ces règles à l'avance, c'est déjà anticiper. Si vous découvrez l'option, notre [guide complet Tempo EDF 2026](/blog/tempo-edf-2026-guide-complet) reprend tout le fonctionnement pas à pas.
 
@@ -34,7 +37,7 @@ Quelques repères utiles, à considérer comme des estimations courantes :
 
 - **Thermostat connecté** : c'est l'investissement prioritaire. Il permet d'abaisser la température de consigne lors des heures pleines rouges sans y penser.
 - **Contacteur chauffe-eau** : votre ballon doit chauffer en heures creuses. Vérifiez la position du contacteur et l'horaire programmé.
-- **Chauffage d'appoint bois** : le bois revient souvent autour de **0,04 à 0,06 €/kWh**, là où l'heure pleine rouge atteint **0,7060 €/kWh** (tarif 2025-2026 TTC, à actualiser à la rentrée). L'écart explique pourquoi tant de foyers Tempo se tournent vers un poêle.
+- **Chauffage d'appoint bois** : le bois revient souvent autour de **0,04 à 0,06 €/kWh**, là où l'heure pleine rouge atteint **0,7295 €/kWh** (tarif TTC en vigueur depuis le 1er août 2026). L'écart explique pourquoi tant de foyers Tempo se tournent vers un poêle.
 - **Couverture chauffante** : un chauffage ciblé qui consomme très peu et limite le besoin de chauffer toute une pièce.
 
 Pour aller plus loin sur le sujet, consultez nos [astuces chauffage pour les jours rouges Tempo](/blog/chauffage-jour-rouge-tempo-astuces). Et si vous êtes équipé d'une pompe à chaleur, le pilotage spécifique est détaillé dans [pompe à chaleur et Tempo EDF](/blog/pompe-a-chaleur-tempo-edf).
@@ -94,7 +97,7 @@ Idéalement dès l'été. Comme les jours rouges n'arrivent qu'entre le 1er nove
 
 ### Quel équipement prioriser pour réduire la facture des jours rouges ?
 
-Le thermostat programmable arrive en tête, car il abaisse automatiquement le chauffage pendant les heures pleines rouges (6h-22h). Le contacteur du chauffe-eau pour chauffer l'eau en heures creuses et un chauffage d'appoint au bois complètent efficacement le dispositif. Le bois est souvent estimé autour de 0,04 à 0,06 €/kWh contre 0,7060 €/kWh en heure pleine rouge (tarif 2025-2026 à actualiser).
+Le thermostat programmable arrive en tête, car il abaisse automatiquement le chauffage pendant les heures pleines rouges (6h-22h). Le contacteur du chauffe-eau pour chauffer l'eau en heures creuses et un chauffage d'appoint au bois complètent efficacement le dispositif. Le bois est souvent estimé autour de 0,04 à 0,06 €/kWh contre 0,7295 €/kWh en heure pleine rouge (tarif en vigueur depuis le 1er août 2026).
 
 ### Comment connaître à l'avance les jours rouges de la prochaine saison ?
 

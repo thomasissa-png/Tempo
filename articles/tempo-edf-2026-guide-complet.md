@@ -2,6 +2,7 @@
 title: Tempo EDF en 2026 : le guide complet pour les abonnés
 description: Offre Tempo EDF 2026 : fonctionnement, tarifs, jours rouges, blancs et bleus, avantages et conseils pour économiser.
 publish_date: 2026-02-17
+updated_date: 2026-08-09
 keywords: tempo edf, offre tempo edf 2026, tempo edf avis, tempo edf tarif, calendrier tempo edf, jours rouges tempo
 cluster: tempo-guide
 ---
@@ -20,15 +21,17 @@ La couleur du lendemain est annoncée par EDF chaque jour vers 11h. Le jour Temp
 
 ## Les tarifs Tempo EDF en 2026
 
-Voici les tarifs actuels de l'option Tempo pour un compteur 9 kVA (TTC) :
+Voici les tarifs actuels de l'option Tempo pour un compteur 9 kVA (TTC), en vigueur depuis le 1er août 2026 :
 
 | Couleur | Heures Creuses (22h-6h) | Heures Pleines (6h-22h) |
 |---------|-------------------------|-------------------------|
-| **BLEU** | 0,1325 €/kWh | 0,1612 €/kWh |
-| **BLANC** | 0,1499 €/kWh | 0,1871 €/kWh |
-| **ROUGE** | 0,1575 €/kWh | **0,7060 €/kWh** |
+| **BLEU** | 0,1356 €/kWh | 0,1654 €/kWh |
+| **BLANC** | 0,1536 €/kWh | 0,1921 €/kWh |
+| **ROUGE** | 0,1615 €/kWh | **0,7295 €/kWh** |
 
-Le point clé : en heures pleines d'un jour rouge, le prix atteint **0,7060 €/kWh**, soit près de **5 fois** le tarif d'un jour bleu. C'est ce différentiel qui fait tout l'intérêt (et le risque) de l'offre Tempo.
+Ces montants intègrent la revalorisation du 1er août 2026, qui a relevé la grille Tempo de +2,3 % à +3,3 % selon la couleur et la plage horaire.
+
+Le point clé : en heures pleines d'un jour rouge, le prix atteint **0,7295 €/kWh**, soit plus de **4 fois** le tarif d'un jour bleu. C'est ce différentiel qui fait tout l'intérêt (et le risque) de l'offre Tempo.
 
 ## Quand tombent les jours rouges ?
 
@@ -83,7 +86,7 @@ La veille d'un jour rouge, montez le chauffage à 21-22°C et lancez toutes vos 
 Pour un foyer type avec chauffage électrique (consommation ~8000 kWh/an) :
 
 - **Sans adaptation** les jours rouges : surcoût de 50 à 150 € par jour rouge
-- **Avec adaptation** (machines reportées, chauffage baissé) : économie de **300 à 500 € par an** par rapport au tarif réglementé
+- **Avec adaptation** (machines reportées, chauffage baissé) : économie de **300 à 400 € par an** par rapport au tarif réglementé, désormais à 0,2001 €/kWh en option Base depuis le 1er août 2026
 
 Le montant exact dépend de votre profil de consommation et de votre capacité à vous adapter. Notre outil [Calendrier Tempo EDF](/) vous aide à anticiper les jours rouges jusqu'à 15 jours à l'avance. Pour comprendre les tendances de placement des jours rouges au fil des années, retrouvez l'[historique des saisons Tempo](/blog/calendrier-tempo-historique-saisons).
 
@@ -108,11 +111,13 @@ Soyons transparents, Tempo a aussi ses limites :
 
 | Critère | Tempo | Base | Heures Creuses |
 |---------|-------|------|----------------|
-| Prix jours bleus HP | 0,16 €/kWh | 0,25 €/kWh | 0,27 €/kWh |
-| Prix jours rouges HP | **0,71 €/kWh** | 0,25 €/kWh | 0,27 €/kWh |
+| Prix jours bleus HP | 0,17 €/kWh | 0,20 €/kWh | 0,21 €/kWh |
+| Prix jours rouges HP | **0,73 €/kWh** | 0,20 €/kWh | 0,21 €/kWh |
 | Risque | Élevé | Nul | Faible |
-| Économie potentielle | 300-500 €/an | Référence | 50-150 €/an |
+| Économie potentielle | 300-400 €/an | Référence | 50-150 €/an |
 | Effort requis | Important | Aucun | Faible |
+
+Les prix Base et Heures Creuses de ce tableau correspondent à la grille du tarif réglementé du **1er août 2026** : 0,2001 €/kWh en option Base et 0,2142 €/kWh en heures pleines de l'option Heures Creuses (0,1589 €/kWh en heures creuses).
 
 Pour une comparaison détaillée, lisez notre article [Tempo vs. Heures Creuses : quel contrat choisir ?](/blog/tempo-vs-heures-creuses-edf-bleu).
 

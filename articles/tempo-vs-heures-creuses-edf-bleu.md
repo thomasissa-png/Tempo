@@ -2,6 +2,7 @@
 title: Tempo vs Heures Creuses vs EDF Bleu : quel contrat ?
 description: Comparatif Tempo EDF, Heures Creuses et tarif Bleu : simulez vos économies et trouvez le contrat fait pour vous.
 publish_date: 2026-03-03
+updated_date: 2026-08-09
 keywords: tempo vs heures creuses, comparatif edf tempo, tempo ou tarif bleu, meilleur contrat edf 2026
 cluster: tempo-guide
 ---
@@ -41,26 +42,30 @@ Chaque couleur se décline en Heures Creuses et Heures Pleines, soit **6 niveaux
 
 | Couleur du jour | Heures Creuses (HC) | Heures Pleines (HP) |
 |---|---|---|
-| **Bleu** | 0,1325 EUR/kWh | 0,1612 EUR/kWh |
-| **Blanc** | 0,1499 EUR/kWh | 0,1871 EUR/kWh |
-| **Rouge** | 0,1575 EUR/kWh | **0,7060 EUR/kWh** |
+| **Bleu** | 0,1356 EUR/kWh | 0,1654 EUR/kWh |
+| **Blanc** | 0,1536 EUR/kWh | 0,1921 EUR/kWh |
+| **Rouge** | 0,1615 EUR/kWh | **0,7295 EUR/kWh** |
 
-### Grille tarifaire Heures Creuses / Heures Pleines (9 kVA)
+Cette grille intègre la revalorisation des tarifs Tempo entrée en vigueur le **1er août 2026**, soit une hausse de +2,3 % à +3,3 % selon la couleur et la plage horaire.
 
-| Période | Prix du kWh |
-|---|---|
-| Heures Creuses (8h/jour) | 0,1579 EUR/kWh |
-| Heures Pleines (16h/jour) | 0,2065 EUR/kWh |
-
-### Tarif Bleu réglementé option Base (9 kVA)
+### Grille tarifaire Heures Creuses / Heures Pleines
 
 | Période | Prix du kWh |
 |---|---|
-| Toute la journée | 0,1927 EUR/kWh |
+| Heures Creuses (8h/jour) | 0,1589 EUR/kWh |
+| Heures Pleines (16h/jour) | 0,2142 EUR/kWh |
+
+### Tarif Bleu réglementé option Base
+
+| Période | Prix du kWh |
+|---|---|
+| Toute la journée | 0,2001 EUR/kWh |
+
+Ces deux grilles intègrent elles aussi la révision du tarif réglementé du **1er août 2026** (+2,5 % TTC en moyenne), avec une hausse concentrée sur les heures pleines (+3,7 %) et quasi nulle sur les heures creuses (+0,6 %).
 
 ### Ce que ces chiffres révèlent
 
-Le point clé du comparatif est le contraste extrême de Tempo. En jours **Bleu HC**, le kWh est environ **31 % moins cher** que le Tarif Base. En revanche, le kWh en **Rouge HP** atteint **0,7060 EUR**, soit près de **4 fois le tarif Base**. Toute l'économie Tempo repose sur votre capacité à éviter la consommation en Rouge HP.
+Le point clé du comparatif est le contraste extrême de Tempo. En jours **Bleu HC**, le kWh est environ **32 % moins cher** que le Tarif Base. En revanche, le kWh en **Rouge HP** atteint **0,7295 EUR**, soit environ **3,6 fois le tarif Base**. Toute l'économie Tempo repose sur votre capacité à éviter la consommation en Rouge HP.
 
 ## Simulation annuelle : 8 000 kWh pour un foyer type
 
@@ -74,18 +79,18 @@ Prenons un foyer consommant **8 000 kWh par an** (moyenne française pour un log
 
 | Poste | Calcul | Montant |
 |---|---|---|
-| 8 000 kWh x 0,1927 EUR | Tarif unique | **1 541,60 EUR** |
-| **Total annuel** | | **1 541,60 EUR** |
+| 8 000 kWh x 0,2001 EUR | Tarif unique | **1 600,80 EUR** |
+| **Total annuel** | | **1 600,80 EUR** |
 
 ### Calcul pour les Heures Creuses / Heures Pleines
 
 | Poste | Calcul | Montant |
 |---|---|---|
-| 3 200 kWh HC x 0,1579 EUR | 40 % en heures creuses | 505,28 EUR |
-| 4 800 kWh HP x 0,2065 EUR | 60 % en heures pleines | 991,20 EUR |
-| **Total annuel** | | **1 496,48 EUR** |
+| 3 200 kWh HC x 0,1589 EUR | 40 % en heures creuses | 508,48 EUR |
+| 4 800 kWh HP x 0,2142 EUR | 60 % en heures pleines | 1 028,16 EUR |
+| **Total annuel** | | **1 536,64 EUR** |
 
-**Économie vs Base : environ 45 EUR/an** (3,0 %)
+**Économie vs Base : environ 64 EUR/an** (4,0 %)
 
 ### Calcul pour Tempo (avec effort jours rouges)
 
@@ -93,16 +98,16 @@ Pour Tempo, la consommation journalière moyenne est de 21,9 kWh (8 000 / 365). 
 
 | Poste | kWh | Calcul | Montant |
 |---|---|---|---|
-| Bleu HC | 2 628 | 300j x 21,9 x 0,40 x 0,1325 | 348,21 EUR |
-| Bleu HP | 3 942 | 300j x 21,9 x 0,60 x 0,1612 | 635,45 EUR |
-| Blanc HC | 377 | 43j x 21,9 x 0,40 x 0,1499 | 56,46 EUR |
-| Blanc HP | 565 | 43j x 21,9 x 0,60 x 0,1871 | 105,72 EUR |
-| Rouge HC | 58 | 22j x 6,6 x 0,40 x 0,1575 | 9,15 EUR |
-| Rouge HP | 87 | 22j x 6,6 x 0,60 x 0,7060 | 61,51 EUR |
-| **Total annuel** | **7 657** | | **1 216,50 EUR** |
+| Bleu HC | 2 628 | 300j x 21,9 x 0,40 x 0,1356 | 356,36 EUR |
+| Bleu HP | 3 942 | 300j x 21,9 x 0,60 x 0,1654 | 652,01 EUR |
+| Blanc HC | 377 | 43j x 21,9 x 0,40 x 0,1536 | 57,91 EUR |
+| Blanc HP | 565 | 43j x 21,9 x 0,60 x 0,1921 | 108,54 EUR |
+| Rouge HC | 58 | 22j x 6,6 x 0,40 x 0,1615 | 9,37 EUR |
+| Rouge HP | 87 | 22j x 6,6 x 0,60 x 0,7295 | 63,47 EUR |
+| **Total annuel** | **7 657** | | **1 247,66 EUR** |
 
-**Économie vs Base : environ 325 EUR/an** (21,1 %)
-**Économie vs HC/HP : environ 280 EUR/an** (18,7 %)
+**Économie vs Base : environ 353 EUR/an** (22,1 %)
+**Économie vs HC/HP : environ 289 EUR/an** (18,8 %)
 
 L'offre Tempo génère une économie significative, à condition de réduire fortement sa consommation les jours rouges. Sans cet effort, la facture Rouge HP peut rapidement effacer les gains des jours bleus.
 
@@ -128,7 +133,7 @@ L'offre Tempo génère une économie significative, à condition de réduire for
 
 | Avantages | Inconvénients |
 |---|---|
-| Économies potentielles de 20 à 30 % | Jour rouge HP très coûteux (0,7060 EUR/kWh) |
+| Économies potentielles de 20 à 30 % | Jour rouge HP très coûteux (0,7295 EUR/kWh) |
 | 300 jours bleus à prix bas | Nécessite vigilance et adaptation |
 | Incitatif à la sobriété énergétique | Incompatible avec chauffage 100 % électrique sans alternative |
 | Écologique : réduit la demande en pointe | Couleur connue seulement la veille à 11h |
@@ -152,7 +157,7 @@ L'offre Tempo génère une économie significative, à condition de réduire for
 - Vous avez un chauffage alternatif (bois, gaz, pompe à chaleur) pour les jours rouges — consultez nos [10 astuces chauffage en jour rouge](/blog/chauffage-jour-rouge-tempo-astuces) pour optimiser votre confort
 - Vous êtes prêt à surveiller la couleur du lendemain chaque soir
 - Vous pouvez réduire votre consommation de 50 à 80 % les jours rouges — notre [guide des jours rouges Tempo](/blog/jours-rouges-tempo-guide) détaille les stratégies d'anticipation
-- Vous visez des économies substantielles (200 à 350 EUR/an) — découvrez toutes les [astuces pour économiser avec Tempo](/blog/economiser-tempo-edf)
+- Vous visez des économies substantielles (300 à 400 EUR/an) — découvrez toutes les [astuces pour économiser avec Tempo](/blog/economiser-tempo-edf)
 
 Pour ne jamais être pris au dépourvu, inscrivez-vous à nos [alertes WhatsApp gratuites](/alertes) : vous recevrez les prévisions jusqu'à 15 jours à l'avance. Découvrez [comment fonctionnent nos alertes](/blog/alerte-jour-rouge-tempo).
 
@@ -172,7 +177,7 @@ Oui, et c'est même le fonctionnement par défaut de Tempo. L'offre Tempo intèg
 
 ### Que se passe-t-il si je ne fais aucun effort les jours rouges avec Tempo ?
 
-Sans réduction de consommation les jours rouges, l'offre Tempo peut devenir **plus chère** que le Tarif Base. Un foyer consommant normalement 22 kWh un jour rouge en heures pleines paierait environ 15,53 EUR pour cette seule journée en HP, contre 4,24 EUR en Tarif Base. Sur 22 jours rouges, la surfacturation peut atteindre 200 à 250 EUR, annulant les économies des jours bleus. Tempo n'est rentable que si vous adaptez activement votre consommation.
+Sans réduction de consommation les jours rouges, l'offre Tempo peut devenir **plus chère** que le Tarif Base. Un foyer consommant normalement 22 kWh un jour rouge en heures pleines paierait environ 16,05 EUR pour cette seule journée en HP, contre 4,40 EUR en Tarif Base. Sur 22 jours rouges, la surfacturation atteint environ 256 EUR, annulant une large part des économies des jours bleus. Tempo n'est rentable que si vous adaptez activement votre consommation.
 
 ### Comment connaître la couleur Tempo du lendemain ?
 
@@ -180,7 +185,7 @@ EDF annonce la couleur du lendemain chaque jour aux alentours de 11h. Vous pouve
 
 ## Conclusion : notre recommandation
 
-Pour la majorité des foyers français qui peuvent s'adapter, **l'offre Tempo reste la plus avantageuse en 2026** avec des économies pouvant atteindre 250 à 350 EUR par an. Elle exige cependant une implication réelle : surveiller les couleurs, disposer d'un chauffage alternatif les jours rouges et accepter de décaler certains usages.
+Pour la majorité des foyers français qui peuvent s'adapter, **l'offre Tempo reste la plus avantageuse en 2026** avec des économies pouvant atteindre 350 EUR par an, un écart qui s'est même creusé depuis la révision du tarif réglementé du 1er août 2026. Elle exige cependant une implication réelle : surveiller les couleurs, disposer d'un chauffage alternatif les jours rouges et accepter de décaler certains usages.
 
 Si cette flexibilité vous semble contraignante, le tarif **Heures Creuses / Heures Pleines** offre un compromis raisonnable avec une petite économie sans risque. Le **Tarif Base** reste le choix de la tranquillité absolue, au prix d'une facture légèrement plus élevée.
 

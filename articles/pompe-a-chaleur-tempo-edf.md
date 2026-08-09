@@ -3,10 +3,11 @@ title: Pompe à chaleur et Tempo EDF : compatibilité et stratégies
 description: Pompe à chaleur et Tempo EDF : COP, coût des jours rouges et stratégies (préchauffage, appoint, programmation) pour chauffer sans exploser la facture.
 keywords: pompe à chaleur tempo, pac tempo edf, chauffage pompe à chaleur tempo, pompe à chaleur jour rouge
 publish_date: 2026-05-26
+updated_date: 2026-08-09
 cluster: equipements
 ---
 
-La **pompe à chaleur tempo** est l'un des sujets qui revient le plus souvent chez les abonnés EDF Tempo équipés d'un chauffage électrique performant. La promesse d'une PAC est séduisante : produire plusieurs kilowattheures de chaleur pour un seul kilowattheure consommé. Mais que devient cet avantage les jours rouges, quand le kilowattheure en heures pleines grimpe à 0,7060 €/kWh ? La réponse n'est ni « la PAC est inutile avec Tempo », ni « la PAC règle tout » : c'est une affaire de pilotage. Dans cet article, nous voyons comment le COP de votre pompe à chaleur influence le coût des jours rouges, et surtout quelles stratégies concrètes mettre en place pour chauffer confortablement sans faire exploser la facture.
+La **pompe à chaleur tempo** est l'un des sujets qui revient le plus souvent chez les abonnés EDF Tempo équipés d'un chauffage électrique performant. La promesse d'une PAC est séduisante : produire plusieurs kilowattheures de chaleur pour un seul kilowattheure consommé. Mais que devient cet avantage les jours rouges, quand le kilowattheure en heures pleines grimpe à 0,7295 €/kWh ? La réponse n'est ni « la PAC est inutile avec Tempo », ni « la PAC règle tout » : c'est une affaire de pilotage. Dans cet article, nous voyons comment le COP de votre pompe à chaleur influence le coût des jours rouges, et surtout quelles stratégies concrètes mettre en place pour chauffer confortablement sans faire exploser la facture.
 
 ## Comprendre le COP avant de parler de Tempo
 
@@ -18,13 +19,13 @@ Or — et c'est tout l'enjeu — les jours rouges Tempo coïncident très souven
 
 ## Le coût d'un jour rouge avec une PAC : un ordre de grandeur
 
-Faisons un calcul d'ordre de grandeur (les chiffres dépendent de votre logement, de votre PAC et de la météo). Rappel des tarifs 2025-2026 TTC :
+Faisons un calcul d'ordre de grandeur (les chiffres dépendent de votre logement, de votre PAC et de la météo). Rappel des tarifs TTC en vigueur depuis le 1er août 2026 :
 
 | Plage | Heures pleines (6h-22h) | Heures creuses (22h-6h) |
 |-------|------------------------|--------------------------|
 | Jour bleu | tarif bas | tarif très bas |
 | Jour blanc | tarif moyen | tarif modéré |
-| Jour rouge | **0,7060 €/kWh** | **0,1575 €/kWh** |
+| Jour rouge | **0,7295 €/kWh** | **0,1615 €/kWh** |
 
 L'écart est spectaculaire : en jour rouge, l'heure pleine coûte environ **4,5 fois** l'heure creuse. C'est cette structure tarifaire qui doit dicter votre stratégie PAC. Si votre pompe à chaleur consomme, par exemple, plusieurs kilowattheures électriques par jour pour chauffer, déplacer cette consommation hors des heures pleines rouges représente une économie immédiate et substantielle. Pour aller plus loin sur la logique d'ensemble, consultez notre guide pour [économiser avec Tempo EDF](/blog/economiser-tempo-edf).
 

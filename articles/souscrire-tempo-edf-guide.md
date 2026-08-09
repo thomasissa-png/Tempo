@@ -17,7 +17,7 @@ L'option Tempo classe chaque jour de l'année dans l'une des trois couleurs, cha
 
 Chaque couleur se décline en **Heures Pleines** (6h-22h) et **Heures Creuses** (22h-6h). La saison Tempo court du **1er septembre au 31 août**. Les jours rouges ne tombent que du **1er novembre au 31 mars**, jamais le week-end ni les jours fériés ; les jours blancs ne tombent jamais un dimanche.
 
-L'écart tarifaire est spectaculaire. Pour la saison 2025-2026 (prix TTC), un jour rouge coûte **0,7060 €/kWh en heures pleines** contre **0,1575 €/kWh en heures creuses**. Autrement dit, c'est en évitant la consommation rouge HP que vous faites des économies — et c'est ce point qui doit guider votre décision. Pour comprendre la logique tarifaire dans le détail, notre [comparatif Tempo, Heures Creuses et tarif Bleu](/blog/tempo-vs-heures-creuses-edf-bleu) met les chiffres côte à côte.
+L'écart tarifaire est spectaculaire. Selon la grille en vigueur depuis le 1er août 2026 (prix TTC), un jour rouge coûte **0,7295 €/kWh en heures pleines** contre **0,1615 €/kWh en heures creuses**. Autrement dit, c'est en évitant la consommation rouge HP que vous faites des économies — et c'est ce point qui doit guider votre décision. Pour comprendre la logique tarifaire dans le détail, notre [comparatif Tempo, Heures Creuses et tarif Bleu](/blog/tempo-vs-heures-creuses-edf-bleu) met les chiffres côte à côte.
 
 ## À qui s'adresse l'option Tempo ?
 
@@ -84,7 +84,7 @@ Oui, dans la grande majorité des cas. Le compteur Linky est nécessaire pour di
 
 ### Tempo est-il rentable dès la première année ?
 
-Cela dépend entièrement de votre capacité à réduire votre consommation les 22 jours rouges. Si vous disposez d'un chauffage alternatif et que vous décalez vos usages sur les jours bleus, l'économie peut être significative dès la première saison. En revanche, sans aucun effort les jours rouges, le tarif de pointe (0,7060 €/kWh en heures pleines) peut effacer les gains. Pour estimer votre situation, consultez notre [analyse de rentabilité](/blog/tempo-edf-avis-rentabilite).
+Cela dépend entièrement de votre capacité à réduire votre consommation les 22 jours rouges. Si vous disposez d'un chauffage alternatif et que vous décalez vos usages sur les jours bleus, l'économie peut être significative dès la première saison. En revanche, sans aucun effort les jours rouges, le tarif de pointe (0,7295 €/kWh en heures pleines) peut effacer les gains. Pour estimer votre situation, consultez notre [analyse de rentabilité](/blog/tempo-edf-avis-rentabilite).
 
 ### Comment connaître la couleur Tempo à l'avance après avoir souscrit ?
 

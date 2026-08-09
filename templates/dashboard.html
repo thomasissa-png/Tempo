@@ -190,7 +190,7 @@
                 "name": "Qu'est-ce qu'un jour Tempo rouge ?",
                 "acceptedAnswer": {
                     "@type": "Answer",
-                    "text": "Un jour Tempo rouge est l'un des 22 jours les plus chers de la saison Tempo EDF. Le prix du kWh en heures pleines atteint 0,71€, soit 4,4 fois le tarif d'un jour bleu. Les jours Tempo rouge tombent uniquement entre le 1er novembre et le 31 mars, jamais le week-end ni les jours fériés."
+                    "text": "Un jour Tempo rouge est l'un des 22 jours les plus chers de la saison Tempo EDF. Le prix du kWh en heures pleines atteint 0,73€, soit 4,4 fois le tarif d'un jour bleu. Les jours Tempo rouge tombent uniquement entre le 1er novembre et le 31 mars, jamais le week-end ni les jours fériés."
                 }
             },
             {
@@ -214,7 +214,7 @@
                 "name": "Quels sont les tarifs EDF Tempo en 2026 ?",
                 "acceptedAnswer": {
                     "@type": "Answer",
-                    "text": "En 2026, les tarifs Tempo EDF en heures pleines (6h-22h) sont : jour bleu 0,1612 €/kWh, jour blanc 0,1871 €/kWh, jour rouge 0,7060 €/kWh. En heures creuses (22h-6h) : bleu 0,1325 €/kWh, blanc 0,1499 €/kWh, rouge 0,1575 €/kWh. Un jour rouge en heures pleines coûte donc environ 4,4 fois plus cher qu'un jour bleu."
+                    "text": "Depuis le 1er août 2026, les tarifs Tempo EDF en heures pleines (6h-22h) sont : jour bleu 0,1654 €/kWh, jour blanc 0,1921 €/kWh, jour rouge 0,7295 €/kWh. En heures creuses (22h-6h) : bleu 0,1356 €/kWh, blanc 0,1536 €/kWh, rouge 0,1615 €/kWh. Un jour rouge en heures pleines coûte donc environ 4,4 fois plus cher qu'un jour bleu."
                 }
             }
         ]
@@ -369,7 +369,7 @@
             <div class="label">Jours rouges restants</div>
             <!-- P-21 : barre de progression visuelle -->
             <div class="counter-progress" id="progress-rouge"><div class="counter-progress-fill rouge-fill"></div></div>
-            <div class="counter-help">HP 0,71&nbsp;&euro;/kWh &mdash; les plus chers</div>
+            <div class="counter-help">HP 0,73&nbsp;&euro;/kWh &mdash; les plus chers</div>
         </div>
         <div class="counter-card blanc" aria-label="Jours blancs restants">
             <div class="count" id="count-blanc" aria-live="polite">{% if ssr.remaining %}{{ ssr.remaining.BLANC }}{% else %}&mdash;{% endif %}</div>
@@ -424,9 +424,9 @@
             <details class="faq-item">
                 <summary>Combien co&ucirc;te r&eacute;ellement un jour rouge ?</summary>
                 <div class="faq-content">
-                <p>En heures pleines (6h&ndash;22h), le kWh rouge co&ucirc;te <strong>0,71&nbsp;&euro;</strong>
-                    contre 0,16&nbsp;&euro; en jour bleu &mdash; soit <strong>4,4 fois plus cher</strong>.
-                    En heures creuses, c'est 0,15&nbsp;&euro; (rouge) contre 0,13&nbsp;&euro; (bleu).
+                <p>En heures pleines (6h&ndash;22h), le kWh rouge co&ucirc;te <strong>0,73&nbsp;&euro;</strong>
+                    contre 0,17&nbsp;&euro; en jour bleu &mdash; soit <strong>4,4 fois plus cher</strong>.
+                    En heures creuses, c'est 0,16&nbsp;&euro; (rouge) contre 0,14&nbsp;&euro; (bleu).
                     Pour un foyer avec chauffage &eacute;lectrique, un jour rouge peut facilement co&ucirc;ter
                     <strong>50 &agrave; 150&nbsp;&euro;</strong> si vous ne r&eacute;duisez pas votre consommation.
                     Vous pouvez consulter <a href="https://selectra.info/energie/fournisseurs/edf/tempo#tarifs">cette page de Selectra</a> qui donne la grille tarifaire en fonction de votre abonnement ou votre contrat EDF.</p>
@@ -500,21 +500,21 @@
                 <div class="faq-content">
                 <p>Les tarifs Tempo EDF en <strong>heures pleines</strong> (6h&ndash;22h) :</p>
                 <ul style="margin:8px 0 8px 20px;line-height:1.8">
-                    <li>Jour bleu : <strong>0,1612&nbsp;&euro;/kWh</strong></li>
-                    <li>Jour blanc : <strong>0,1871&nbsp;&euro;/kWh</strong></li>
-                    <li>Jour rouge : <strong>0,7060&nbsp;&euro;/kWh</strong></li>
+                    <li>Jour bleu : <strong>0,1654&nbsp;&euro;/kWh</strong></li>
+                    <li>Jour blanc : <strong>0,1921&nbsp;&euro;/kWh</strong></li>
+                    <li>Jour rouge : <strong>0,7295&nbsp;&euro;/kWh</strong></li>
                 </ul>
-                <p>En <strong>heures creuses</strong> (22h&ndash;6h) : bleu 0,1325&nbsp;&euro;, blanc 0,1499&nbsp;&euro;, rouge 0,1575&nbsp;&euro;/kWh.
+                <p>En <strong>heures creuses</strong> (22h&ndash;6h) : bleu 0,1356&nbsp;&euro;, blanc 0,1536&nbsp;&euro;, rouge 0,1615&nbsp;&euro;/kWh.
                     Un jour rouge en HP co&ucirc;te donc pr&egrave;s de <strong>5 fois plus cher</strong> qu'un jour bleu.
-                    <em>(Tarifs TTC 2026, v&eacute;rifiez sur votre contrat EDF.)</em></p>
+                    <em>(Tarifs TTC en vigueur au 1<sup>er</sup> ao&ucirc;t 2026, v&eacute;rifiez sur votre contrat EDF.)</em></p>
                 </div>
             </details>
             <details class="faq-item">
                 <summary>Qu'est-ce qu'un jour Tempo rouge ?</summary>
                 <div class="faq-content">
                 <p>Un <strong>jour Tempo rouge</strong> est l'un des 22 jours les plus chers de la saison Tempo EDF.
-                    Le prix du kWh en heures pleines atteint <strong>0,71&nbsp;&euro;</strong>, soit 4,4 fois
-                    le tarif d'un jour bleu (0,16&nbsp;&euro;). Les jours <strong>Tempo rouge</strong> tombent uniquement
+                    Le prix du kWh en heures pleines atteint <strong>0,73&nbsp;&euro;</strong>, soit 4,4 fois
+                    le tarif d'un jour bleu (0,17&nbsp;&euro;). Les jours <strong>Tempo rouge</strong> tombent uniquement
                     entre le 1<sup>er</sup> novembre et le 31 mars, jamais le week-end ni les jours f&eacute;ri&eacute;s.
                     EDF les d&eacute;clenche lors des pics de consommation (vagues de froid).
                     Pour &eacute;viter la facture sal&eacute;e, reportez vos usages gourmands au jour bleu suivant.</p>
