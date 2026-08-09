@@ -109,7 +109,9 @@ Pour Tempo, la consommation journalière moyenne est de 21,9 kWh (8 000 / 365). 
 **Économie vs Base : environ 353 EUR/an** (22,1 %)
 **Économie vs HC/HP : environ 289 EUR/an** (18,8 %)
 
-L'offre Tempo génère une économie significative, à condition de réduire fortement sa consommation les jours rouges. Sans cet effort, la facture Rouge HP peut rapidement effacer les gains des jours bleus.
+Une précision d'honnêteté sur ce calcul : l'effort consenti les jours rouges fait baisser la consommation totale de 8 000 à 7 657 kWh. Ces 343 kWh non consommés représentent environ 69 EUR au tarif Base, soit près de 20 % des 353 EUR d'écart. Autrement dit, environ 284 EUR viennent réellement de la grille Tempo, le reste vient de la sobriété — que vous auriez d'ailleurs pu appliquer sur n'importe quelle offre.
+
+L'offre Tempo génère donc une économie significative, à condition de réduire fortement sa consommation les jours rouges. Sans cet effort, la facture Rouge HP peut rapidement effacer les gains des jours bleus.
 
 ## Avantages et inconvénients de chaque offre
 
