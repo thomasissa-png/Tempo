@@ -307,7 +307,7 @@ def _build_confirmation_template(target_date: date, couleur: str, manage_token: 
     emoji = {"ROUGE": "🔴", "BLANC": "⚪", "BLEU": "🔵"}.get(couleur, "")
     date_fr = _format_date_fr(target_date)
     if couleur == "ROUGE":
-        advice = "Heures pleines 6h-22h à 0,71€/kWh."
+        advice = "Heures pleines 6h-22h à 0,73€/kWh."
     elif couleur == "BLANC":
         advice = "Tarif intermédiaire. OK pour les machines, évitez le four en heures pleines."
     else:
@@ -325,7 +325,7 @@ def _build_change_template(target_date: date, old_color: str, new_color: str,
     old_str = f"{emoji_old} {old_color}"
     new_str = f"{emoji_new} {new_color}"
     if new_color == "ROUGE":
-        advice = "Heures pleines à 0,71€/kWh."
+        advice = "Heures pleines à 0,73€/kWh."
     elif new_color == "BLANC" and old_color == "ROUGE":
         advice = "Bonne nouvelle ! Tarif intermédiaire, moins cher que prévu."
     elif new_color == "BLEU" and old_color == "ROUGE":
@@ -404,7 +404,7 @@ def format_alert_rouge(target_date: date, prediction: dict, manage_token: str = 
         f"⚠️ *Calendrier Tempo EDF*\n\n"
         f"*Jour ROUGE* prévu {date_fr} ({prob}% confiance).\n"
         f"Temp min: {temp_str}.\n\n"
-        f"💰 Heures pleines (6h-22h) à *0,71€/kWh* — jusqu'à 4× le tarif bleu !"
+        f"💰 Heures pleines (6h-22h) à *0,73€/kWh* — jusqu'à 4,4× le tarif bleu !"
     )
     msg += "\n\n" + _msg_footer(manage_token)
     return msg
@@ -434,7 +434,7 @@ def format_alert_officiel(target_date: date, couleur: str, manage_token: str = "
     msg = f"{emoji} *Tempo confirmé : {couleur}* {date_fr}."
     if couleur == "ROUGE":
         msg += (
-            "\n✅ Comme anticipé — heures pleines 6h-22h à *0,71€/kWh*."
+            "\n✅ Comme anticipé — heures pleines 6h-22h à *0,73€/kWh*."
         )
     elif couleur == "BLANC":
         msg += (
@@ -459,7 +459,7 @@ def format_change_alert(target_date: date, old_color: str, new_color: str,
     )
     if new_color == "ROUGE":
         msg += (
-            "\n\n💰 Heures pleines à *0,71€/kWh*."
+            "\n\n💰 Heures pleines à *0,73€/kWh*."
         )
     elif new_color == "BLANC" and old_color == "ROUGE":
         msg += "\n\n✅ Bonne nouvelle ! Tarif intermédiaire, moins cher que prévu."

@@ -50,7 +50,7 @@ En déplaçant un maximum de consommation vers les heures creuses des jours bleu
 
 **Total Tempo : environ 1 400 € + abonnement**
 
-Soit une **économie potentielle de 300 à 400 € par an** par rapport au tarif réglementé : environ 300 € pour ce foyer de 8 500 kWh, et jusqu'à 400 € pour une consommation proche de 11 500 kWh. La hausse du tarif réglementé du 1er août 2026 (+2,5 %) a d'ailleurs mécaniquement creusé cet écart en faveur de Tempo. Cette estimation suppose une vraie discipline de consommation les jours rouges, ce qui nous amène aux conseils pratiques.
+Soit une **économie potentielle de 300 à 400 € par an** par rapport au tarif réglementé : environ 300 € pour ce foyer de 8 500 kWh, et jusqu'à 400 € pour une consommation proche de 11 500 kWh. La hausse du tarif réglementé du 1er août 2026 — **+3,8 % sur l'option Base**, passée de 0,1927 à 0,2001 €/kWh, au-delà de la moyenne de +2,5 % annoncée sur l'ensemble des tarifs réglementés — a d'ailleurs mécaniquement creusé cet écart en faveur de Tempo. Cette estimation suppose une vraie discipline de consommation les jours rouges, ce qui nous amène aux conseils pratiques.
 
 ### Le calcul sur un seul jour rouge
 

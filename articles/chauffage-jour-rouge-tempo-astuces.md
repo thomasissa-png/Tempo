@@ -90,7 +90,7 @@ Les radiateurs à inertie (pierre, fonte, céramique) sont particulièrement ada
 
 ### Economies estimées
 
-En concentrant 100 % du chauffage sur les heures creuses les jours rouges, un foyer consommant 30 kWh/jour en chauffage économise environ **10,20 euros par jour rouge** par rapport à un fonctionnement en heures pleines. Sur la saison : **jusqu'à 225 euros**.
+Prenons un foyer qui consomme 30 kWh par jour pour son chauffage. Les heures creuses ne durent que 8 heures (22h-6h) contre 16 heures d'heures pleines, et l'inertie des radiateurs ne tient que 2 à 4 heures : viser 100 % de report est irréaliste. En déplaçant **les deux tiers de ce chauffage, soit 20 kWh**, des heures pleines rouges (0,7295 euros/kWh) vers les heures creuses rouges (0,1615 euros/kWh), l'écart de 0,5680 euros/kWh donne une économie de **11,36 euros par jour rouge** (20 x 0,5680). Sur les 22 jours rouges de la saison : **environ 250 euros**.
 
 **Difficulté : facile** -- les prises programmables coûtent 10 à 20 euros par radiateur.
 
@@ -112,13 +112,13 @@ Réduire la surface chauffée de 40 % diminue la consommation de chauffage d'env
 
 ### Pourquoi ça marche
 
-Un radiateur de chambre consomme entre 1 000 et 2 000 watts pour maintenir une pièce de 12 m2 à 19°C. Une couverture chauffante électrique consomme entre **50 et 100 watts**, soit 15 à 20 fois moins. En jour rouge, chauffer une chambre pendant 8 heures en heures pleines coûte entre 5 et 10 euros. La même période avec une couverture chauffante revient à **0,36 à 0,57 euros**.
+Un radiateur de chambre consomme entre 1 000 et 2 000 watts pour maintenir une pièce de 12 m2 à 19°C. Une couverture chauffante électrique consomme entre **50 et 100 watts**, soit 15 à 20 fois moins. En jour rouge, chauffer une chambre pendant 8 heures en heures pleines représente 8 à 16 kWh, soit entre **5,80 et 11,70 euros** à 0,7295 euros/kWh. La même période avec une couverture chauffante mobilise 0,4 à 0,8 kWh, soit **0,29 à 0,58 euros**.
 
 L'ADEME recommande d'ailleurs une température de 16 à 17°C dans les chambres pour un sommeil de qualité. Coupez le radiateur de la chambre, glissez-vous sous votre couverture chauffante et laissez la pièce descendre naturellement. Votre sommeil sera meilleur et votre facture aussi.
 
 ### Economies estimées
 
-Remplacer le chauffage de la chambre par une couverture chauffante les 22 jours rouges économise entre **4 à 7 euros par jour rouge**, soit **88 à 154 euros par saison**. L'investissement est modeste : 30 à 60 euros pour une couverture de bonne qualité.
+Remplacer le chauffage de la chambre par une couverture chauffante les 22 jours rouges économise entre **5,50 et 11 euros par jour rouge** (le coût du radiateur moins celui de la couverture), soit **120 à 245 euros par saison**. L'investissement est modeste : 30 à 60 euros pour une couverture de bonne qualité.
 
 **Difficulté : très facile** -- branchez, réglez la température, et profitez.
 
@@ -165,9 +165,9 @@ Une amélioration de l'isolation de 15 % sur un logement consommant 8 000 kWh/an
 | 3. Poêle à bois | 10 - 14 euros | 220 - 310 euros | Elevée | 1 500 - 4 000 euros |
 | 4. Rideaux + bas de porte | 1 - 2 euros | 22 - 44 euros | Très facile | 50 - 150 euros |
 | 5. Chauffe-eau décalé | 2,38 euros | 52 euros | Facile | 15 - 25 euros |
-| 6. Programmateur radiateurs | 10,20 euros | 225 euros | Facile | 10 - 20 euros/unité |
+| 6. Programmateur radiateurs | 11,36 euros | 250 euros | Facile | 10 - 20 euros/unité |
 | 7. Fermer les pièces | 3 - 5 euros | 66 - 110 euros | Très facile | 0 euros |
-| 8. Couverture chauffante | 4 - 7 euros | 88 - 154 euros | Très facile | 30 - 60 euros |
+| 8. Couverture chauffante | 5,50 - 11 euros | 120 - 245 euros | Très facile | 30 - 60 euros |
 | 9. Mijoteuse jour bleu | 2 - 3 euros | 44 - 66 euros | Facile | 25 - 50 euros |
 | 10. Isolation | 3 euros | 80 - 120 euros | Variable | 200 - 500 euros |
 

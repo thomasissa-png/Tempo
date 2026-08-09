@@ -1,6 +1,6 @@
 # Regles SEO en vigueur
 # Ce fichier est mis a jour automatiquement par l'agent SEO lors de l'Etape 0.
-# Derniere verification : 2026-02-19
+# Derniere verification : 2026-08-09
 #
 # Garde-fou : les regles fondamentales ne peuvent PAS etre supprimees.
 # Seules les pratiques techniques (structured data, formats, outils) peuvent etre mises a jour.
@@ -63,11 +63,11 @@ mots_cles_cibles:
 
 tarifs_tempo:
   date_maj: "2026-08"
-  saison: "2025-2026"
+  saison: "2025-2026"  # saison en cours; la grille ci-dessous est celle du 1er aout 2026
   abonnement_mensuel: "15.80"
   abonnement_annuel_6kva: "189.60"
   abonnement_annuel_9kva: "236.40"
-  abonnement_note: "Bareme du 1er aout 2026 (187,08 -> 189,60 EUR/an en 6 kVA, soit +1,94%). Le prix du kWh est identique en 6 et 9 kVA, seul l'abonnement varie."
+  abonnement_note: "Bareme du 1er aout 2026 (187,08 -> 189,60 EUR/an en 6 kVA, soit +1,35%). Le prix du kWh est identique en 6 et 9 kVA, seul l'abonnement varie."
   bleu_hp: "0.1654"
   bleu_hc: "0.1356"
   blanc_hp: "0.1921"

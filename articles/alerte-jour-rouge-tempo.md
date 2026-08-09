@@ -128,4 +128,4 @@ Notre algorithme combine plusieurs sources de données pour établir ses prévis
 
 ---
 
-*Dernière mise à jour : 17 mars 2026. Pour ne plus jamais subir un jour rouge sans préparation, [inscrivez-vous aux alertes WhatsApp gratuites](/#subscribe) de calendrier-tempo.fr. Inscription en 30 secondes, désinscription en 1 clic.*
+*Dernière mise à jour : 9 août 2026, à la suite de la revalorisation des tarifs réglementés du 1er août 2026. Pour ne plus jamais subir un jour rouge sans préparation, [inscrivez-vous aux alertes WhatsApp gratuites](/#subscribe) de calendrier-tempo.fr. Inscription en 30 secondes, désinscription en 1 clic.*

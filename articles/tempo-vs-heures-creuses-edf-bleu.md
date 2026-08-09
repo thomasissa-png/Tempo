@@ -61,7 +61,7 @@ Cette grille intègre la revalorisation des tarifs Tempo entrée en vigueur le *
 |---|---|
 | Toute la journée | 0,2001 EUR/kWh |
 
-Ces deux grilles intègrent elles aussi la révision du tarif réglementé du **1er août 2026** (+2,5 % TTC en moyenne), avec une hausse concentrée sur les heures pleines (+3,7 %) et quasi nulle sur les heures creuses (+0,6 %).
+Ces deux grilles intègrent elles aussi la révision du tarif réglementé du **1er août 2026**. Le chiffre de **+2,5 % TTC** souvent cité est une moyenne portant sur l'ensemble des tarifs réglementés de vente : le détail par option est plus contrasté. En option Heures Creuses, la hausse est concentrée sur les heures pleines (**+3,7 %**) et quasi nulle sur les heures creuses (**+0,6 %**). L'option Base, elle, progresse de **+3,8 %** (0,1927 puis 0,2001 EUR/kWh).
 
 ### Ce que ces chiffres révèlent
 
@@ -157,7 +157,7 @@ L'offre Tempo génère une économie significative, à condition de réduire for
 - Vous avez un chauffage alternatif (bois, gaz, pompe à chaleur) pour les jours rouges — consultez nos [10 astuces chauffage en jour rouge](/blog/chauffage-jour-rouge-tempo-astuces) pour optimiser votre confort
 - Vous êtes prêt à surveiller la couleur du lendemain chaque soir
 - Vous pouvez réduire votre consommation de 50 à 80 % les jours rouges — notre [guide des jours rouges Tempo](/blog/jours-rouges-tempo-guide) détaille les stratégies d'anticipation
-- Vous visez des économies substantielles (300 à 400 EUR/an) — découvrez toutes les [astuces pour économiser avec Tempo](/blog/economiser-tempo-edf)
+- Vous visez des économies substantielles : environ **353 EUR/an** pour le foyer simulé plus haut, une fourchette de 300 à 400 EUR/an selon votre profil de consommation — découvrez toutes les [astuces pour économiser avec Tempo](/blog/economiser-tempo-edf)
 
 Pour ne jamais être pris au dépourvu, inscrivez-vous à nos [alertes WhatsApp gratuites](/alertes) : vous recevrez les prévisions jusqu'à 15 jours à l'avance. Découvrez [comment fonctionnent nos alertes](/blog/alerte-jour-rouge-tempo).
 
@@ -185,7 +185,7 @@ EDF annonce la couleur du lendemain chaque jour aux alentours de 11h. Vous pouve
 
 ## Conclusion : notre recommandation
 
-Pour la majorité des foyers français qui peuvent s'adapter, **l'offre Tempo reste la plus avantageuse en 2026** avec des économies pouvant atteindre 350 EUR par an, un écart qui s'est même creusé depuis la révision du tarif réglementé du 1er août 2026. Elle exige cependant une implication réelle : surveiller les couleurs, disposer d'un chauffage alternatif les jours rouges et accepter de décaler certains usages.
+Pour la majorité des foyers français qui peuvent s'adapter, **l'offre Tempo reste la plus avantageuse en 2026** : environ **353 EUR d'économie par an** face au Tarif Base pour le foyer type de notre simulation (7 657 kWh), soit 300 à 400 EUR selon les profils de consommation. Un écart qui s'est même creusé depuis la révision du tarif réglementé du 1er août 2026. Elle exige cependant une implication réelle : surveiller les couleurs, disposer d'un chauffage alternatif les jours rouges et accepter de décaler certains usages.
 
 Si cette flexibilité vous semble contraignante, le tarif **Heures Creuses / Heures Pleines** offre un compromis raisonnable avec une petite économie sans risque. Le **Tarif Base** reste le choix de la tranquillité absolue, au prix d'une facture légèrement plus élevée.
 

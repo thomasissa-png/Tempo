@@ -341,7 +341,7 @@ Toutes les 4 semaines, au lieu d'écrire un nouvel article, rafraîchissez un ar
 - **Jamais de rouge** le week-end ni les jours fériés
 - **Jamais de blanc** le dimanche (dimanches = toujours bleu)
 - Maximum **5 jours rouges consécutifs**
-- EDF annonce la couleur du lendemain vers **17h**
+- EDF annonce la couleur du lendemain vers **11h**
 - Abonnement Tempo (barème du 1er août 2026) : **189,60 €/an en 6 kVA** (~15,80 €/mois), 236,40 €/an en 9 kVA. Le prix du kWh est identique quelle que soit la puissance — seul l'abonnement varie.
 
 ## Référence — Tarifs Tempo

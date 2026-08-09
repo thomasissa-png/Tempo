@@ -125,4 +125,4 @@ Non, jamais. C'est une règle absolue d'EDF : les jours rouges ne sont placés q
 
 ---
 
-*Article mis à jour le 10 mars 2026. Les données présentées sont basées sur l'historique des saisons Tempo et les prévisions générées par notre algorithme. Pour des prévisions en temps réel, [consultez notre tableau de bord](/) ou [inscrivez-vous aux alertes](/#subscribe). Découvrez aussi notre [guide complet Tempo EDF 2026](/blog/tempo-edf-2026-guide-complet) et le [comparatif Tempo vs Heures Creuses](/blog/tempo-vs-heures-creuses-edf-bleu).*
+*Article mis à jour le 9 août 2026, à la suite de la revalorisation des tarifs réglementés du 1er août 2026. Les données présentées sont basées sur l'historique des saisons Tempo et les prévisions générées par notre algorithme. Pour des prévisions en temps réel, [consultez notre tableau de bord](/) ou [inscrivez-vous aux alertes](/#subscribe). Découvrez aussi notre [guide complet Tempo EDF 2026](/blog/tempo-edf-2026-guide-complet) et le [comparatif Tempo vs Heures Creuses](/blog/tempo-vs-heures-creuses-edf-bleu).*

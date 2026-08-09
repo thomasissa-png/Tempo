@@ -913,7 +913,7 @@ def get_diagnostic(days: int = 30, since_date: str | None = None,
         if p["actual"] == "ROUGE" and p["predicted"] != "ROUGE":
             action = (
                 f"Action prioritaire : {p['count']} jour(s) ROUGE manqué(s) — "
-                f"chaque ROUGE raté coûte 0.71€/kWh aux abonnés."
+                f"chaque ROUGE raté coûte 0.73€/kWh aux abonnés."
             )
         elif p["predicted"] == "ROUGE" and p["actual"] != "ROUGE":
             action = (

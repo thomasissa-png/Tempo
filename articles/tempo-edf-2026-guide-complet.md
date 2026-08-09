@@ -7,7 +7,7 @@ keywords: tempo edf, offre tempo edf 2026, tempo edf avis, tempo edf tarif, cale
 cluster: tempo-guide
 ---
 
-L'offre **Tempo EDF** est le contrat d'électricité le plus original du marché français. Avec ses 3 couleurs de jours et ses tarifs qui varient du simple au sextuple, elle peut vous faire économiser des centaines d'euros par an — ou vous coûter très cher si vous ne l'anticipez pas. Ce guide fait le point complet sur le fonctionnement de Tempo en 2026.
+L'offre **Tempo EDF** est le contrat d'électricité le plus original du marché français. Avec ses 3 couleurs de jours et ses tarifs qui varient du simple au quintuple (un facteur 5,4 entre l'heure creuse bleue et l'heure pleine rouge), elle peut vous faire économiser des centaines d'euros par an — ou vous coûter très cher si vous ne l'anticipez pas. Ce guide fait le point complet sur le fonctionnement de Tempo en 2026.
 
 ## Qu'est-ce que l'offre Tempo EDF ?
 
@@ -85,7 +85,7 @@ La veille d'un jour rouge, montez le chauffage à 21-22°C et lancez toutes vos 
 
 Pour un foyer type avec chauffage électrique (consommation ~8000 kWh/an) :
 
-- **Sans adaptation** les jours rouges : surcoût de 50 à 150 € par jour rouge
+- **Sans adaptation** les jours rouges : surcoût de 10 à 20 € par jour rouge, soit 18 à 35 kWh consommés en heures pleines rouges au lieu d'un jour bleu (l'écart est de 0,5641 €/kWh). Un logement tout-électrique mal isolé, qui pousse le chauffage toute la journée, peut approcher 30 €
 - **Avec adaptation** (machines reportées, chauffage baissé) : économie de **300 à 400 € par an** par rapport au tarif réglementé, désormais à 0,2001 €/kWh en option Base depuis le 1er août 2026
 
 Le montant exact dépend de votre profil de consommation et de votre capacité à vous adapter. Notre outil [Calendrier Tempo EDF](/) vous aide à anticiper les jours rouges jusqu'à 15 jours à l'avance. Pour comprendre les tendances de placement des jours rouges au fil des années, retrouvez l'[historique des saisons Tempo](/blog/calendrier-tempo-historique-saisons).
@@ -103,7 +103,7 @@ EDF annonce la couleur du lendemain vers 11h, ce qui laisse peu de temps pour s'
 Soyons transparents, Tempo a aussi ses limites :
 
 - **Contraignant** : il faut surveiller les couleurs et adapter ses habitudes quotidiennement en hiver
-- **Risque financier** : un jour rouge "oublié" peut coûter très cher (50-150 €)
+- **Risque financier** : un jour rouge "oublié" coûte 10 à 20 € de plus qu'un jour bleu, jusqu'à une trentaine d'euros dans un logement tout-électrique mal isolé
 - **Incertitude** : EDF ne prévient que la veille à 11h (d'où l'utilité de nos prévisions à 15 jours)
 - **Pas pour tous** : les foyers tout-électrique sans alternative de chauffage y perdent souvent
 

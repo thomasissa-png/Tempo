@@ -95,4 +95,4 @@ Oui. Le jour blanc est un **tarif intermédiaire** : plus cher que le bleu, mais
 
 ---
 
-*Article publié le 29 septembre 2026. Les tarifs cités à titre de comparaison sont ceux en vigueur pour la saison Tempo 2025-2026 et peuvent évoluer. Consultez le site officiel EDF pour les tarifs en vigueur.*
+*Article publié le 29 septembre 2026. Les tarifs cités à titre de comparaison sont ceux du barème en vigueur depuis le 1er août 2026 et peuvent évoluer. Consultez le site officiel EDF pour les tarifs en vigueur.*
