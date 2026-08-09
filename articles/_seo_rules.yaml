@@ -64,8 +64,10 @@ mots_cles_cibles:
 tarifs_tempo:
   date_maj: "2026-08"
   saison: "2025-2026"
-  abonnement_mensuel: "15.96"
-  abonnement_a_verifier: "Valeur non confirmee au 2026-08 - sources contradictoires, a verifier sur edf.fr avant reutilisation"
+  abonnement_mensuel: "15.80"
+  abonnement_annuel_6kva: "189.60"
+  abonnement_annuel_9kva: "236.40"
+  abonnement_note: "Bareme du 1er aout 2026 (187,08 -> 189,60 EUR/an en 6 kVA, soit +1,94%). Le prix du kWh est identique en 6 et 9 kVA, seul l'abonnement varie."
   bleu_hp: "0.1654"
   bleu_hc: "0.1356"
   blanc_hp: "0.1921"
