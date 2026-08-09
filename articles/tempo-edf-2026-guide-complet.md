@@ -29,7 +29,7 @@ Voici les tarifs actuels de l'option Tempo pour un compteur 9 kVA (TTC), en vigu
 | **BLANC** | 0,1536 €/kWh | 0,1921 €/kWh |
 | **ROUGE** | 0,1615 €/kWh | **0,7295 €/kWh** |
 
-Ces montants intègrent la revalorisation du 1er août 2026, qui a relevé la grille Tempo de +2,3 % à +3,3 % selon la couleur et la plage horaire.
+Ces montants intègrent la revalorisation du 1er août 2026, qui a relevé la grille Tempo de +2,3 % à +3,3 % selon la couleur et la plage horaire (le jour rouge en heures pleines subit la plus forte hausse, +3,3 %). Ils sont fixés par l'arrêté du 29 juillet 2026, publié au Journal Officiel du 31 juillet 2026.
 
 Le point clé : en heures pleines d'un jour rouge, le prix atteint **0,7295 €/kWh**, soit plus de **4 fois** le tarif d'un jour bleu. C'est ce différentiel qui fait tout l'intérêt (et le risque) de l'offre Tempo.
 
