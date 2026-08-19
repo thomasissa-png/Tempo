@@ -30,7 +30,10 @@ _PROJECT_ROOT = Path(__file__).parent
 _PROMPT_PATH = _PROJECT_ROOT / ".claude" / "seo-agent-prompt.md"
 
 # Valeurs par défaut (surchargées par Config si disponible)
-_MAX_TOKENS = 16384
+# max_tokens plafonne le TOTAL (raisonnement + reponse). Sonnet 5 active le
+# raisonnement adaptatif par defaut : marge relevee de 16384 a 24000 pour eviter
+# une reponse tronquee (stop_reason='max_tokens'). On reste en non-streaming.
+_MAX_TOKENS = 24000
 
 
 # ================================================================
@@ -366,7 +369,7 @@ def run_seo_agent() -> dict:
         model = Config.SEO_AGENT_MODEL
     except Exception:
         max_turns = 40
-        model = "claude-sonnet-4-5-20250929"
+        model = "claude-sonnet-5"
 
     while turns < max_turns:
         turns += 1
@@ -378,6 +381,11 @@ def run_seo_agent() -> dict:
                 system=system_prompt,
                 tools=_TOOLS,
                 messages=messages,
+                # Explicite plutot qu'implicite : Sonnet 5 active le raisonnement
+                # adaptatif meme si le parametre est omis. effort='high' est le
+                # defaut ; passer a 'medium' est le levier d'economie principal.
+                thinking={"type": "adaptive"},
+                output_config={"effort": "high"},
             )
         except anthropic.APIError as e:
             msg = f"[Agent SEO] Erreur API Claude (turn {turns}): {e}"
@@ -399,6 +407,13 @@ def run_seo_agent() -> dict:
                 final_report += block.text + "\n"
 
         # Si pas d'appel d'outil, l'agent a terminé
+        if response.stop_reason == "max_tokens":
+            logger.warning(
+                "[Agent SEO] Reponse tronquee a max_tokens (turn %s) : le raisonnement "
+                "adaptatif a consomme le budget. Augmenter _MAX_TOKENS ou passer "
+                "output_config effort a 'medium'.", turns
+            )
+
         if response.stop_reason == "end_turn":
             logger.info(f"[Agent SEO] Terminé en {turns} tours")
             break
@@ -430,7 +445,11 @@ def run_seo_agent() -> dict:
     if turns >= max_turns:
         logger.warning(f"[Agent SEO] Limite de {max_turns} tours atteinte")
 
-    # Estimer le coût (Sonnet : $3/M input, $15/M output)
+    # Estimer le cout au tarif catalogue Sonnet 5 ($3/M input, $15/M output).
+    # Deux reserves : un tarif d'introduction ($2/$10) court jusqu'au 2026-08-31,
+    # et Sonnet 5 utilise un nouveau tokenizer qui produit ~30 % de tokens en plus
+    # pour le meme texte qu'en Sonnet 4.5 — la hausse mesuree n'est donc pas une
+    # derive de l'agent. Re-etalonner les baselines de cout avant de reagir.
     est_cost = (total_input_tokens * 3 + total_output_tokens * 15) / 1_000_000
     logger.info(
         f"[Agent SEO] Tokens: {total_input_tokens} input + {total_output_tokens} output "

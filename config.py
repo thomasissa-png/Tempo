@@ -239,8 +239,10 @@ class Config:
     # À configurer dans Replit Secrets (une seule fois).
     # Si vide, la tâche est silencieusement ignorée.
     ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
-    # Modèle Claude à utiliser (Sonnet = bon rapport qualité/coût)
-    SEO_AGENT_MODEL = os.getenv("SEO_AGENT_MODEL", "claude-sonnet-4-5-20250929")
+    # Modèle Claude à utiliser (Sonnet = bon rapport qualité/coût).
+    # Sonnet 5 depuis le 2026-08-19 (auparavant Sonnet 4.5). Ne PAS suffixer de date :
+    # "claude-sonnet-5" est l'identifiant complet.
+    SEO_AGENT_MODEL = os.getenv("SEO_AGENT_MODEL", "claude-sonnet-5")
     # Nombre max de tours d'interaction agent (sécurité anti-boucle infinie)
     SEO_AGENT_MAX_TURNS = int(os.getenv("SEO_AGENT_MAX_TURNS", "40"))
 

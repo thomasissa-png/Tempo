@@ -30,7 +30,10 @@ _PROJECT_ROOT = Path(__file__).parent
 _PROMPT_PATH = _PROJECT_ROOT / ".claude" / "backlinks-agent-prompt.md"
 _BACKLINKS_DIR = _PROJECT_ROOT / "backlinks"
 
-_MAX_TOKENS = 16384
+# max_tokens plafonne le TOTAL (raisonnement + reponse). Sonnet 5 active le
+# raisonnement adaptatif par defaut : marge relevee de 16384 a 24000 pour eviter
+# une reponse tronquee (stop_reason='max_tokens'). On reste en non-streaming.
+_MAX_TOKENS = 24000
 
 
 # ================================================================
@@ -368,7 +371,7 @@ def run_backlinks_agent() -> dict:
         model = Config.SEO_AGENT_MODEL  # même modèle que l'agent SEO
     except Exception:
         max_turns = 35
-        model = "claude-sonnet-4-5-20250929"
+        model = "claude-sonnet-5"
 
     while turns < max_turns:
         turns += 1
@@ -380,6 +383,11 @@ def run_backlinks_agent() -> dict:
                 system=system_prompt,
                 tools=_TOOLS,
                 messages=messages,
+                # Explicite plutot qu'implicite : Sonnet 5 active le raisonnement
+                # adaptatif meme si le parametre est omis. effort='high' est le
+                # defaut ; passer a 'medium' est le levier d'economie principal.
+                thinking={"type": "adaptive"},
+                output_config={"effort": "high"},
             )
         except Exception as e:
             msg = f"[Agent Backlinks] Erreur API Claude (turn {turns}): {e}"
@@ -392,6 +400,13 @@ def run_backlinks_agent() -> dict:
         for block in assistant_content:
             if hasattr(block, "text"):
                 final_report += block.text + "\n"
+
+        if response.stop_reason == "max_tokens":
+            logger.warning(
+                "[Agent Backlinks] Reponse tronquee a max_tokens (turn %s) : le raisonnement "
+                "adaptatif a consomme le budget. Augmenter _MAX_TOKENS ou passer "
+                "output_config effort a 'medium'.", turns
+            )
 
         if response.stop_reason == "end_turn":
             logger.info(f"[Agent Backlinks] Terminé en {turns} tours")
