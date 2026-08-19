@@ -493,7 +493,7 @@ Agents dans `.claude/agents/`. Multi-domaine → @orchestrator. Tâche ciblée �
 ## Modèles
 
 - **Opus** : orchestrator, agent-factory, reviewer, elon, fullstack, ia, qa, infrastructure
-- **Sonnet** : copywriter, creative-strategy, data-analyst, design, geo, growth, legal, product-manager, seo, social, ux
+- **Sonnet** : copywriter, creative-strategy, data-analyst, design, geo, growth, legal, product-manager, sales-enablement, seo, social, ux
 
 ## Références
 

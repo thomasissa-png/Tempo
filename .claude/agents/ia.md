@@ -1,7 +1,7 @@
 ---
 name: ia
 description: "API LLM, génération images IA, pipeline multi-agents, choix modèles, optimisation tokens coûts, Vercel AI SDK"
-model: claude-opus-4-7
+model: claude-opus-5
 version: "2.0"
 tools:
   - Read
@@ -201,7 +201,9 @@ Changer de modèle IA (provider, version, ou architecture) est une opération à
 
 **Anti-pattern** : migrer un modèle en changeant juste le nom dans le code sans lire la doc ni tester. Garanti de casser la prod.
 
-**Règle alias `-latest`** : utiliser `-latest` UNIQUEMENT sur les alias minor-family (ex: `claude-sonnet-4-6-latest`, `claude-haiku-4-5-latest`). Les alias cross-family (`claude-sonnet-4-latest`, `claude-sonnet-latest`) peuvent changer de génération sans warning = régression silencieuse en prod. Pour tout code en production, préférer le tag exact (`claude-sonnet-4-6-20250929`) sauf décision explicite de suivre la minor-family.
+**Règle des identifiants de modèle** : les identifiants de la génération courante (`claude-opus-5`, `claude-sonnet-5`, `claude-fable-5`) sont **complets et stables tels quels**. Ne JAMAIS leur accoler un suffixe de date : `claude-sonnet-5-20260101` n'existe pas et renvoie un 404. Seuls certains modèles antérieurs ont un tag daté (ex: `claude-sonnet-4-5-20250929`) — dans le doute, vérifier plutôt que construire.
+
+**Règle alias `-latest`** : n'utiliser `-latest` que sur un alias minor-family (ex: `claude-haiku-4-5-latest`). Les alias cross-family (`claude-sonnet-4-latest`, `claude-sonnet-latest`) peuvent changer de génération sans warning = régression silencieuse en prod. Pour tout code en production, préférer l'identifiant exact.
 
 ### Propagation des corrections de prompt (obligatoire)
 

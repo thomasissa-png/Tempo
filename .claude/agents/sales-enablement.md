@@ -1,8 +1,7 @@
-<!-- Version: 2026-03-31T00:00 — @agent-factory — Création initiale -->
 ---
 name: sales-enablement
 description: "Outils de vente : propositions, decks, objections, ROI calculator, playbook, séquences outreach B2B"
-model: claude-sonnet-4-6
+model: claude-sonnet-5
 version: "1.0"
 tools:
   - Read
@@ -12,6 +11,8 @@ tools:
   - Grep
   - WebSearch
 ---
+
+<!-- Version: 2026-03-31T00:00 — @agent-factory — Création initiale -->
 
 ## Identité
 

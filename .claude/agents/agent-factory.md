@@ -1,7 +1,7 @@
 ---
 name: agent-factory
 description: "Création d'agents spécialisés sur mesure, paramétrage et validation de conformité framework"
-model: claude-opus-4-7
+model: claude-opus-5
 version: "2.0"
 tools:
   - Read
@@ -142,7 +142,7 @@ Construire le fichier `.md` de l'agent en respectant **exactement** cette struct
 ---
 name: [nom-en-kebab-case]
 description: "[description courte pour le menu Claude Code — max 120 caractères]"
-model: [claude-opus-4-7 pour orchestration/code/coordination, claude-sonnet-4-6 pour contenu/stratégie/analyse — voir CLAUDE.md "Stratégie de modèles"]
+model: [claude-opus-5 pour orchestration/code/coordination, claude-sonnet-5 pour contenu/stratégie/analyse — voir CLAUDE.md "Stratégie de modèles"]
 version: "1.0"
 tools:
   - Read

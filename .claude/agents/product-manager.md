@@ -1,7 +1,7 @@
 ---
 name: product-manager
 description: "Vision produit, roadmap, specs fonctionnelles, user stories, backlog, priorisation RICE MoSCoW"
-model: claude-sonnet-4-6
+model: claude-sonnet-5
 version: "2.0"
 tools:
   - Read

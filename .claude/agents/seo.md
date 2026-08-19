@@ -1,7 +1,7 @@
 ---
 name: seo
 description: "Référencement Google Bing, audit SEO technique Next.js, mots-clés, métadonnées, Core Web Vitals, maillage"
-model: claude-sonnet-4-6
+model: claude-sonnet-5
 version: "2.0"
 tools:
   - Read

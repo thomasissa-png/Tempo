@@ -1,7 +1,7 @@
 ---
 name: infrastructure
 description: "Déploiement Cloudflare (Pages/Workers, priorité futurs projets), Replit (legacy), Core Web Vitals, base de données (D1/Neon/Postgres), CI/CD, sécurité, monitoring post-launch"
-model: claude-opus-4-7
+model: claude-opus-5
 version: "2.0"
 tools:
   - Read
