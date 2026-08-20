@@ -371,6 +371,11 @@ def run_seo_agent() -> dict:
         max_turns = 40
         model = "claude-sonnet-5"
 
+    # Trace le modele reellement resolu : la variable d'environnement
+    # SEO_AGENT_MODEL ecrase le defaut du code. Sans ce log, un Secret
+    # obsolete ferait tourner l'agent sur l'ancien modele sans aucun signe.
+    logger.info("[Agent SEO] Modele utilise : %s", model)
+
     while turns < max_turns:
         turns += 1
 

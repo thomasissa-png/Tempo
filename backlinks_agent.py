@@ -373,6 +373,11 @@ def run_backlinks_agent() -> dict:
         max_turns = 35
         model = "claude-sonnet-5"
 
+    # Trace le modele reellement resolu : la variable d'environnement
+    # SEO_AGENT_MODEL ecrase le defaut du code. Sans ce log, un Secret
+    # obsolete ferait tourner l'agent sur l'ancien modele sans aucun signe.
+    logger.info("[Agent Backlinks] Modele utilise : %s", model)
+
     while turns < max_turns:
         turns += 1
 
