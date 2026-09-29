@@ -12,13 +12,22 @@ from __future__ import annotations
 import os
 import re
 from dataclasses import dataclass
-from datetime import date
-from functools import lru_cache
+from datetime import date, datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import markdown
 
 _ARTICLES_DIR = Path(__file__).parent / "articles"
+_PARIS_TZ = ZoneInfo("Europe/Paris")
+# Cache des articles parsés, invalidé par le mtime du fichier : évite de
+# reconvertir 20+ fichiers Markdown à chaque requête (sitemap, llms, feed).
+_ARTICLE_CACHE: dict[Path, tuple[float, "Article | None"]] = {}
+
+
+def _today() -> date:
+    """Date du jour à Paris (la publication programmée suit l'heure française)."""
+    return datetime.now(tz=_PARIS_TZ).date()
 _FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 
 # Extensions Markdown pour une meilleure typographie
@@ -37,6 +46,12 @@ class Article:
     updated_date: date | None = None  # date de dernière mise à jour (si différente de publish_date)
     cluster: str = ""  # topic cluster (pilier ou satellite)
     faq_items: list | None = None  # [(question, answer), ...] extracted from FAQ section
+    body_md: str = ""  # Markdown source (sans frontmatter), servi tel quel dans llms-full.txt
+
+    @property
+    def last_modified(self) -> date:
+        """Date de dernière modification éditoriale (updated_date sinon publish_date)."""
+        return self.updated_date or self.publish_date
 
 
 def _parse_frontmatter(raw: str) -> tuple[dict[str, str], str]:
@@ -48,7 +63,11 @@ def _parse_frontmatter(raw: str) -> tuple[dict[str, str], str]:
     for line in m.group(1).splitlines():
         if ":" in line:
             key, _, value = line.partition(":")
-            meta[key.strip()] = value.strip()
+            value = value.strip()
+            # Retirer les guillemets YAML englobants (title: "…")
+            if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+                value = value[1:-1]
+            meta[key.strip()] = value
     body = raw[m.end():]
     return meta, body
 
@@ -60,7 +79,7 @@ def _estimate_reading_time(text: str) -> int:
 
 
 _FAQ_SECTION_RE = re.compile(
-    r"^## (?:FAQ|Questions)[^\n]*\n(.*?)(?=\n## |\n---|\Z)",
+    r"^## (?:FAQ|Foire aux questions|Questions)[^\n]*\n(.*?)(?=\n## |\n---|\Z)",
     re.DOTALL | re.MULTILINE,
 )
 _FAQ_QA_RE = re.compile(
@@ -91,6 +110,20 @@ def _extract_faq(body: str) -> list[tuple[str, str]] | None:
 
 
 def _load_article(filepath: Path) -> Article | None:
+    """Charge un article (avec cache invalidé par le mtime du fichier)."""
+    try:
+        mtime = filepath.stat().st_mtime
+    except OSError:
+        return None
+    cached = _ARTICLE_CACHE.get(filepath)
+    if cached and cached[0] == mtime:
+        return cached[1]
+    art = _parse_article_file(filepath)
+    _ARTICLE_CACHE[filepath] = (mtime, art)
+    return art
+
+
+def _parse_article_file(filepath: Path) -> Article | None:
     """Charge un article depuis un fichier Markdown."""
     try:
         raw = filepath.read_text(encoding="utf-8")
@@ -124,12 +157,13 @@ def _load_article(filepath: Path) -> Article | None:
         updated_date=updated,
         cluster=meta.get("cluster", ""),
         faq_items=faq_items,
+        body_md=body.strip(),
     )
 
 
 def get_published_articles() -> list[Article]:
     """Retourne tous les articles publiés (publish_date <= aujourd'hui), triés du plus récent au plus ancien."""
-    today = date.today()
+    today = _today()
     articles: list[Article] = []
     if not _ARTICLES_DIR.is_dir():
         return articles
@@ -147,7 +181,7 @@ def get_article_by_slug(slug: str) -> Article | None:
     if not filepath.is_file():
         return None
     art = _load_article(filepath)
-    if art and art.publish_date <= date.today():
+    if art and art.publish_date <= _today():
         return art
     return None
 
@@ -159,7 +193,7 @@ def get_all_article_slugs() -> list[tuple[str, date]]:
         return result
     for f in sorted(_ARTICLES_DIR.glob("*.md")):
         art = _load_article(f)
-        if art and art.publish_date <= date.today():
+        if art and art.publish_date <= _today():
             result.append((art.slug, art.publish_date))
     return result
 
@@ -171,7 +205,7 @@ def get_all_article_meta() -> list[tuple[str, str, str, date]]:
         return result
     for f in sorted(_ARTICLES_DIR.glob("*.md")):
         art = _load_article(f)
-        if art and art.publish_date <= date.today():
+        if art and art.publish_date <= _today():
             result.append((art.slug, art.title, art.description, art.publish_date))
     result.sort(key=lambda x: x[3], reverse=True)
     return result

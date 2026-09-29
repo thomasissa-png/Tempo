@@ -1,13 +1,12 @@
 ---
-title: Linky et Tempo EDF : suivre sa consommation en temps réel
-description: Linky et Tempo EDF : comment suivre sa consommation en temps réel, lire les heures pleines/creuses et repérer les postes coûteux des jours rouges.
+title: Linky Tempo EDF : suivre sa consommation en temps réel
+description: Linky Tempo : suivre sa consommation en temps réel, lire les heures pleines et creuses et repérer les postes coûteux des jours rouges avec EDF et Enedis.
 keywords: linky tempo, linky tempo edf, suivre consommation tempo, linky heures creuses tempo
 publish_date: 2026-05-12
-updated_date: 2026-08-09
+updated_date: 2026-09-29
 cluster: equipements
 ---
-
-Le compteur Linky et l'option Tempo forment un duo redoutablement efficace pour qui veut payer son électricité moins cher. Avec **linky tempo**, vous ne subissez plus votre facture : vous la pilotez. Le compteur communicant mesure votre consommation heure par heure, distingue automatiquement les heures pleines des heures creuses, et vous donne les chiffres nécessaires pour comprendre où part votre argent — surtout les fameux jours rouges où le kilowattheure atteint 0,7295 €/kWh en heures pleines. Dans ce guide, vous allez apprendre à lire votre Linky, à exploiter les outils de suivi (appli EDF & Moi, espace client Enedis), à séparer heures pleines et heures creuses, et à identifier les appareils qui plombent vos jours rouges.
+Le compteur Linky et l'option Tempo forment un duo redoutablement efficace pour qui veut payer son électricité moins cher. Avec **linky tempo**, vous ne subissez plus votre facture : vous la pilotez. Le compteur communicant mesure votre consommation heure par heure, distingue automatiquement les heures pleines des heures creuses, et vous donne les chiffres nécessaires pour comprendre où part votre argent, surtout les fameux jours rouges où le kilowattheure atteint 0,7295 €/kWh en heures pleines (voir la grille sur la page [tarif Tempo EDF](/tarif-tempo-edf)). Dans ce guide, vous allez apprendre à lire votre Linky, à exploiter les outils de suivi (appli EDF & Moi, espace client Enedis), à séparer heures pleines et heures creuses, et à identifier les appareils qui plombent vos jours rouges.
 
 ## Pourquoi le Linky change tout pour un abonné Tempo
 
@@ -19,7 +18,7 @@ Concrètement, le Linky rend possibles trois choses essentielles pour un abonné
 - **Distinguer heures pleines (6h-22h) et heures creuses (22h-6h)**, le découpage horaire propre à Tempo.
 - **Repérer les postes coûteux** (chauffage, chauffe-eau, four) pour les décaler ou les couper les jours rouges.
 
-Si l'option Tempo vous est encore peu familière, le [guide complet Tempo EDF 2026](/blog/tempo-edf-2026-guide-complet) pose les bases du fonctionnement et des couleurs.
+Si l'option Tempo vous est encore peu familière, le [guide complet Tempo EDF 2026-2027](/blog/tempo-edf-2026-guide-complet) pose les bases du fonctionnement et des couleurs.
 
 ## Comprendre les heures pleines et heures creuses Tempo
 
@@ -52,7 +51,7 @@ Tous les appareils ne se valent pas. Pour optimiser, il faut savoir lesquels pè
 | Appareil | Consommation estimée | Remarque |
 |---|---|---|
 | Chauffage électrique | 1er poste l'hiver | Souvent > 50 % de la facture hivernale |
-| Chauffe-eau (ballon 200 L) | environ 3 à 4 kWh/jour | ~15 % de la consommation annuelle |
+| Chauffe-eau (ballon 200 L) | environ 3 à 4 kWh/jour | Poste majeur de la consommation annuelle |
 | Four électrique | environ 2 à 2,5 kWh par heure | Pic ponctuel mais intense |
 | Plaques, sèche-linge, lave-vaisselle | quelques kWh par cycle | Décalables en heures creuses |
 
@@ -64,18 +63,18 @@ Le Linky vous aide à confirmer ces hypothèses : en observant votre courbe de c
 
 Suivre, c'est bien ; agir, c'est mieux. Voici la marche à suivre une fois vos données en main :
 
-1. **Anticiper la couleur du jour.** EDF annonce la couleur de J+1 vers 11h. Pour aller plus loin, notre site prédit les couleurs de **J+2 à J+5** — consultez le [calendrier Tempo en direct](/calendrier) pour planifier votre semaine.
+1. **Anticiper la couleur du jour.** EDF annonce la couleur de J+1 vers 11h. Pour aller plus loin, notre site prédit les couleurs de **J+2 à J+5** : consultez le [calendrier Tempo en direct](/calendrier) pour planifier votre semaine.
 2. **Décaler les gros postes** (chauffe-eau, lave-linge, sèche-linge, lave-vaisselle) sur les heures creuses 22h-6h, et surtout les jours rouges.
 3. **Réduire le chauffage** sur les créneaux 6h-22h des jours rouges, premier poste de dépense l'hiver. Notre article sur le [chauffage les jours rouges](/blog/chauffage-jour-rouge-tempo-astuces) détaille les réglages gagnants.
-4. **Vérifier l'impact** la semaine suivante dans votre suivi Linky : la consommation HP des jours rouges doit baisser, celle des heures creuses peut monter — c'est le signe que vous avez réussi à déplacer vos usages.
+4. **Vérifier l'impact** la semaine suivante dans votre suivi Linky : la consommation HP des jours rouges doit baisser, celle des heures creuses peut monter : c'est le signe que vous avez réussi à déplacer vos usages.
 
 Cette boucle « anticiper → décaler → vérifier » est le cœur de la méthode. Le Linky transforme une intuition en chiffre, et un chiffre en économie. Pour une vue d'ensemble des leviers d'économie, lisez aussi nos [astuces pour économiser avec Tempo EDF](/blog/economiser-tempo-edf).
 
 ## Programmer et automatiser
 
-Le suivi Linky révèle ses pleins effets quand il est couplé à de l'automatisation. Un chauffe-eau piloté en heures creuses, un programmateur sur le sèche-linge, un thermostat connecté abaissant la consigne les jours rouges : autant de gestes qui n'exigent plus d'y penser. Le Linky reste alors votre tableau de bord pour vérifier que tout fonctionne comme prévu.
+Le suivi Linky révèle ses pleins effets quand il est couplé à de l'automatisation. Un chauffe-eau piloté en heures creuses, un programmateur sur le sèche-linge, un thermostat connecté abaissant la consigne les jours rouges : autant de gestes qui n'exigent plus d'y penser. Le Linky reste alors votre tableau de bord pour vérifier que tout fonctionne comme prévu. Pour déclencher ces scénarios automatiquement selon la couleur du jour, vous pouvez utiliser notre [API Tempo](/api-tempo) gratuite. Le guide [ballon d'eau chaude Tempo](/blog/ballon-eau-chaude-tempo) et le guide de [recharge du véhicule électrique](/blog/recharge-vehicule-electrique-tempo) montrent deux cas concrets.
 
-Pour ne jamais manquer un jour rouge, le plus simple est de recevoir une alerte. [Inscrivez-vous aux alertes Tempo gratuites](/#subscribe) et recevez chaque semaine les couleurs prévues directement sur votre téléphone : vous saurez à l'avance quand programmer vos appareils en heures creuses.
+Pour ne jamais manquer un jour rouge, le plus simple est de recevoir une alerte. [Inscrivez-vous aux alertes Tempo gratuites](/#subscribe) et recevez chaque dimanche les couleurs prévues pour les 7 prochains jours directement sur votre téléphone : vous saurez à l'avance quand programmer vos appareils en heures creuses.
 
 ## FAQ : questions fréquentes sur Linky et Tempo
 
@@ -97,4 +96,6 @@ Oui, via la courbe de charge mise à disposition par Enedis (au pas demi-horaire
 
 Pour aller plus loin sur la stratégie globale, consultez notre [guide des jours rouges Tempo](/blog/jours-rouges-tempo-guide) : il complète parfaitement le suivi Linky en expliquant quand et pourquoi les jours rouges tombent.
 
-*Note : les tarifs et ordres de grandeur de consommation cités sont indicatifs (barème en vigueur depuis le 1er août 2026, estimations variables selon votre logement). Vérifiez toujours les couleurs à venir sur la page /calendrier avant d'agir.*
+---
+
+*Note : les tarifs et ordres de grandeur de consommation cités sont indicatifs (barème en vigueur depuis le 1er août 2026, estimations variables selon votre logement). Mis à jour le 29 septembre 2026. Vérifiez toujours les couleurs à venir sur le [calendrier Tempo](/calendrier) avant d'agir. Sources : [EDF](https://www.edf.fr/) pour l'espace client et les tarifs, [RTE](https://www.rte-france.com/) pour la consommation.*

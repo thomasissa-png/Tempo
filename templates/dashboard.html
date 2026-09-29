@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calendrier Tempo EDF — Couleur du jour et pr&eacute;visions</title>
-    <meta name="description" content="Pr&eacute;vision des jours rouges, blancs et bleus Tempo EDF jusqu'&agrave; 15 jours &agrave; l'avance. Couleur EDF Tempo aujourd'hui et demain d&egrave;s 12h. Alertes gratuites.">
+    {# Rendu : SSR à chaque requête (couleurs du jour, compteurs, 10 prochains jours depuis la DB), cache 5 min #}
+    <title>Tempo EDF : couleur du jour, demain et prévisions EDF Tempo</title>
+    <meta name="description" content="Tempo EDF aujourd'hui et demain : couleur EDF Tempo du jour, du lendemain dès 12h et prévisions des jours rouges, blancs et bleus à 15 jours. Gratuit.">
     {% if bing_verification %}<meta name="msvalidate.01" content="{{ bing_verification }}">{% endif %}
     {% if google_verification %}<meta name="google-site-verification" content="{{ google_verification }}">{% endif %}
     <meta name="geo.region" content="FR">
@@ -12,9 +13,6 @@
     <link rel="alternate" type="application/rss+xml" title="Blog Calendrier Tempo EDF" href="https://www.calendrier-tempo.fr/feed.xml">
     <!-- Fix #S4 : canonical URL -->
     <link rel="canonical" href="https://www.calendrier-tempo.fr/">
-    <!-- Fix #S10 : hreflang -->
-    <link rel="alternate" hreflang="x-default" href="https://www.calendrier-tempo.fr/">
-    <link rel="alternate" hreflang="fr" href="https://www.calendrier-tempo.fr/">
     <!-- Fix #4 : favicon SVG tricolore -->
     <link rel="icon" type="image/png" sizes="192x192" href="/static/favicon-192.png">
     <link rel="icon" type="image/png" sizes="96x96" href="/static/favicon-96.png">
@@ -29,8 +27,8 @@
     <meta name="theme-color" content="#1565C0">
     <link rel="manifest" href="/manifest.json">
     <!-- Fix #S2 : Open Graph -->
-    <meta property="og:title" content="Calendrier Tempo EDF — Couleur du jour et prévisions">
-    <meta property="og:description" content="Anticipez les jours rouges EDF Tempo jusqu'à 15 jours à l'avance. Couleur du jour et du lendemain dès 12h. Alertes gratuites.">
+    <meta property="og:title" content="Tempo EDF : couleur du jour, demain et prévisions EDF Tempo">
+    <meta property="og:description" content="Couleur EDF Tempo du jour et du lendemain dès 12h, prévisions des jours rouges, blancs et bleus à 15 jours. Service gratuit et indépendant.">
     <meta property="og:type" content="website">
     <meta property="og:url" content="https://www.calendrier-tempo.fr/">
     <meta property="og:locale" content="fr_FR">
@@ -38,11 +36,11 @@
     <meta property="og:image" content="https://www.calendrier-tempo.fr/static/og-image.png">
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
-    <meta property="og:image:alt" content="Calendrier Tempo EDF — Prévisions des jours rouges, blancs et bleus">
+    <meta property="og:image:alt" content="Calendrier Tempo EDF : prévisions des jours rouges, blancs et bleus">
     <!-- Fix #S2 : Twitter Card -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Calendrier Tempo EDF — Couleur du jour et prévisions">
-    <meta name="twitter:description" content="Anticipez les jours rouges EDF Tempo. Couleur du jour et du lendemain d&egrave;s 12h. Alertes gratuites.">
+    <meta name="twitter:title" content="Tempo EDF : couleur du jour, demain et prévisions EDF Tempo">
+    <meta name="twitter:description" content="Couleur EDF Tempo du jour et du lendemain dès 12h, prévisions des jours rouges à 15 jours. Gratuit.">
     <meta name="twitter:image" content="https://www.calendrier-tempo.fr/static/og-image.png">
     <!-- JSON-LD WebSite -->
     <script type="application/ld+json">
@@ -50,14 +48,10 @@
         "@context": "https://schema.org",
         "@type": "WebSite",
         "name": "Calendrier Tempo EDF",
+        "alternateName": ["Calendrier Tempo", "calendrier-tempo.fr"],
         "url": "https://www.calendrier-tempo.fr/",
-        "description": "Pr\u00e9vision des jours rouges, blancs et bleus Tempo EDF jusqu'\u00e0 15 jours \u00e0 l'avance.",
-        "inLanguage": "fr",
-        "potentialAction": {
-            "@type": "SearchAction",
-            "target": "https://www.calendrier-tempo.fr/blog/?q={search_term_string}",
-            "query-input": "required name=search_term_string"
-        }
+        "description": "Couleur Tempo EDF du jour et de demain, calendrier des saisons et prévisions des jours rouges, blancs et bleus jusqu'à 15 jours à l'avance.",
+        "inLanguage": "fr"
     }
     </script>
     <!-- JSON-LD SoftwareApplication -->
@@ -70,6 +64,7 @@
         "url": "https://www.calendrier-tempo.fr/",
         "applicationCategory": "UtilitiesApplication",
         "operatingSystem": "Web",
+        "provider": {"@type": "Organization", "name": "Calendrier Tempo EDF", "url": "https://www.calendrier-tempo.fr/"},
         "offers": {
             "@type": "Offer",
             "price": "0",
@@ -83,6 +78,7 @@
         "@context": "https://schema.org",
         "@type": "Organization",
         "name": "Calendrier Tempo EDF",
+        "alternateName": ["Calendrier Tempo", "calendrier-tempo.fr"],
         "url": "https://www.calendrier-tempo.fr",
         "logo": {
             "@type": "ImageObject",
@@ -90,18 +86,8 @@
             "width": 192,
             "height": 192
         },
-        "description": "Service indépendant et gratuit de prévision des jours Tempo EDF",
+        "description": "Service indépendant et gratuit de prévision des jours Tempo EDF, non affilié à EDF ni à RTE.",
         "foundingDate": "2025"
-    }
-    </script>
-    <!-- JSON-LD BreadcrumbList -->
-    <script type="application/ld+json">
-    {
-        "@context": "https://schema.org",
-        "@type": "BreadcrumbList",
-        "itemListElement": [
-            {"@type": "ListItem", "position": 1, "name": "Accueil", "item": "https://www.calendrier-tempo.fr/"}
-        ]
     }
     </script>
     <!-- JSON-LD HowTo -->
@@ -134,120 +120,24 @@
                 "@type": "HowToStep",
                 "position": 3,
                 "name": "Économisez concrètement",
-                "text": "Décalez lessive, sèche-linge, four et recharge VE d'un seul jour pour économiser environ 14€ par jour rouge (25 kWh déplacés des heures pleines)."
+                "text": {{ ("Décalez lessive, sèche-linge, four et recharge du véhicule électrique d'un jour : chaque kWh déplacé des heures pleines d'un jour rouge vers un jour bleu économise " ~ facts.SURCOUT_KWH ~ " €, soit environ " ~ facts.SURCOUT_JOUR_BAS ~ " € pour " ~ facts.KWH_BAS ~ " kWh.")|tojson }}
             }
         ]
     }
     </script>
-    <!-- Fix #S3 : JSON-LD FAQPage pour rich snippets Google -->
-    <script type="application/ld+json">
-    {
-        "@context": "https://schema.org",
-        "@type": "FAQPage",
-        "mainEntity": [
-            {
-                "@type": "Question",
-                "name": "C'est quoi l'offre Tempo EDF ?",
-                "acceptedAnswer": {
-                    "@type": "Answer",
-                    "text": "L'offre Tempo est un contrat d'électricité EDF où le prix du kWh varie selon la couleur du jour : Bleu (300 jours/an, tarif très bas), Blanc (43 jours/an, tarif moyen) et Rouge (22 jours/an, tarif très élevé). Cette offre est avantageuse si vous pouvez adapter votre consommation les jours rouges."
-                }
-            },
-            {
-                "@type": "Question",
-                "name": "Comment sont calculés les jours rouges Tempo ?",
-                "acceptedAnswer": {
-                    "@type": "Answer",
-                    "text": "EDF choisit les 22 jours rouges parmi les jours les plus froids de l'hiver, quand la demande en électricité est la plus forte. L'algorithme du Calendrier Tempo se base sur les prévisions de température et la pression atmosphérique pour anticiper ces choix."
-                }
-            },
-            {
-                "@type": "Question",
-                "name": "Quelle est la fiabilité des prévisions Tempo ?",
-                "acceptedAnswer": {
-                    "@type": "Answer",
-                    "text": "Notre précision J+2 à J+5 sur les 30 derniers jours est mise à jour automatiquement dans la FAQ. Au-delà de 4-5 jours, les prévisions météo deviennent moins précises, donc les nôtres aussi. Nous recommandons de prendre les décisions importantes sur la base des prévisions à 2-3 jours."
-                }
-            },
-            {
-                "@type": "Question",
-                "name": "Que faire lors d'un jour rouge Tempo ?",
-                "acceptedAnswer": {
-                    "@type": "Answer",
-                    "text": "Reportez les usages gourmands en électricité : lave-linge, sèche-linge, lave-vaisselle, four électrique, recharge de véhicule. Baissez le chauffage électrique si possible. Un jour rouge bien géré peut vous faire économiser environ 14€ (25 kWh déplacés des heures pleines vers un jour bleu)."
-                }
-            },
-            {
-                "@type": "Question",
-                "name": "Quelle couleur Tempo aujourd'hui et demain ?",
-                "acceptedAnswer": {
-                    "@type": "Answer",
-                    "text": "La couleur EDF Tempo du jour et de demain est affichée en temps réel en haut de notre page d'accueil. EDF annonce la couleur du lendemain chaque jour entre 11h et 12h — dès 12h, la couleur du lendemain est généralement connue. En attendant la confirmation, nous affichons notre prévision basée sur la météo et la consommation nationale."
-                }
-            },
-            {
-                "@type": "Question",
-                "name": "Qu'est-ce qu'un jour Tempo rouge ?",
-                "acceptedAnswer": {
-                    "@type": "Answer",
-                    "text": "Un jour Tempo rouge est l'un des 22 jours les plus chers de la saison Tempo EDF. Le prix du kWh en heures pleines atteint 0,73€, soit 4,4 fois le tarif d'un jour bleu. Les jours Tempo rouge tombent uniquement entre le 1er novembre et le 31 mars, jamais le week-end ni les jours fériés."
-                }
-            },
-            {
-                "@type": "Question",
-                "name": "Est-ce que le Calendrier Tempo EDF est un service officiel EDF ?",
-                "acceptedAnswer": {
-                    "@type": "Answer",
-                    "text": "Non. Le Calendrier Tempo EDF est un service indépendant et gratuit. Il utilise les données publiques de l'API Tempo et les prévisions météo pour faire ses propres estimations. Seule la couleur annoncée par EDF fait foi. Nos prévisions se mettent à jour automatiquement dès la publication officielle."
-                }
-            },
-            {
-                "@type": "Question",
-                "name": "Quand connaît-on la couleur EDF Tempo du lendemain ?",
-                "acceptedAnswer": {
-                    "@type": "Answer",
-                    "text": "EDF publie la couleur Tempo officielle du lendemain chaque jour entre 11h et 12h sur son site et son application. Dès 12h, la couleur du lendemain est généralement connue. Notre Calendrier Tempo affiche sa prévision dès la veille au soir, avant même l'annonce officielle EDF, grâce à notre algorithme basé sur la météo et la consommation nationale."
-                }
-            },
-            {
-                "@type": "Question",
-                "name": "Quels sont les tarifs EDF Tempo en 2026 ?",
-                "acceptedAnswer": {
-                    "@type": "Answer",
-                    "text": "Depuis le 1er août 2026, les tarifs Tempo EDF en heures pleines (6h-22h) sont : jour bleu 0,1654 €/kWh, jour blanc 0,1921 €/kWh, jour rouge 0,7295 €/kWh. En heures creuses (22h-6h) : bleu 0,1356 €/kWh, blanc 0,1536 €/kWh, rouge 0,1615 €/kWh. Un jour rouge en heures pleines coûte donc environ 4,4 fois plus cher qu'un jour bleu."
-                }
-            }
-        ]
-    }
-    </script>
-    <!-- JSON-LD ItemList for upcoming predictions (SEO rich snippets) -->
-    {% if ssr.predictions %}
-    <script type="application/ld+json">
-    {
-        "@context": "https://schema.org",
-        "@type": "ItemList",
-        "name": "Prévisions Tempo EDF des prochains jours",
-        "description": "Couleur Tempo prévue pour les prochains jours : {% for p in ssr.predictions[:5] %}{{ p.date }} {{ p.couleur }}{% if not loop.last %}, {% endif %}{% endfor %}",
-        "numberOfItems": {{ ssr.predictions|length }},
-        "itemListElement": [
-            {% for p in ssr.predictions[:5] %}
-            {
-                "@type": "ListItem",
-                "position": {{ loop.index }},
-                "name": "{{ p.date }} — Jour {{ p.couleur }}{% if p.confirmed %} (confirmé EDF){% endif %}"
-            }{% if not loop.last %},{% endif %}
-            {% endfor %}
-        ]
-    }
-    </script>
+    <!-- JSON-LD FAQPage : généré depuis site_facts.FAQ_HOME (même source que la FAQ visible) -->
+    <script type="application/ld+json">{{ faq_ld|tojson }}</script>
+    {% if itemlist_ld %}
+    <!-- JSON-LD ItemList : prochains jours (données SSR réelles) -->
+    <script type="application/ld+json">{{ itemlist_ld|tojson }}</script>
     {% endif %}
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin>
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://cloud.umami.is" crossorigin>
-    <link rel="preload" href="/static/css/style.min.css" as="style">
-    <link rel="preload" href="/static/js/app.min.js" as="script">
+    <link rel="preload" href="/static/css/style.min.css?v=20260929" as="style">
+    <link rel="preload" href="/static/js/app.min.js?v=20260929" as="script">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-    <link rel="stylesheet" href="/static/css/style.min.css">
+    <link rel="stylesheet" href="/static/css/style.min.css?v=20260929">
     <script defer src="https://cloud.umami.is/script.js" data-website-id="1d187359-b4a6-4ba8-ba41-c449b356832f"></script>
 </head>
 <body>
@@ -258,7 +148,7 @@
     <div class="container header-row">
         <a href="/" class="header-brand">
             <svg class="header-logo" viewBox="0 0 100 100" width="32" height="32" aria-hidden="true"><circle cx="50" cy="50" r="45" fill="#fff"/><circle cx="50" cy="50" r="40" fill="#2563EB"/><path d="M50 10A40 40 0 0 1 90 50H10A40 40 0 0 1 50 10z" fill="#DC2626"/><circle cx="50" cy="50" r="16" fill="#fff"/></svg>
-            <h1>Calendrier Tempo EDF</h1>
+            <span class="header-title">Calendrier Tempo EDF</span>
         </a>
         <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu de navigation" aria-expanded="false" aria-controls="main-nav">
             <span class="bar"></span>
@@ -268,6 +158,7 @@
         <nav id="main-nav" aria-label="Navigation principale">
             <a href="/" class="active" aria-current="page">Accueil</a>
             <a href="/calendrier">Calendrier</a>
+            <a href="/tarif-tempo-edf">Tarifs</a>
             <a href="/blog/">Blog</a>
             <button type="button" class="nav-cta" onclick="openSubscribeModal()">Alertes gratuites</button>
         </nav>
@@ -284,16 +175,39 @@
         </div>
     </noscript>
 
+    <h1 class="home-title">Couleur Tempo EDF aujourd'hui, demain et pr&eacute;visions &agrave; 15 jours</h1>
+
+    <!-- Réponse directe SSR : couleur du jour et de demain en toutes lettres -->
+    {% if ssr.today_color or ssr.tomorrow_color or ssr.tomorrow_forecast_color %}
+    <section class="today-answer" aria-label="Couleur Tempo du jour et de demain">
+        <p>
+            {% if ssr.today_color %}
+            Couleur Tempo EDF du <time datetime="{{ ssr.today_iso }}">{{ ssr.today_label }}</time>&nbsp;:
+            <strong class="color-word {{ ssr.today_color|lower }}">{{ ssr.today_color|capitalize }}</strong> (couleur officielle EDF).
+            {% endif %}
+            {% if ssr.tomorrow_color %}
+            Demain, <time datetime="{{ ssr.tomorrow_iso }}">{{ ssr.tomorrow_label }}</time>&nbsp;:
+            <strong class="color-word {{ ssr.tomorrow_color|lower }}">{{ ssr.tomorrow_color|capitalize }}</strong> (confirm&eacute; par EDF).
+            {% elif ssr.tomorrow_forecast_color %}
+            Demain, <time datetime="{{ ssr.tomorrow_iso }}">{{ ssr.tomorrow_label }}</time>&nbsp;:
+            <strong class="color-word {{ ssr.tomorrow_forecast_color|lower }}">{{ ssr.tomorrow_forecast_color|capitalize }}</strong>
+            (notre pr&eacute;vision{% if ssr.tomorrow_forecast_confidence is not none %}, probabilit&eacute; {{ ssr.tomorrow_forecast_confidence }}&nbsp;%{% endif %} ; EDF ne l'a pas encore publi&eacute;e).
+            {% endif %}
+        </p>
+        <p class="today-answer-links"><a href="/couleur-tempo-demain">Couleur Tempo de demain</a> &middot; <a href="/calendrier">Calendrier de la saison</a></p>
+    </section>
+    {% endif %}
+
     <!-- Welcome banner — compact one-liner -->
     <section class="welcome-banner" id="welcome-banner">
         <p>
-            Un jour <span class="color-tag rouge">rouge</span> co&ucirc;te <strong>5x plus cher</strong> &mdash;
-            le Calendrier Tempo vous alerte <strong>jusqu'&agrave; 15 jours &agrave; l'avance</strong>.
+            Un jour <span class="color-tag rouge">rouge</span> co&ucirc;te <strong>{{ facts.RATIO }} fois plus cher</strong> en heures pleines qu'un jour bleu &mdash;
+            le Calendrier Tempo EDF vous aide &agrave; l'anticiper <strong>jusqu'&agrave; 15 jours &agrave; l'avance</strong>.
         </p>
     </section>
 
     <div class="last-update-bar" id="last-update-bar" role="status" aria-live="polite" {% if not ssr.last_update %}style="display:none"{% endif %}>
-        <span id="last-update-text">{% if ssr.last_update %}Derni&egrave;re mise &agrave; jour : {{ ssr.last_update }}{% endif %}</span>
+        <span id="last-update-text">{% if ssr.last_update %}Derni&egrave;re mise &agrave; jour : <time datetime="{{ ssr.last_update_iso }}">{{ ssr.last_update }}</time>{% endif %}</span>
     </div>
 
     <!-- Résumé rapide de la semaine — PRIORITÉ #1 pour les prospects -->
@@ -305,9 +219,10 @@
                 {% for d in ssr.week_summary %}
                 {% if loop.index == 6 %}<div class="week-dots-separator" aria-hidden="true"></div>{% endif %}
                 <div class="week-dot">
-                    <div class="week-dot-circle{% if d.couleur == 'BLANC' %} dot-blanc{% elif d.couleur == 'ROUGE' %} dot-rouge{% endif %}{% if d.confirmed %} confirmed-dot{% endif %}" style="background:var(--{{ d.couleur|lower }})">{{ d.couleur[0] }}</div>
-                    <span class="week-dot-label">{% if d.is_today %}<strong>Aujourd'hui</strong>{% elif d.is_tomorrow %}<strong>Demain</strong>{% else %}{{ d.day_label }} {{ d.day_num }}{% endif %}</span>
-                    <div class="week-dot-info">
+                    <div class="week-dot-circle{% if d.couleur == 'BLANC' %} dot-blanc{% elif d.couleur == 'ROUGE' %} dot-rouge{% endif %}{% if d.confirmed %} confirmed-dot{% endif %}" style="background:var(--{{ d.couleur|lower }})" aria-hidden="true">{{ d.couleur[0] }}</div>
+                    <span class="sr-only">{{ d.date_label }} : {{ d.couleur_label }}{% if d.confirmed %}, couleur officielle{% else %}, pr&eacute;vision {{ d.confidence }}&nbsp;%{% endif %}</span>
+                    <span class="week-dot-label" aria-hidden="true">{% if d.is_today %}<strong>Aujourd'hui</strong>{% elif d.is_tomorrow %}<strong>Demain</strong>{% else %}{{ d.day_label }} {{ d.day_num }}{% endif %}</span>
+                    <div class="week-dot-info" aria-hidden="true">
                         {% if d.confirmed %}<span class="week-dot-confirmed">Confirm&eacute;</span>{% else %}<span class="week-dot-proba">{{ d.confidence }}%</span>{% endif %}
                     </div>
                 </div>
@@ -315,11 +230,6 @@
             </div>
             <a href="/calendrier" class="btn btn-cta-summary" style="text-decoration:none">Voir les pr&eacute;visions d&eacute;taill&eacute;es des 15 prochains jours &rarr;</a>
         </div>
-        {% if ssr.show_winter_notice %}
-        <div class="winter-notice" style="margin-top:12px;padding:12px 16px;background:#FFF8E1;border:1px solid #FFD54F;border-radius:var(--radius-sm);font-size:.88rem;color:#5D4037;line-height:1.6">
-            <strong>Hiver 2025-2026 atypique&nbsp;:</strong> les temp&eacute;ratures exceptionnellement douces et la bonne disponibilit&eacute; &eacute;nerg&eacute;tique rendent peu probable l&rsquo;utilisation de tous les jours rouges restants. La d&eacute;cision finale revient &agrave; RTE, ce qui rend les pr&eacute;visions plus incertaines que d&rsquo;habitude.
-        </div>
-        {% endif %}
         {% else %}
         <h2 class="section-title" style="margin-top:0">R&eacute;sum&eacute; des 10 prochains jours</h2>
         <div class="week-summary-loading" id="week-summary-loading">
@@ -340,7 +250,7 @@
             <div class="step-card">
                 <div class="step-number">1</div>
                 <h3>Consultez la pr&eacute;vision</h3>
-                <p>Nous analysons en continu la m&eacute;t&eacute;o de 9 villes, le budget EDF restant et la consommation nationale pour pr&eacute;dire les <strong>15 prochains jours</strong>. Les pr&eacute;visions se recalculent quatre fois par jour.</p>
+                <p>Nous analysons en continu la m&eacute;t&eacute;o de 9 villes, le budget EDF restant et la consommation nationale pour pr&eacute;dire les <strong>15 prochains jours</strong>. Les pr&eacute;visions sont recalcul&eacute;es {{ facts.CALCUL_PREVISIONS }}.</p>
             </div>
             <div class="step-card">
                 <div class="step-number">2</div>
@@ -351,7 +261,7 @@
             <div class="step-card">
                 <div class="step-number">3</div>
                 <h3>&Eacute;conomisez concr&egrave;tement</h3>
-                <p>En d&eacute;calant lessive, s&egrave;che-linge, four et recharge VE d'un seul jour, vous pouvez &eacute;conomiser <strong>jusqu'&agrave; 65&nbsp;&euro; par jour rouge</strong>. Sur une saison : <strong>plusieurs centaines d'euros</strong>.</p>
+                <p>Chaque kWh d&eacute;plac&eacute; des heures pleines d'un jour rouge vers un jour bleu &eacute;conomise {{ facts.SURCOUT_KWH }}&nbsp;&euro;. En d&eacute;calant lessive, s&egrave;che-linge, four et recharge VE, soit {{ facts.KWH_BAS }}&nbsp;kWh, vous &eacute;conomisez <strong>environ {{ facts.SURCOUT_JOUR_BAS }}&nbsp;&euro; par jour rouge</strong>, et environ {{ facts.SURCOUT_SAISON_BAS }}&nbsp;&euro; sur les {{ facts.JOURS_ROUGES }} jours rouges d'une saison. <a href="/tarif-tempo-edf">Voir le tarif Tempo EDF</a>.</p>
             </div>
         </div>
     </section>
@@ -395,10 +305,10 @@
                 <svg viewBox="0 0 24 24" width="40" height="40" fill="#25D366" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
             </div>
             <div class="subscribe-cta-content">
-                <h2>Anticipez les 7 prochains jours EDF Tempo par WhatsApp</h2>
-                <p>Recevez chaque jour les pr&eacute;visions rouge, blanc et bleu de la semaine.
+                <h2>Anticipez les {{ facts.ALERTES_HORIZON_JOURS }} prochains jours EDF Tempo par WhatsApp</h2>
+                <p>Recevez {{ facts.ALERTES_DESCRIPTION }}.
                     <strong>Gratuit, sans engagement, 30 secondes.</strong></p>
-                <p class="social-proof-inline">D&eacute;j&agrave; plus de 2&nbsp;500 foyers Tempo alert&eacute;s.</p>
+                <p class="social-proof-inline">D&eacute;j&agrave; {{ facts.FOYERS_ALERTES_HTML|safe }} foyers Tempo alert&eacute;s.</p>
             </div>
             <button type="button" class="btn btn-subscribe-cta" onclick="openSubscribeModal()">
                 S'inscrire gratuitement
@@ -421,117 +331,18 @@
     <section class="faq-section">
         <h2 class="section-title">Tout comprendre sur EDF Tempo en 2 minutes</h2>
         <div class="faq-list">
-            <details class="faq-item">
-                <summary>Combien co&ucirc;te r&eacute;ellement un jour rouge ?</summary>
+            {% for item in faq %}
+            <details class="faq-item"{% if item.id %} id="{{ item.id }}"{% endif %}>
+                <summary>{{ item.question }}</summary>
                 <div class="faq-content">
-                <p>En heures pleines (6h&ndash;22h), le kWh rouge co&ucirc;te <strong>0,73&nbsp;&euro;</strong>
-                    contre 0,17&nbsp;&euro; en jour bleu &mdash; soit <strong>4,4 fois plus cher</strong>.
-                    En heures creuses, c'est 0,16&nbsp;&euro; (rouge) contre 0,14&nbsp;&euro; (bleu).
-                    Pour un foyer avec chauffage &eacute;lectrique, un jour rouge non anticip&eacute; co&ucirc;te
-                    <strong>10 &agrave; 20&nbsp;&euro; de plus</strong> qu'un jour bleu (25 &agrave; 35&nbsp;kWh en heures pleines),
-                    et jusqu'&agrave; 30&nbsp;&euro; dans un logement tout-&eacute;lectrique mal isol&eacute;.
-                    Vous pouvez consulter <a href="https://selectra.info/energie/fournisseurs/edf/tempo#tarifs">cette page de Selectra</a> qui donne la grille tarifaire en fonction de votre abonnement ou votre contrat EDF.</p>
+                {{ item.answer_html|safe }}
+                {% if item.id == 'faq-fiabilite' %}
+                <p id="faq-precision-text">Taux de pr&eacute;visions correctes sur les 30 derniers jours (J+2 &agrave; J+5), mesur&eacute; en conditions r&eacute;elles&nbsp;:
+                    <strong id="faq-precision-value">chargement...</strong></p>
+                {% endif %}
                 </div>
             </details>
-            <details class="faq-item">
-                <summary>Que faire concr&egrave;tement un jour rouge ?</summary>
-                <div class="faq-content">
-                <p><strong>Les gros postes &agrave; reporter :</strong></p>
-                <ul style="margin:8px 0 8px 20px;line-height:1.8">
-                    <li>Lave-linge et s&egrave;che-linge &rarr; reporter au lendemain</li>
-                    <li>Lave-vaisselle &rarr; lancer en heures creuses (22h&ndash;6h) ou reporter</li>
-                    <li>Four et plaques &eacute;lectriques &rarr; pr&eacute;f&eacute;rer micro-ondes ou repas froid</li>
-                    <li>Recharge v&eacute;hicule &eacute;lectrique &rarr; d&eacute;caler au jour bleu suivant</li>
-                    <li>Chauffage &eacute;lectrique &rarr; baisser de 1 &agrave; 2&deg;C, pr&eacute;chauffer la veille</li>
-                    <li>Ballon d'eau chaude &rarr; couper en HP, utiliser l'eau stock&eacute;e</li>
-                </ul>
-                <p><strong>Astuce :</strong> la veille d'un jour rouge, montez le chauffage et lancez
-                    toutes vos machines. L'inertie thermique du logement vous portera une bonne partie du lendemain.</p>
-                </div>
-            </details>
-            <details class="faq-item">
-                <summary>Ce service est-il officiel EDF ?</summary>
-                <div class="faq-content">
-                <p>Non, le Calendrier Tempo EDF est ind&eacute;pendant et gratuit.
-                    Seule la couleur annonc&eacute;e par EDF fait foi.
-                    Nos pr&eacute;visions sont des estimations pour vous aider &agrave; <strong>anticiper</strong>,
-                    pas des informations officielles.</p>
-                </div>
-            </details>
-            <details class="faq-item">
-                <summary>&Agrave; quelle heure commence et finit un jour rouge ?</summary>
-                <div class="faq-content">
-                <p>Un jour Tempo va de <strong>6h du matin &agrave; 6h le lendemain matin</strong>, et non
-                    de minuit &agrave; minuit. Par exemple, un jour rouge le mardi commence mardi 6h et finit
-                    mercredi 6h. Avant 6h du matin, c'est encore le tarif du jour pr&eacute;c&eacute;dent.</p>
-                </div>
-            </details>
-            <details class="faq-item">
-                <summary>Les jours f&eacute;ri&eacute;s peuvent-ils &ecirc;tre rouges ?</summary>
-                <div class="faq-content">
-                <p><strong>Non.</strong> Les dimanches et jours f&eacute;ri&eacute;s ne sont jamais des jours rouges.
-                    En revanche, les samedis peuvent l'&ecirc;tre (c'est rare mais &ccedil;a arrive 1 &agrave; 2 fois par saison).
-                    Les jours blancs, eux, peuvent tomber n'importe quand.</p>
-                </div>
-            </details>
-            <details class="faq-item">
-                <summary>Quelle couleur Tempo aujourd'hui et demain ?</summary>
-                <div class="faq-content">
-                <p>La <strong>couleur EDF Tempo</strong> du jour et de demain est affich&eacute;e en haut de cette page, mise &agrave; jour en temps r&eacute;el.
-                    EDF annonce la couleur du lendemain chaque jour entre 11h et 12h &mdash; d&egrave;s 12h, la couleur du lendemain est g&eacute;n&eacute;ralement connue.
-                    D&egrave;s que la couleur officielle est publi&eacute;e, notre site la refl&egrave;te imm&eacute;diatement.
-                    En attendant la confirmation EDF, nous affichons notre <strong>pr&eacute;vision</strong> bas&eacute;e
-                    sur la m&eacute;t&eacute;o et la consommation nationale. Pour conna&icirc;tre la couleur Tempo des
-                    prochains jours, consultez le r&eacute;sum&eacute; des 10 jours ci-dessus ou notre
-                    <a href="/calendrier">calendrier EDF Tempo complet</a>.</p>
-                </div>
-            </details>
-            <details class="faq-item">
-                <summary>Quand conna&icirc;t-on la couleur EDF Tempo du lendemain ?</summary>
-                <div class="faq-content">
-                <p>EDF publie la couleur Tempo officielle du lendemain chaque jour <strong>entre 11h et 12h</strong> sur son site et son application.
-                    D&egrave;s 12h, la couleur du lendemain est g&eacute;n&eacute;ralement connue.
-                    Notre Calendrier Tempo affiche sa pr&eacute;vision <strong>d&egrave;s la veille au soir</strong>,
-                    avant m&ecirc;me l'annonce officielle EDF, gr&acirc;ce &agrave; notre algorithme bas&eacute; sur la m&eacute;t&eacute;o
-                    et la consommation nationale.</p>
-                </div>
-            </details>
-            <details class="faq-item">
-                <summary>Quels sont les tarifs EDF Tempo en 2026 ?</summary>
-                <div class="faq-content">
-                <p>Les tarifs Tempo EDF en <strong>heures pleines</strong> (6h&ndash;22h) :</p>
-                <ul style="margin:8px 0 8px 20px;line-height:1.8">
-                    <li>Jour bleu : <strong>0,1654&nbsp;&euro;/kWh</strong></li>
-                    <li>Jour blanc : <strong>0,1921&nbsp;&euro;/kWh</strong></li>
-                    <li>Jour rouge : <strong>0,7295&nbsp;&euro;/kWh</strong></li>
-                </ul>
-                <p>En <strong>heures creuses</strong> (22h&ndash;6h) : bleu 0,1356&nbsp;&euro;, blanc 0,1536&nbsp;&euro;, rouge 0,1615&nbsp;&euro;/kWh.
-                    Un jour rouge en HP co&ucirc;te donc <strong>4,4 fois plus cher</strong> qu'un jour bleu en HP.
-                    <em>(Tarifs TTC en vigueur au 1<sup>er</sup> ao&ucirc;t 2026, fix&eacute;s par l'arr&ecirc;t&eacute; du 29 juillet 2026 publi&eacute; au Journal Officiel du 31 juillet 2026. V&eacute;rifiez sur votre contrat EDF.)</em></p>
-                </div>
-            </details>
-            <details class="faq-item">
-                <summary>Qu'est-ce qu'un jour Tempo rouge ?</summary>
-                <div class="faq-content">
-                <p>Un <strong>jour Tempo rouge</strong> est l'un des 22 jours les plus chers de la saison Tempo EDF.
-                    Le prix du kWh en heures pleines atteint <strong>0,73&nbsp;&euro;</strong>, soit 4,4 fois
-                    le tarif d'un jour bleu (0,17&nbsp;&euro;). Les jours <strong>Tempo rouge</strong> tombent uniquement
-                    entre le 1<sup>er</sup> novembre et le 31 mars, jamais le week-end ni les jours f&eacute;ri&eacute;s.
-                    EDF les d&eacute;clenche lors des pics de consommation (vagues de froid).
-                    Pour &eacute;viter la facture sal&eacute;e, reportez vos usages gourmands au jour bleu suivant.</p>
-                </div>
-            </details>
-            <details class="faq-item" id="faq-fiabilite">
-                <summary>Vos pr&eacute;visions sont-elles fiables ?</summary>
-                <div class="faq-content">
-                <p id="faq-precision-text">Notre pr&eacute;cision sur les 30 derniers jours (J+2 &agrave; J+5) :
-                    <strong id="faq-precision-value">chargement...</strong>
-                    Au-del&agrave; de 4&ndash;5 jours, les pr&eacute;visions
-                    m&eacute;t&eacute;o deviennent moins pr&eacute;cises, donc les n&ocirc;tres aussi : c'est une <strong>tendance</strong>,
-                    pas une certitude. Nous recommandons de prendre les d&eacute;cisions importantes
-                    (report d'une grosse lessive, recharge VE) sur la base des pr&eacute;visions &agrave; 2&ndash;3 jours.</p>
-                </div>
-            </details>
+            {% endfor %}
         </div>
     </section>
 
@@ -539,26 +350,10 @@
 
 {% include '_subscribe_modal.html' %}
 
-<footer role="contentinfo">
-    <div class="footer-inner">
-        <div class="footer-brand">Calendrier Tempo EDF</div>
-        <div class="footer-tagline">Service ind&eacute;pendant et gratuit pour anticiper les jours Tempo.</div>
-        <div class="footer-links">
-            <a href="/">Accueil</a>
-            <a href="/calendrier">Calendrier</a>
-            <a href="/alertes">Alertes</a>
-            <a href="/blog/">Blog</a>
-            <a href="/a-propos">&Agrave; propos</a>
-            <a href="/mentions-legales">Mentions l&eacute;gales</a>
-        </div>
-        <div class="footer-legal">
-            Seule la couleur officielle annonc&eacute;e par EDF fait foi. Nos pr&eacute;visions sont indicatives. Tarifs : base 2026, v&eacute;rifiez votre contrat.
-        </div>
-    </div>
-</footer>
+{% include '_footer.html' %}
 
 <button class="back-to-top" id="back-to-top" aria-label="Retour en haut de page">&#8593;</button>
 
-<script src="/static/js/app.min.js"></script>
+<script src="/static/js/app.min.js?v=20260929"></script>
 </body>
 </html>

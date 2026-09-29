@@ -1,95 +1,90 @@
 ---
-title: Calendrier Tempo 2026-2027 : toutes les dates et couleurs
-description: Calendrier Tempo 2026-2027 : budget des jours rouges, règles EDF, répartition mensuelle typique et prévisions J+2 à J+5 mises à jour chaque jour.
-keywords: calendrier tempo 2026-2027, dates jours rouges tempo 2026-2027, saison tempo 2026-2027, tempo edf calendrier 2027
-publish_date: 2026-10-13
+title: Calendrier Tempo 2026-2027 : dates, règles et couleurs
+description: Calendrier Tempo 2026-2027 : règles EDF, budget de 22 rouges et 43 blancs, répartition mensuelle réelle des saisons passées et prévisions J+2 à J+5.
+keywords: calendrier tempo 2026-2027, dates jours rouges tempo 2026-2027, saison tempo 2026-2027, edf tempo calendrier 2026-2027
+publish_date: 2026-09-29
 cluster: calendrier
 ---
-La nouvelle saison Tempo approche, et avec elle la question que se posent tous les abonnés à l'option : quand tomberont les jours rouges, ces journées où le kilowattheure grimpe à 0,7295 euros en heures pleines ? Ce guide consacré au **calendrier tempo 2026-2027** vous explique la structure de la saison qui débute le 1er septembre 2026, le budget de jours imposé par EDF, les règles qui encadrent leur placement, et surtout comment suivre les couleurs en temps réel grâce à nos prévisions quotidiennes. Important : à l'heure où nous écrivons, cette saison n'a pas encore eu lieu — nous ne pouvons donc pas vous donner de dates rouges précises, mais nous vous donnons tout pour les anticiper jour après jour.
+Le **calendrier Tempo 2026-2027** a démarré le 1er septembre 2026 et court jusqu'au 31 août 2027. Au 29 septembre 2026, aucun jour rouge n'est encore possible : ils ne peuvent tomber qu'entre le **1er novembre 2026 et le 31 mars 2027**, jamais un week-end ni un jour férié. Cette page fait le point sur le cadre de la saison Tempo EDF, sur ce que les saisons passées disent réellement de la répartition des couleurs (chiffres tirés de notre base, saison par saison) et sur la manière de suivre les couleurs jour après jour. Les dates rouges de cet hiver ne sont pas connues à l'avance : elles sont décidées au fil de la météo et de la consommation, et confirmées par EDF la veille.
 
-## La structure de la saison Tempo 2026-2027
+## Où en est la saison Tempo 2026-2027 ?
 
-### Du 1er septembre 2026 au 31 août 2027
+La saison a commencé le 1er septembre, il y a moins d'un mois. Le budget de couleurs a été remis à zéro le 1er septembre : **22 jours rouges**, **43 jours blancs** et **environ 300 jours bleus** pour les 365 jours de la saison. Les couleurs déjà confirmées par EDF pour septembre 2026 figurent sur notre [calendrier Tempo en temps réel](/calendrier).
 
-La saison Tempo ne suit jamais l'année civile. Elle s'étend du **1er septembre 2026 au 31 août 2027**, soit 365 jours pendant lesquels EDF répartit trois couleurs selon un quota strict et immuable :
+Que se passe-t-il d'habitude à cette période ? Sur les six saisons complètes de notre base (2019-2020 à 2024-2025), les 366 jours de septembre et d'octobre sont tous bleus. Le premier jour blanc de la saison est tombé entre le 14 et le 29 novembre, et le premier jour rouge entre le 29 novembre et le 8 décembre. Autrement dit, l'automne est la période de rodage : c'est le bon moment pour vérifier vos équipements avec notre [checklist de préparation de la saison](/blog/preparer-saison-tempo-2026-2027) et pour comprendre [ce qui change à la rentrée 2026-2027](/blog/rentree-tempo-2026-2027).
 
-- **22 jours rouges** : les plus chers, activés lors des pics de tension sur le réseau. Selon le barème en vigueur depuis le 1er août 2026, le kWh atteint 0,7295 euros en heures pleines (6h-22h) et 0,1615 euros en heures creuses (22h-6h), soit plus de quatre fois le tarif bleu en heures pleines.
-- **43 jours blancs** : un tarif intermédiaire, positionné sur les journées à demande modérément élevée.
-- **Environ 300 jours bleus** : le tarif le plus bas, qui constitue l'immense majorité de l'année. C'est ce volume de jours bleus qui rend l'option Tempo réellement rentable.
+## Les règles EDF qui encadrent le calendrier (R1 à R4)
 
-Ce budget de 22 rouges et 43 blancs est respecté à l'unité près chaque saison. Pas un jour de plus, pas un jour de moins. Comprendre ce mécanisme de budget fermé est la clé pour anticiper le calendrier. Si vous souhaitez comparer avec la saison précédente, consultez notre [calendrier Tempo 2025-2026](/blog/calendrier-tempo-2025-2026-dates), et pour une vision longue durée, l'[historique complet des saisons Tempo](/blog/calendrier-tempo-historique-saisons).
+EDF applique quatre règles qui structurent tout le calendrier. Bien comprises, elles éliminent beaucoup de jours à risque :
 
-### Les règles EDF qui encadrent le calendrier (R1 à R4)
+1. **R1 : les jours rouges sont limités au 1er novembre - 31 mars.** Aucun rouge n'est possible entre avril et octobre.
+2. **R2 : jamais de jour rouge un week-end ou un jour férié.** Seuls les jours ouvrés hors fériés (du lundi au vendredi) sont éligibles.
+3. **R3 : jamais de jour blanc le dimanche.** Le dimanche est donc toujours bleu.
+4. **R4 : au maximum 5 jours rouges consécutifs.** Comme les week-ends sont exclus, une série de 5 rouges correspond à une semaine complète, du lundi au vendredi.
 
-EDF applique quatre règles strictes qui structurent tout le calendrier. Bien comprises, elles deviennent de précieux repères pour anticiper :
+Les jours Tempo vont de 6h à 6h le lendemain, avec des heures pleines de 6h à 22h et des heures creuses de 22h à 6h. Le prix d'un jour rouge en heures pleines est de **0,7295 €/kWh** depuis le 1er août 2026, contre **0,1654 €/kWh** un jour bleu : un rapport de 4,4. La grille complète figure sur la page [tarif Tempo EDF](/tarif-tempo-edf).
 
-1. **R1 — Les jours rouges sont limités au 1er novembre - 31 mars.** Aucun rouge possible entre avril et octobre. Les 22 rouges se concentrent donc sur cinq mois seulement.
-2. **R2 — Jamais de jour rouge un week-end ou un jour férié.** Samedis, dimanches et fériés nationaux sont automatiquement exclus.
-3. **R3 — Jamais de jour blanc le dimanche.** Les dimanches sont donc toujours bleus.
-4. **R4 — Maximum 5 jours rouges consécutifs.** EDF ne peut pas enchaîner plus de cinq rouges d'affilée.
+## Rouges et blancs : ce que montrent les saisons passées
 
-Ces contraintes réduisent fortement le nombre de jours éligibles aux jours rouges, ce qui rend la prévision plus fiable qu'il n'y paraît. Pour comprendre en détail la mécanique des rouges, lisez notre [guide complet des jours rouges Tempo](/blog/jours-rouges-tempo-guide).
+Voici, pour chaque saison, le nombre de jours rouges par mois et les totaux de rouges et de blancs. Les chiffres sont issus de notre base de couleurs confirmées par EDF (historique RTE pour 2019 à 2023, calendriers publiés d'après les annonces EDF pour 2023 à 2026).
 
-## La répartition mensuelle typique de la saison
+| Saison | Nov | Déc | Jan | Fév | Mar | Total rouges | Total blancs |
+|---|---|---|---|---|---|---|---|
+| 2019-2020 | 0 | 2 | 8 | 3 | 5 | 18 | 47 |
+| 2020-2021 | 0 | 5 | 13 | 4 | 0 | 22 | 43 |
+| 2021-2022 | 1 | 6 | 15 | 0 | 0 | 22 | 43 |
+| 2022-2023 | 0 | 4 | 11 | 5 | 2 | 22 | 43 |
+| 2023-2024 | 1 | 3 | 9 | 3 | 6 | 22 | 43 |
+| 2024-2025 | 0 | 8 | 13 | 1 | 0 | 22 | 43 |
+| 2025-2026 (au 20 février 2026) | 0 | 2 | 6 | 1 | non disponible | 9 | 32 |
 
-Comme la saison 2026-2027 n'a pas encore commencé, il serait malhonnête d'annoncer des dates rouges précises : personne ne les connaît, pas même EDF, car elles dépendent de la météo réelle de l'hiver à venir. En revanche, l'historique des saisons passées révèle un schéma de répartition récurrent. Voici les **moyennes historiques** observées mois par mois, à lire comme des ordres de grandeur indicatifs et non comme des prévisions de la saison à venir :
+Trois lectures se dégagent de ce tableau.
 
-| Mois | Jours rouges (moyenne historique) | Tendance |
-|------|-----------------------------------|----------|
-| Novembre 2026 | 2 à 4 | Début de fenêtre rouge, refroidissements |
-| Décembre 2026 | 4 à 6 | Montée en charge avant les fêtes |
-| Janvier 2027 | 5 à 8 | Mois le plus chargé (vagues de froid) |
-| Février 2027 | 3 à 5 | Pression budgétaire encore forte |
-| Mars 2027 | 1 à 3 | Solde de fin de saison |
+**Janvier est le mois des rouges.** Sur les six saisons complètes, 128 jours rouges ont été placés : 69 en janvier (54 %), 28 en décembre (22 %), 16 en février (12 %), 13 en mars (10 %) et 2 seulement en novembre. Il n'existe pourtant aucune régularité stricte : février a compté 0 rouge en 2021-2022 et 5 en 2022-2023, et mars a compté jusqu'à 6 rouges en 2023-2024. Aucune moyenne mensuelle ne permet donc de prédire un mois précis de l'hiver 2026-2027.
 
-**Janvier est historiquement le mois le plus chargé en jours rouges.** Le froid hivernal et une consommation de chauffage maximale poussent EDF à activer ses journées les plus chères. Mais gardez à l'esprit qu'une année douce peut décaler complètement ce schéma : un janvier clément suivi d'un février glacial inverserait la tendance. Ces chiffres ne sont donc qu'une grille de lecture, pas une promesse. Pour vous préparer concrètement avant le coup d'envoi, consultez nos conseils pour [préparer la saison Tempo 2026-2027](/blog/preparer-saison-tempo-2026-2027).
+**Le budget de 22 rouges et 43 blancs est presque toujours tenu.** Cinq saisons consécutives (2020-2021 à 2024-2025) affichent exactement 22 rouges et 43 blancs. La saison 2019-2020 s'est arrêtée à 18 rouges et 47 blancs dans nos données, avec un dernier rouge le 6 mars 2020. Quant à la saison 2025-2026, notre base s'arrête au 20 février 2026 : à cette date, 9 rouges et 32 blancs avaient été placés, un rythme nettement plus lent que les saisons précédentes, avec un premier rouge tardif, le 29 décembre 2025.
 
-### Septembre et octobre 2026 : la mise en route
+**Les rouges suivent le froid, pas le calendrier.** La température moyenne de décembre à février (moyenne pondérée de 9 villes, historique Open-Meteo) a été de 5,4 °C en 2024-2025, de 5,6 °C en 2021-2022 et 2022-2023, mais de 6,7 °C en 2023-2024 et 7,1 °C en 2019-2020. Sur les 137 jours rouges de notre base, la température moyenne du jour a été d'un peu moins de 3 °C en médiane (2,8 °C), et seuls 3 jours rouges ont dépassé 8 °C, tous en mars. Pour aller plus loin sur les séries et les jours de la semaine, lisez notre [historique complet des saisons Tempo](/blog/calendrier-tempo-historique-saisons).
 
-La saison démarre le 1er septembre 2026 par une période exclusivement composée de jours bleus et de quelques blancs. Aucun rouge n'est possible avant le 1er novembre (règle R1). Historiquement, on observe quelques jours blancs en octobre, placés lors des premiers refroidissements automnaux. C'est la fenêtre idéale pour consommer sans contrainte et roder vos habitudes avant l'hiver.
+## Septembre et octobre 2026, puis avril à août 2027
 
-### Avril à août 2027 : la fin de saison
+**Jusqu'au 31 octobre 2026**, la règle R1 exclut tout jour rouge. Les jours blancs sont possibles en théorie, mais dans les sept saisons de notre base, aucun jour blanc n'est tombé avant le 14 novembre (voir notre guide des [jours blancs Tempo](/blog/premiers-jours-blancs-tempo)).
 
-À partir du 1er avril 2027, plus aucun rouge ne peut être placé. EDF utilise quasi systématiquement la totalité de son budget rouge avant fin mars. Les derniers mois alternent jours blancs (pour écouler le solde des 43) et jours bleus, dans un climat tarifaire bien plus serein.
+**À partir du 1er avril 2027**, plus aucun rouge ne peut être placé. Il peut en revanche rester des jours blancs à écouler : sur les six saisons complètes, 30 blancs sont tombés entre avril et juin (18 en avril, 3 en mai, 9 en juin), aucun en juillet ni en août. Le dernier blanc de la saison est tombé entre le 13 mars (2025) et le 12 juin (2023) selon les années. Pour tout savoir sur ce changement de régime, lisez [ce qui change au 1er avril](/blog/fin-saison-rouge-tempo-bilan).
 
-## Comment suivre le calendrier Tempo 2026-2027 en temps réel
+## Comment suivre le calendrier Tempo EDF 2026-2027 en temps réel
 
-Puisque les dates exactes se découvrent au fil de l'eau, le vrai outil n'est pas une liste figée mais un suivi vivant. Deux ressources se complètent.
+Puisque les couleurs se découvrent au fil de l'eau, le bon outil est un suivi quotidien plutôt qu'une liste figée.
 
-### Le calendrier live, mis à jour chaque jour
-
-Notre [calendrier Tempo en temps réel](/calendrier) affiche, pour chaque journée de la saison, la couleur officielle EDF une fois passée, et notre prévision pour les jours à venir. Vous y visualisez d'un coup d'œil la grille mensuelle, le solde de jours rouges et blancs restant, et la dynamique de la saison. C'est la référence à consulter dès que la saison 2026-2027 démarre.
-
-### Le suivi du budget restant
-
-À tout moment, on peut calculer combien de rouges et de blancs il reste à placer, et sur combien de jours éligibles. Plus la saison avance, plus le nombre de jours éligibles diminue : la **densité de placement** augmente alors mécaniquement. Quand cette densité devient élevée, même une journée modérément froide peut basculer au rouge, car EDF doit impérativement écouler son budget avant le 31 mars. Ce phénomène de pression budgétaire de fin de saison est intégré au cœur de notre algorithme.
+- **Le calendrier live** : notre [calendrier Tempo EDF](/calendrier) affiche la couleur officielle pour les jours passés et notre prévision pour les jours à venir.
+- **La couleur du lendemain** : EDF publie la couleur de J+1 vers 11h. La page [couleur Tempo demain](/couleur-tempo-demain) l'affiche dès qu'elle est confirmée.
+- **Les alertes gratuites** : [activez les alertes](/#subscribe) pour recevoir chaque dimanche la prévision des 7 prochains jours, et un message avant chaque jour rouge probable.
+- **L'API** : pour automatiser un chauffe-eau ou un thermostat, la page [API Tempo](/api-tempo) décrit les données disponibles.
 
 ## Comment notre algorithme prévoit les couleurs
 
-Notre système combine plusieurs sources pour produire des prévisions fiables de J+2 à J+5, rafraîchies quotidiennement. EDF annonce déjà la couleur du lendemain (J+1) chaque jour vers 11h ; notre valeur ajoutée est l'anticipation au-delà.
+Le choix officiel de la couleur repose sur la **consommation nette** (consommation nationale diminuée de la production éolienne et photovoltaïque), calculée par RTE selon sa note technique « Méthode de choix des jours Tempo » (indice 2 du 7 janvier 2025). Notre système cherche à anticiper ce critère : il combine la météo de 9 villes pondérées (Météo France, avec repli sur Open-Meteo), les prévisions de consommation nationale de RTE, le budget de jours restant à placer et un modèle de machine learning. Il produit une prévision quotidienne pour les jours J+2 à J+5, fiable, et indicative jusqu'à J+15. Lors d'un test rétrospectif sur 2 364 jours réels, il atteint un F1 de 83 % : c'est une mesure historique sur des données passées, pas une précision garantie en direct. Le détail (définition de la mesure, période, limites) est publié sur la page [méthodologie](/methodologie).
 
-### Les données météo
-
-Nous collectons température, pression et gradient thermique pour **9 villes représentatives** de la France métropolitaine, pondérées par leur poids dans la consommation nationale. Les données viennent de Météo France (modèles AROME et ARPEGE), avec un repli automatique vers Open-Meteo pour garantir la continuité du service. La température reste le facteur numéro un : plus il fait froid, plus la demande de chauffage grimpe, plus la probabilité de rouge augmente.
-
-### La consommation RTE et le machine learning
-
-Nous intégrons les prévisions de consommation nationale du réseau RTE, un reflet direct de la tension anticipée sur le réseau. En complément, un modèle de machine learning de type Gradient Boosting, entraîné sur les saisons 2019 à 2026, analyse une trentaine de variables pour affiner les probabilités. Cette combinaison classique + ML détecte des combinaisons de facteurs qu'aucune règle simple ne capture. Pour recevoir nos signaux directement, [activez les alertes gratuites](/#subscribe) et ne soyez plus jamais surpris par un jour rouge. Découvrez aussi comment fonctionnent nos [alertes jour rouge Tempo](/blog/alerte-jour-rouge-tempo).
+Le mécanisme de budget explique aussi les rouges « surprenants » de fin d'hiver. Quand il reste beaucoup de rouges à placer et peu de jours éligibles, la probabilité de rouge monte même par température modérée : mars 2024 en est un exemple, avec 6 rouges dont un à 11,9 °C. Pour comprendre la mécanique en détail, consultez notre [guide complet des jours rouges Tempo](/blog/jours-rouges-tempo-guide).
 
 ## FAQ : questions fréquentes sur le calendrier Tempo 2026-2027
 
 ### Connaît-on déjà les dates des jours rouges Tempo 2026-2027 ?
 
-Non, et personne ne les connaît à l'avance, pas même EDF. Les jours rouges dépendent de la météo réelle et de la tension sur le réseau au jour le jour. La seule certitude est leur cadre : 22 rouges maximum, placés exclusivement entre le 1er novembre 2026 et le 31 mars 2027, jamais un week-end ni un jour férié. Pour suivre les couleurs au fur et à mesure de la saison, consultez notre [calendrier en temps réel](/calendrier), mis à jour chaque jour.
+Non. Les jours rouges dépendent de la météo réelle et de la tension sur le réseau, et EDF ne confirme la couleur que la veille vers 11h. Le cadre est en revanche certain : 22 rouges maximum, placés entre le 1er novembre 2026 et le 31 mars 2027, jamais un week-end ni un jour férié. Suivez les couleurs sur le [calendrier en temps réel](/calendrier).
 
 ### Combien y aura-t-il de jours rouges et blancs en 2026-2027 ?
 
-Le budget est fixe et identique chaque saison : exactement 22 jours rouges et 43 jours blancs, le reste (environ 300 jours) étant bleu. Ce quota ne change pas d'une année sur l'autre. Ce qui varie, c'est uniquement la répartition de ces journées dans le calendrier, qui dépend des conditions météo de l'hiver. Notre tableau de bord affiche en permanence le solde restant au fil de la saison.
+Le budget est de 22 jours rouges et 43 jours blancs, le reste (environ 300 jours) étant bleu. Sur les cinq saisons de 2020-2021 à 2024-2025, ce budget a été tenu à l'unité près. La répartition dans l'année varie fortement d'une saison à l'autre, comme le montre le tableau ci-dessus.
+
+### Quand tombe le premier jour rouge de la saison ?
+
+Pas avant le 1er novembre 2026. Dans les six saisons complètes de notre base, le premier rouge est tombé entre le 29 novembre et le 8 décembre, et le 29 décembre pour la saison 2025-2026. Ces dates sont indicatives : un début d'hiver froid peut avancer le premier rouge. Pour être prévenu à l'avance, [inscrivez-vous aux alertes](/#subscribe).
 
 ### Comment anticiper les jours rouges avant l'annonce d'EDF ?
 
-EDF annonce la couleur du lendemain chaque jour vers 11h. Pour aller plus loin, notre algorithme fournit des prévisions de J+2 à J+5, mises à jour quotidiennement à partir des données météo de 9 villes, de la consommation RTE et d'un modèle de machine learning. Cela vous laisse plusieurs jours pour planifier vos consommations énergivores. Pour optimiser vos dépenses, lisez nos conseils pour [économiser avec Tempo EDF](/blog/economiser-tempo-edf).
+Notre algorithme fournit des prévisions de J+2 à J+5, mises à jour chaque jour, ce qui laisse plusieurs jours pour planifier lessives, recharge du véhicule électrique et chauffage. Pour ne rien rater, consultez aussi nos conseils pour [économiser avec Tempo EDF](/blog/economiser-tempo-edf) et comparez les saisons passées avec le [calendrier Tempo 2025-2026](/blog/calendrier-tempo-2025-2026-dates).
 
 ---
 
-*Article publié le 13 octobre 2026. La saison Tempo 2026-2027 n'ayant pas encore eu lieu, les chiffres mensuels présentés sont des moyennes historiques fournies à titre indicatif, et non des prévisions de dates. Pour les couleurs réelles et nos prévisions J+2 à J+5, [consultez le calendrier en temps réel](/calendrier) ou [inscrivez-vous aux alertes](/#subscribe).*
+*Sources : couleurs Tempo confirmées par EDF (historique RTE pour 2019 à 2023, calendriers publiés d'après les annonces EDF pour 2023 à 2026), stockées dans la base de calendrier-tempo.fr, dernière date disponible pour 2025-2026 : 20 février 2026. Règles et tarifs : [EDF](https://www.edf.fr/) et [Légifrance](https://www.legifrance.gouv.fr/) (arrêté du 29 juillet 2026, Journal officiel du 31 juillet 2026). Données de consommation : [RTE](https://www.rte-france.com/).*

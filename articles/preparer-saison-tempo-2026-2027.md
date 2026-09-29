@@ -1,19 +1,20 @@
 ---
 title: Préparer la saison Tempo 2026-2027 : la checklist complète
-description: La checklist pour préparer la saison Tempo 2026-2027 avant septembre : équipements, isolation, habitudes et alertes pour anticiper les jours rouges.
-keywords: préparer saison tempo, checklist tempo edf, saison tempo 2026-2027, anticiper jours rouges tempo
+description: Checklist pour préparer la saison Tempo 2026-2027 avant le 1er novembre : équipements, isolation, habitudes et alertes pour anticiper les jours rouges.
+keywords: préparer la saison tempo, checklist tempo edf, saison tempo 2026-2027, anticiper jours rouges tempo
 publish_date: 2026-04-14
-updated_date: 2026-08-09
+updated_date: 2026-09-29
 cluster: preparation
 ---
+Vous voulez **préparer la saison Tempo** 2026-2027 sans stress ? Voici la checklist complète : équipements, isolation, habitudes, budget de jours rouges et alertes, à dérouler avant le 1er novembre. La saison a démarré le 1er septembre, mais les jours rouges, les plus coûteux, ne sont possibles qu'à partir du 1er novembre.
 
 ## Pourquoi préparer la saison Tempo dès maintenant
 
-L'été est le meilleur moment pour **préparer la saison Tempo** 2026-2027, bien avant son démarrage le 1er septembre. La logique est simple : les jours rouges, les plus coûteux de l'option Tempo, n'arrivent qu'entre le 1er novembre et le 31 mars. Vous disposez donc de plusieurs mois de calme pour installer vos équipements, vérifier votre isolation et adopter les bons réflexes. Une saison Tempo bien préparée, c'est une saison où l'on subit beaucoup moins les pics de prix.
+La logique est simple : les jours rouges n'arrivent qu'entre le 1er novembre et le 31 mars, et dans notre historique de six saisons complètes, le premier rouge est tombé entre le 29 novembre et le 8 décembre (septembre et octobre étant entièrement bleus). Vous disposez donc de quelques semaines de calme pour installer vos équipements, vérifier votre isolation et adopter les bons réflexes. Une saison Tempo bien préparée, c'est une saison où l'on subit beaucoup moins les pics de prix.
 
-À noter avant de vous lancer : les tarifs Tempo ont été revalorisés le 1er août 2026, de +2,3 % à +3,3 % selon la couleur et la plage horaire.
+À noter avant de vous lancer : les tarifs Tempo ont été revalorisés le 1er août 2026, de +2,3 % à +3,3 % selon la couleur et la plage horaire (grille complète sur la page [tarif Tempo EDF](/tarif-tempo-edf)).
 
-Pour rappel, une saison Tempo court du 1er septembre au 31 août. Le budget EDF est fixe : **22 jours rouges, 43 jours blancs et environ 300 jours bleus**. Les jours rouges ne tombent jamais un week-end ni un jour férié, et il ne peut pas y avoir plus de 5 jours rouges consécutifs. Connaître ces règles à l'avance, c'est déjà anticiper. Si vous découvrez l'option, notre [guide complet Tempo EDF 2026](/blog/tempo-edf-2026-guide-complet) reprend tout le fonctionnement pas à pas.
+Pour rappel, une saison Tempo court du 1er septembre au 31 août. Le budget EDF est fixe : **22 jours rouges, 43 jours blancs et environ 300 jours bleus**. Les jours rouges ne tombent jamais un week-end ni un jour férié, et il ne peut pas y avoir plus de 5 jours rouges consécutifs. Connaître ces règles à l'avance, c'est déjà anticiper. Si vous découvrez l'option, notre [guide complet Tempo EDF 2026-2027](/blog/tempo-edf-2026-guide-complet) reprend tout le fonctionnement pas à pas, et le guide [souscrire Tempo EDF](/blog/souscrire-tempo-edf-guide) détaille les prérequis.
 
 ## Étape 1 : faire le bilan de la saison écoulée
 
@@ -25,7 +26,7 @@ Notre [bilan de la saison Tempo 2025-2026](/blog/bilan-saison-tempo-2025-2026) v
 
 L'objectif d'un équipement bien choisi est double : déplacer la consommation vers les heures creuses (HC, de 22h à 6h) et réduire le chauffage électrique pendant les heures pleines des jours rouges (de 6h à 22h). Voici une checklist à dérouler pendant l'été.
 
-| Équipement | Rôle | À tester avant septembre |
+| Équipement | Rôle | À tester avant le 1er novembre |
 | --- | --- | --- |
 | Thermostat programmable | Baisser le chauffage automatiquement en HP rouge | Programmation et pilotage à distance |
 | Programmateur / prise connectée | Déplacer les usages vers les heures creuses | Cycles lave-linge, lave-vaisselle |
@@ -36,15 +37,15 @@ L'objectif d'un équipement bien choisi est double : déplacer la consommation v
 Quelques repères utiles, à considérer comme des estimations courantes :
 
 - **Thermostat connecté** : c'est l'investissement prioritaire. Il permet d'abaisser la température de consigne lors des heures pleines rouges sans y penser.
-- **Contacteur chauffe-eau** : votre ballon doit chauffer en heures creuses. Vérifiez la position du contacteur et l'horaire programmé.
+- **Contacteur chauffe-eau** : votre ballon doit chauffer en heures creuses. Vérifiez la position du contacteur et l'horaire programmé (réglages détaillés dans notre guide [ballon d'eau chaude Tempo](/blog/ballon-eau-chaude-tempo)).
 - **Chauffage d'appoint bois** : le bois revient souvent autour de **0,04 à 0,06 €/kWh**, là où l'heure pleine rouge atteint **0,7295 €/kWh** (tarif TTC en vigueur depuis le 1er août 2026). L'écart explique pourquoi tant de foyers Tempo se tournent vers un poêle.
 - **Couverture chauffante** : un chauffage ciblé qui consomme très peu et limite le besoin de chauffer toute une pièce.
 
 Pour aller plus loin sur le sujet, consultez nos [astuces chauffage pour les jours rouges Tempo](/blog/chauffage-jour-rouge-tempo-astuces). Et si vous êtes équipé d'une pompe à chaleur, le pilotage spécifique est détaillé dans [pompe à chaleur et Tempo EDF](/blog/pompe-a-chaleur-tempo-edf).
 
-## Étape 3 : vérifier l'isolation pendant l'été
+## Étape 3 : vérifier l'isolation avant l'hiver
 
-L'été est la saison idéale pour les travaux d'isolation, car le logement est vide de contraintes de chauffage. Chaque amélioration réduit votre besoin énergétique l'hiver suivant, donc votre exposition aux jours rouges.
+Les gros travaux d'isolation se planifient de préférence hors saison de chauffe, mais les petits gestes (joints, rideaux, bas de portes) se font très bien à l'automne. Chaque amélioration réduit votre besoin énergétique de l'hiver, donc votre exposition aux jours rouges.
 
 Checklist isolation à passer en revue :
 
@@ -59,7 +60,7 @@ Un repère souvent cité : **baisser le chauffage d'un seul degré réduit d'env
 
 Les équipements ne suffisent pas sans réflexes. Préparez-vous mentalement à un fonctionnement en deux temps : on vit normalement les jours bleus (les moins chers), on lève le pied les jours blancs, et on serre fortement la consommation les jours rouges.
 
-- **Décaler les gros usages** : lave-linge, lave-vaisselle, sèche-linge et recharge de véhicule de préférence en heures creuses, surtout les jours rouges et blancs.
+- **Décaler les gros usages** : lave-linge, lave-vaisselle, sèche-linge et recharge de véhicule (voir notre guide de [recharge du véhicule électrique](/blog/recharge-vehicule-electrique-tempo)) de préférence en heures creuses, surtout les jours rouges et blancs.
 - **Cuisiner malin** : privilégier les cuissons groupées et éviter le four électrique en heures pleines rouges.
 - **Chauffer juste** : baisser la consigne des pièces peu occupées, fermer les portes.
 - **Anticiper la veille** : EDF annonce la couleur du lendemain (J+1) vers 11h. Préparez votre soirée en conséquence.
@@ -70,7 +71,7 @@ Pour structurer durablement ces gestes, notre dossier [comment économiser avec 
 
 Anticiper les jours rouges, c'est comprendre comment EDF les répartit. Avec seulement 22 jours rouges sur la saison, concentrés entre novembre et mars, et jamais le week-end ni les jours fériés, la « densité » de jours rouges monte mécaniquement quand l'hiver est rigoureux et que le budget restant se réduit.
 
-Concrètement, plus on approche de la fin mars avec un budget rouge encore important, plus la probabilité de jours rouges augmente sur les jours froids de semaine. C'est exactement cette logique que notre outil exploite pour vous prédire les couleurs de J+2 à J+5 (EDF, lui, ne donne que J+1). Pour visualiser l'historique et comprendre la mécanique saison après saison, parcourez le [calendrier Tempo historique des saisons](/blog/calendrier-tempo-historique-saisons) et le [guide des jours rouges Tempo](/blog/jours-rouges-tempo-guide).
+Concrètement, plus on approche de la fin mars avec un budget rouge encore important, plus la probabilité de jours rouges augmente sur les jours froids de semaine. C'est exactement cette logique que notre outil exploite pour vous prédire les couleurs de J+2 à J+5 (EDF, lui, ne donne que J+1). Pour visualiser l'historique et comprendre la mécanique saison après saison, parcourez le [calendrier Tempo historique des saisons](/blog/calendrier-tempo-historique-saisons), le [calendrier Tempo 2026-2027](/blog/calendrier-tempo-2026-2027-dates) et le [guide des jours rouges Tempo](/blog/jours-rouges-tempo-guide). Les méthodes de prévision sont décrites sur la page [méthodologie](/methodologie).
 
 Vous pouvez suivre en direct les couleurs prévues et passées sur notre [calendrier Tempo](/calendrier), mis à jour chaque jour.
 
@@ -78,22 +79,22 @@ Vous pouvez suivre en direct les couleurs prévues et passées sur notre [calend
 
 La dernière étape de préparation, et sans doute la plus rentable, consiste à ne plus jamais être pris au dépourvu. Recevoir une alerte avant un jour rouge change tout : vous décalez vos lessives, vous baissez le chauffage et vous lancez votre chauffage d'appoint à temps.
 
-Notre service envoie un récapitulatif des 7 prochains jours et vous prévient des jours rouges à venir. Pour comprendre l'intérêt de l'anticipation, lisez [l'alerte jour rouge Tempo](/blog/alerte-jour-rouge-tempo). Vous pouvez activer les alertes gratuites dès maintenant pour la saison 2026-2027 : [s'inscrire aux alertes](/#subscribe).
+Notre service envoie chaque dimanche un récapitulatif des 7 prochains jours et vous prévient avant chaque jour rouge probable. La couleur officielle du lendemain (publiée par EDF vers 11h) est aussi sur la page [couleur Tempo demain](/couleur-tempo-demain). Pour comprendre l'intérêt de l'anticipation, lisez [l'alerte jour rouge Tempo](/blog/alerte-jour-rouge-tempo). Vous pouvez activer les alertes gratuites dès maintenant pour la saison 2026-2027 : [s'inscrire aux alertes](/#subscribe).
 
 ## En résumé : votre rétroplanning d'été
 
-- **Juin-juillet** : faire le bilan de la saison passée, lancer les travaux d'isolation.
-- **Juillet-août** : installer et tester thermostat, contacteur chauffe-eau, prises connectées.
-- **Août** : ramonage et stock de bois si poêle d'appoint, vérification des volets et joints.
-- **Fin août / septembre** : actualiser les tarifs Tempo de la rentrée, activer les alertes, relire les règles.
+- **Fin septembre** : faire le bilan de la saison passée, contrôler thermostat, contacteur chauffe-eau et prises connectées.
+- **Octobre** : ramonage et stock de bois si poêle d'appoint, vérification des volets et joints, petits travaux d'isolation.
+- **Avant le 1er novembre** : activer les alertes, relire les règles R1 à R4, vérifier la grille tarifaire du 1er août 2026.
+- **À partir du 1er novembre** : suivre les couleurs chaque jour sur le [calendrier Tempo](/calendrier).
 
-Si vous hésitez encore entre options tarifaires, notre comparatif [Tempo vs Heures Creuses](/blog/tempo-vs-heures-creuses-edf-bleu) vous aidera à confirmer votre choix avant la nouvelle saison. Et pour vérifier les dates exactes de la saison en cours, gardez sous la main le [calendrier des dates Tempo 2025-2026](/blog/calendrier-tempo-2025-2026-dates).
+Si vous hésitez encore entre options tarifaires, notre comparatif [Tempo vs Heures Creuses](/blog/tempo-vs-heures-creuses-edf-bleu) vous aidera à confirmer votre choix avant la nouvelle saison. Pour revenir sur la saison passée, gardez sous la main les [dates réelles de la saison Tempo 2025-2026](/blog/calendrier-tempo-2025-2026-dates). Et pour lancer votre saison, retrouvez tout ce qui change dans notre article [rentrée Tempo EDF 2026-2027](/blog/rentree-tempo-2026-2027).
 
 ## FAQ : vos questions fréquentes sur la préparation Tempo
 
 ### Quand faut-il commencer à préparer la saison Tempo ?
 
-Idéalement dès l'été. Comme les jours rouges n'arrivent qu'entre le 1er novembre et le 31 mars, vous avez tout l'été pour installer vos équipements, vérifier l'isolation et tester votre programmation. Arriver prêt au 1er septembre évite de subir les premiers froids.
+Idéalement dès l'été, et au plus tard avant le 1er novembre. Comme les jours rouges n'arrivent qu'entre le 1er novembre et le 31 mars, vous avez quelques semaines pour installer vos équipements, vérifier l'isolation et tester votre programmation. Arriver prêt au 1er novembre évite de subir les premiers froids.
 
 ### Quel équipement prioriser pour réduire la facture des jours rouges ?
 
@@ -103,4 +104,6 @@ Le thermostat programmable arrive en tête, car il abaisse automatiquement le ch
 
 EDF annonce la couleur du lendemain (J+1) vers 11h. Notre site va plus loin en prédisant les couleurs de J+2 à J+5, et vous pouvez consulter les prévisions et l'historique sur le [calendrier Tempo](/calendrier). Activez les alertes pour être prévenu automatiquement avant chaque jour rouge.
 
-*Note : les tarifs et le calendrier évoluent chaque saison. Vérifiez toujours les couleurs officielles et les prix en vigueur à la rentrée 2026 avant de prendre vos décisions.*
+---
+
+*Note : les tarifs et le calendrier évoluent chaque saison. Vérifiez toujours les couleurs officielles et les prix en vigueur avant de prendre vos décisions. Mis à jour le 29 septembre 2026. Sources : [EDF](https://www.edf.fr/) pour les règles et les tarifs, [RTE](https://www.rte-france.com/) pour la consommation.*

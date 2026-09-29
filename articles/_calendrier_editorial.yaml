@@ -1,220 +1,512 @@
 # Calendrier éditorial — Blog Calendrier Tempo EDF
 # Mis à jour automatiquement chaque mardi par l'agent SEO.
-# Dernière mise à jour : 2026-05-26
+# Dernière mise à jour : 2026-09-29
+#
+# Cadence (config.py SEO_SEASON_SCHEDULE) : octobre bimensuel (1er et 3e mardi), novembre à mars hebdomadaire.
+# Garde-fou « scaled content abuse » : chaque article neuf embarque un élément first-hand tiré des données du projet
+# (table actuals, /api/performance, .ics du repo) ; un item conditionnel est sauté si la condition n'est pas remplie.
+# Les articles « bilan » se rédigent le jour même avec les chiffres réels du mois, jamais avant.
 
 articles_publies:
-  - date: "2026-02-17"
-    slug: economiser-tempo-edf
-    titre: "Comment économiser avec Tempo EDF en 2026"
-    mot_cle: "économiser tempo edf"
-    cluster: tempo-guide
-    statut: publié
+- date: '2026-02-17'
+  slug: calendrier-tempo-historique-saisons
+  titre: 'Historique calendrier Tempo EDF : 7 saisons de 2019 à 2026'
+  mot_cle: calendrier tempo
+  cluster: calendrier
+  type: pilier
+  statut: publié
+  mis_a_jour: '2026-09-29'
+- date: '2026-02-17'
+  slug: economiser-tempo-edf
+  titre: 'Économiser avec Tempo EDF en 2026-2027 : guide et astuces'
+  mot_cle: économiser avec tempo edf
+  cluster: tempo-guide
+  statut: publié
+  mis_a_jour: '2026-09-29'
+- date: '2026-02-17'
+  slug: tempo-edf-2026-guide-complet
+  titre: 'Tempo EDF 2026-2027 : le guide complet pour les abonnés'
+  mot_cle: tempo edf
+  cluster: tempo-guide
+  type: pilier
+  statut: publié
+  mis_a_jour: '2026-09-29'
+- date: '2026-02-24'
+  slug: jours-rouges-tempo-guide
+  titre: 'Jours rouges Tempo EDF : le guide complet 2026-2027'
+  mot_cle: jours rouges tempo
+  cluster: jours-rouges
+  type: pilier
+  statut: publié
+  mis_a_jour: '2026-09-29'
+- date: '2026-03-03'
+  slug: tempo-vs-heures-creuses-edf-bleu
+  titre: 'Tempo vs Heures Creuses vs EDF Bleu : quel contrat ?'
+  mot_cle: tempo vs heures creuses
+  cluster: tempo-guide
+  statut: publié
+  mis_a_jour: '2026-09-29'
+- date: '2026-03-10'
+  slug: calendrier-tempo-2025-2026-dates
+  titre: 'Calendrier Tempo 2025-2026 : dates des jours rouges et blancs'
+  mot_cle: calendrier tempo 2025-2026
+  cluster: calendrier
+  statut: publié
+  mis_a_jour: '2026-09-29'
+- date: '2026-03-17'
+  slug: alerte-jour-rouge-tempo
+  titre: 'Alerte Tempo : être prévenu d''un jour rouge par WhatsApp'
+  mot_cle: alerte tempo
+  cluster: jours-rouges
+  statut: publié
+  mis_a_jour: '2026-09-29'
+- date: '2026-03-24'
+  slug: chauffage-jour-rouge-tempo-astuces
+  titre: 'Chauffage jour rouge Tempo : 10 astuces pour économiser'
+  mot_cle: chauffage jour rouge tempo
+  cluster: equipements
+  type: pilier
+  statut: publié
+  mis_a_jour: '2026-09-29'
+- date: '2026-03-31'
+  slug: fin-saison-rouge-tempo-bilan
+  titre: 'Fin de saison rouge Tempo : ce qui change au 1er avril'
+  mot_cle: fin de saison rouge tempo
+  cluster: jours-rouges
+  statut: publié
+  mis_a_jour: '2026-09-29'
+- date: '2026-04-07'
+  slug: bilan-saison-tempo-2025-2026
+  titre: 'Bilan saison Tempo 2025-2026 : ce qu''il faut retenir'
+  mot_cle: bilan saison tempo 2025-2026
+  cluster: calendrier
+  statut: publié
+  mis_a_jour: '2026-09-29'
+- date: '2026-04-14'
+  slug: preparer-saison-tempo-2026-2027
+  titre: 'Préparer la saison Tempo 2026-2027 : la checklist complète'
+  mot_cle: préparer la saison tempo
+  cluster: preparation
+  type: pilier
+  statut: publié
+  mis_a_jour: '2026-09-29'
+- date: '2026-04-28'
+  slug: tempo-edf-avis-rentabilite
+  titre: 'Tempo EDF avis : est-ce rentable pour la saison 2026-2027 ?'
+  mot_cle: tempo edf avis
+  cluster: tempo-guide
+  statut: publié
+  mis_a_jour: '2026-09-29'
+- date: '2026-05-12'
+  slug: linky-tempo-suivre-consommation
+  titre: 'Linky Tempo EDF : suivre sa consommation en temps réel'
+  mot_cle: linky tempo
+  cluster: equipements
+  statut: publié
+  mis_a_jour: '2026-09-29'
+- date: '2026-05-26'
+  slug: pompe-a-chaleur-tempo-edf
+  titre: 'Pompe à chaleur Tempo EDF : compatibilité et stratégies'
+  mot_cle: pompe à chaleur tempo
+  cluster: equipements
+  statut: publié
+  mis_a_jour: '2026-09-29'
+- date: '2026-06-09'
+  slug: simulation-tempo-edf-economies
+  titre: 'Simulation Tempo EDF : estimez vos économies annuelles'
+  mot_cle: simulation tempo edf
+  cluster: tempo-guide
+  statut: publié
+  mis_a_jour: '2026-09-29'
+- date: '2026-06-23'
+  slug: recharge-vehicule-electrique-tempo
+  titre: 'Véhicule électrique Tempo : optimiser la recharge et payer moins'
+  mot_cle: véhicule électrique tempo
+  cluster: equipements
+  statut: publié
+  mis_a_jour: '2026-09-29'
+- date: '2026-07-21'
+  slug: ballon-eau-chaude-tempo
+  titre: 'Ballon d''eau chaude Tempo : programmer pour économiser'
+  mot_cle: ballon d'eau chaude tempo
+  cluster: equipements
+  statut: publié
+  mis_a_jour: '2026-09-29'
+- date: '2026-08-04'
+  slug: climatisation-tempo-edf-ete
+  titre: 'Climatisation Tempo EDF : faut-il s''en soucier l''été ?'
+  mot_cle: climatisation tempo edf
+  cluster: equipements
+  statut: publié
+  mis_a_jour: '2026-09-29'
+- date: '2026-09-01'
+  slug: rentree-tempo-2026-2027
+  titre: 'Rentrée Tempo EDF 2026-2027 : tout ce qui change pour vous'
+  mot_cle: tempo edf 2026-2027
+  cluster: preparation
+  statut: publié
+  mis_a_jour: '2026-09-29'
+- date: '2026-09-15'
+  slug: souscrire-tempo-edf-guide
+  titre: 'Souscrire Tempo EDF : le guide pour les nouveaux abonnés'
+  mot_cle: souscrire tempo edf
+  cluster: preparation
+  statut: publié
+  mis_a_jour: '2026-09-29'
+- date: '2026-09-29'
+  slug: calendrier-tempo-2026-2027-dates
+  titre: 'Calendrier Tempo 2026-2027 : dates, règles et couleurs'
+  mot_cle: calendrier tempo 2026-2027
+  cluster: calendrier
+  statut: publié
+- date: '2026-09-29'
+  slug: premiers-jours-blancs-tempo
+  titre: 'Jours blancs Tempo EDF : à quoi s''attendre en automne'
+  mot_cle: jours blancs tempo
+  cluster: jours-rouges
+  statut: publié
 
-  - date: "2026-02-17"
-    slug: tempo-edf-2026-guide-complet
-    titre: "Tempo EDF en 2026 : le guide complet pour les abonnés"
-    mot_cle: "tempo edf 2026"
-    cluster: tempo-guide
-    type: pilier
-    statut: publié
+# Refresh en retard, traités le 2026-09-29 (prévus le 2026-07-07 et le 2026-08-18, restés « à rédiger ») :
+#  - tempo-edf-2026-guide-complet : saison 2026-2027, ratio 4,4, répartition réelle des rouges, alertes 7 jours, sources officielles, liens vers les nouvelles pages
+#  - economiser-tempo-edf : saison 2026-2027, ratio 4,4, alertes 7 jours, liens API/tarif, sources officielles
+# Mise à jour éditoriale globale du 2026-09-29 : 20 articles corrigés (voir _publication_log.md), les 2 articles du jour sont neufs.
 
-  - date: "2026-02-17"
-    slug: calendrier-tempo-historique-saisons
-    titre: "Historique du calendrier Tempo EDF : toutes les saisons depuis 2020"
-    mot_cle: "historique tempo edf"
-    cluster: calendrier
-    type: pilier
-    statut: publié
+refresh_en_retard:
+- slug: tempo-edf-2026-guide-complet
+  prevu: '2026-07-07'
+  fait: '2026-09-29'
+  statut: fait
+- slug: economiser-tempo-edf
+  prevu: '2026-08-18'
+  fait: '2026-09-29'
+  statut: fait
 
-  - date: "2026-02-24"
-    slug: jours-rouges-tempo-guide
-    titre: "Jours rouges Tempo EDF : le guide complet 2025-2026"
-    mot_cle: "jours rouges tempo"
-    cluster: jours-rouges
-    type: pilier
-    statut: publié
+clusters:
+  tempo-guide:
+    pilier: tempo-edf-2026-guide-complet
+    satellites:
+    - economiser-tempo-edf
+    - tempo-vs-heures-creuses-edf-bleu
+    - tempo-edf-avis-rentabilite
+    - simulation-tempo-edf-economies
+  jours-rouges:
+    pilier: jours-rouges-tempo-guide
+    satellites:
+    - alerte-jour-rouge-tempo
+    - fin-saison-rouge-tempo-bilan
+    - premiers-jours-blancs-tempo
+  calendrier:
+    pilier: calendrier-tempo-historique-saisons
+    satellites:
+    - calendrier-tempo-2025-2026-dates
+    - calendrier-tempo-2026-2027-dates
+    - bilan-saison-tempo-2025-2026
+  equipements:
+    pilier: chauffage-jour-rouge-tempo-astuces
+    satellites:
+    - ballon-eau-chaude-tempo
+    - pompe-a-chaleur-tempo-edf
+    - linky-tempo-suivre-consommation
+    - recharge-vehicule-electrique-tempo
+    - climatisation-tempo-edf-ete
+  preparation:
+    pilier: preparer-saison-tempo-2026-2027
+    satellites:
+    - rentree-tempo-2026-2027
+    - souscrire-tempo-edf-guide
+    note: 'cluster saisonnier : se réactive en août-septembre 2027 pour préparer la saison 2027-2028 (pas d''article neuf planifié d''octobre à mars)'
 
-  - date: "2026-03-03"
-    slug: tempo-vs-heures-creuses-edf-bleu
-    titre: "Tempo vs Heures Creuses vs EDF Bleu : quel contrat choisir ?"
-    mot_cle: "tempo vs heures creuses"
-    cluster: tempo-guide
-    statut: publié
+# Calendrier perpétuel : mardis du 2026-10-06 au 2027-03-30 (24 items). Le 2027-03-30, régénérer ce bloc pour avril-septembre 2027
+# (cadence bimensuelle : 1er et 3e mardi ; juin-août = evergreen) sans reprendre un sujet déjà publié avec le même angle.
 
-  - date: "2026-03-10"
-    slug: calendrier-tempo-2025-2026-dates
-    titre: "Calendrier Tempo 2025-2026 : toutes les dates et couleurs"
-    mot_cle: "calendrier tempo 2025-2026"
-    cluster: calendrier
-    statut: publié
-
-  - date: "2026-03-17"
-    slug: alerte-jour-rouge-tempo
-    titre: "Alerte jour rouge Tempo : comment être prévenu à temps"
-    mot_cle: "alerte jour rouge tempo"
-    cluster: jours-rouges
-    statut: publié
-
-  - date: "2026-03-24"
-    slug: chauffage-jour-rouge-tempo-astuces
-    titre: "Chauffage jour rouge Tempo : 10 astuces pour économiser"
-    mot_cle: "chauffage jour rouge tempo"
-    cluster: equipements
-    statut: publié
-
-  - date: "2026-03-31"
-    slug: fin-saison-rouge-tempo-bilan
-    titre: "Fin de saison rouge Tempo 2025-2026 : ce qui change au 1er avril"
-    mot_cle: "fin saison rouge tempo"
-    cluster: jours-rouges
-    type: nouveau
-    statut: publié
-
-  - date: "2026-04-07"
-    slug: bilan-saison-tempo-2025-2026
-    titre: "Bilan saison Tempo 2025-2026 : ce qu'il faut retenir"
-    mot_cle: "bilan saison tempo 2025-2026"
-    cluster: calendrier
-    type: nouveau
-    statut: publié
-
-  - date: "2026-04-14"
-    slug: preparer-saison-tempo-2026-2027
-    titre: "Préparer la saison Tempo 2026-2027 : la checklist complète"
-    mot_cle: "préparer saison tempo"
-    cluster: preparation
-    type: nouveau
-    statut: publié
-
-  - date: "2026-04-28"
-    slug: tempo-edf-avis-rentabilite
-    titre: "Tempo EDF avis : est-ce vraiment rentable en 2026 ?"
-    mot_cle: "tempo edf avis"
-    cluster: tempo-guide
-    type: nouveau
-    statut: publié
-
-  - date: "2026-05-12"
-    slug: linky-tempo-suivre-consommation
-    titre: "Linky et Tempo EDF : suivre sa consommation en temps réel"
-    mot_cle: "linky tempo"
-    cluster: equipements
-    type: nouveau
-    statut: publié
-
-  - date: "2026-05-26"
-    slug: pompe-a-chaleur-tempo-edf
-    titre: "Pompe à chaleur et Tempo EDF : compatibilité et stratégies"
-    mot_cle: "pompe à chaleur tempo"
-    cluster: equipements
-    type: nouveau
-    statut: publié
-
-# Cadence : rattrapage hebdomadaire jusqu'à mi-avril (31 mars, 7, 14 avril),
-# puis 1 article toutes les 2 semaines (28 avril, 12 mai, 26 mai).
-# NB : SEO_SEASON_SCHEDULE (config.py) met juin-août en pause (morte-saison).
-# Si la cadence bimensuelle doit continuer l'été, aligner SEO_SEASON_SCHEDULE.
 prochaines_semaines:
-  - numero: 1
-    date: "2026-06-23"
-    slug: recharge-vehicule-electrique-tempo
-    titre: "Véhicule électrique Tempo : optimiser la recharge et payer moins"
-    mot_cle: "véhicule électrique tempo"
-    cluster: equipements
-    type: nouveau
-    statut: rédigé
-
-  - numero: 2
-    date: "2026-06-09"
-    slug: simulation-tempo-edf-economies
-    titre: "Simulation Tempo EDF : estimez vos économies annuelles"
-    mot_cle: "simulation tempo edf"
-    cluster: tempo-guide
-    type: nouveau
-    statut: rédigé
-
-  - numero: 3
-    date: "2026-07-07"
-    slug: null
-    titre: "REFRESH : mise à jour tempo-edf-2026-guide-complet"
-    mot_cle: "tempo edf 2026"
-    cluster: tempo-guide
-    type: refresh
-    statut: à rédiger
-
-  - numero: 4
-    date: "2026-07-21"
-    slug: ballon-eau-chaude-tempo
-    titre: "Ballon d'eau chaude Tempo : programmer pour économiser"
-    mot_cle: "ballon d'eau chaude tempo"
-    cluster: equipements
-    type: nouveau
-    statut: rédigé
-
-  - numero: 5
-    date: "2026-08-04"
-    slug: climatisation-tempo-edf-ete
-    titre: "Climatisation Tempo EDF : faut-il s'en soucier l'été ?"
-    mot_cle: "climatisation tempo edf"
-    cluster: equipements
-    type: nouveau
-    statut: rédigé
-
-  - numero: 6
-    date: "2026-08-18"
-    slug: null
-    titre: "REFRESH : mise à jour economiser-tempo-edf"
-    mot_cle: "économiser tempo edf"
-    cluster: tempo-guide
-    type: refresh
-    statut: à rédiger
-
-  - numero: 7
-    date: "2026-09-01"
-    slug: rentree-tempo-2026-2027
-    titre: "Rentrée Tempo EDF 2026-2027 : tout ce qui change"
-    mot_cle: "tempo edf 2026-2027"
-    cluster: tempo-guide
-    type: nouveau
-    statut: rédigé
-
-  - numero: 8
-    date: "2026-09-15"
-    slug: souscrire-tempo-edf-guide
-    titre: "Souscrire Tempo EDF : le guide pour les nouveaux abonnés"
-    mot_cle: "souscrire tempo edf"
-    cluster: tempo-guide
-    type: nouveau
-    statut: rédigé
-
-  - numero: 9
-    date: "2026-09-29"
-    slug: premiers-jours-blancs-tempo
-    titre: "Jours blancs Tempo : à quoi s'attendre en automne"
-    mot_cle: "jours blancs tempo"
-    cluster: jours-rouges
-    type: nouveau
-    statut: rédigé
-
-  - numero: 10
-    date: "2026-10-13"
-    slug: calendrier-tempo-2026-2027-dates
-    titre: "Calendrier Tempo 2026-2027 : toutes les dates et couleurs"
-    mot_cle: "calendrier tempo 2026-2027"
-    cluster: calendrier
-    type: nouveau
-    statut: rédigé
+- numero: 1
+  date: '2026-10-06'
+  slug: premier-jour-rouge-tempo-date
+  titre: 'Premier jour rouge Tempo : à quelle date arrive-t-il ?'
+  mot_cle: premier jour rouge tempo
+  cluster: jours-rouges
+  type: nouveau
+  intention: 'Informationnelle : à quelle date tombe le premier rouge de la saison ?'
+  first_hand: 'Dates réelles du premier rouge et du premier blanc sur 7 saisons (table actuals) et température ce jour-là ; rappel : 29 nov. à 8 déc. sur les 6 saisons complètes, 29 déc. 2025.'
+  anti_cannibalisation: Le calendrier 2026-2027 ne traite le sujet qu'en 2 phrases ; ce satellite répond à la seule question de la date. Lier vers calendrier-tempo-2026-2027-dates, jours-rouges-tempo-guide
+    (pilier) et premiers-jours-blancs-tempo.
+  statut: planifié
+- numero: 2
+  date: '2026-10-20'
+  slug: methode-choix-jours-tempo
+  titre: Comment sont choisis les jours Tempo rouges, blancs et bleus
+  mot_cle: comment sont choisis les jours tempo
+  cluster: jours-rouges
+  type: nouveau
+  intention: 'Informationnelle : quelle méthode officielle décide de la couleur ?'
+  first_hand: 'Note technique RTE « Méthode de choix des jours Tempo » (indice 2 du 07/01/2025, PDF présent dans le repo) : critère de consommation nette, règles de placement, normalisation ; à croiser
+    avec ALGORITHME_PREDICTION.md sans divulguer les poids recalculés chaque quinzaine ; lier /methodologie.'
+  anti_cannibalisation: 'Distinct de jours-rouges-tempo-guide (règles R1-R4 et coûts) et de /methodologie (prévision du site). Angle : la décision d''EDF/RTE, pas notre modèle. Vérifier chaque chiffre dans
+    le document source avant rédaction.'
+  statut: planifié
+- numero: 3
+  date: '2026-11-03'
+  slug: temperature-jour-rouge-tempo
+  titre: À quelle température tombe un jour rouge Tempo EDF ?
+  mot_cle: température jour rouge tempo
+  cluster: jours-rouges
+  type: nouveau
+  intention: 'Informationnelle (PAA) : à partir de quelle température un rouge est-il probable ?'
+  first_hand: Distribution par saison et par mois de la température moyenne des 137 jours rouges (médiane 2,8 °C, 3 rouges au-dessus de 8 °C, tous en mars) et taux de rouge par tranche de température.
+  anti_cannibalisation: 'Le tableau par tranche existe déjà dans calendrier-tempo-historique-saisons : ne pas le répéter, l''approfondir (par mois, cas des rouges tardifs, effet du budget) et y renvoyer.'
+  statut: planifié
+- numero: 4
+  date: '2026-11-10'
+  slug: domotique-tempo-home-assistant
+  titre: 'Tempo EDF et Home Assistant : automatiser selon la couleur'
+  mot_cle: tempo home assistant
+  cluster: equipements
+  type: nouveau
+  intention: 'Informationnelle et pratique : lire la couleur Tempo dans une box domotique.'
+  first_hand: Exemple de capteur REST testé contre la page /api-tempo avant publication (captures et réponses réelles), scénarios ballon d'eau chaude et chauffage.
+  anti_cannibalisation: Rester sur l'intégration domotique ; les réglages du ballon, du thermostat et de la recharge sont dans leurs articles (liens obligatoires). Publier seulement si /api-tempo est en
+    ligne.
+  statut: planifié
+- numero: 5
+  date: '2026-11-17'
+  slug: jours-rouges-consecutifs-tempo
+  titre: 'Jours rouges consécutifs Tempo : jusqu''à 5 d''affilée'
+  mot_cle: jours rouges consécutifs tempo
+  cluster: jours-rouges
+  type: nouveau
+  intention: 'Informationnelle : combien de rouges de suite et que faire ?'
+  first_hand: Liste datée des 9 séries de 5 jours de l'historique (lundi au vendredi) et des séquences 2026-2027 déjà observées ; stratégie de report semaine complète.
+  anti_cannibalisation: 'Le tableau des longueurs de séries est dans calendrier-tempo-historique-saisons : ici, uniquement les dates des séries de 5 jours et le plan d''action.'
+  statut: planifié
+- numero: 6
+  date: '2026-11-24'
+  slug: alerte-jour-rouge-tempo
+  titre: 'Alerte Tempo : être prévenu d''un jour rouge par WhatsApp'
+  mot_cle: alerte tempo
+  cluster: jours-rouges
+  type: refresh
+  intention: 'Rafraîchir : ajouter les premières alertes réelles de la saison.'
+  first_hand: Nombre d'alertes rouges effectivement envoyées depuis le 1er novembre (table sms_logs, agrégé, sans donnée personnelle) et délai moyen d'avance, si la donnée est disponible.
+  anti_cannibalisation: 'Aucun nouvel article : mise à jour de l''existant, updated_date à bumper seulement si le fond change.'
+  statut: planifié
+- numero: 7
+  date: '2026-12-01'
+  slug: bilan-tempo-novembre-2026
+  titre: 'Bilan Tempo novembre 2026 : jours rouges et blancs du mois'
+  mot_cle: bilan tempo novembre
+  cluster: calendrier
+  type: nouveau
+  intention: 'Informationnelle et temps réel : combien de rouges et de blancs en novembre ?'
+  first_hand: Décompte réel de novembre 2026 depuis la table actuals, rédigé le jour même (jamais avant) ; comparaison avec novembre des 6 saisons complètes (2 rouges en tout).
+  anti_cannibalisation: 'Gabarit mensuel : un article par mois, angle chiffré, sans reprise du contenu des guides. Si aucun rouge n''est tombé, le dire.'
+  statut: planifié
+- numero: 8
+  date: '2026-12-08'
+  slug: tempo-noel-nouvel-an
+  titre: 'Tempo à Noël et au Nouvel An : quelle couleur les jours fériés ?'
+  mot_cle: tempo noël
+  cluster: calendrier
+  type: nouveau
+  intention: 'Informationnelle : peut-on avoir un jour rouge à Noël ou au 1er janvier ?'
+  first_hand: Couleurs réelles du 24 décembre au 2 janvier sur 7 saisons (table actuals), rappel R2 (jamais de rouge un férié) et exemples de blancs un jour férié.
+  anti_cannibalisation: Angle calendrier des fêtes, pas le guide R1-R4. Lien vers jours-rouges-tempo-guide pour la règle.
+  statut: planifié
+- numero: 9
+  date: '2026-12-15'
+  slug: cuisiner-jour-rouge-tempo
+  titre: 'Cuisiner un jour rouge Tempo : four, plaques et astuces'
+  mot_cle: cuisiner jour rouge tempo
+  cluster: equipements
+  type: nouveau
+  intention: 'Pratique : combien coûte un repas un jour rouge et comment l''éviter ?'
+  first_hand: Calculs sur la grille du 1er août 2026 (kWh par appareil x tarif) présentés en tableau ; consommations d'appareils issues des notices ou marquées comme hypothèses.
+  anti_cannibalisation: 'L''astuce mijoteuse/micro-ondes est déjà dans chauffage-jour-rouge-tempo-astuces (astuce 9) : ici, l''ensemble de la cuisine ; renvoyer vers le pilier.'
+  statut: planifié
+- numero: 10
+  date: '2026-12-22'
+  slug: tempo-vacances-absence
+  titre: 'Partir en vacances avec Tempo : chauffe-eau et chauffage'
+  mot_cle: tempo vacances
+  cluster: equipements
+  type: nouveau
+  intention: 'Pratique : que régler avant de partir quelques jours ou semaines ?'
+  first_hand: Calculs sur la grille (veille, ballon, hors-gel) et couleurs réelles des vacances de Noël passées.
+  anti_cannibalisation: 'Ne pas dupliquer ballon-eau-chaude-tempo : ici le scénario d''absence, avec lien vers l''article ballon pour les réglages.'
+  statut: planifié
+- numero: 11
+  date: '2026-12-29'
+  slug: fiabilite-previsions-tempo
+  titre: 'Prévisions jours rouges Tempo : fiabilité mesurée de J+2 à J+5'
+  mot_cle: prévision jour rouge tempo
+  cluster: tempo-guide
+  type: nouveau
+  intention: 'Informationnelle : peut-on faire confiance aux prévisions de jours rouges ?'
+  first_hand: Chiffres réels de /api/performance sur J+2 à J+5 depuis le 1er novembre (rappel des rouges, faux positifs), avec période et effectif ; backtest F1 83 % cité comme mesure historique distincte.
+  anti_cannibalisation: 'Coordination @geo : même définition des métriques que /methodologie ; cet article ne doit jamais présenter le F1 comme une précision en direct.'
+  statut: planifié
+- numero: 12
+  date: '2027-01-05'
+  slug: bilan-tempo-decembre-2026
+  titre: 'Bilan Tempo décembre 2026 : jours rouges et blancs du mois'
+  mot_cle: bilan tempo décembre
+  cluster: calendrier
+  type: nouveau
+  intention: 'Informationnelle et temps réel : décompte de décembre.'
+  first_hand: Décompte réel de décembre 2026 (table actuals), comparé aux 28 rouges des 6 saisons complètes (2 à 8 par saison).
+  anti_cannibalisation: Gabarit mensuel, jamais rédigé avant le 1er du mois suivant.
+  statut: planifié
+- numero: 13
+  date: '2027-01-12'
+  slug: thermostat-radiateurs-connectes-tempo
+  titre: 'Thermostat connecté et Tempo : piloter selon la couleur'
+  mot_cle: thermostat connecté tempo
+  cluster: equipements
+  type: nouveau
+  intention: 'Pratique : programmer un thermostat ou des radiateurs connectés selon Tempo.'
+  first_hand: Scénarios chiffrés sur la grille du 1er août 2026 (consigne, préchauffage la veille) ; capture de la configuration testée si l'API est utilisée.
+  anti_cannibalisation: 'Les astuces 1, 2 et 6 du pilier chauffage-jour-rouge-tempo-astuces restent la référence : ici le pilotage automatisé.'
+  statut: planifié
+- numero: 14
+  date: '2027-01-19'
+  slug: jours-rouges-restants-tempo
+  titre: 'Jours rouges restants Tempo : combien en reste-t-il ?'
+  mot_cle: jours rouges restants tempo
+  cluster: jours-rouges
+  type: nouveau
+  intention: 'Informationnelle : combien de rouges et de blancs restent à placer ?'
+  first_hand: Compteur réel (rouges et blancs restants, jours éligibles restants, densité) au jour de rédaction, comparé à la même date des saisons passées.
+  anti_cannibalisation: 'Complémentaire de bilan-saison (fin de saison) : ici la lecture du compteur en cours de saison.'
+  statut: planifié
+- numero: 15
+  date: '2027-01-26'
+  slug: simulation-tempo-edf-economies
+  titre: 'Simulation Tempo EDF : estimez vos économies annuelles'
+  mot_cle: simulation tempo edf
+  cluster: tempo-guide
+  type: refresh
+  intention: 'Rafraîchir : refaire l''exemple chiffré avec les rouges réels de décembre-janvier si le tarif a changé ou si la donnée enrichit la simulation.'
+  first_hand: Coût du foyer d'exemple recalculé avec les couleurs réelles de la saison en cours.
+  anti_cannibalisation: Mise à jour de l'existant.
+  statut: planifié
+- numero: 16
+  date: '2027-02-02'
+  slug: bilan-tempo-janvier-2027
+  titre: 'Bilan Tempo janvier 2027 : jours rouges et blancs du mois'
+  mot_cle: bilan tempo janvier
+  cluster: calendrier
+  type: nouveau
+  intention: 'Informationnelle et temps réel : décompte de janvier.'
+  first_hand: Décompte réel de janvier 2027 (table actuals), comparé aux 69 rouges de janvier des 6 saisons complètes (8 à 15 par saison).
+  anti_cannibalisation: Gabarit mensuel.
+  statut: planifié
+- numero: 17
+  date: '2027-02-09'
+  slug: economies-tempo-mi-saison
+  titre: 'Tempo à mi-saison : combien avez-vous vraiment économisé ?'
+  mot_cle: économies tempo
+  cluster: tempo-guide
+  type: nouveau
+  intention: 'Informationnelle : bilan financier à mi-parcours.'
+  first_hand: Coût du foyer d'exemple de tempo-vs-heures-creuses-edf-bleu recalculé avec les couleurs réelles du 1er septembre à début février (hypothèses de consommation explicites).
+  anti_cannibalisation: 'Ne pas répéter la méthode de simulation-tempo-edf-economies : ici, l''application aux couleurs réelles.'
+  statut: planifié
+- numero: 18
+  date: '2027-02-16'
+  slug: tarifs-tempo-fevrier-2027
+  titre: 'Tarif Tempo EDF février 2027 : ce qui change pour vous'
+  mot_cle: tarif tempo edf
+  cluster: tempo-guide
+  type: nouveau
+  intention: 'Transactionnelle et informationnelle : nouvelle grille au 1er février ?'
+  first_hand: Grille comparée ancienne et nouvelle, source officielle (arrêté, Légifrance) citée.
+  anti_cannibalisation: 'CONDITIONNEL : publier uniquement si une révision officielle est parue ; sinon remplacer par un rafraîchissement de la page tarif ou passer l''item. Ne jamais publier de tarif non
+    confirmé.'
+  statut: planifié
+  condition: révision officielle des tarifs publiée avant le 16/02/2027
+- numero: 19
+  date: '2027-02-23'
+  slug: chauffage-jour-rouge-tempo-astuces
+  titre: 'Chauffage jour rouge Tempo : 10 astuces pour économiser'
+  mot_cle: chauffage jour rouge tempo
+  cluster: equipements
+  type: refresh
+  intention: Rafraîchir le pilier equipements avec un retour d'hiver (températures des rouges réels, astuces les plus efficaces).
+  first_hand: Températures et durées des jours rouges réels de la saison en cours ; contrôle des prix cités.
+  anti_cannibalisation: Mise à jour de l'existant ; vérifier que les 5 satellites sont toujours liés.
+  statut: planifié
+- numero: 20
+  date: '2027-03-02'
+  slug: bilan-tempo-fevrier-2027
+  titre: 'Bilan Tempo février 2027 : jours rouges et blancs du mois'
+  mot_cle: bilan tempo février
+  cluster: calendrier
+  type: nouveau
+  intention: 'Informationnelle et temps réel : décompte de février.'
+  first_hand: Décompte réel de février 2027 (table actuals), comparé aux 16 rouges de février des 6 saisons complètes (0 à 5 par saison).
+  anti_cannibalisation: Gabarit mensuel.
+  statut: planifié
+- numero: 21
+  date: '2027-03-09'
+  slug: quitter-tempo-edf-retour-base
+  titre: 'Quitter Tempo EDF ou rester après l''hiver : le calcul'
+  mot_cle: quitter tempo edf
+  cluster: tempo-guide
+  type: nouveau
+  intention: 'Décisionnelle : faut-il résilier ou changer d''option après l''hiver ?'
+  first_hand: Calcul sur la grille du 1er août 2026 avec les rouges réels de l'hiver et les modalités de changement d'offre vérifiées sur le site EDF.
+  anti_cannibalisation: 'Distinct de tempo-edf-avis-rentabilite (souscrire) : ici la sortie. Ne pas publier de démarche non vérifiée.'
+  statut: planifié
+- numero: 22
+  date: '2027-03-16'
+  slug: tempo-edf-avis-rentabilite
+  titre: 'Tempo EDF avis : est-ce rentable pour la saison 2026-2027 ?'
+  mot_cle: tempo edf avis
+  cluster: tempo-guide
+  type: refresh
+  intention: Rafraîchir avec le bilan de l'hiver 2026-2027 (rouges réels, économies).
+  first_hand: Données réelles de l'hiver 2026-2027 (répartition mensuelle, plus longue série).
+  anti_cannibalisation: Mise à jour de l'existant.
+  statut: planifié
+- numero: 23
+  date: '2027-03-23'
+  slug: panneaux-solaires-tempo
+  titre: 'Panneaux solaires et Tempo EDF : que faire les jours rouges'
+  mot_cle: panneaux solaires tempo
+  cluster: equipements
+  type: nouveau
+  intention: 'Pratique : compatibilité Tempo et autoconsommation.'
+  first_hand: Formules de calcul publiées avec sources officielles (EDF, CRE) ; aucune production chiffrée sans donnée vérifiée.
+  anti_cannibalisation: 'CONDITIONNEL : sauter l''item si aucune source vérifiable n''est réunie ; jamais de remplissage. Ne pas dupliquer pompe-a-chaleur-tempo-edf.'
+  statut: planifié
+  condition: sources officielles vérifiées disponibles
+- numero: 24
+  date: '2027-03-30'
+  slug: fin-saison-rouge-tempo-bilan
+  titre: 'Fin de saison rouge Tempo : ce qui change au 1er avril'
+  mot_cle: fin de saison rouge tempo
+  cluster: jours-rouges
+  type: refresh
+  intention: Rafraîchir avec les dates réelles de la fin de la période rouge 2026-2027.
+  first_hand: Dernier rouge de la saison, rouges de mars et nombre de blancs restants au 30 mars 2027 (table actuals).
+  anti_cannibalisation: Mise à jour de l'existant ; ajouter la saison 2026-2027 au tableau des dernières dates.
+  statut: planifié
 
 regles:
-  frequence: "rattrapage hebdomadaire jusqu'à mi-avril, puis 1 article toutes les 2 semaines"
-  alternance: "3 articles neufs, 1 semaine de rafraîchissement (REFRESH)"
-  longueur: "1200-2000 mots (5-8 min de lecture)"
-  style: "vouvoiement, ton expert accessible"
+  frequence: 'octobre : 1er et 3e mardi (bimensuel) ; novembre à mars : chaque mardi ; avril à septembre : bimensuel ; source de vérité : Config.SEO_SEASON_SCHEDULE'
+  alternance: 3 articles neufs pour 1 rafraîchissement (REFRESH) ; les bilans mensuels sont des articles neufs data-driven
+  longueur: 1200-2000 mots (piliers > 1200, satellites > 800)
+  style: vouvoiement, ton expert accessible, réponse directe dans les 40 à 60 premiers mots, zéro tiret cadratin
   saisonnalite:
-    nov_mars: "jours rouges, chauffage, alertes, gestion quotidienne"
-    avril_aout: "bilans, préparation, comparatifs, équipements, evergreen"
-    sept_oct: "rentrée Tempo, guides nouveaux abonnés"
-  clusters: "chaque article rattaché à un cluster ; satellite → lien vers pilier obligatoire"
-  maillage: "min 5 liens internes par article (3 blog + /calendrier + /#subscribe + pilier)"
-  anti_cannibalisation: "pas de doublon d'intention de recherche"
-  featured_snippets: "au moins 1 élément optimisé par article (tableau, liste, définition 40-60 mots)"
+    nov_mars: jours rouges, chauffage, alertes, bilans mensuels
+    avril_aout: bilans, préparation, comparatifs, équipements, evergreen
+    sept_oct: rentrée Tempo, guides nouveaux abonnés, premier jour rouge
+  clusters: chaque article rattaché à un cluster ; satellite vers pilier obligatoire, pilier vers tous ses satellites ; min 2 liens entrants par article
+  maillage: min 5 liens internes par article (3 blog + /calendrier + /#subscribe + pilier) et au moins 1 lien vers /tarif-tempo-edf, /couleur-tempo-demain, /api-tempo ou /methodologie quand le sujet s'y
+    prête
+  anti_cannibalisation: pas de doublon d'intention de recherche ; chaque item indique l'article existant à ne pas dupliquer
+  anti_repetition: 'vérifier articles_publies et prochaines_semaines avant tout nouveau sujet : jamais deux fois le même sujet avec le même angle'
+  featured_snippets: au moins 1 élément optimisé par article (tableau, liste, définition 40-60 mots)
+  donnees: chiffres historiques uniquement depuis la section donnees_reelles de _seo_rules.yaml ou une requête sur la table actuals ; jamais d'estimation ni de moyenne inventée
+  sources_externes: pages d'accueil officielles (edf.fr, cre.fr, rte-france.com, legifrance.gouv.fr) ou URL exacte déjà présente dans le repo
+  validation: python3 validate_article.py articles/{slug}.md (0 erreur) + titre 50-65 caractères + description 140-155 caractères + validation fondateur sur les 5 premiers articles neufs

@@ -42,11 +42,64 @@ def _preload(relpath):
         return None
 
 
-_dashboard_html = _preload("templates/dashboard.html")
 _static_files = {
     "/static/css/style.css": _preload("static/css/style.css"),
+    "/static/css/style.min.css": _preload("static/css/style.min.css"),
     "/static/js/app.js": _preload("static/js/app.js"),
+    "/static/js/app.min.js": _preload("static/js/app.min.js"),
 }
+
+# Dashboard rendu (Jinja2) pendant le démarrage : jamais le template brut
+# (des balises {% ... %} servies en 200 seraient indexées telles quelles).
+_cold_dashboard: bytes | None = None
+_cold_dashboard_lock = threading.Lock()
+
+# Page servie (503 + Retry-After) pour les autres URL pendant le démarrage :
+# signal « indisponible temporairement » pour les robots, rechargement auto pour les visiteurs.
+_LOADING_PAGE = (
+    "<!DOCTYPE html><html lang='fr'><head><meta charset='utf-8'>"
+    "<meta name='viewport' content='width=device-width, initial-scale=1'>"
+    "<meta http-equiv='refresh' content='3'><meta name='robots' content='noindex'>"
+    "<title>Calendrier Tempo EDF</title>"
+    "<style>body{font-family:sans-serif;text-align:center;padding:50px;color:#333}</style>"
+    "</head><body><h1>Calendrier Tempo EDF</h1>"
+    "<p>Démarrage du service, la page se recharge automatiquement…</p></body></html>"
+).encode("utf-8")
+
+
+def _render_cold_dashboard() -> bytes | None:
+    """Rend dashboard.html sans données (même rendu que FastAPI quand la DB n'est pas prête).
+
+    Jinja2 et site_facts sont légers (~100 ms) ; le rendu est mis en cache.
+    """
+    global _cold_dashboard
+    if _cold_dashboard is not None:
+        return _cold_dashboard
+    with _cold_dashboard_lock:
+        if _cold_dashboard is None:
+            try:
+                from jinja2 import Environment, FileSystemLoader
+                import site_facts
+                env = Environment(loader=FileSystemLoader(os.path.join(_base_dir, "templates")),
+                                  autoescape=True)
+                env.policies["json.dumps_kwargs"] = {"ensure_ascii": False, "sort_keys": False}
+                env.globals.update(
+                    facts=site_facts.template_globals(),
+                    bing_verification=os.getenv("BING_SITE_VERIFICATION", ""),
+                    google_verification=os.getenv("GOOGLE_SITE_VERIFICATION", ""),
+                )
+                html = env.get_template("dashboard.html").render(
+                    request=None,
+                    ssr={"predictions": [], "week_summary": []},
+                    faq=site_facts.FAQ_HOME,
+                    faq_ld=site_facts.faq_jsonld(site_facts.FAQ_HOME),
+                    itemlist_ld=None,
+                )
+                _cold_dashboard = html.encode("utf-8")
+            except Exception as e:
+                logger.warning("[Proxy] Rendu du dashboard de démarrage impossible : %s", e)
+                return None
+    return _cold_dashboard
 
 # --- État global du proxy ---
 _real_app = None
@@ -100,13 +153,14 @@ async def _handle_lifespan(scope, receive, send):
 
 
 async def _serve_loading_response(scope, send):
-    """Sert le vrai dashboard pendant le chargement de FastAPI.
+    """Réponses pendant le chargement de FastAPI.
 
-    Au lieu d'une page minimale 'Chargement en cours...', on sert
-    directement le dashboard HTML + CSS + JS. L'interface apparaît
-    immédiatement ; les appels API échouent gracieusement (le JS
-    affiche des boutons Réessayer) puis fonctionnent dès que FastAPI
-    est prêt.
+    - « / » : le vrai dashboard, rendu par Jinja2 sans données (jamais le
+      template brut). Les appels API échouent gracieusement (le JS affiche
+      Réessayer) puis fonctionnent dès que FastAPI est prêt.
+    - CSS/JS préchargés : servis directement.
+    - /api/* : 503 JSON. Autres pages : 503 + Retry-After (signal temporaire
+      pour les robots, rechargement automatique pour les visiteurs).
     """
     path = scope.get("path", "/")
 
@@ -128,26 +182,25 @@ async def _serve_loading_response(scope, send):
         content_type = ct.encode()
         cache_control = b"public, max-age=3600, stale-while-revalidate=86400"
         status = 200
-    elif _dashboard_html:
-        body = _dashboard_html
+    elif path == "/" and _render_cold_dashboard():
+        # Vrai dashboard rendu (sans données : le JS les charge dès que l'API répond)
+        body = _render_cold_dashboard()
         content_type = b"text/html; charset=utf-8"
+        cache_control = b"no-store"
+        status = 200
+    elif path == "/":
+        # Fallback si le rendu a échoué : 200 pour ne pas faire échouer un health check sur /
+        body = _LOADING_PAGE
+        content_type = b"text/html; charset=utf-8"
+        cache_control = b"no-store"
         status = 200
     else:
-        # Fallback si le fichier n'a pas pu être lu
-        body = (
-            b"<!DOCTYPE html><html><head>"
-            b"<meta charset='utf-8'>"
-            b"<meta http-equiv='refresh' content='3'>"
-            b"<title>Calendrier Tempo EDF</title>"
-            b"<style>body{font-family:sans-serif;text-align:center;"
-            b"padding:50px;color:#333}</style>"
-            b"</head><body>"
-            b"<h1>Calendrier Tempo EDF</h1>"
-            b"<p>Chargement en cours...</p>"
-            b"</body></html>"
-        )
+        # Autres pages (calendrier, blog, robots.txt, sitemap.xml…) : 503 + Retry-After,
+        # jamais un contenu de remplacement en 200 sous une autre URL.
+        body = _LOADING_PAGE
         content_type = b"text/html; charset=utf-8"
-        status = 200
+        cache_control = b"no-store"
+        status = 503
 
     headers = [
         [b"content-type", content_type],
@@ -155,6 +208,8 @@ async def _serve_loading_response(scope, send):
     ]
     if cache_control:
         headers.append([b"cache-control", cache_control])
+    if status == 503:
+        headers.append([b"retry-after", b"5"])
 
     await send({
         "type": "http.response.start",

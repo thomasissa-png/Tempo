@@ -1,14 +1,14 @@
 ---
 title: Ballon d'eau chaude Tempo : programmer pour économiser
-description: Ballon d'eau chaude Tempo : programmez la chauffe en heures creuses, coupez les jours rouges et réduisez la facture. Réglages, contacteur HC et estimations.
-publish_date: 2026-07-21
-updated_date: 2026-08-09
+description: Ballon d'eau chaude Tempo : programmez la chauffe en heures creuses, coupez les jours rouges et réduisez la facture. Réglages, contacteur HC, économies.
 keywords: ballon d'eau chaude tempo, chauffe-eau tempo edf, contacteur heures creuses tempo, programmer chauffe-eau tempo
+publish_date: 2026-07-21
+updated_date: 2026-09-29
 cluster: equipements
 ---
-Le chauffe-eau électrique est l'un des plus gros postes silencieux de votre facture : il représente environ **15 % de la consommation** d'un foyer, et il fonctionne souvent sans que vous y pensiez. Avec l'offre Tempo EDF, ce détail devient stratégique. Bien réglé, un **ballon d'eau chaude Tempo** chauffe toujours au tarif le plus bas de chaque couleur, celui des heures creuses : 0,1356 euros/kWh un jour bleu, et 0,1615 euros/kWh un jour rouge, qui reste le plancher applicable ce jour-là. Il reste éteint pendant les heures pleines rouges, facturées 0,7295 euros/kWh, soit plus de quatre fois plus cher. Mal réglé, il fait exactement l'inverse.
+Le chauffe-eau électrique est l'un des plus gros postes silencieux de votre facture : il figure parmi les **premiers postes de consommation** d'un foyer, et il fonctionne souvent sans que vous y pensiez. Avec l'offre Tempo EDF, ce détail devient stratégique. Bien réglé, un **ballon d'eau chaude Tempo** chauffe toujours au tarif le plus bas de chaque couleur, celui des heures creuses : 0,1356 euros/kWh un jour bleu, et 0,1615 euros/kWh un jour rouge, qui reste le plancher applicable ce jour-là. Il reste éteint pendant les heures pleines rouges, facturées 0,7295 euros/kWh, soit 4,5 fois plus cher que les heures creuses rouges (et 4,4 fois le tarif d'une heure pleine bleue). Mal réglé, il fait exactement l'inverse.
 
-L'objectif de cet article est simple : vous donner les réglages concrets pour que votre chauffe-eau ne chauffe jamais au mauvais moment. Nous verrons comment utiliser le contacteur heures creuses, caler la chauffe sur 22h-6h, couper le ballon les jours rouges en ayant chauffé la veille, et quelques ordres de grandeur d'économie. Pour une vue d'ensemble des autres équipements à optimiser, consultez notre guide pour [économiser avec Tempo EDF](/blog/economiser-tempo-edf).
+L'objectif de cet article est simple : vous donner les réglages concrets pour que votre chauffe-eau ne chauffe jamais au mauvais moment. Nous verrons comment utiliser le contacteur heures creuses, caler la chauffe sur 22h-6h, couper le ballon les jours rouges en ayant chauffé la veille, et quelques ordres de grandeur d'économie. Pour une vue d'ensemble des autres équipements à optimiser, consultez notre guide pour [économiser avec Tempo EDF](/blog/economiser-tempo-edf) et nos [10 astuces chauffage pour les jours rouges](/blog/chauffage-jour-rouge-tempo-astuces). La grille complète est sur la page [tarif Tempo EDF](/tarif-tempo-edf).
 
 ## Comprendre les heures creuses Tempo
 
@@ -48,7 +48,7 @@ Si votre installation ne dispose pas de contacteur, ou si vous voulez un contrô
 
 Un ballon de 200 à 300 litres bien isolé n'a pas besoin de chauffer en journée : la nuit suffit à reconstituer le volume d'eau chaude consommé. Si vous manquez d'eau chaude en fin de journée, ce n'est généralement pas un problème de plage horaire mais de dimensionnement ou d'isolation, deux points abordés plus bas.
 
-*À noter : un programmateur mécanique simple coûte une quinzaine d'euros et se branche en quelques minutes. Les modèles connectés permettent en plus de couper le ballon à distance, pratique les jours rouges.*
+*À noter : un programmateur mécanique simple coûte une quinzaine d'euros et se branche en quelques minutes. Les modèles connectés permettent en plus de couper le ballon à distance, pratique les jours rouges, et ils peuvent être pilotés automatiquement avec la couleur du jour fournie par notre [API Tempo](/api-tempo).*
 
 ## Couper le ballon les jours rouges (chauffer la veille)
 
@@ -62,7 +62,7 @@ La stratégie en trois temps :
 
 L'intérêt majeur : même si vous oubliez de couper le ballon, le pire scénario reste une chauffe en heures creuses rouges à 0,1615 euros/kWh, déjà bien plus douce que les heures pleines. Mais en coupant explicitement la journée, vous évitez toute relance intempestive en heures pleines (par exemple après une grosse consommation d'eau chaude en milieu de journée).
 
-Le seul vrai obstacle, c'est de savoir à l'avance quels jours seront rouges. EDF n'annonce officiellement que la couleur du lendemain, chaque jour vers 11h. Pour anticiper plus loin et chauffer la veille sereinement, notre site prédit les couleurs de **J+2 à J+5**. Inscrivez-vous à nos [alertes gratuites](/#subscribe) pour être prévenu avant chaque jour rouge.
+Le seul vrai obstacle, c'est de savoir à l'avance quels jours seront rouges. EDF n'annonce officiellement que la couleur du lendemain, chaque jour vers 11h. Pour anticiper plus loin et chauffer la veille sereinement, notre site prédit les couleurs de **J+2 à J+5**. Inscrivez-vous à nos [alertes gratuites](/#subscribe) pour recevoir chaque dimanche la prévision des 7 prochains jours et un message avant chaque jour rouge probable.
 
 ## Isoler le ballon pour prolonger la réserve d'eau chaude
 
@@ -101,4 +101,4 @@ Pour un ballon de 200 litres consommant environ 4 kWh par jour, décaler la chau
 
 ---
 
-*Dernière mise à jour : 9 août 2026. Les tarifs indiqués correspondent au barème Tempo EDF en vigueur depuis le 1er août 2026 (prix TTC). Consultez le [calendrier Tempo](/calendrier) pour suivre les couleurs du jour, [recevez nos alertes gratuites](/#subscribe) avant chaque jour rouge, et découvrez d'autres leviers d'économie dans notre guide pour [économiser avec Tempo EDF](/blog/economiser-tempo-edf).*
+*Mis à jour le 29 septembre 2026. Les tarifs indiqués correspondent au barème Tempo EDF en vigueur depuis le 1er août 2026 (prix TTC, source [EDF](https://www.edf.fr/) et [Légifrance](https://www.legifrance.gouv.fr/)). Consultez le [calendrier Tempo](/calendrier) pour suivre les couleurs du jour, [recevez nos alertes gratuites](/#subscribe) avant chaque jour rouge, et découvrez d'autres leviers d'économie dans notre guide pour [économiser avec Tempo EDF](/blog/economiser-tempo-edf).*

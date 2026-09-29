@@ -1,13 +1,12 @@
 ---
-title: Tempo EDF en 2026 : le guide complet pour les abonnés
-description: Offre Tempo EDF 2026 : fonctionnement, tarifs, jours rouges, blancs et bleus, avantages et conseils pour économiser.
+title: Tempo EDF 2026-2027 : le guide complet pour les abonnés
+description: Tempo EDF 2026-2027 : fonctionnement de l'offre, tarifs au 1er août 2026, règles des jours rouges, blancs et bleus, avantages et conseils pour économiser.
+keywords: tempo edf, edf tempo, offre tempo edf 2026-2027, tarif tempo edf, calendrier tempo edf, jours rouges tempo
 publish_date: 2026-02-17
-updated_date: 2026-08-09
-keywords: tempo edf, offre tempo edf 2026, tempo edf avis, tempo edf tarif, calendrier tempo edf, jours rouges tempo
+updated_date: 2026-09-29
 cluster: tempo-guide
 ---
-
-L'offre **Tempo EDF** est le contrat d'électricité le plus original du marché français. Avec ses 3 couleurs de jours et ses tarifs qui varient du simple au quintuple (un facteur 5,4 entre l'heure creuse bleue et l'heure pleine rouge), elle peut vous faire économiser des centaines d'euros par an — ou vous coûter très cher si vous ne l'anticipez pas. Ce guide fait le point complet sur le fonctionnement de Tempo en 2026.
+L'offre **Tempo EDF** est le contrat d'électricité le plus original du marché français. Avec ses 3 couleurs de jours et une heure pleine rouge 4,4 fois plus chère que l'heure pleine bleue (0,7295 contre 0,1654 €/kWh), elle peut vous faire économiser des centaines d'euros par an, ou vous coûter très cher si vous ne l'anticipez pas. Ce guide fait le point complet sur le fonctionnement de Tempo pour la saison 2026-2027, qui a démarré le 1er septembre 2026.
 
 ## Qu'est-ce que l'offre Tempo EDF ?
 
@@ -29,9 +28,9 @@ Voici les tarifs actuels de l'option Tempo pour un compteur 9 kVA (TTC), en vigu
 | **BLANC** | 0,1536 €/kWh | 0,1921 €/kWh |
 | **ROUGE** | 0,1615 €/kWh | **0,7295 €/kWh** |
 
-Ces montants intègrent la revalorisation du 1er août 2026, qui a relevé la grille Tempo de +2,3 % à +3,3 % selon la couleur et la plage horaire (le jour rouge en heures pleines subit la plus forte hausse, +3,3 %). Ils sont fixés par l'arrêté du 29 juillet 2026, publié au Journal Officiel du 31 juillet 2026.
+Ces montants intègrent la revalorisation du 1er août 2026, qui a relevé la grille Tempo de +2,3 % à +3,3 % selon la couleur et la plage horaire (le jour rouge en heures pleines subit la plus forte hausse, +3,3 %). Ils sont fixés par l'arrêté du 29 juillet 2026, publié au Journal Officiel du 31 juillet 2026. Le détail de la grille et de son évolution figure sur la page [tarif Tempo EDF](/tarif-tempo-edf).
 
-Le point clé : en heures pleines d'un jour rouge, le prix atteint **0,7295 €/kWh**, soit plus de **4 fois** le tarif d'un jour bleu. C'est ce différentiel qui fait tout l'intérêt (et le risque) de l'offre Tempo.
+Le point clé : en heures pleines d'un jour rouge, le prix atteint **0,7295 €/kWh**, soit **4,4 fois** le tarif d'une heure pleine bleue. C'est ce différentiel qui fait tout l'intérêt (et le risque) de l'offre Tempo.
 
 ## Quand tombent les jours rouges ?
 
@@ -43,7 +42,7 @@ Les jours rouges obéissent à des **règles strictes** fixées par EDF :
 4. **Maximum 5 consécutifs** : pas plus de 5 jours rouges d'affilée
 5. **Budget fixe** : exactement 22 par saison (du 1er septembre au 31 août)
 
-En pratique, les jours rouges tombent lors des **vagues de froid hivernales**, quand la consommation nationale d'électricité est la plus forte. C'est pourquoi ils sont difficiles à prévoir : tout dépend de la météo. Pour tout comprendre sur ces journées et savoir comment les anticiper, consultez notre [guide complet des jours rouges Tempo](/blog/jours-rouges-tempo-guide).
+Le choix de la couleur de chaque jour est assuré par RTE depuis le 1er novembre 2014, selon un critère de consommation nette (consommation nationale diminuée de la production éolienne et photovoltaïque). En pratique, les jours rouges tombent donc lors des **vagues de froid hivernales**, quand cette consommation est la plus forte. Dans notre historique de six saisons complètes, 54 % des jours rouges sont tombés en janvier, 22 % en décembre, 12 % en février, 10 % en mars et 2 rouges seulement en novembre. Difficiles à prévoir, ils dépendent de la météo : voir le [calendrier Tempo 2026-2027](/blog/calendrier-tempo-2026-2027-dates) pour le cadre de la saison en cours. Pour tout comprendre sur ces journées et savoir comment les anticiper, consultez notre [guide complet des jours rouges Tempo](/blog/jours-rouges-tempo-guide).
 
 ## Pour qui Tempo est-il intéressant ?
 
@@ -83,19 +82,19 @@ La veille d'un jour rouge, montez le chauffage à 21-22°C et lancez toutes vos 
 
 ## Combien peut-on économiser ?
 
-Pour un foyer type avec chauffage électrique (consommation ~8000 kWh/an) :
+Pour un foyer type avec chauffage électrique (consommation ~8 000 kWh/an) :
 
 - **Sans adaptation** les jours rouges : surcoût de 10 à 20 € par jour rouge, soit 18 à 35 kWh consommés en heures pleines rouges au lieu d'un jour bleu (l'écart est de 0,5641 €/kWh). Un logement tout-électrique mal isolé, qui pousse le chauffage toute la journée, peut approcher 30 €
 - **Avec adaptation** (machines reportées, chauffage baissé) : économie de **300 à 400 € par an** par rapport au tarif réglementé, désormais à 0,2001 €/kWh en option Base depuis le 1er août 2026
 
-Le montant exact dépend de votre profil de consommation et de votre capacité à vous adapter. Notre outil [Calendrier Tempo EDF](/) vous aide à anticiper les jours rouges jusqu'à 15 jours à l'avance. Pour comprendre les tendances de placement des jours rouges au fil des années, retrouvez l'[historique des saisons Tempo](/blog/calendrier-tempo-historique-saisons).
+Le montant exact dépend de votre profil de consommation et de votre capacité à vous adapter. Notre outil [Calendrier Tempo EDF](/) vous aide à anticiper les jours rouges de J+2 à J+5, avec une tendance indicative jusqu'à J+15. Pour comprendre les tendances de placement des jours rouges au fil des années, retrouvez l'[historique des saisons Tempo](/blog/calendrier-tempo-historique-saisons).
 
 ## Comment être prévenu des jours rouges ?
 
 EDF annonce la couleur du lendemain vers 11h, ce qui laisse peu de temps pour s'organiser. Pour anticiper davantage, plusieurs solutions :
 
-1. **Notre service d'alertes WhatsApp** : recevez un message gratuit avec les prévisions jusqu'à J+15 avant chaque jour rouge. [Inscrivez-vous ici](/alertes) ou découvrez [comment fonctionnent nos alertes jour rouge](/blog/alerte-jour-rouge-tempo).
-2. **Le [calendrier Tempo](/calendrier)** : consultez la vue mensuelle pour voir les couleurs passées et nos prévisions futures.
+1. **Notre service d'alertes WhatsApp** : recevez gratuitement chaque dimanche la prévision des 7 prochains jours, et un message avant chaque jour rouge probable. [Inscrivez-vous ici](/#subscribe) ou découvrez [comment fonctionnent nos alertes jour rouge](/blog/alerte-jour-rouge-tempo).
+2. **Le [calendrier Tempo](/calendrier)** : consultez la vue mensuelle pour voir les couleurs passées et nos prévisions futures, ou la page [couleur Tempo demain](/couleur-tempo-demain) dès la publication d'EDF vers 11h.
 3. **L'application EDF & Moi** : l'app officielle envoie une notification la veille.
 
 ## Les inconvénients de Tempo
@@ -104,7 +103,7 @@ Soyons transparents, Tempo a aussi ses limites :
 
 - **Contraignant** : il faut surveiller les couleurs et adapter ses habitudes quotidiennement en hiver
 - **Risque financier** : un jour rouge "oublié" coûte 10 à 20 € de plus qu'un jour bleu, jusqu'à une trentaine d'euros dans un logement tout-électrique mal isolé
-- **Incertitude** : EDF ne prévient que la veille à 11h (d'où l'utilité de nos prévisions à 15 jours)
+- **Incertitude** : EDF ne prévient que la veille à 11h (d'où l'utilité de nos prévisions de J+2 à J+5)
 - **Pas pour tous** : les foyers tout-électrique sans alternative de chauffage y perdent souvent
 
 ## Tempo vs. autres offres EDF
@@ -114,22 +113,22 @@ Soyons transparents, Tempo a aussi ses limites :
 | Prix jours bleus HP | 0,17 €/kWh | 0,20 €/kWh | 0,21 €/kWh |
 | Prix jours rouges HP | **0,73 €/kWh** | 0,20 €/kWh | 0,21 €/kWh |
 | Risque | Élevé | Nul | Faible |
-| Économie potentielle | 300-400 €/an | Référence | 50-150 €/an |
+| Économie potentielle | 300-400 €/an | Référence | environ 60 €/an |
 | Effort requis | Important | Aucun | Faible |
 
 Les prix Base et Heures Creuses de ce tableau correspondent à la grille du tarif réglementé du **1er août 2026** : 0,2001 €/kWh en option Base et 0,2142 €/kWh en heures pleines de l'option Heures Creuses (0,1589 €/kWh en heures creuses).
 
-Pour une comparaison détaillée, lisez notre article [Tempo vs. Heures Creuses : quel contrat choisir ?](/blog/tempo-vs-heures-creuses-edf-bleu).
+Pour une comparaison détaillée et la simulation chiffrée (8 000 kWh par an), lisez notre article [Tempo vs. Heures Creuses : quel contrat choisir ?](/blog/tempo-vs-heures-creuses-edf-bleu).
 
 ## FAQ : vos questions sur Tempo EDF
 
 ### Tempo EDF est-il rentable pour un appartement tout-électrique ?
 
-Cela dépend de votre capacité à réduire votre consommation les jours rouges. Un appartement de 60 m2 bien isolé avec un chauffage d'appoint (poêle, couverture chauffante) peut économiser **200 à 350 euros par an**. En revanche, un logement mal isolé sans alternative de chauffage risque de perdre de l'argent. Simulez vos économies avant de souscrire.
+Cela dépend de votre capacité à réduire votre consommation les jours rouges. Un appartement bien isolé avec un chauffage d'appoint (poêle, couverture chauffante) peut réduire nettement ses jours rouges et rester gagnant. En revanche, un logement mal isolé sans alternative de chauffage risque de perdre de l'argent. Simulez vos économies avant de souscrire avec notre [méthode de simulation Tempo EDF](/blog/simulation-tempo-edf-economies).
 
 ### Comment connaître la couleur Tempo du jour et du lendemain ?
 
-EDF annonce la couleur du lendemain chaque jour vers **11h**. Pour anticiper davantage (J+2 à J+5), consultez notre [calendrier Tempo](/calendrier) mis à jour quotidiennement. Vous pouvez aussi [recevoir des alertes WhatsApp gratuites](/#subscribe) avant chaque jour rouge.
+EDF annonce la couleur du lendemain chaque jour vers **11h**. Pour anticiper davantage (J+2 à J+5), consultez notre [calendrier Tempo](/calendrier) mis à jour quotidiennement. Vous pouvez aussi [recevoir des alertes WhatsApp gratuites](/#subscribe) : prévision des 7 prochains jours chaque dimanche et message avant chaque jour rouge probable.
 
 ### Peut-on revenir au tarif réglementé après avoir souscrit Tempo ?
 
@@ -137,4 +136,15 @@ Oui, vous pouvez changer d'offre à tout moment et sans frais. Le changement pre
 
 ## Conclusion
 
-L'offre Tempo EDF est un excellent contrat pour les foyers qui peuvent s'adapter. Les 300 jours bleus à tarif très bas compensent largement les 22 jours rouges — à condition de les anticiper. Notre [Calendrier Tempo EDF](/) et nos [alertes WhatsApp gratuites](/alertes) sont là pour vous y aider. Consultez également les [dates et couleurs de la saison 2025-2026](/blog/calendrier-tempo-2025-2026-dates) pour un suivi détaillé.
+L'offre Tempo EDF est un excellent contrat pour les foyers qui peuvent s'adapter. Les 300 jours bleus à tarif très bas compensent largement les 22 jours rouges, à condition de les anticiper. Notre [Calendrier Tempo EDF](/) et nos [alertes WhatsApp gratuites](/#subscribe) sont là pour vous y aider.
+
+## Pour aller plus loin
+
+- [Avis sur la rentabilité de Tempo EDF](/blog/tempo-edf-avis-rentabilite) : pour qui l'offre est rentable
+- [Souscrire Tempo EDF](/blog/souscrire-tempo-edf-guide) : prérequis et étapes
+- [Rentrée Tempo 2026-2027](/blog/rentree-tempo-2026-2027) : ce qui change à la nouvelle saison
+- [Calendrier Tempo 2026-2027](/blog/calendrier-tempo-2026-2027-dates) et [dates de la saison 2025-2026](/blog/calendrier-tempo-2025-2026-dates)
+
+---
+
+*Guide mis à jour le 29 septembre 2026 pour la saison 2026-2027. Sources : [EDF](https://www.edf.fr/) pour l'offre et les règles, [Commission de régulation de l'énergie](https://www.cre.fr/) pour le cadre des tarifs réglementés, [Légifrance](https://www.legifrance.gouv.fr/) pour l'arrêté du 29 juillet 2026.*

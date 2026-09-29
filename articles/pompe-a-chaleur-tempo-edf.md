@@ -1,12 +1,11 @@
 ---
-title: Pompe à chaleur et Tempo EDF : compatibilité et stratégies
-description: Pompe à chaleur et Tempo EDF : COP, coût des jours rouges et stratégies (préchauffage, appoint, programmation) pour chauffer sans exploser la facture.
+title: Pompe à chaleur Tempo EDF : compatibilité et stratégies
+description: Pompe à chaleur Tempo : COP, coût des jours rouges et stratégies (préchauffage, appoint, programmation) pour chauffer sans faire exploser la facture.
 keywords: pompe à chaleur tempo, pac tempo edf, chauffage pompe à chaleur tempo, pompe à chaleur jour rouge
 publish_date: 2026-05-26
-updated_date: 2026-08-09
+updated_date: 2026-09-29
 cluster: equipements
 ---
-
 La **pompe à chaleur tempo** est l'un des sujets qui revient le plus souvent chez les abonnés EDF Tempo équipés d'un chauffage électrique performant. La promesse d'une PAC est séduisante : produire plusieurs kilowattheures de chaleur pour un seul kilowattheure consommé. Mais que devient cet avantage les jours rouges, quand le kilowattheure en heures pleines grimpe à 0,7295 €/kWh ? La réponse n'est ni « la PAC est inutile avec Tempo », ni « la PAC règle tout » : c'est une affaire de pilotage. Dans cet article, nous voyons comment le COP de votre pompe à chaleur influence le coût des jours rouges, et surtout quelles stratégies concrètes mettre en place pour chauffer confortablement sans faire exploser la facture.
 
 ## Comprendre le COP avant de parler de Tempo
@@ -15,7 +14,7 @@ Le COP (coefficient de performance) indique combien de kilowattheures de chaleur
 
 Mais ce COP n'est pas une constante. Il **baisse quand la température extérieure chute** : la PAC doit travailler plus dur pour extraire de la chaleur d'un air (ou d'un sol) plus froid. Selon le modèle et la température, le COP peut passer d'une valeur confortable par temps doux à une valeur nettement plus faible par grand froid.
 
-Or — et c'est tout l'enjeu — les jours rouges Tempo coïncident très souvent avec les pics de froid. EDF place ses 22 jours rouges de la saison (uniquement du 1er novembre au 31 mars, jamais le week-end ni les jours fériés) sur les journées de forte tension du réseau, c'est-à-dire les plus froides. Le jour où vous payez votre électricité le plus cher est donc précisément celui où votre PAC est le moins efficace. Ce double effet explique pourquoi le pilotage compte autant.
+Or, et c'est tout l'enjeu, les jours rouges Tempo coïncident très souvent avec les pics de froid : dans notre historique, la température moyenne des jours rouges a une médiane de 2,8 °C. EDF place ses 22 jours rouges de la saison (uniquement du 1er novembre au 31 mars, jamais le week-end ni les jours fériés) sur les journées de forte tension du réseau, c'est-à-dire les plus froides. Le jour où vous payez votre électricité le plus cher est donc précisément celui où votre PAC est le moins efficace. Ce double effet explique pourquoi le pilotage compte autant.
 
 ## Le coût d'un jour rouge avec une PAC : un ordre de grandeur
 
@@ -27,7 +26,7 @@ Faisons un calcul d'ordre de grandeur (les chiffres dépendent de votre logement
 | Jour blanc | tarif moyen | tarif modéré |
 | Jour rouge | **0,7295 €/kWh** | **0,1615 €/kWh** |
 
-L'écart est spectaculaire : en jour rouge, l'heure pleine coûte environ **4,5 fois** l'heure creuse. C'est cette structure tarifaire qui doit dicter votre stratégie PAC. Si votre pompe à chaleur consomme, par exemple, plusieurs kilowattheures électriques par jour pour chauffer, déplacer cette consommation hors des heures pleines rouges représente une économie immédiate et substantielle. Pour aller plus loin sur la logique d'ensemble, consultez notre guide pour [économiser avec Tempo EDF](/blog/economiser-tempo-edf).
+L'écart est spectaculaire : en jour rouge, l'heure pleine coûte environ **4,5 fois** l'heure creuse rouge, et 4,4 fois l'heure pleine bleue (0,1654 €/kWh). La grille complète est sur la page [tarif Tempo EDF](/tarif-tempo-edf). C'est cette structure tarifaire qui doit dicter votre stratégie PAC. Si votre pompe à chaleur consomme, par exemple, plusieurs kilowattheures électriques par jour pour chauffer, déplacer cette consommation hors des heures pleines rouges représente une économie immédiate et substantielle. Pour aller plus loin sur la logique d'ensemble, consultez notre guide pour [économiser avec Tempo EDF](/blog/economiser-tempo-edf).
 
 ## Stratégie n°1 : préchauffer la veille en heures creuses
 
@@ -39,7 +38,7 @@ Cette approche fonctionne d'autant mieux que :
 - vous disposez d'un plancher chauffant ou de radiateurs à forte inertie ;
 - vous savez à l'avance qu'un jour rouge arrive.
 
-C'est ce dernier point qui fait toute la différence. EDF annonce la couleur de J+1 vers 11h seulement — trop tard pour préchauffer sereinement la nuit précédente si vous ne l'aviez pas anticipé. Notre site prédit les couleurs de J+2 à J+5 (à partir de la météo de 9 villes, des données RTE et d'un modèle d'apprentissage) pour vous laisser le temps d'organiser votre préchauffage. Consultez les couleurs à venir sur le [calendrier Tempo](/calendrier) et activez les [alertes jour rouge gratuites](/#subscribe) pour ne jamais être pris au dépourvu.
+C'est ce dernier point qui fait toute la différence. EDF annonce la couleur de J+1 vers 11h seulement (voir la page [couleur Tempo demain](/couleur-tempo-demain)), trop tard pour préchauffer sereinement la nuit précédente si vous ne l'aviez pas anticipé. Notre site prédit les couleurs de J+2 à J+5 (à partir de la météo de 9 villes, des données RTE et d'un modèle d'apprentissage) pour vous laisser le temps d'organiser votre préchauffage. Consultez les couleurs à venir sur le [calendrier Tempo](/calendrier) et activez les [alertes jour rouge gratuites](/#subscribe) pour ne jamais être pris au dépourvu.
 
 ## Stratégie n°2 : abaisser la consigne et limiter la PAC en heures pleines rouges
 
@@ -49,7 +48,7 @@ Le jour rouge lui-même, l'objectif est de minimiser la consommation entre 6h et
 - **Programmer une coupure ou un mode éco** pendant les heures pleines rouges, puis laisser la PAC reprendre en heures creuses du soir.
 - **Concentrer les usages chauffants** (eau chaude sanitaire si pilotable, sèche-serviette) sur les heures creuses.
 
-Attention toutefois : couper totalement une PAC par très grand froid puis la relancer peut être contre-productif, car la relance demande beaucoup d'énergie au moment où le COP est faible. Mieux vaut souvent **réduire** que couper net. Nos [astuces de chauffage en jour rouge](/blog/chauffage-jour-rouge-tempo-astuces) détaillent ces arbitrages selon le type d'émetteur.
+Attention toutefois : couper totalement une PAC par très grand froid puis la relancer peut être contre-productif, car la relance demande beaucoup d'énergie au moment où le COP est faible. Mieux vaut souvent **réduire** que couper net. Nos [astuces de chauffage en jour rouge](/blog/chauffage-jour-rouge-tempo-astuces), le guide de référence sur les équipements, détaillent ces arbitrages selon le type d'émetteur.
 
 ## Stratégie n°3 : prévoir un appoint pour les jours rouges
 
@@ -65,7 +64,7 @@ Toutes ces stratégies deviennent fastidieuses si elles reposent sur des réglag
 - moduler facilement la consigne d'un jour à l'autre selon la couleur Tempo annoncée ;
 - voire automatiser le déclenchement selon un signal externe.
 
-Certains gestionnaires d'énergie domestiques savent déjà piloter les équipements en fonction de la couleur Tempo. Couplés à une anticipation J+2 à J+5, ils permettent de programmer le préchauffage de la veille **automatiquement**. Pour suivre finement vos consommations heure par heure et vérifier l'effet de vos réglages, le compteur Linky est un allié précieux : voyez comment [suivre sa consommation avec Linky](/blog/linky-tempo-suivre-consommation).
+Certains gestionnaires d'énergie domestiques savent déjà piloter les équipements en fonction de la couleur Tempo, que notre [API Tempo](/api-tempo) gratuite met à disposition. Couplés à une anticipation J+2 à J+5, ils permettent de programmer le préchauffage de la veille **automatiquement**. Pour suivre finement vos consommations heure par heure et vérifier l'effet de vos réglages, le compteur Linky est un allié précieux : voyez comment [suivre sa consommation avec Linky](/blog/linky-tempo-suivre-consommation).
 
 ## Alors, une PAC est-elle un bon choix avec Tempo ?
 
@@ -75,7 +74,7 @@ Oui, à condition de la piloter. Voici une synthèse honnête :
 - **Point de vigilance** : les 22 jours rouges concentrent un coût élevé, aggravé par la baisse du COP par grand froid. Sans pilotage, ils peuvent effacer une partie des économies réalisées le reste de l'année.
 - **Conclusion** : PAC + Tempo forme un excellent couple **si** vous anticipez les jours rouges (préchauffage la veille en heures creuses, consigne réduite le jour J, éventuel appoint) et **si** vous automatisez via un thermostat. L'anticipation est la clé, puisqu'EDF n'annonce J+1 que la veille à 11h.
 
-Pour bien démarrer la prochaine saison froide, jetez aussi un œil à notre article pour [préparer la saison Tempo 2026-2027](/blog/preparer-saison-tempo-2026-2027).
+Pour bien démarrer la prochaine saison froide, jetez aussi un œil à notre article pour [préparer la saison Tempo 2026-2027](/blog/preparer-saison-tempo-2026-2027). Si votre pompe à chaleur est réversible, l'été pose d'autres questions : voir notre guide [climatisation Tempo EDF](/blog/climatisation-tempo-edf-ete).
 
 ## FAQ : pompe à chaleur et Tempo, vos questions fréquentes
 
@@ -91,4 +90,6 @@ Oui, en général. Le COP diminue quand la température extérieure chute, et le
 
 EDF n'annonce la couleur du lendemain que vers 11h, ce qui laisse peu de marge pour préchauffer la nuit précédente. Notre site prédit les couleurs de J+2 à J+5 à partir des prévisions météo, des données RTE et d'un modèle d'apprentissage. En vous abonnant aux [alertes gratuites](/#subscribe), vous recevez l'information assez tôt pour lancer votre préchauffage sereinement.
 
-*Note : les valeurs de COP, coûts et économies évoqués ici sont des ordres de grandeur, variables selon votre logement, votre matériel et la météo. Pour connaître les couleurs réelles à venir, consultez toujours le [calendrier Tempo](/calendrier).*
+---
+
+*Note : les valeurs de COP, coûts et économies évoqués ici sont des ordres de grandeur, variables selon votre logement, votre matériel et la météo. Mis à jour le 29 septembre 2026. Pour connaître les couleurs réelles à venir, consultez toujours le [calendrier Tempo](/calendrier). Sources : [EDF](https://www.edf.fr/) pour l'offre et les tarifs, [RTE](https://www.rte-france.com/) pour la consommation.*

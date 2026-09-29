@@ -1,12 +1,12 @@
 ---
 title: Simulation Tempo EDF : estimez vos économies annuelles
 description: Simulation Tempo EDF : la méthode pour estimer vos économies annuelles selon votre consommation, avec un exemple chiffré et les variables clés.
-publish_date: 2026-06-09
-updated_date: 2026-08-09
 keywords: simulation tempo edf, estimer économies tempo, tempo edf rentabilité calcul, simulateur tempo edf
+publish_date: 2026-06-09
+updated_date: 2026-09-29
 cluster: tempo-guide
 ---
-Avant de souscrire — ou pour vérifier que votre contrat actuel reste le bon choix — il est essentiel de chiffrer son cas personnel. Une **simulation Tempo EDF** ne donne pas un chiffre magique valable pour tout le monde : elle applique une méthode à VOTRE consommation réelle. Le résultat dépend entièrement de votre profil : combien de kWh vous consommez, quelle part vous pouvez déplacer vers les heures creuses, et surtout votre comportement les 22 jours rouges de la saison. Dans ce guide, nous vous expliquons pas à pas comment estimer vos économies annuelles, quelles variables surveiller, et comment lire votre seuil de rentabilité — avec un exemple chiffré purement illustratif.
+Avant de souscrire, ou pour vérifier que votre contrat actuel reste le bon choix, il est essentiel de chiffrer son cas personnel. Une **simulation Tempo EDF** ne donne pas un chiffre magique valable pour tout le monde : elle applique une méthode à VOTRE consommation réelle. Le résultat dépend entièrement de votre profil : combien de kWh vous consommez, quelle part vous pouvez déplacer vers les heures creuses, et surtout votre comportement les 22 jours rouges de la saison. Dans ce guide, nous vous expliquons pas à pas comment estimer vos économies annuelles, quelles variables surveiller, et comment lire votre seuil de rentabilité, avec un exemple chiffré sur la grille du 1er août 2026.
 
 ## Pourquoi une simulation Tempo dépend de votre profil
 
@@ -16,7 +16,7 @@ L'offre Tempo classe chaque jour de l'année dans l'une de trois couleurs. La sa
 - **43 jours blancs** : tarif intermédiaire, jamais le dimanche.
 - **~300 jours bleus** : nettement moins chers, c'est l'avantage central de Tempo sur la grande majorité de l'année.
 
-Le principe d'une simulation est simple : votre facture annuelle n'est pas un prix unique multiplié par vos kWh, mais la **somme de trois factures** (bleue, blanche, rouge), chacune avec son propre tarif heures pleines (HP, 6h-22h) et heures creuses (HC, 22h-6h). C'est pourquoi deux foyers consommant exactement le même nombre de kWh peuvent obtenir des résultats opposés : tout dépend de QUAND ils consomment. Pour bien comprendre le mécanisme des couleurs avant de simuler, notre [guide complet Tempo EDF 2026](/blog/tempo-edf-2026-guide-complet) pose les bases.
+Le principe d'une simulation est simple : votre facture annuelle n'est pas un prix unique multiplié par vos kWh, mais la **somme de trois factures** (bleue, blanche, rouge), chacune avec son propre tarif heures pleines (HP, 6h-22h) et heures creuses (HC, 22h-6h). C'est pourquoi deux foyers consommant exactement le même nombre de kWh peuvent obtenir des résultats opposés : tout dépend de QUAND ils consomment. Pour bien comprendre le mécanisme des couleurs avant de simuler, notre [guide complet Tempo EDF 2026-2027](/blog/tempo-edf-2026-guide-complet) pose les bases.
 
 ## La méthode de simulation Tempo EDF en 4 étapes
 
@@ -35,36 +35,46 @@ Trois leviers déterminent la quasi-totalité de l'écart entre une bonne et une
 
 - **Le pourcentage de consommation déplaçable.** Un chauffe-eau programmable, une recharge de véhicule électrique nocturne, des lessives décalées : plus vous pouvez basculer vers les heures creuses bleues, plus la facture baisse. C'est la variable n°1.
 - **Le comportement les jours rouges.** Avec un tarif HP rouge à **0,7295 €/kWh**, chaque kWh non maîtrisé un jour rouge coûte très cher. Réduire le chauffage et couper les gros appareils ces 22 jours transforme radicalement le résultat. Notre [guide des jours rouges Tempo](/blog/jours-rouges-tempo-guide) détaille les gestes prioritaires.
-- **Le volume total annuel.** Plus la consommation est élevée (chauffage électrique, grand logement), plus l'effet de levier des jours bleus est important — à condition de maîtriser les rouges.
+- **Le volume total annuel.** Plus la consommation est élevée (chauffage électrique, grand logement), plus l'effet de levier des jours bleus est important, à condition de maîtriser les rouges.
 
 À l'inverse, un foyer qui ne peut rien déplacer et qui chauffe tout à l'électricité sans alternative les jours rouges risque de voir son avantage fondre. La simulation sert justement à révéler ce risque AVANT de s'engager.
 
-## Exemple chiffré illustratif, pas à pas
+## Exemple chiffré pas à pas avec la grille du 1er août 2026
 
-*Exemple illustratif* — les valeurs ci-dessous servent uniquement à montrer la méthode de calcul. Elles ne constituent ni une promesse de gain, ni un tarif officiel pour les jours bleus et blancs (dont les prix exacts ne sont pas reproduits ici). Seuls les tarifs rouges sont des valeurs réelles, en vigueur depuis le 1er août 2026.
+Voici d'abord la grille Tempo en vigueur (prix TTC par kWh, identique quelle que soit la puissance du compteur) :
 
-Imaginons un foyer dont la consommation annuelle serait répartie comme suit, après ventilation par couleur et par plage horaire :
+| Couleur | Heures creuses (22h-6h) | Heures pleines (6h-22h) |
+|---|---|---|
+| Bleu | 0,1356 € | 0,1654 € |
+| Blanc | 0,1536 € | 0,1921 € |
+| Rouge | 0,1615 € | 0,7295 € |
 
-| Bloc | Consommation (exemple) | Tarif appliqué |
-|------|------------------------|----------------|
-| Jours bleus — HC (22h-6h) | majorité du volume | tarif bleu HC (le plus bas) |
-| Jours bleus — HP (6h-22h) | part modérée | tarif bleu HP |
-| Jours blancs — HC/HP | volume limité (43 j) | tarif blanc (intermédiaire) |
-| Jours rouges — HC (22h-6h) | volume réduit volontairement | 0,1615 €/kWh |
-| Jours rouges — HP (6h-22h) | volume minimal | **0,7295 €/kWh** |
+Elle intègre la revalorisation du **1er août 2026** (+2,3 % à +3,3 % selon la couleur et la plage horaire) : une simulation réalisée avant cette date mérite d'être refaite. L'historique de la grille est sur la page [tarif Tempo EDF](/tarif-tempo-edf).
 
-Ces tarifs rouges intègrent la revalorisation entrée en vigueur le **1er août 2026** (+2,3 % à +3,3 % selon la couleur et la plage horaire) : une simulation réalisée avant cette date mérite d'être refaite.
+*Exemple illustratif* : les consommations ci-dessous sont supposées, pour montrer la méthode. Elles ne constituent pas une promesse de gain. Imaginons un foyer de 7 590 kWh par an, avec une consommation volontairement réduite les jours rouges :
 
-La méthode de calcul est toujours la même : `coût d'un bloc = kWh du bloc × tarif du bloc`, puis on additionne les cinq blocs. L'enjeu saute aux yeux sur le dernier : sur un seul jour rouge, **25 kWh consommés en heures pleines** reviennent à `25 × 0,7295 = 18,24 €`, contre `25 × 0,1615 = 4,04 €` si la même énergie était reportée en heures creuses du même jour rouge. Sur 22 jours rouges, l'écart se chiffre en dizaines d'euros uniquement par le déplacement horaire.
+| Bloc | Consommation (exemple) | Tarif | Coût |
+|---|---|---|---|
+| Jours bleus, heures creuses | 2 600 kWh | 0,1356 € | 352,56 € |
+| Jours bleus, heures pleines | 3 900 kWh | 0,1654 € | 645,06 € |
+| Jours blancs, heures creuses | 380 kWh | 0,1536 € | 58,37 € |
+| Jours blancs, heures pleines | 560 kWh | 0,1921 € | 107,58 € |
+| Jours rouges, heures creuses | 60 kWh | 0,1615 € | 9,69 € |
+| Jours rouges, heures pleines | 90 kWh | 0,7295 € | 65,66 € |
+| **Total** | **7 590 kWh** | | **1 238,91 €** |
 
-C'est exactement ce que matérialise une simulation : elle additionne ces blocs pour votre profil réel, puis soustrait le résultat de votre facture actuelle. Le « gain » n'est pas garanti — il dépend de votre discipline. Pour comparer Tempo à une offre heures creuses classique, lisez notre [comparatif Tempo vs Heures Creuses](/blog/tempo-vs-heures-creuses-edf-bleu).
+La méthode de calcul est toujours la même : `coût d'un bloc = kWh du bloc x tarif du bloc`, puis on additionne les six blocs. À titre de comparaison, les mêmes 7 590 kWh au tarif Base (0,2001 €/kWh depuis le 1er août 2026) coûteraient 1 518,76 €, soit environ 280 € de plus dans cet exemple. Hors abonnement, l'écart vient à la fois de la grille Tempo et de la sobriété les jours rouges.
+
+L'enjeu saute aux yeux sur le dernier bloc : sur un seul jour rouge, **25 kWh consommés en heures pleines** reviennent à `25 x 0,7295 = 18,24 €`, contre `25 x 0,1615 = 4,04 €` si la même énergie était reportée en heures creuses du même jour rouge. Sur 22 jours rouges, l'écart se chiffre en centaines d'euros par le seul déplacement horaire.
+
+C'est exactement ce que matérialise une simulation : elle additionne ces blocs pour votre profil réel, puis compare le résultat à votre facture actuelle. Le « gain » n'est pas garanti : il dépend de votre discipline. Pour comparer Tempo à une offre heures creuses classique, lisez notre [comparatif Tempo vs Heures Creuses](/blog/tempo-vs-heures-creuses-edf-bleu), qui détaille une simulation complète à 8 000 kWh.
 
 ## Lire son seuil de rentabilité
 
 Le seuil de rentabilité, c'est le point où vos économies sur les jours bleus et blancs compensent (et dépassent) le surcoût des jours rouges. Trois cas de figure se dégagent :
 
 - **Profil favorable** : vous déplacez une large part de votre consommation vers les heures creuses bleues ET vous réduisez fortement les jours rouges. Le seuil est franchi confortablement, l'économie annuelle est nette.
-- **Profil à l'équilibre** : vous déplacez peu mais maîtrisez les rouges, ou l'inverse. Le gain existe mais reste modeste — la marge d'erreur est faible.
+- **Profil à l'équilibre** : vous déplacez peu mais maîtrisez les rouges, ou l'inverse. Le gain existe mais reste modeste, et la marge d'erreur est faible.
 - **Profil défavorable** : consommation rigide, chauffage tout-électrique sans alternative, aucune maîtrise les jours rouges. Le surcoût rouge peut annuler l'avantage bleu.
 
 La clé du seuil de rentabilité tient en une phrase : **plus la part déplaçable est grande et plus les jours rouges sont maîtrisés, plus la marge de sécurité est confortable.** Une simulation honnête teste plusieurs scénarios (optimiste, réaliste, pessimiste) plutôt qu'un chiffre unique. Pour un point de vue d'usage sur la rentabilité réelle, consultez notre [avis sur la rentabilité de Tempo EDF](/blog/tempo-edf-avis-rentabilite).
@@ -73,7 +83,7 @@ La clé du seuil de rentabilité tient en une phrase : **plus la part déplaçab
 
 Une simulation favorable ne vaut que si vous savez QUAND tombent les jours rouges. EDF annonce la couleur du lendemain (J+1) chaque jour vers 11h. Pour aller plus loin, notre plateforme prédit les couleurs de J+2 à J+5, ce qui vous laisse le temps d'organiser vos lessives, vos recharges et votre chauffage.
 
-Concrètement : consultez le [calendrier Tempo](/calendrier) pour visualiser les couleurs passées et les prévisions à venir, puis inscrivez-vous aux [alertes WhatsApp gratuites](/#subscribe) pour recevoir chaque soir la couleur du lendemain. C'est ce qui transforme une économie « théorique » sur le papier en économie réelle sur votre facture.
+Concrètement : consultez le [calendrier Tempo](/calendrier) pour visualiser les couleurs passées et les prévisions à venir, puis inscrivez-vous aux [alertes WhatsApp gratuites](/#subscribe) pour recevoir chaque dimanche la prévision des 7 prochains jours et un message avant chaque jour rouge probable. C'est ce qui transforme une économie « théorique » sur le papier en économie réelle sur votre facture. La couleur du lendemain, publiée par EDF vers 11h, est affichée sur la page [couleur Tempo demain](/couleur-tempo-demain).
 
 ## FAQ : vos questions sur la simulation Tempo EDF
 
@@ -91,4 +101,4 @@ Un simulateur automatise les calculs, mais la méthode reste la même : ventiler
 
 ---
 
-*Note : cet article est un guide de méthode. L'exemple chiffré est strictement illustratif et ne constitue pas une promesse d'économie. Seuls les tarifs des jours rouges (HP 0,7295 €/kWh, HC 0,1615 €/kWh, en vigueur depuis le 1er août 2026) sont des valeurs réelles. Consultez le [calendrier Tempo](/calendrier) pour suivre les couleurs en temps réel et inscrivez-vous aux [alertes WhatsApp gratuites](/#subscribe) pour ne jamais manquer un jour rouge.*
+*Note : cet article est un guide de méthode. Les consommations de l'exemple chiffré sont supposées et ne constituent pas une promesse d'économie ; les tarifs sont ceux de la grille en vigueur depuis le 1er août 2026 (arrêté du 29 juillet 2026), et l'abonnement n'est pas inclus. Mis à jour le 29 septembre 2026. Consultez le [calendrier Tempo](/calendrier) pour suivre les couleurs en temps réel. Sources : [EDF](https://www.edf.fr/) et [Légifrance](https://www.legifrance.gouv.fr/).*

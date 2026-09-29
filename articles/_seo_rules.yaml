@@ -1,10 +1,15 @@
 # Regles SEO en vigueur
 # Ce fichier est mis a jour automatiquement par l'agent SEO lors de l'Etape 0.
-# Derniere verification : 2026-08-09
+# Derniere verification : 2026-09-29
 #
 # Garde-fou : les regles fondamentales ne peuvent PAS etre supprimees.
 # Seules les pratiques techniques (structured data, formats, outils) peuvent etre mises a jour.
 # Les principes (E-E-A-T, contenu utile, pas de bourrage, liens internes) sont permanents.
+
+decisions_fondateur:
+  # NE JAMAIS modifier : decisions actees par le fondateur, prioritaires sur toute regle SEO ci-dessous.
+  - "Lien Selectra dans la FAQ de la home (dashboard.html) : conserve tel quel, dofollow, sans nofollow ni sponsored. Accord Selectra, decision du 2026-09-29."
+  - "Chiffre 'plus de 2 500 foyers alertes' : conserve (decision du 2026-09-29)."
 
 google_principes_permanents:
   - "E-E-A-T (Experience, Expertise, Authoritativeness, Trustworthiness) : priorite au contenu demontrant une expertise reelle"
@@ -63,7 +68,8 @@ mots_cles_cibles:
 
 tarifs_tempo:
   date_maj: "2026-08"
-  saison: "2025-2026"  # saison en cours; la grille ci-dessous est celle du 1er aout 2026
+  verifie_le: "2026-09-29"  # coherence des 6 prix du kWh avec les articles et le courrier EDF du 07/08/2026 (l'abonnement reste non confirme)
+  saison: "2026-2027"  # saison en cours; la grille ci-dessous (1er aout 2026) s'applique a toute la saison 2026-2027, sauf revision officielle en fevrier 2027
   abonnement_mensuel: "15.80"
   abonnement_annuel_6kva: "189.60"
   abonnement_annuel_9kva: "236.40"
@@ -79,11 +85,42 @@ tarifs_tempo:
   note: "Grille en vigueur depuis le 1er aout 2026. Les tarifs changent generalement en fevrier et en aout. Lors de l'Etape 0, si la date_maj a plus de 12 mois, l'agent DOIT verifier les tarifs en vigueur via web_search('tarif tempo edf {annee}') et mettre a jour cette section."
 
 saison_tempo:
-  saison_courante: "2025-2026"
-  debut: "2025-09-01"
-  fin: "2026-08-31"
-  periode_rouge: "2025-11-01 au 2026-03-31"
-  note: "En septembre, l'agent doit mettre a jour la saison_courante et les dates. Les articles de la nouvelle saison (guides, calendrier) doivent etre prioritaires en pre-saison (sept-oct)."
+  saison_courante: "2026-2027"
+  debut: "2026-09-01"
+  fin: "2027-08-31"
+  periode_rouge: "2026-11-01 au 2027-03-31"
+  saison_precedente: "2025-2026"  # terminee le 2026-08-31 ; donnees reelles du site arretees au 2026-02-20
+  verifie_le: "2026-09-29"
+  note: "En septembre, l'agent doit mettre a jour la saison_courante et les dates (fait le 2026-09-29 pour 2026-2027). Les articles de la nouvelle saison (guides, calendrier) doivent etre prioritaires en pre-saison (sept-oct). En septembre 2027, passer a 2027-2028."
+
+# Chiffres verifies a reutiliser TELS QUELS dans les articles (zero invention : ne jamais estimer une moyenne ou une date).
+# Source : table actuals de db_dump.json (couleurs confirmees EDF, synthetic = 0), fichiers .ics 2023-2026 et eCO2mix RTE 2019-2023.
+# Calcul du 2026-09-29. A recalculer apres chaque import de nouvelles donnees (ne pas y ajouter de chiffre non calcule).
+donnees_reelles:
+  couverture: "2019-09-01 a 2026-02-20 (7 saisons ; 6 saisons completes 2019-2020 a 2024-2025 ; 2025-2026 partielle)"
+  rouges_par_mois:   # Nov / Dec / Jan / Fev / Mars = total ; blancs = total saison
+    "2019-2020": "0 / 2 / 8 / 3 / 5 = 18 ; blancs 47"
+    "2020-2021": "0 / 5 / 13 / 4 / 0 = 22 ; blancs 43"
+    "2021-2022": "1 / 6 / 15 / 0 / 0 = 22 ; blancs 43"
+    "2022-2023": "0 / 4 / 11 / 5 / 2 = 22 ; blancs 43"
+    "2023-2024": "1 / 3 / 9 / 3 / 6 = 22 ; blancs 43"
+    "2024-2025": "0 / 8 / 13 / 1 / 0 = 22 ; blancs 43"
+    "2025-2026 (au 2026-02-20)": "0 / 2 / 6 / 1 / n.d. = 9 ; blancs 32 ; premier rouge 2025-12-29"
+  synthese_6_saisons_completes: "128 rouges : janvier 69 (54 %), decembre 28 (22 %), fevrier 16 (12,5 %), mars 13 (10 %), novembre 2 ; sept-oct 100 % bleus ; premier blanc entre le 14 et le 29 novembre ; premier rouge entre le 29 novembre et le 8 decembre"
+  ne_pas_publier: "aucun total 2025-2026 au-dela du 2026-02-20 tant que les donnees ne sont pas importees"
+
+# Chiffres harmonises (constantes editoriales : une seule valeur par sujet, sur tous les articles).
+chiffres_harmonises:
+  ratio_rouge_bleu_hp: "4,4 (0,7295 / 0,1654) ; ne jamais ecrire 5x ni 'cinq fois'. Rouge HP / rouge HC = 4,5 (autre ratio, a nommer explicitement)"
+  horizon_alertes_whatsapp: "7 jours : recapitulatif chaque dimanche des 7 prochains jours + message avant chaque jour rouge probable. Jamais '5 jours' ni '15 jours' pour les alertes"
+  horizon_previsions: "J+2 a J+5 = zone fiable ; J+6 a J+15 = tendance indicative"
+  annonce_edf_j1: "vers 11h (jamais 17h)"
+  score_83_pct: "F1 en backtest historique (2 364 jours reels), pas une precision en direct ; a toujours renvoyer vers /methodologie"
+  regles_edf: "rouge : 1er novembre au 31 mars, jamais week-end ni ferie ; blanc : jamais le dimanche ; max 5 rouges consecutifs ; budget 22 rouges / 43 blancs / environ 300 bleus"
+  marque: "Calendrier Tempo EDF (jamais TempoForecast)"
+  chiffrement_numero: "ne pas citer AES-256 (Fernet en base) : ecrire 'chiffre dans notre base'"
+  pages_a_lier: "/calendrier, /#subscribe, /tarif-tempo-edf, /couleur-tempo-demain, /api-tempo, /methodologie"
+  sources_externes: "pages d'accueil uniquement (https://www.edf.fr/, https://www.cre.fr/, https://www.rte-france.com/, https://www.legifrance.gouv.fr/) sauf URL exacte deja presente dans le repo ; jamais d'URL profonde inventee"
 
 historique:
   - date: "2026-02-19"
@@ -98,3 +135,6 @@ historique:
   - date: "2026-08-09"
     changement: "Mise a jour grille tarifaire Tempo au 1er aout 2026 (hausse +2,34% a +3,33%)"
     source: "Arrete n.ECOR2619295S du 29/07/2026 (JO n.0177 du 31/07/2026), confirme par courrier client EDF du 07/08/2026"
+  - date: "2026-09-29"
+    changement: "Passage a la saison 2026-2027 (saison_courante, dates, periode rouge) ; ajout des sections donnees_reelles et chiffres_harmonises ; verification de la grille tarifaire (6 prix du kWh)"
+    source: "Audits SEO et GEO du 2026-09-29 ; base actuals (db_dump.json) ; arrete n.ECOR2619295S du 29/07/2026"

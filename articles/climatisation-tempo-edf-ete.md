@@ -1,23 +1,23 @@
 ---
 title: Climatisation Tempo EDF : faut-il s'en soucier l'été ?
 description: Climatisation Tempo EDF : pas de jours rouges l'été, mais heures pleines et creuses comptent. Quand faire tourner la clim et comment limiter la facture.
-publish_date: 2026-08-04
-updated_date: 2026-08-09
 keywords: climatisation tempo edf, clim tempo edf été, climatiseur tempo, climatisation jour bleu tempo
+publish_date: 2026-08-04
+updated_date: 2026-09-29
 cluster: equipements
 ---
-Vous redoutez de faire tourner votre climatiseur en pleine canicule parce que vous êtes abonné à l'option Tempo ? Bonne nouvelle : l'été est la saison la plus sereine pour vos gros postes électriques. La question de la **climatisation Tempo EDF** se pose en réalité très différemment de celle du chauffage en hiver, car une règle fondamentale du dispositif change tout. Entre le 1er avril et le 31 octobre, il n'existe **aucun jour rouge** : vos journées sont essentiellement bleues, avec quelques jours blancs. Reste un seul paramètre à surveiller, les heures pleines et les heures creuses. Voici comment piloter votre clim sans stress et limiter la facture.
+Vous redoutez de faire tourner votre climatiseur en pleine canicule parce que vous êtes abonné à l'option Tempo ? Bonne nouvelle : l'été est la saison la plus sereine pour vos gros postes électriques. La question de la **climatisation Tempo EDF** se pose en réalité très différemment de celle du chauffage en hiver, car une règle fondamentale du dispositif change tout. Entre le 1er avril et le 31 octobre, il n'existe **aucun jour rouge** : vos journées sont essentiellement bleues, et dans notre historique de six saisons complètes, les rares jours blancs de cette période tombent en avril, mai et juin, jamais en juillet ni en août. Reste un seul paramètre à surveiller, les heures pleines et les heures creuses. Voici comment piloter votre clim sans stress et limiter la facture.
 
 ## Pourquoi l'été ne connaît aucun jour rouge Tempo
 
 La règle est inscrite noir sur blanc dans le fonctionnement de l'offre : les jours rouges, les plus chers, ne peuvent tomber **qu'entre le 1er novembre et le 31 mars**. En dehors de cette fenêtre hivernale, EDF n'a tout simplement pas le droit de classer une journée en rouge. Concrètement, d'avril à octobre, votre calendrier Tempo ne contient que :
 
 - **Des jours bleus**, de très loin les plus nombreux (la saison en compte environ 300 au total) et les moins chers ;
-- **Quelques jours blancs**, au tarif intermédiaire, jamais positionnés un dimanche.
+- **Quelques jours blancs** au printemps, au tarif intermédiaire et jamais positionnés un dimanche : dans nos données, 30 blancs sont tombés entre avril et juin sur six saisons (18 en avril, 3 en mai, 9 en juin) et aucun de juillet à octobre.
 
-La saison Tempo court du 1er septembre au 31 août et son budget est fixe : 22 jours rouges, 43 jours blancs et environ 300 jours bleus. Comme les 22 rouges sont concentrés sur l'hiver, l'été en est totalement dépourvu. La quasi-totalité de vos journées estivales se déroule donc au tarif bleu, le plancher de la grille Tempo. Pour vérifier la couleur d'une journée précise, le plus simple reste de consulter le [calendrier Tempo](/calendrier), qui affiche les couleurs passées (officielles EDF) et les prévisions à venir.
+La saison Tempo court du 1er septembre au 31 août et son budget est fixe : 22 jours rouges, 43 jours blancs et environ 300 jours bleus. Comme les 22 rouges sont concentrés sur l'hiver, l'été en est totalement dépourvu. Toutes vos journées de juillet et d'août se déroulent donc au tarif bleu, le plancher de la grille Tempo, d'après les six saisons complètes de notre base. Pour vérifier la couleur d'une journée précise, le plus simple reste de consulter le [calendrier Tempo](/calendrier), qui affiche les couleurs passées (officielles EDF) et les prévisions à venir.
 
-Si vous débutez avec l'offre et que ces couleurs vous semblent encore floues, notre [guide complet Tempo EDF 2026](/blog/tempo-edf-2026-guide-complet) reprend les bases pas à pas.
+Si vous débutez avec l'offre et que ces couleurs vous semblent encore floues, notre [guide complet Tempo EDF 2026-2027](/blog/tempo-edf-2026-guide-complet) reprend les bases pas à pas.
 
 ## Heures pleines, heures creuses : le seul vrai levier l'été
 
@@ -49,7 +49,7 @@ Voici la stratégie estivale, simple et déculpabilisante :
 1. **N'ayez pas peur du jour bleu.** Comme l'immense majorité des journées d'été sont bleues, vous pouvez faire fonctionner votre climatisation au tarif le plus bas de la grille. Inutile de tout reporter comme en hiver.
 2. **Privilégiez la nuit (heures creuses, 22h-6h).** Rafraîchir le logement la nuit, quand l'air extérieur est plus frais et le tarif plus bas, est doublement gagnant : la clim travaille moins fort et l'électricité coûte moins cher.
 3. **Profitez de l'inertie nocturne.** Une pièce rafraîchie pendant la nuit reste fraîche une bonne partie de la matinée. Couper la clim au lever du jour permet de traverser une partie des heures pleines sans la rallumer.
-4. **Surveillez seulement les jours blancs.** Sur les quelques journées blanches d'été, l'écart de tarif est marginal, mais si vous voulez optimiser au maximum, concentrez les usages lourds sur les jours bleus voisins.
+4. **Surveillez seulement les rares jours blancs de fin de printemps.** L'écart de tarif avec le bleu est faible (0,1921 contre 0,1654 €/kWh en heures pleines), mais si vous voulez optimiser au maximum, concentrez les usages lourds sur les jours bleus voisins.
 
 ### Régler sa climatisation pour consommer moins
 
@@ -58,7 +58,7 @@ Voici la stratégie estivale, simple et déculpabilisante :
 - **Fermez ce qui doit l'être** : volets, rideaux et portes le jour ; la clim ne doit pas lutter contre le soleil qui entre.
 - **Entretien des filtres** : un filtre encrassé fait surconsommer l'appareil. Un nettoyage régulier améliore le rendement.
 
-Ces principes de pilotage par les plages horaires valent pour tous les gros équipements. Si vous possédez une pompe à chaleur réversible (chauffage l'hiver, clim l'été), notre guide [pompe à chaleur et Tempo EDF](/blog/pompe-a-chaleur-tempo-edf) approfondit le sujet sur l'ensemble de l'année.
+Ces principes de pilotage par les plages horaires valent pour tous les gros équipements. Si vous possédez une pompe à chaleur réversible (chauffage l'hiver, clim l'été), notre guide [pompe à chaleur et Tempo EDF](/blog/pompe-a-chaleur-tempo-edf) approfondit le sujet sur l'ensemble de l'année, et nos [10 astuces chauffage](/blog/chauffage-jour-rouge-tempo-astuces) complètent l'équipement de l'hiver. Les tarifs cités sont sur la page [tarif Tempo EDF](/tarif-tempo-edf).
 
 ## L'été, la saison la plus sereine sous Tempo
 
@@ -66,13 +66,13 @@ Tout l'enjeu de Tempo se joue en hiver, sur les 22 jours rouges où l'heure plei
 
 Vous pouvez aussi profiter de l'été pour anticiper l'hiver suivant. Notre dossier [préparer la saison Tempo 2026-2027](/blog/preparer-saison-tempo-2026-2027) liste les bons gestes à mettre en place dès maintenant, et notre [bilan de fin de saison rouge](/blog/fin-saison-rouge-tempo-bilan) tire les leçons des mois passés.
 
-Enfin, même hors saison rouge, garder un œil sur les couleurs du lendemain reste utile pour traquer les rares jours blancs. Inscrivez-vous à nos [alertes Tempo gratuites](/#subscribe) : EDF annonce la couleur du jour suivant vers 11h, et notre plateforme prédit en plus les couleurs de J+2 à J+5 pour vous laisser le temps d'organiser vos usages.
+Enfin, même hors saison rouge, garder un œil sur les couleurs du lendemain reste utile pour traquer les rares jours blancs. Inscrivez-vous à nos [alertes Tempo gratuites](/#subscribe) : EDF annonce la couleur du jour suivant vers 11h, et notre plateforme prédit en plus les couleurs de J+2 à J+5 pour vous laisser le temps d'organiser vos usages (méthode sur la page [méthodologie](/methodologie)).
 
 ## FAQ : climatisation et Tempo EDF l'été
 
 ### Peut-on avoir un jour rouge Tempo en été ?
 
-Non. Les jours rouges Tempo ne peuvent tomber qu'entre le 1er novembre et le 31 mars. D'avril à octobre, EDF ne classe aucune journée en rouge : votre été se compose uniquement de jours bleus, les moins chers, et de quelques jours blancs. Faire tourner la climatisation l'été ne vous expose donc jamais au tarif rouge à 0,7295 €/kWh. Vous pouvez vérifier chaque couleur sur le [calendrier Tempo](/calendrier).
+Non. Les jours rouges Tempo ne peuvent tomber qu'entre le 1er novembre et le 31 mars. D'avril à octobre, EDF ne classe aucune journée en rouge : votre été se compose de jours bleus, les moins chers (et, d'avril à juin seulement, de quelques jours blancs). Faire tourner la climatisation l'été ne vous expose donc jamais au tarif rouge à 0,7295 €/kWh. Vous pouvez vérifier chaque couleur sur le [calendrier Tempo](/calendrier).
 
 ### À quelle heure faut-il faire tourner la clim pour payer moins cher ?
 
@@ -84,4 +84,4 @@ Cela dépend entièrement de la surface, de l'isolation et du modèle : on parle
 
 ---
 
-*Dernière mise à jour : 9 août 2026. Les tarifs rouges cités (0,7295 €/kWh en heure pleine, 0,1615 €/kWh en heure creuse) sont ceux du barème Tempo EDF en vigueur depuis le 1er août 2026 et ne s'appliquent pas l'été, faute de jour rouge. Les consommations de climatisation sont des estimations à adapter à votre logement. Consultez le [calendrier Tempo](/calendrier) pour suivre les couleurs en temps réel.*
+*Mis à jour le 29 septembre 2026. Les tarifs rouges cités (0,7295 €/kWh en heure pleine, 0,1615 €/kWh en heure creuse) sont ceux du barème Tempo EDF en vigueur depuis le 1er août 2026 et ne s'appliquent pas l'été, faute de jour rouge. Les consommations de climatisation sont des estimations à adapter à votre logement. Consultez le [calendrier Tempo](/calendrier) pour suivre les couleurs en temps réel. Sources : [EDF](https://www.edf.fr/) pour les règles et les tarifs, [Légifrance](https://www.legifrance.gouv.fr/) pour l'arrêté tarifaire du 29 juillet 2026, et la base de calendrier-tempo.fr pour les couleurs historiques (2019-2025).*

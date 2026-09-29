@@ -1,11 +1,12 @@
 ---
 title: Souscrire Tempo EDF : le guide pour les nouveaux abonnés
-description: Souscrire Tempo EDF : à qui l'option convient, les prérequis (Linky, puissance), les étapes générales et comment bien démarrer pour anticiper les jours rouges.
+description: Souscrire Tempo EDF : à qui l'option convient, prérequis (Linky, puissance), étapes générales et conseils pour bien démarrer et anticiper les jours rouges.
 keywords: souscrire tempo edf, abonnement tempo edf, passer à tempo edf, nouveaux abonnés tempo
 publish_date: 2026-09-15
-cluster: tempo-guide
+updated_date: 2026-09-29
+cluster: preparation
 ---
-Vous hésitez à **souscrire Tempo EDF** pour réduire votre facture d'électricité ? C'est une excellente intuition, mais l'option n'est pas faite pour tous les foyers. Tempo récompense la flexibilité : environ 300 jours bleus à tarif avantageux, mais 22 jours rouges où le kilowattheure en heures pleines peut coûter très cher. Avant de franchir le pas, mieux vaut comprendre à qui l'offre s'adresse, quels sont les prérequis et comment bien démarrer. Ce guide pour les nouveaux abonnés vous explique l'essentiel, sans jargon, pour décider en connaissance de cause.
+Vous hésitez à **souscrire Tempo EDF** pour réduire votre facture d'électricité ? C'est une excellente intuition, mais l'option n'est pas faite pour tous les foyers. Tempo récompense la flexibilité : environ 300 jours bleus à tarif avantageux, mais 22 jours rouges où le kilowattheure en heures pleines peut coûter très cher. Avant de franchir le pas, mieux vaut comprendre à qui l'offre s'adresse, quels sont les prérequis et comment bien démarrer. Ce guide pour les nouveaux abonnés vous explique l'essentiel, sans jargon, pour décider en connaissance de cause avant le 1er novembre, date à partir de laquelle les premiers jours rouges de la saison 2026-2027 deviennent possibles.
 
 ## Tempo EDF, c'est quoi exactement ?
 
@@ -17,7 +18,7 @@ L'option Tempo classe chaque jour de l'année dans l'une des trois couleurs, cha
 
 Chaque couleur se décline en **Heures Pleines** (6h-22h) et **Heures Creuses** (22h-6h). La saison Tempo court du **1er septembre au 31 août**. Les jours rouges ne tombent que du **1er novembre au 31 mars**, jamais le week-end ni les jours fériés ; les jours blancs ne tombent jamais un dimanche.
 
-L'écart tarifaire est spectaculaire. Selon la grille en vigueur depuis le 1er août 2026 (prix TTC), un jour rouge coûte **0,7295 €/kWh en heures pleines** contre **0,1615 €/kWh en heures creuses**. Autrement dit, c'est en évitant la consommation rouge HP que vous faites des économies — et c'est ce point qui doit guider votre décision. Pour comprendre la logique tarifaire dans le détail, notre [comparatif Tempo, Heures Creuses et tarif Bleu](/blog/tempo-vs-heures-creuses-edf-bleu) met les chiffres côte à côte.
+L'écart tarifaire est spectaculaire. Selon la grille en vigueur depuis le 1er août 2026 (prix TTC), un jour rouge coûte **0,7295 €/kWh en heures pleines** contre **0,1615 €/kWh en heures creuses**. Autrement dit, c'est en évitant la consommation rouge HP que vous faites des économies, et c'est ce point qui doit guider votre décision. Le rapport entre l'heure pleine rouge et l'heure pleine bleue (0,1654 €/kWh) est de 4,4. Pour comprendre la logique tarifaire dans le détail, notre [comparatif Tempo, Heures Creuses et tarif Bleu](/blog/tempo-vs-heures-creuses-edf-bleu) met les chiffres côte à côte, et la page [tarif Tempo EDF](/tarif-tempo-edf) détaille la grille complète.
 
 ## À qui s'adresse l'option Tempo ?
 
@@ -31,7 +32,7 @@ Souscrire Tempo EDF est intéressant si votre mode de vie permet de jouer avec l
 | Très faible consommation, aucune envie de gérer les couleurs | Peu d'intérêt |
 | Capable de réduire fortement la consommation 22 jours par an | Oui, rentabilité maximale |
 
-En résumé, Tempo convient aux foyers **flexibles et impliqués**. Si vous pouvez réduire votre consommation de 50 à 80 % les jours rouges — en coupant le chauffage électrique, en reportant les appareils énergivores ou en utilisant un chauffage d'appoint —, l'option devient très avantageuse. À l'inverse, un foyer qui ne peut rien changer les jours rouges risque de voir la facture grimper. Pour évaluer concrètement votre situation, consultez notre [analyse de la rentabilité de Tempo EDF](/blog/tempo-edf-avis-rentabilite).
+En résumé, Tempo convient aux foyers **flexibles et impliqués**. Si vous pouvez réduire votre consommation de 50 à 80 % les jours rouges (en coupant le chauffage électrique, en reportant les appareils énergivores ou en utilisant un chauffage d'appoint), l'option devient très avantageuse. À l'inverse, un foyer qui ne peut rien changer les jours rouges risque de voir la facture grimper. Pour évaluer concrètement votre situation, consultez notre [analyse de la rentabilité de Tempo EDF](/blog/tempo-edf-avis-rentabilite).
 
 ## Les prérequis avant de souscrire
 
@@ -45,7 +46,7 @@ Pour suivre votre consommation au fil de l'eau et vérifier que vos efforts port
 
 ## Comment souscrire, en grandes lignes
 
-La souscription se fait directement auprès d'EDF, qui est le seul fournisseur de l'option Tempo. Nous restons volontairement généraux ici : les modalités précises (pièces à fournir, délais, conditions tarifaires) peuvent évoluer et doivent toujours être vérifiées à la source.
+La souscription se fait directement auprès d'EDF, qui propose l'option Tempo au tarif réglementé. Nous restons volontairement généraux ici : les modalités précises (pièces à fournir, délais, conditions tarifaires) peuvent évoluer et doivent toujours être vérifiées à la source.
 
 1. **Renseignez-vous sur le site officiel EDF** ou auprès du service client pour confirmer l'éligibilité de votre logement et les conditions en vigueur.
 2. **Passez par votre espace client EDF** si vous êtes déjà client, ou contactez le service commercial pour un nouveau contrat. Le changement d'option se fait sans changer de fournisseur.
@@ -58,7 +59,7 @@ Aucune coupure d'électricité n'est nécessaire pour activer Tempo sur un compt
 
 Une fois l'option active, votre quotidien évolue sur quelques points concrets :
 
-- **Vous suivez la couleur du jour et du lendemain.** EDF annonce la couleur du lendemain chaque jour vers 11h. C'est l'information clé pour organiser vos usages.
+- **Vous suivez la couleur du jour et du lendemain.** EDF annonce la couleur du lendemain chaque jour vers 11h, et la page [couleur Tempo demain](/couleur-tempo-demain) l'affiche dès la publication. C'est l'information clé pour organiser vos usages.
 - **Votre facturation devient « colorée ».** Chaque kilowattheure est facturé selon la couleur du jour et la plage horaire. Vos relevés Linky distinguent désormais six niveaux tarifaires.
 - **Vous gagnez à concentrer vos usages sur les jours bleus.** Lessives, cuissons, recharge de véhicule électrique, chauffe-eau : tout ce qui peut attendre un jour bleu en heures creuses vous fait économiser.
 - **Vous devez anticiper les jours rouges.** C'est là que se joue la rentabilité de l'offre.
@@ -71,10 +72,10 @@ Les premières semaines sont décisives pour prendre les bons réflexes. Voici c
 
 1. **Repérez vos usages décalables.** Listez ce que vous pouvez reporter sur un jour bleu (lave-linge, lave-vaisselle, recharge VE) et programmez vos appareils en heures creuses.
 2. **Préparez un plan « jour rouge ».** Identifiez à l'avance comment réduire le chauffage électrique : chauffage d'appoint au bois, pull supplémentaire, baisse de consigne, coupure du chauffe-eau si son ballon a assez d'autonomie. Notre [guide des jours rouges Tempo](/blog/jours-rouges-tempo-guide) détaille les stratégies efficaces.
-3. **Surveillez les prévisions.** Plus vous anticipez, plus vous êtes serein. Inscrivez-vous à nos [alertes WhatsApp gratuites](/#subscribe) pour recevoir les prévisions de couleurs directement sur votre téléphone, sans avoir à consulter un site chaque soir.
+3. **Surveillez les prévisions.** Plus vous anticipez, plus vous êtes serein. Inscrivez-vous à nos [alertes WhatsApp gratuites](/#subscribe) pour recevoir chaque dimanche la prévision des 7 prochains jours, et un message avant chaque jour rouge probable, sans avoir à consulter un site chaque jour.
 4. **Mesurez vos progrès.** Avec Linky, comparez votre consommation des jours rouges à celle des jours bleus : vous verrez rapidement où concentrer vos efforts.
 
-Bien démarrer, c'est avant tout transformer l'anticipation en habitude. Au bout de quelques jours rouges, les bons gestes deviennent automatiques et les économies suivent.
+Bien démarrer, c'est avant tout transformer l'anticipation en habitude. Au bout de quelques jours rouges, les bons gestes deviennent automatiques et les économies suivent. Pour préparer méthodiquement votre premier hiver, suivez notre [checklist pour préparer la saison Tempo 2026-2027](/blog/preparer-saison-tempo-2026-2027), et consultez le [calendrier Tempo 2026-2027](/blog/calendrier-tempo-2026-2027-dates) pour connaître le cadre de la saison. Pour chiffrer votre cas, utilisez la [méthode de simulation Tempo EDF](/blog/simulation-tempo-edf-economies).
 
 ## FAQ : souscrire à Tempo EDF
 
@@ -90,4 +91,6 @@ Cela dépend entièrement de votre capacité à réduire votre consommation les 
 
 EDF annonce la couleur du lendemain chaque jour vers 11h. Pour aller plus loin, notre [calendrier Tempo](/calendrier) affiche les couleurs passées et les prévisions, et notre système prédit les couleurs de J+2 à J+5. Vous pouvez aussi activer les [alertes WhatsApp gratuites](/#subscribe) pour être prévenu automatiquement, sans rien consulter manuellement.
 
-*Note : les tarifs cités sont ceux de la saison 2025-2026 (TTC). Les modalités précises de souscription et les conditions tarifaires sont susceptibles d'évoluer — vérifiez toujours les informations à jour sur le site officiel EDF avant de souscrire.*
+---
+
+*Note : les tarifs cités sont ceux de la grille en vigueur depuis le 1er août 2026 (TTC, arrêté du 29 juillet 2026). Les modalités précises de souscription et les conditions tarifaires sont susceptibles d'évoluer : vérifiez toujours les informations à jour sur le [site officiel EDF](https://www.edf.fr/) avant de souscrire. Mis à jour le 29 septembre 2026. Sources : [EDF](https://www.edf.fr/), [Légifrance](https://www.legifrance.gouv.fr/).*

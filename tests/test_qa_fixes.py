@@ -1053,16 +1053,17 @@ class TestSitemapXml:
 
     def test_sitemap_contains_homepage(self):
         """Sitemap includes homepage with priority 1.0."""
-        import re
-        with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "app.py")) as f:
-            content = f.read()
+        from fastapi.testclient import TestClient
+        from app import app
+        content = TestClient(app).get("/sitemap.xml").text  # généré par boucle (SEO 2026-09)
         assert "calendrier-tempo.fr/</loc>" in content
         assert "<priority>1.0</priority>" in content
 
     def test_sitemap_contains_calendrier(self):
         """Sitemap includes /calendrier with priority 0.9."""
-        with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "app.py")) as f:
-            content = f.read()
+        from fastapi.testclient import TestClient
+        from app import app
+        content = TestClient(app).get("/sitemap.xml").text  # généré par boucle (SEO 2026-09)
         assert "calendrier-tempo.fr/calendrier</loc>" in content
         assert "<priority>0.9</priority>" in content
 
@@ -1177,13 +1178,10 @@ class TestStructuredData:
         assert '"Dataset"' in content
 
     def test_calendrier_has_faq_schema(self):
-        """Calendar page has FAQPage schema."""
-        filepath = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)),
-            "templates", "calendrier.html"
-        )
-        with open(filepath) as f:
-            content = f.read()
+        """Calendar page has FAQPage schema (rendu : JSON-LD sérialisé par |tojson)."""
+        from fastapi.testclient import TestClient
+        from app import app
+        content = TestClient(app).get("/calendrier").text
         assert '"FAQPage"' in content
 
 
@@ -1251,7 +1249,7 @@ class TestCalendrierAjaxNavigation:
         assert 'href="/calendrier?month=' not in content
 
     def test_uses_button_elements(self):
-        """Month navigation uses <button> with data attributes."""
+        """Month navigation uses crawlable <a href> links to /calendrier/AAAA-MM (SEO 2026-09)."""
         filepath = os.path.join(
             os.path.dirname(os.path.dirname(__file__)),
             "templates", "calendrier.html"
@@ -1260,19 +1258,19 @@ class TestCalendrierAjaxNavigation:
             content = f.read()
         assert 'data-month="{{ prev_month }}"' in content
         assert 'data-month="{{ next_month }}"' in content
-        assert "navigateCalendar(this)" in content
+        assert 'href="{{ prev_path }}#cal"' in content
+        assert 'href="{{ next_path }}#cal"' in content
 
     def test_ajax_js_function_exists(self):
-        """The navigateCalendar JS function is defined in the template."""
+        """Navigation sans JavaScript : plus de navigation AJAX-only (SEO 2026-09)."""
         filepath = os.path.join(
             os.path.dirname(os.path.dirname(__file__)),
             "templates", "calendrier.html"
         )
         with open(filepath) as f:
             content = f.read()
-        assert "function navigateCalendar(" in content
-        assert "function renderCalendar(" in content
-        assert "/api/calendrier-data" in content
+        assert "navigateCalendar(this)" not in content
+        assert 'rel="prev"' in content and 'rel="next"' in content
 
     def test_api_calendrier_data_route_exists(self):
         """The /api/calendrier-data endpoint is defined in app.py."""
@@ -1377,15 +1375,16 @@ class TestHeadingHierarchy:
             assert '<h1' not in header_section, f"{tpl} has <h1> in header (duplicate H1 risk)"
 
     def test_homepage_has_h1_in_header(self):
-        """Homepage (dashboard.html) keeps H1 in header."""
+        """Homepage (dashboard.html) has exactly one H1, in main (brand = span in header, SEO 2026-09)."""
         filepath = os.path.join(
             os.path.dirname(os.path.dirname(__file__)),
             "templates", "dashboard.html"
         )
         with open(filepath) as f:
             content = f.read()
-        header_section = content.split("</header>")[0]
-        assert '<h1' in header_section
+        header_section, main_section = content.split("</header>", 1)
+        assert '<h1' not in header_section
+        assert main_section.count('<h1') == 1
 
 
 class TestSSRLastUpdate:
@@ -1557,12 +1556,9 @@ class TestBreadcrumbsComplete:
     """All breadcrumb JSON-LD includes item URL on last element."""
 
     def test_calendrier_breadcrumb_has_item(self):
-        filepath = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)),
-            "templates", "calendrier.html"
-        )
-        with open(filepath) as f:
-            content = f.read()
+        from fastapi.testclient import TestClient
+        from app import app
+        content = TestClient(app).get("/calendrier").text  # BreadcrumbList sérialisé par |tojson
         assert "calendrier-tempo.fr/calendrier" in content
 
     def test_alertes_breadcrumb_has_item(self):
@@ -1718,7 +1714,9 @@ class TestBlogArticleDateModified:
         with open(filepath) as f:
             content = f.read()
         assert "article.updated_date" in content
-        assert "dateModified" in content
+        # JSON-LD Article construit dans app.py (|tojson), dateModified = updated_date sinon publish_date
+        with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "app.py")) as f:
+            assert '"dateModified": article.last_modified' in f.read()
 
     def test_template_has_article_modified_time(self):
         """blog_article.html has article:modified_time meta tag."""

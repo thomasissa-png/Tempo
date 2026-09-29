@@ -1,4 +1,4 @@
-"""Application FastAPI principale — TempoForecast.
+"""Application FastAPI principale — Calendrier Tempo EDF (calendrier-tempo.fr).
 
 Endpoints :
   - GET  /                       → Dashboard principal (HTML)
@@ -45,6 +45,7 @@ from fastapi.templating import Jinja2Templates
 
 from config import Config
 from database import init_db
+import site_facts
 
 # === Logging (Fix #13 : RotatingFileHandler) ===
 os.makedirs("logs", exist_ok=True)
@@ -286,7 +287,7 @@ async def lifespan(app: FastAPI):
 
 # === App FastAPI ===
 app = FastAPI(
-    title="TempoForecast",
+    title="Calendrier Tempo EDF",
     description="Prévision des jours Tempo EDF avec alertes WhatsApp",
     version="1.0.0",
     lifespan=lifespan,
@@ -302,18 +303,29 @@ _GOOGLE_VERIFY = os.getenv("GOOGLE_SITE_VERIFICATION", "")
 if hasattr(templates, "env"):
     templates.env.globals["bing_verification"] = _BING_VERIFY
     templates.env.globals["google_verification"] = _GOOGLE_VERIFY
+    # Faits chiffrés du site (source unique : site_facts.py)
+    templates.env.globals["facts"] = site_facts.template_globals()
+    # JSON-LD via |tojson : UTF-8 lisible, ordre des clés conservé
+    # (tojson échappe toujours < > & ' : sûr dans un <script>)
+    templates.env.policies["json.dumps_kwargs"] = {"ensure_ascii": False, "sort_keys": False}
 
 
 # === SEO : page 404 personnalisée (HTML au lieu de JSON brut) ===
 @app.exception_handler(404)
 async def custom_404_handler(request: Request, exc):
-    """Page 404 SEO-friendly avec navigation vers les pages principales."""
+    """Page 404 SEO-friendly avec navigation vers les pages principales.
+
+    HTML pour toute URL hors /api/ (y compris curl et crawlers qui envoient
+    Accept: */*) ; JSON pour l'API ou si le client demande explicitement du JSON.
+    """
     accept = request.headers.get("accept", "")
-    if "text/html" in accept:
-        return templates.TemplateResponse(
-            "404.html", {"request": request}, status_code=404,
-        )
-    return JSONResponse(status_code=404, content={"detail": "Page non trouvée"})
+    wants_json = "application/json" in accept and "text/html" not in accept
+    if request.url.path.startswith("/api/") or wants_json:
+        return JSONResponse(status_code=404, content={"detail": "Page non trouvée"})
+    return templates.TemplateResponse(
+        "404.html", {"request": request}, status_code=404,
+        headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex"},
+    )
 
 
 # === Fix #25 : middleware — attendre que la DB soit prête pour les endpoints API ===
@@ -352,6 +364,8 @@ _CACHE_RULES: list[tuple[str, str]] = [
     ("/api/predictions", "public, max-age=120, stale-while-revalidate=120"),
     # Badge performance (change rarement)
     ("/api/performance/badge", "public, max-age=300, stale-while-revalidate=300"),
+    # Pages mois / saison du calendrier (SSR, prévisions recalculées chaque jour)
+    ("/calendrier/", "public, max-age=600, stale-while-revalidate=1800"),
 ]
 
 
@@ -365,6 +379,11 @@ _CACHE_EXACT: dict[str, str] = {
     "/blog/": "public, max-age=600, stale-while-revalidate=1800",
     "/calendrier": "public, max-age=600, stale-while-revalidate=1800",
     "/alertes": "public, max-age=3600, stale-while-revalidate=7200",
+    "/tarif-tempo-edf": "public, max-age=3600, stale-while-revalidate=7200",
+    "/api-tempo": "public, max-age=3600, stale-while-revalidate=7200",
+    "/methodologie": "public, max-age=3600, stale-while-revalidate=7200",
+    # Couleur de demain : change quand EDF publie (fin de matinée)
+    "/couleur-tempo-demain": "public, max-age=120, stale-while-revalidate=60",
     # SEO files — Bing re-fetche robots.txt et sitemap.xml à chaque crawl sans cache
     "/robots.txt": "public, max-age=86400",
     "/sitemap.xml": "public, max-age=3600, stale-while-revalidate=3600",
@@ -383,9 +402,11 @@ async def add_cache_and_security_headers(request: Request, call_next):
     response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     # --- Content-Language pour les pages HTML (aide Bing à classifier la langue) ---
-    if path in _CACHE_EXACT or path.startswith("/blog/"):
+    if path in _CACHE_EXACT or path.startswith(("/blog/", "/calendrier/")):
         response.headers["Content-Language"] = "fr"
-    # --- Cache-Control ---
+    # --- Cache-Control --- (jamais sur les erreurs : une 404 ne doit pas être mise en cache 1 h)
+    if response.status_code >= 400:
+        return response
     # Match exact d'abord (pages HTML)
     if path in _CACHE_EXACT:
         response.headers["Cache-Control"] = _CACHE_EXACT[path]
@@ -474,11 +495,17 @@ def _get_ssr_data() -> dict:
     Best-effort : si la DB n'est pas prête, retourne des valeurs vides.
     Ceci permet à Google de crawler du contenu réel au lieu de placeholders JS.
     """
+    today_d = date.today()
+    tomorrow_d = today_d + timedelta(days=1)
     ssr = {
         "today_color": None, "tomorrow_color": None,
         "remaining": None, "predictions": [], "week_summary": [],
-        "last_update": None,
-        "show_winter_notice": date.today() <= date(2026, 3, 30),
+        "last_update": None, "last_update_iso": None,
+        # Réponse directe en texte (SSR) : dates lisibles + prévision de demain
+        "today_iso": today_d.isoformat(), "today_label": site_facts.fr_date(today_d),
+        "tomorrow_iso": tomorrow_d.isoformat(),
+        "tomorrow_label": site_facts.fr_date(tomorrow_d, with_year=False),
+        "tomorrow_forecast_color": None, "tomorrow_forecast_confidence": None,
     }
     if not _db_ready.is_set():
         return ssr
@@ -561,7 +588,9 @@ def _get_ssr_data() -> dict:
                         ssr["week_summary"].append({
                             "day_label": JOURS_SSR[d.weekday()],
                             "day_num": d.day,
+                            "date_label": site_facts.fr_date(d, with_year=False),
                             "couleur": couleur,
+                            "couleur_label": site_facts.couleur_label(couleur),
                             "confirmed": is_confirmed,
                             "confidence": confidence,
                             "is_today": d == today_d,
@@ -569,6 +598,11 @@ def _get_ssr_data() -> dict:
                         })
                     except Exception:
                         pass
+                # Prévision de demain (si EDF n'a pas encore publié la couleur)
+                if r["date"] == tomorrow_d.isoformat() and not is_confirmed:
+                    prob = r[f"probabilite_{(couleur or '').lower()}"] if couleur in ("BLEU", "BLANC", "ROUGE") else None
+                    ssr["tomorrow_forecast_color"] = couleur
+                    ssr["tomorrow_forecast_confidence"] = round(prob * 100) if prob is not None else None
 
             # SSR: dernière mise à jour (reco 21)
             try:
@@ -582,6 +616,7 @@ def _get_ssr_data() -> dict:
                     try:
                         parsed = dt.fromisoformat(ts)
                         ssr["last_update"] = parsed.strftime("%d/%m/%Y à %Hh%M")
+                        ssr["last_update_iso"] = parsed.isoformat(timespec="minutes")
                     except Exception:
                         pass
             except Exception:
@@ -593,18 +628,108 @@ def _get_ssr_data() -> dict:
     return ssr
 
 
-@app.get("/", response_class=HTMLResponse)
+@app.api_route("/", methods=["GET", "HEAD"], response_class=HTMLResponse)
 async def page_dashboard(request: Request):
     """Page principale — dashboard des prévisions."""
     ssr = _get_ssr_data()
-    return templates.TemplateResponse("dashboard.html", {"request": request, "ssr": ssr})
+    return templates.TemplateResponse("dashboard.html", {
+        "request": request,
+        "ssr": ssr,
+        "faq": site_facts.FAQ_HOME,
+        "faq_ld": site_facts.faq_jsonld(site_facts.FAQ_HOME),
+        "itemlist_ld": _predictions_itemlist_ld(ssr),
+    })
+
+
+def _predictions_itemlist_ld(ssr: dict) -> dict | None:
+    """ItemList JSON-LD des prochains jours (données SSR réelles uniquement)."""
+    preds = ssr.get("predictions") or []
+    if not preds:
+        return None
+    items = []
+    for i, p in enumerate(preds[:5], start=1):
+        try:
+            label = site_facts.fr_date(date.fromisoformat(p["date"]))
+        except (TypeError, ValueError):
+            label = p["date"]
+        statut = "couleur officielle EDF" if p["confirmed"] else "prévision"
+        items.append({
+            "@type": "ListItem", "position": i,
+            "name": f"{label} : {site_facts.couleur_label(p['couleur'])} ({statut})",
+        })
+    return {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        "name": "Couleurs Tempo EDF des prochains jours",
+        "numberOfItems": len(items),
+        "itemListElement": items,
+    }
+
+
+_MONTH_NAMES_FR = [
+    "", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+    "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
+]
+
+
+def _season_of(d: date) -> int:
+    """Année de début de la saison Tempo contenant d (saison = 1er sept. → 31 août)."""
+    return d.year if d.month >= 9 else d.year - 1
+
+
+def _first_actual_date() -> date | None:
+    """Première date avec une couleur officielle réelle (actuals, synthetic = 0)."""
+    try:
+        from database import get_db
+        conn = get_db()
+        try:
+            row = conn.execute(
+                "SELECT MIN(date) AS first_date FROM actuals WHERE synthetic = 0"
+            ).fetchone()
+        finally:
+            conn.close()
+        if row and row["first_date"]:
+            return date.fromisoformat(row["first_date"])
+    except Exception as e:
+        logger.debug(f"[Calendrier] Erreur première date: {e}")
+    return None
+
+
+def _calendar_bounds() -> tuple[date, date]:
+    """(premier mois, dernier mois) navigables : saisons avec données réelles → fin de saison en cours."""
+    from tempo_client import get_season_dates
+    season_start, season_end = get_season_dates()
+    first = _first_actual_date()
+    first_month = date(_season_of(first), 9, 1) if first and first < season_start else season_start
+    return first_month, date(season_end.year, season_end.month, 1)
+
+
+def _month_path(year: int, month: int) -> str:
+    """URL canonique d'un mois : /calendrier pour le mois en cours, sinon /calendrier/AAAA-MM."""
+    today = date.today()
+    if (year, month) == (today.year, today.month):
+        return "/calendrier"
+    return f"/calendrier/{year}-{month:02d}"
+
+
+def _past_seasons_with_data() -> list[str]:
+    """Saisons terminées ayant au moins une couleur officielle réelle (plus récente d'abord)."""
+    from tempo_client import get_season_dates
+    season_start, _ = get_season_dates()
+    first = _first_actual_date()
+    if not first or first >= season_start:
+        return []
+    return [f"{y}-{y + 1}" for y in range(season_start.year - 1, _season_of(first) - 1, -1)]
 
 
 def _get_calendrier_data(month: int | None = None, year: int | None = None) -> dict:
     """Compute calendar data for a given month/year.
 
     Returns a dict with all data needed to render the calendar grid and navigation.
-    Shared by the SSR page and the AJAX API endpoint.
+    Shared by the SSR pages (/calendrier, /calendrier/AAAA-MM) and the JSON endpoint.
+    Couleurs : officielles (actuals, synthetic = 0) pour le passé, prévisions pour
+    le futur ; un jour sans donnée reste « non publié » / « pas encore prévu »
+    (jamais de couleur par défaut).
     """
     import calendar as cal_module
 
@@ -613,26 +738,27 @@ def _get_calendrier_data(month: int | None = None, year: int | None = None) -> d
         month = today.month
         year = today.year
     month = max(1, min(12, month))
-    year = max(2020, min(2030, year))
+    year = max(2019, min(2030, year))
 
     from tempo_client import get_season_dates
     season_start, season_end = get_season_dates()
     season_label = f"{season_start.year}-{season_end.year}"
+    month_season = _season_of(date(year, month, 1))
+    month_season_label = f"{month_season}-{month_season + 1}"
 
     # Charger les couleurs depuis la DB
-    colors_map: dict[str, str] = {}
-    actuals_set: set[str] = set()
+    official: dict[str, str] = {}
+    predicted: dict[str, str] = {}
     try:
         from database import get_db
         conn = get_db()
         try:
             rows = conn.execute(
-                "SELECT date, couleur_reelle FROM actuals WHERE date LIKE ?",
+                "SELECT date, couleur_reelle FROM actuals WHERE date LIKE ? AND synthetic = 0",
                 (f"{year}-{month:02d}-%",)
             ).fetchall()
             for r in rows:
-                colors_map[r["date"]] = r["couleur_reelle"]
-                actuals_set.add(r["date"])
+                official[r["date"]] = r["couleur_reelle"]
 
             pred_rows = conn.execute(
                 """SELECT date, couleur_predite FROM predictions
@@ -645,14 +771,14 @@ def _get_calendrier_data(month: int | None = None, year: int | None = None) -> d
                 (f"{year}-{month:02d}-%", today.isoformat(), f"{year}-{month:02d}-%")
             ).fetchall()
             for r in pred_rows:
-                if r["date"] not in colors_map:
-                    colors_map[r["date"]] = r["couleur_predite"]
+                if r["date"] not in official:
+                    predicted[r["date"]] = r["couleur_predite"]
         finally:
             conn.close()
     except Exception as e:
         logger.debug(f"[Calendrier] Erreur DB: {e}")
 
-    # Stats de la saison
+    # Stats de la saison en cours
     stats = {"rouge_used": 0, "blanc_used": 0, "bleu_used": 0}
     try:
         from tempo_client import count_used_days
@@ -663,68 +789,221 @@ def _get_calendrier_data(month: int | None = None, year: int | None = None) -> d
     except Exception:
         pass
 
-    month_names_fr = [
-        "", "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
-        "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
-    ]
     first_weekday, num_days = cal_module.monthrange(year, month)
     calendar_days = []
     for _ in range(first_weekday):
         calendar_days.append({"empty": True})
+    red_days, white_days, predicted_red, predicted_white = [], [], [], []
     for day in range(1, num_days + 1):
         d = date(year, month, day)
         d_str = d.isoformat()
-        color = colors_map.get(d_str, "BLEU")
-        is_future = d > today and d_str not in actuals_set
-        is_today = d == today
+        if d_str in official:
+            color, status = official[d_str], "officiel"
+        elif d_str in predicted:
+            color, status = predicted[d_str], "prevision"
+        else:
+            color, status = None, ("non_publie" if d <= today else "non_prevu")
+        is_future = status in ("prevision", "non_prevu")
+        label = site_facts.fr_date(d)
+        if status == "officiel":
+            state = f"{site_facts.couleur_label(color)} (couleur officielle)"
+        elif status == "prevision":
+            state = f"{site_facts.couleur_label(color)} (prévision)"
+        elif status == "non_publie":
+            state = "couleur non disponible"
+        else:
+            state = "pas encore prévu"
         calendar_days.append({
-            "empty": False, "num": day, "color": color,
-            "is_future": is_future, "is_today": is_today,
+            "empty": False, "num": day, "color": color, "status": status,
+            "is_future": is_future, "is_today": d == today,
+            "date": d_str, "label": f"{label} : {state}",
         })
+        if color == "ROUGE":
+            (red_days if status == "officiel" else predicted_red).append(label)
+        elif color == "BLANC":
+            (white_days if status == "officiel" else predicted_white).append(label)
 
+    first_month, last_month = _calendar_bounds()
     prev_m = month - 1 if month > 1 else 12
     prev_y = year if month > 1 else year - 1
     next_m = month + 1 if month < 12 else 1
     next_y = year if month < 12 else year + 1
-
-    show_prev = date(prev_y, prev_m, 1) >= date(season_start.year, season_start.month, 1)
-    show_next = date(next_y, next_m, 1) <= date(season_end.year, season_end.month, 1)
+    show_prev = date(prev_y, prev_m, 1) >= first_month
+    show_next = date(next_y, next_m, 1) <= last_month
 
     return {
         "season_label": season_label,
         "season_start": season_start.isoformat(),
         "season_end": season_end.isoformat(),
+        "month_season_label": month_season_label,
         "stats": stats,
         "calendar_days": calendar_days,
-        "current_month_label": f"{month_names_fr[month]} {year}",
+        "month": month,
+        "year": year,
+        "month_name": _MONTH_NAMES_FR[month],
+        "current_month_label": f"{_MONTH_NAMES_FR[month]} {year}",
+        "month_path": _month_path(year, month),
+        "is_current_month": (year, month) == (today.year, today.month),
+        "red_days": red_days,
+        "white_days": white_days,
+        "predicted_red": predicted_red,
+        "predicted_white": predicted_white,
+        "official_count": len(official),
+        "num_days": num_days,
         "prev_month": prev_m if show_prev else None,
         "prev_year": prev_y,
-        "prev_month_label": f"{month_names_fr[prev_m]} {prev_y}" if show_prev else "",
+        "prev_path": _month_path(prev_y, prev_m) if show_prev else None,
+        "prev_month_label": f"{_MONTH_NAMES_FR[prev_m]} {prev_y}" if show_prev else "",
         "next_month": next_m if show_next else None,
         "next_year": next_y,
-        "next_month_label": f"{month_names_fr[next_m]} {next_y}" if show_next else "",
+        "next_path": _month_path(next_y, next_m) if show_next else None,
+        "next_month_label": f"{_MONTH_NAMES_FR[next_m]} {next_y}" if show_next else "",
     }
 
 
-@app.get("/calendrier", response_class=HTMLResponse)
+def _get_season_data(start_year: int) -> dict:
+    """Couleurs officielles d'une saison (actuals, synthetic = 0 : données réelles uniquement)."""
+    start, end = date(start_year, 9, 1), date(start_year + 1, 8, 31)
+    rows = []
+    try:
+        from database import get_db
+        conn = get_db()
+        try:
+            rows = conn.execute(
+                "SELECT date, couleur_reelle FROM actuals "
+                "WHERE date >= ? AND date <= ? AND synthetic = 0 ORDER BY date",
+                (start.isoformat(), end.isoformat()),
+            ).fetchall()
+        finally:
+            conn.close()
+    except Exception as e:
+        logger.debug(f"[Saison] Erreur DB: {e}")
+    counts = {"ROUGE": 0, "BLANC": 0, "BLEU": 0}
+    red_days, white_days = [], []
+    per_month: dict[str, dict] = {}
+    for r in rows:
+        d = date.fromisoformat(r["date"])
+        c = r["couleur_reelle"]
+        if c not in counts:
+            continue
+        counts[c] += 1
+        key = f"{d.year}-{d.month:02d}"
+        m = per_month.setdefault(key, {"ROUGE": 0, "BLANC": 0, "BLEU": 0})
+        m[c] += 1
+        if c == "ROUGE":
+            red_days.append({"iso": r["date"], "label": site_facts.fr_date(d)})
+        elif c == "BLANC":
+            white_days.append({"iso": r["date"], "label": site_facts.fr_date(d)})
+    months = []
+    y, mth = start_year, 9
+    for _ in range(12):
+        key = f"{y}-{mth:02d}"
+        months.append({
+            "key": key, "label": f"{_MONTH_NAMES_FR[mth]} {y}",
+            "path": _month_path(y, mth), "counts": per_month.get(key),
+        })
+        y, mth = (y + 1, 1) if mth == 12 else (y, mth + 1)
+    total_days = (end - start).days + 1
+    return {
+        "season_label": f"{start_year}-{start_year + 1}",
+        "season_start": start.isoformat(),
+        "season_end": end.isoformat(),
+        "counts": counts,
+        "days_with_data": len(rows),
+        "total_days": total_days,
+        "first_date": site_facts.fr_date(date.fromisoformat(rows[0]["date"])) if rows else None,
+        "last_date": site_facts.fr_date(date.fromisoformat(rows[-1]["date"])) if rows else None,
+        "red_days": red_days,
+        "white_days": white_days,
+        "months": months,
+        "complete": len(rows) >= total_days,
+    }
+
+
+def _calendar_context(request: Request, data: dict, canonical_path: str) -> dict:
+    """Contexte commun des pages calendrier (SSR)."""
+    today = date.today()
+    faq = site_facts.faq_calendrier(data["season_label"])
+    crumbs = [("Accueil", "/"), ("Calendrier Tempo EDF", "/calendrier")]
+    if canonical_path != "/calendrier":
+        crumbs.append((data["current_month_label"], canonical_path))
+    ctx = dict(data)
+    ctx.update({
+        "request": request,
+        "canonical_path": canonical_path,
+        "faq": faq,
+        "faq_ld": site_facts.faq_jsonld(faq),
+        "breadcrumb_ld": site_facts.breadcrumb_jsonld(crumbs),
+        "past_seasons": _past_seasons_with_data(),
+        "today_iso": today.isoformat(),
+    })
+    return ctx
+
+
+@app.api_route("/calendrier", methods=["GET", "HEAD"], response_class=HTMLResponse)
 async def page_calendrier(request: Request, month: int | None = None, year: int | None = None):
-    """Page calendrier Tempo EDF — vue mensuelle avec couleurs passées et prévisions.
+    """Page calendrier Tempo EDF — mois en cours (couleurs officielles + prévisions).
 
     Cible SEO : 'calendrier tempo', 'calendrier tempo edf'.
-    Le contenu est entièrement server-side rendered pour le crawl Google.
+    Rendu serveur complet ; les autres mois ont leur propre URL /calendrier/AAAA-MM.
+    Les anciennes URL ?month=&year= redirigent (301) vers l'URL canonique du mois.
     """
+    if month and year and 1 <= month <= 12 and 2019 <= year <= 2030:
+        path = _month_path(year, month)
+        if path != "/calendrier":
+            return RedirectResponse(path, status_code=301)
     data = _get_calendrier_data(month, year)
-    data["request"] = request
-    return templates.TemplateResponse("calendrier.html", data)
+    return templates.TemplateResponse("calendrier.html", _calendar_context(request, data, "/calendrier"))
+
+
+@app.api_route("/calendrier/{slug}", methods=["GET", "HEAD"], response_class=HTMLResponse)
+async def page_calendrier_slug(request: Request, slug: str):
+    """/calendrier/AAAA-MM (mois) ou /calendrier/AAAA-AAAA (saison, dates réelles)."""
+    import re as _re
+    m = _re.fullmatch(r"(\d{4})-(\d{2})", slug)
+    if m:
+        year, month = int(m.group(1)), int(m.group(2))
+        if not 1 <= month <= 12:
+            raise HTTPException(status_code=404, detail="Mois inconnu")
+        first_month, last_month = _calendar_bounds()
+        if not first_month <= date(year, month, 1) <= last_month:
+            raise HTTPException(status_code=404, detail="Mois hors calendrier")
+        data = _get_calendrier_data(month, year)
+        return templates.TemplateResponse(
+            "calendrier.html", _calendar_context(request, data, _month_path(year, month)))
+    m = _re.fullmatch(r"(\d{4})-(\d{4})", slug)
+    if m and int(m.group(2)) == int(m.group(1)) + 1:
+        start_year = int(m.group(1))
+        from tempo_client import get_season_dates
+        current_start, _ = get_season_dates()
+        season = _get_season_data(start_year)
+        if start_year > current_start.year or (season["days_with_data"] == 0 and start_year != current_start.year):
+            raise HTTPException(status_code=404, detail="Saison sans données")
+        season["is_current"] = start_year == current_start.year
+        path = f"/calendrier/{season['season_label']}"
+        crumbs = [("Accueil", "/"), ("Calendrier Tempo EDF", "/calendrier"),
+                  (f"Saison {season['season_label']}", path)]
+        return templates.TemplateResponse("calendrier_saison.html", {
+            "request": request, "s": season, "canonical_path": path,
+            "breadcrumb_ld": site_facts.breadcrumb_jsonld(crumbs),
+            "past_seasons": _past_seasons_with_data(),
+        })
+    raise HTTPException(status_code=404, detail="Page non trouvée")
+
+
+@app.api_route("/calendrier/", methods=["GET", "HEAD"], include_in_schema=False)
+async def page_calendrier_slash():
+    """Redirection permanente (301 et non 307) vers l'URL canonique sans slash."""
+    return RedirectResponse("/calendrier", status_code=301)
 
 
 @app.get("/api/calendrier-data")
 async def api_calendrier_data(month: int | None = None, year: int | None = None):
-    """API JSON pour la navigation AJAX du calendrier (pas d'URL avec query params)."""
+    """API JSON du calendrier mensuel (mêmes données que les pages SSR)."""
     return _get_calendrier_data(month, year)
 
 
-@app.get("/alertes", response_class=HTMLResponse)
+@app.api_route("/alertes", methods=["GET", "HEAD"], response_class=HTMLResponse)
 async def page_alertes(request: Request):
     """Page dédiée aux alertes WhatsApp gratuites.
 
@@ -743,13 +1022,13 @@ async def page_admin(request: Request):
     return templates.TemplateResponse("admin.html", {"request": request})
 
 
-@app.get("/mentions-legales", response_class=HTMLResponse)
+@app.api_route("/mentions-legales", methods=["GET", "HEAD"], response_class=HTMLResponse)
 async def page_legal(request: Request):
     """Page mentions légales et RGPD."""
     return templates.TemplateResponse("legal.html", {"request": request})
 
 
-@app.get("/a-propos", response_class=HTMLResponse)
+@app.api_route("/a-propos", methods=["GET", "HEAD"], response_class=HTMLResponse)
 async def page_a_propos(request: Request):
     """Page À propos — méthodologie, transparence, E-E-A-T.
 
@@ -757,6 +1036,90 @@ async def page_a_propos(request: Request):
     Essentiel pour les critères E-E-A-T de Google (Experience, Expertise, Authority, Trust).
     """
     return templates.TemplateResponse("a_propos.html", {"request": request})
+
+
+# ================================================================
+# Pages SEO de référence (SSR, contenu issu de site_facts.py et de la DB)
+# ================================================================
+
+@app.api_route("/tarif-tempo-edf", methods=["GET", "HEAD"], response_class=HTMLResponse)
+async def page_tarif_tempo(request: Request):
+    """Grille tarifaire Tempo EDF en vigueur (source : site_facts.TARIFS).
+
+    Cible SEO : 'tarif tempo edf'. Rendu SSG-like (contenu statique, cache 1 h).
+    """
+    crumbs = [("Accueil", "/"), ("Tarif Tempo EDF", "/tarif-tempo-edf")]
+    return templates.TemplateResponse("tarif_tempo.html", {
+        "request": request,
+        "canonical_path": "/tarif-tempo-edf",
+        "breadcrumb_ld": site_facts.breadcrumb_jsonld(crumbs),
+    })
+
+
+@app.api_route("/couleur-tempo-demain", methods=["GET", "HEAD"], response_class=HTMLResponse)
+async def page_couleur_demain(request: Request):
+    """Couleur Tempo EDF de demain : officielle si publiée, sinon prévision signalée.
+
+    Cible SEO : 'couleur tempo demain', 'edf tempo couleur du lendemain'.
+    SSR à chaque requête (cache 2 min) : la couleur change en fin de matinée.
+    """
+    ssr = _get_ssr_data()
+    crumbs = [("Accueil", "/"), ("Couleur Tempo demain", "/couleur-tempo-demain")]
+    return templates.TemplateResponse("couleur_demain.html", {
+        "request": request,
+        "canonical_path": "/couleur-tempo-demain",
+        "ssr": ssr,
+        "breadcrumb_ld": site_facts.breadcrumb_jsonld(crumbs),
+    })
+
+
+@app.api_route("/api-tempo", methods=["GET", "HEAD"], response_class=HTMLResponse)
+async def page_api_tempo(request: Request):
+    """Documentation de l'API publique JSON (formats lus dans les routes /api/*)."""
+    crumbs = [("Accueil", "/"), ("API Tempo EDF", "/api-tempo")]
+    return templates.TemplateResponse("api_tempo.html", {
+        "request": request,
+        "canonical_path": "/api-tempo",
+        "breadcrumb_ld": site_facts.breadcrumb_jsonld(crumbs),
+    })
+
+
+@app.api_route("/methodologie", methods=["GET", "HEAD"], response_class=HTMLResponse)
+async def page_methodologie(request: Request):
+    """Méthodologie de prévision et chiffres de performance, avec leur nature exacte."""
+    live = None
+    if _db_ready.is_set():
+        try:
+            from performance_tracker import get_accuracy_global
+            acc = get_accuracy_global(30, min_horizon=2, max_horizon=5)
+            if acc.get("total", 0) >= 10:
+                live = acc
+        except Exception as e:
+            logger.debug(f"[Méthodologie] Mesure en direct indisponible : {e}")
+    labels = {
+        "temperature": "Température nationale pondérée (9 villes)",
+        "jours_restants": "Jours rouges et blancs restant à placer",
+        "consommation_rte": "Consommation nette prévue (RTE)",
+        "pression": "Pression atmosphérique",
+        "jour_semaine": "Jour de la semaine et jours fériés",
+        "gradient_thermique": "Évolution de la température",
+        "clustering": "Continuité (jours rouges groupés)",
+    }
+    weights = [
+        (labels.get(k, k), round(v * 100))
+        for k, v in sorted(Config.DEFAULT_WEIGHTS.items(), key=lambda kv: kv[1], reverse=True)
+    ]
+    cities = [c["name"] for c in Config.WEATHER_CITIES]
+    crumbs = [("Accueil", "/"), ("Méthodologie", "/methodologie")]
+    return templates.TemplateResponse("methodologie.html", {
+        "request": request,
+        "canonical_path": "/methodologie",
+        "live": live,
+        "weights": weights,
+        "cities": cities,
+        "measured_on": site_facts.fr_date(date.today(), with_weekday=False),
+        "breadcrumb_ld": site_facts.breadcrumb_jsonld(crumbs),
+    })
 
 
 async def _render_blog_index(request: Request):
@@ -769,28 +1132,73 @@ async def _render_blog_index(request: Request):
     })
 
 
-@app.get("/blog", response_class=HTMLResponse, include_in_schema=False)
+@app.api_route("/blog", methods=["GET", "HEAD"], response_class=HTMLResponse, include_in_schema=False)
 async def page_blog(request: Request):
     """Sert /blog directement (évite le 301 redirect)."""
     return await _render_blog_index(request)
 
 
-@app.get("/blog/", response_class=HTMLResponse)
+@app.api_route("/blog/", methods=["GET", "HEAD"], response_class=HTMLResponse)
 async def page_blog_index(request: Request):
     """Page index du blog — liste les articles publiés."""
     return await _render_blog_index(request)
 
 
-@app.get("/blog/{slug}", response_class=HTMLResponse)
+@app.api_route("/blog/{slug}", methods=["GET", "HEAD"], response_class=HTMLResponse)
 async def page_blog_article(request: Request, slug: str):
     """Page d'un article de blog individuel."""
-    from blog import get_article_by_slug
+    from blog import get_article_by_slug, get_published_articles
     article = get_article_by_slug(slug)
     if not article:
         raise HTTPException(status_code=404, detail="Article non trouvé")
+    url = f"{site_facts.SITE_URL}/blog/{article.slug}"
+    org = {
+        "@type": "Organization",
+        "name": site_facts.SITE_NAME,
+        "url": f"{site_facts.SITE_URL}/",
+        "logo": {"@type": "ImageObject", "url": f"{site_facts.SITE_URL}/static/favicon-192.png",
+                 "width": 192, "height": 192},
+    }
+    article_ld = {
+        "@context": "https://schema.org",
+        "@type": "Article",
+        "headline": article.title,
+        "description": article.description,
+        "datePublished": article.publish_date.isoformat(),
+        "dateModified": article.last_modified.isoformat(),
+        "inLanguage": "fr",
+        "author": {"@type": "Organization", "name": site_facts.SITE_NAME, "url": f"{site_facts.SITE_URL}/"},
+        "publisher": org,
+        "mainEntityOfPage": {"@type": "WebPage", "@id": url},
+        "image": {"@type": "ImageObject", "url": f"{site_facts.SITE_URL}/static/og-image.png",
+                  "width": 1200, "height": 630},
+    }
+    if article.keywords:
+        article_ld["keywords"] = article.keywords
+    faq_ld = None
+    if article.faq_items:
+        faq_ld = {
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            "mainEntity": [
+                {"@type": "Question", "name": q,
+                 "acceptedAnswer": {"@type": "Answer", "text": " ".join(a.split())}}
+                for q, a in article.faq_items
+            ],
+        }
+    # Maillage : articles du même cluster (puis les plus récents) — liens internes contextuels
+    others = [a for a in get_published_articles() if a.slug != article.slug]
+    related = [a for a in others if article.cluster and a.cluster == article.cluster][:4]
+    if len(related) < 3:
+        related += [a for a in others if a not in related][: 3 - len(related)]
     return templates.TemplateResponse("blog_article.html", {
         "request": request,
         "article": article,
+        "article_ld": article_ld,
+        "faq_ld": faq_ld,
+        "related": related,
+        "breadcrumb_ld": site_facts.breadcrumb_jsonld(
+            [("Accueil", "/"), ("Blog", "/blog/"), (article.title, f"/blog/{article.slug}")]),
     })
 
 
@@ -859,308 +1267,195 @@ async def apple_touch_icon():
 
 
 # Fix #S7 : robots.txt et sitemap.xml pour le SEO
+# robots.txt généré par boucle : un seul bloc de règles par famille de bots,
+# pas de copier-coller qui dérive. Règle de lecture (Google, Bing, RFC 9309) :
+# la règle la plus longue gagne, donc « Allow: /api/today » l'emporte sur
+# « Disallow: /api/ » : les bots accèdent aux endpoints publics documentés
+# sur /api-tempo et à rien d'autre sous /api/ (ex. /api/indexnow/ping).
+_ROBOTS_PAGES = (
+    "Allow: /\n",
+    "Allow: /calendrier\n",
+    "Allow: /alertes\n",
+    "Allow: /blog/\n",
+    "Allow: /llms.txt\n",
+    "Allow: /llms-full.txt\n",
+    "Allow: /feed.xml\n",
+)
+_ROBOTS_DISALLOW = (
+    "Disallow: /admin\n",
+    "Disallow: /api/\n",
+    "Disallow: /manage/\n",
+)
+# Endpoints JSON publics (documentés sur /api-tempo)
+PUBLIC_API_ENDPOINTS = (
+    "/api/today",
+    "/api/tomorrow",
+    "/api/remaining",
+    "/api/predictions",
+    "/api/history",
+    "/api/performance/badge",
+)
+# Moteurs de recherche classiques avec accès aux endpoints publics
+_ROBOTS_SEARCH_BOTS = (
+    ("bingbot", "Bing (index web et Copilot)"),
+    ("msnbot", "Bing (ancien agent)"),
+)
+# Agents IA : recherche / citation en direct (requêtes des utilisateurs)
+_ROBOTS_AI_SEARCH_BOTS = (
+    ("OAI-SearchBot", "OpenAI : index de recherche ChatGPT"),
+    ("ChatGPT-User", "OpenAI : visites déclenchées par un utilisateur"),
+    ("Claude-SearchBot", "Anthropic : index de recherche Claude"),
+    ("Claude-User", "Anthropic : visites déclenchées par un utilisateur"),
+    ("PerplexityBot", "Perplexity : index de recherche"),
+    ("Perplexity-User", "Perplexity : visites déclenchées par un utilisateur"),
+    ("Applebot", "Apple : Siri, Spotlight, Safari"),
+    ("DuckAssistBot", "DuckDuckGo : réponses IA"),
+    ("MistralAI-User", "Mistral : Le Chat, visites déclenchées par un utilisateur"),
+    ("Meta-ExternalFetcher", "Meta : visites déclenchées par un utilisateur"),
+    ("YouBot", "You.com"),
+)
+# Agents IA : collecte pour l'entraînement ou jetons de contrôle d'usage.
+# Décision business : autorisés (objectif de visibilité dans les réponses IA).
+_ROBOTS_AI_TRAINING_BOTS = (
+    ("GPTBot", "OpenAI : entraînement"),
+    ("ClaudeBot", "Anthropic : entraînement"),
+    ("anthropic-ai", "Anthropic : ancien agent"),
+    ("Google-Extended", "Google : jeton de contrôle d'usage pour Gemini (pas un crawler)"),
+    ("GoogleOther", "Google : crawls hors recherche"),
+    ("Applebot-Extended", "Apple : jeton de contrôle d'usage pour l'IA (pas un crawler)"),
+    ("Meta-ExternalAgent", "Meta : entraînement"),
+    ("CCBot", "Common Crawl (jeu de données utilisé par de nombreux modèles)"),
+    ("cohere-ai", "Cohere"),
+    ("Amazonbot", "Amazon (Alexa)"),
+    ("Bytespider", "ByteDance"),
+    ("Diffbot", "Diffbot"),
+)
+
+
+def _robots_group(user_agent: str, comment: str, crawl_delay: int | None = None) -> str:
+    lines = [f"# {comment}\n", f"User-agent: {user_agent}\n"]
+    lines += list(_ROBOTS_PAGES)
+    lines += [f"Allow: {ep}\n" for ep in PUBLIC_API_ENDPOINTS]
+    lines += list(_ROBOTS_DISALLOW)
+    if crawl_delay:
+        lines.append(f"Crawl-delay: {crawl_delay}\n")
+    return "".join(lines)
+
+
+def build_robots_txt() -> str:
+    """Contenu de robots.txt (fonction pure, testée)."""
+    parts = [
+        "# Tous les robots : pages publiques, pas d'API\n"
+        "User-agent: *\n" + "".join(_ROBOTS_PAGES) + "".join(_ROBOTS_DISALLOW)
+    ]
+    for ua, comment in _ROBOTS_SEARCH_BOTS:
+        parts.append(_robots_group(ua, comment, crawl_delay=1))
+    for ua, comment in _ROBOTS_AI_SEARCH_BOTS + _ROBOTS_AI_TRAINING_BOTS:
+        parts.append(_robots_group(ua, comment))
+    parts.append(f"Sitemap: {site_facts.SITE_URL}/sitemap.xml\n")
+    return "\n".join(parts)
+
+
 @app.get("/robots.txt", response_class=PlainTextResponse)
 async def robots_txt():
     """Robots.txt pour les moteurs de recherche et crawlers IA."""
+    return build_robots_txt()
+
+
+def _sitemap_url(path: str, lastmod: date | str, changefreq: str, priority: str) -> str:
+    lm = lastmod.isoformat() if isinstance(lastmod, date) else lastmod
     return (
-        "User-agent: *\n"
-        "Allow: /\n"
-        "Allow: /calendrier\n"
-        "Allow: /alertes\n"
-        "Allow: /blog/\n"
-        "Allow: /llms.txt\n"
-        "Allow: /llms-full.txt\n"
-        "Allow: /feed.xml\n"
-        "Disallow: /admin\n"
-        "Disallow: /api/\n"
-        "Disallow: /manage/\n"
-        "\n"
-        "# Bing — pages publiques uniquement, API restreintes\n"
-        "User-agent: bingbot\n"
-        "Allow: /\n"
-        "Allow: /calendrier\n"
-        "Allow: /alertes\n"
-        "Allow: /blog/\n"
-        "Allow: /llms.txt\n"
-        "Allow: /llms-full.txt\n"
-        "Allow: /feed.xml\n"
-        "Allow: /api/today\n"
-        "Allow: /api/tomorrow\n"
-        "Allow: /api/predictions\n"
-        "Disallow: /admin\n"
-        "Disallow: /api/\n"
-        "Disallow: /manage/\n"
-        "Crawl-delay: 1\n"
-        "\n"
-        "User-agent: msnbot\n"
-        "Allow: /\n"
-        "Allow: /calendrier\n"
-        "Allow: /alertes\n"
-        "Allow: /blog/\n"
-        "Allow: /llms.txt\n"
-        "Allow: /llms-full.txt\n"
-        "Allow: /feed.xml\n"
-        "Allow: /api/today\n"
-        "Allow: /api/tomorrow\n"
-        "Allow: /api/predictions\n"
-        "Disallow: /admin\n"
-        "Disallow: /api/\n"
-        "Disallow: /manage/\n"
-        "Crawl-delay: 1\n"
-        "\n"
-        "# AI crawlers — accès complet aux pages publiques, API et fichiers LLM\n"
-        "# OpenAI (ChatGPT, SearchGPT)\n"
-        "User-agent: GPTBot\n"
-        "Allow: /\n"
-        "Allow: /llms.txt\n"
-        "Allow: /llms-full.txt\n"
-        "Allow: /api/today\n"
-        "Allow: /api/tomorrow\n"
-        "Allow: /api/predictions\n"
-        "Allow: /feed.xml\n"
-        "Disallow: /admin\n"
-        "Disallow: /manage/\n"
-        "\n"
-        "User-agent: ChatGPT-User\n"
-        "Allow: /\n"
-        "Allow: /llms.txt\n"
-        "Allow: /llms-full.txt\n"
-        "Allow: /api/today\n"
-        "Allow: /api/tomorrow\n"
-        "Allow: /api/predictions\n"
-        "Allow: /feed.xml\n"
-        "Disallow: /admin\n"
-        "Disallow: /manage/\n"
-        "\n"
-        "User-agent: OAI-SearchBot\n"
-        "Allow: /\n"
-        "Allow: /llms.txt\n"
-        "Allow: /llms-full.txt\n"
-        "Allow: /api/today\n"
-        "Allow: /api/tomorrow\n"
-        "Allow: /api/predictions\n"
-        "Allow: /feed.xml\n"
-        "Disallow: /admin\n"
-        "Disallow: /manage/\n"
-        "\n"
-        "# Anthropic (Claude)\n"
-        "User-agent: ClaudeBot\n"
-        "Allow: /\n"
-        "Allow: /llms.txt\n"
-        "Allow: /llms-full.txt\n"
-        "Allow: /api/today\n"
-        "Allow: /api/tomorrow\n"
-        "Allow: /api/predictions\n"
-        "Allow: /feed.xml\n"
-        "Disallow: /admin\n"
-        "Disallow: /manage/\n"
-        "\n"
-        "User-agent: anthropic-ai\n"
-        "Allow: /\n"
-        "Allow: /llms.txt\n"
-        "Allow: /llms-full.txt\n"
-        "Allow: /api/today\n"
-        "Allow: /api/tomorrow\n"
-        "Allow: /api/predictions\n"
-        "Allow: /feed.xml\n"
-        "Disallow: /admin\n"
-        "Disallow: /manage/\n"
-        "\n"
-        "# Perplexity\n"
-        "User-agent: PerplexityBot\n"
-        "Allow: /\n"
-        "Allow: /llms.txt\n"
-        "Allow: /llms-full.txt\n"
-        "Allow: /api/today\n"
-        "Allow: /api/tomorrow\n"
-        "Allow: /api/predictions\n"
-        "Allow: /feed.xml\n"
-        "Disallow: /admin\n"
-        "Disallow: /manage/\n"
-        "\n"
-        "# Google (Gemini, AI Overviews)\n"
-        "User-agent: Google-Extended\n"
-        "Allow: /\n"
-        "Allow: /llms.txt\n"
-        "Allow: /llms-full.txt\n"
-        "Allow: /api/today\n"
-        "Allow: /api/tomorrow\n"
-        "Allow: /api/predictions\n"
-        "Allow: /feed.xml\n"
-        "Disallow: /admin\n"
-        "Disallow: /manage/\n"
-        "\n"
-        "User-agent: GoogleOther\n"
-        "Allow: /\n"
-        "Allow: /llms.txt\n"
-        "Allow: /llms-full.txt\n"
-        "Allow: /api/today\n"
-        "Allow: /api/tomorrow\n"
-        "Allow: /api/predictions\n"
-        "Allow: /feed.xml\n"
-        "Disallow: /admin\n"
-        "Disallow: /manage/\n"
-        "\n"
-        "# Apple (Siri, Apple Intelligence)\n"
-        "User-agent: Applebot-Extended\n"
-        "Allow: /\n"
-        "Allow: /llms.txt\n"
-        "Allow: /llms-full.txt\n"
-        "Allow: /api/today\n"
-        "Allow: /api/tomorrow\n"
-        "Allow: /api/predictions\n"
-        "Allow: /feed.xml\n"
-        "Disallow: /admin\n"
-        "Disallow: /manage/\n"
-        "\n"
-        "# Meta (Meta AI)\n"
-        "User-agent: Meta-ExternalAgent\n"
-        "Allow: /\n"
-        "Allow: /llms.txt\n"
-        "Allow: /llms-full.txt\n"
-        "Allow: /api/today\n"
-        "Allow: /api/tomorrow\n"
-        "Allow: /api/predictions\n"
-        "Allow: /feed.xml\n"
-        "Disallow: /admin\n"
-        "Disallow: /manage/\n"
-        "\n"
-        "# Cohere\n"
-        "User-agent: cohere-ai\n"
-        "Allow: /\n"
-        "Allow: /llms.txt\n"
-        "Allow: /llms-full.txt\n"
-        "Allow: /api/today\n"
-        "Allow: /api/tomorrow\n"
-        "Allow: /api/predictions\n"
-        "Allow: /feed.xml\n"
-        "Disallow: /admin\n"
-        "Disallow: /manage/\n"
-        "\n"
-        "# Amazon (Alexa AI)\n"
-        "User-agent: Amazonbot\n"
-        "Allow: /\n"
-        "Allow: /llms.txt\n"
-        "Allow: /llms-full.txt\n"
-        "Allow: /api/today\n"
-        "Allow: /api/tomorrow\n"
-        "Allow: /api/predictions\n"
-        "Allow: /feed.xml\n"
-        "Disallow: /admin\n"
-        "Disallow: /manage/\n"
-        "\n"
-        "# ByteDance (TikTok AI)\n"
-        "User-agent: Bytespider\n"
-        "Allow: /\n"
-        "Allow: /llms.txt\n"
-        "Allow: /llms-full.txt\n"
-        "Allow: /api/today\n"
-        "Allow: /api/tomorrow\n"
-        "Allow: /api/predictions\n"
-        "Allow: /feed.xml\n"
-        "Disallow: /admin\n"
-        "Disallow: /manage/\n"
-        "\n"
-        "# You.com\n"
-        "User-agent: YouBot\n"
-        "Allow: /\n"
-        "Allow: /llms.txt\n"
-        "Allow: /llms-full.txt\n"
-        "Allow: /api/today\n"
-        "Allow: /api/tomorrow\n"
-        "Allow: /api/predictions\n"
-        "Allow: /feed.xml\n"
-        "Disallow: /admin\n"
-        "Disallow: /manage/\n"
-        "\n"
-        "# Diffbot\n"
-        "User-agent: Diffbot\n"
-        "Allow: /\n"
-        "Allow: /llms.txt\n"
-        "Allow: /llms-full.txt\n"
-        "Allow: /api/today\n"
-        "Allow: /api/tomorrow\n"
-        "Allow: /api/predictions\n"
-        "Allow: /feed.xml\n"
-        "Disallow: /admin\n"
-        "Disallow: /manage/\n"
-        "\n"
-        "Sitemap: https://www.calendrier-tempo.fr/sitemap.xml\n"
+        "  <url>\n"
+        f"    <loc>{site_facts.SITE_URL}{path}</loc>\n"
+        f"    <lastmod>{lm}</lastmod>\n"
+        f"    <changefreq>{changefreq}</changefreq>\n"
+        f"    <priority>{priority}</priority>\n"
+        "  </url>"
     )
+
+
+def _data_lastmods() -> tuple[date | None, dict[str, date]]:
+    """(date du dernier cycle de prédictions, {AAAA-MM: dernière confirmation EDF du mois}).
+
+    Sert de lastmod réel aux pages dont le HTML change avec les données.
+    """
+    last_pred = None
+    per_month: dict[str, date] = {}
+    try:
+        from database import get_db
+        conn = get_db()
+        try:
+            row = conn.execute(
+                "SELECT MAX(timestamp_prediction) AS ts FROM predictions WHERE simulated = 0"
+            ).fetchone()
+            if row and row["ts"]:
+                last_pred = date.fromisoformat(str(row["ts"])[:10])
+            rows = conn.execute(
+                "SELECT SUBSTR(date, 1, 7) AS ym, MAX(timestamp_confirmation) AS ts "
+                "FROM actuals WHERE synthetic = 0 GROUP BY SUBSTR(date, 1, 7)"
+            ).fetchall()
+            for r in rows:
+                if r["ts"]:
+                    per_month[r["ym"]] = date.fromisoformat(str(r["ts"])[:10])
+        finally:
+            conn.close()
+    except Exception as e:
+        logger.debug(f"[Sitemap] Dates de données indisponibles : {e}")
+    return last_pred, per_month
 
 
 @app.get("/sitemap.xml", response_class=PlainTextResponse)
 async def sitemap_xml():
-    """Sitemap XML dynamique — inclut les articles de blog publiés.
+    """Sitemap XML dynamique avec des lastmod réels.
 
-    Bing pénalise les lastmod artificiels : seules les pages à contenu
-    dynamique (homepage, calendrier) utilisent today. Les pages statiques
-    utilisent une date fixe de dernière modification réelle.
+    - Pages statiques : date de dernière modification du contenu (site_facts.PAGE_LASTMOD).
+    - Pages alimentées par les données (/, /calendrier, /couleur-tempo-demain, mois,
+      saisons) : max(date du contenu, dernier cycle de prédictions ou dernière
+      confirmation EDF concernée). Jamais « aujourd'hui » par défaut.
+    - Articles : updated_date si présent, sinon publish_date.
+    - feed.xml n'est pas une page : absent du sitemap.
     """
-    from blog import get_all_article_slugs
-    today = date.today().isoformat()
-    # Pages statiques : date de dernière modification réelle du contenu
-    _STATIC_LASTMOD = "2026-03-15"
+    from blog import get_published_articles
+    content_date = site_facts.LLMS_CONTENT_DATE
+    last_pred, month_confirm = _data_lastmods()
+    all_confirm = max(month_confirm.values()) if month_confirm else None
+    live = max(d for d in (content_date, last_pred, all_confirm) if d)
+
     urls = [
-        "  <url>\n"
-        "    <loc>https://www.calendrier-tempo.fr/</loc>\n"
-        f"    <lastmod>{today}</lastmod>\n"
-        "    <changefreq>daily</changefreq>\n"
-        "    <priority>1.0</priority>\n"
-        "  </url>",
-        "  <url>\n"
-        "    <loc>https://www.calendrier-tempo.fr/calendrier</loc>\n"
-        f"    <lastmod>{today}</lastmod>\n"
-        "    <changefreq>daily</changefreq>\n"
-        "    <priority>0.9</priority>\n"
-        "  </url>",
-        "  <url>\n"
-        "    <loc>https://www.calendrier-tempo.fr/alertes</loc>\n"
-        f"    <lastmod>{_STATIC_LASTMOD}</lastmod>\n"
-        "    <changefreq>monthly</changefreq>\n"
-        "    <priority>0.8</priority>\n"
-        "  </url>",
-        "  <url>\n"
-        "    <loc>https://www.calendrier-tempo.fr/a-propos</loc>\n"
-        f"    <lastmod>{_STATIC_LASTMOD}</lastmod>\n"
-        "    <changefreq>monthly</changefreq>\n"
-        "    <priority>0.5</priority>\n"
-        "  </url>",
-        "  <url>\n"
-        "    <loc>https://www.calendrier-tempo.fr/mentions-legales</loc>\n"
-        f"    <lastmod>{_STATIC_LASTMOD}</lastmod>\n"
-        "    <changefreq>monthly</changefreq>\n"
-        "    <priority>0.3</priority>\n"
-        "  </url>",
-        "  <url>\n"
-        "    <loc>https://www.calendrier-tempo.fr/feed.xml</loc>\n"
-        f"    <lastmod>{_STATIC_LASTMOD}</lastmod>\n"
-        "    <changefreq>weekly</changefreq>\n"
-        "    <priority>0.2</priority>\n"
-        "  </url>",
+        _sitemap_url("/", live, "daily", "1.0"),
+        _sitemap_url("/calendrier", live, "daily", "0.9"),
+        _sitemap_url("/couleur-tempo-demain", live, "daily", "0.8"),
+        _sitemap_url("/tarif-tempo-edf", site_facts.PAGE_LASTMOD["/tarif-tempo-edf"], "monthly", "0.8"),
+        _sitemap_url("/alertes", site_facts.PAGE_LASTMOD["/alertes"], "monthly", "0.8"),
+        _sitemap_url("/api-tempo", site_facts.PAGE_LASTMOD["/api-tempo"], "monthly", "0.6"),
+        _sitemap_url("/methodologie", site_facts.PAGE_LASTMOD["/methodologie"], "monthly", "0.6"),
+        _sitemap_url("/a-propos", site_facts.PAGE_LASTMOD["/a-propos"], "monthly", "0.5"),
+        _sitemap_url("/mentions-legales", site_facts.PAGE_LASTMOD["/mentions-legales"], "yearly", "0.3"),
     ]
-    # Blog index
-    blog_slugs = get_all_article_slugs()
-    if blog_slugs:
-        latest_date = max(d for _, d in blog_slugs).isoformat()
-        urls.append(
-            "  <url>\n"
-            "    <loc>https://www.calendrier-tempo.fr/blog/</loc>\n"
-            f"    <lastmod>{latest_date}</lastmod>\n"
-            "    <changefreq>weekly</changefreq>\n"
-            "    <priority>0.7</priority>\n"
-            "  </url>"
-        )
-    # Individual articles
-    for slug, pub_date in blog_slugs:
-        urls.append(
-            "  <url>\n"
-            f"    <loc>https://www.calendrier-tempo.fr/blog/{slug}</loc>\n"
-            f"    <lastmod>{pub_date.isoformat()}</lastmod>\n"
-            "    <changefreq>monthly</changefreq>\n"
-            "    <priority>0.6</priority>\n"
-            "  </url>"
-        )
+    # Pages saison (dates réelles) et pages mois (jusqu'au mois en cours)
+    from tempo_client import get_season_dates
+    current_start, _ = get_season_dates()
+    for label in [f"{current_start.year}-{current_start.year + 1}"] + _past_seasons_with_data():
+        y0 = int(label[:4])
+        dates = [d for ym, d in month_confirm.items()
+                 if f"{y0}-09" <= ym <= f"{y0 + 1}-08"]
+        lm = max(dates + [content_date])
+        urls.append(_sitemap_url(f"/calendrier/{label}", lm, "monthly", "0.7"))
+    first_month, _ = _calendar_bounds()
+    today = date.today()
+    y, m = first_month.year, first_month.month
+    while (y, m) < (today.year, today.month):
+        ym = f"{y}-{m:02d}"
+        lm = max(d for d in (month_confirm.get(ym), content_date) if d)
+        urls.append(_sitemap_url(f"/calendrier/{ym}", lm, "monthly", "0.5"))
+        y, m = (y + 1, 1) if m == 12 else (y, m + 1)
+    # Blog
+    articles = get_published_articles()
+    if articles:
+        latest = max(a.last_modified for a in articles)
+        urls.append(_sitemap_url("/blog/", latest, "weekly", "0.7"))
+    for a in articles:
+        urls.append(_sitemap_url(f"/blog/{a.slug}", a.last_modified, "monthly", "0.6"))
     xml = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
@@ -1171,6 +1466,69 @@ async def sitemap_xml():
     return Response(content=xml, media_type="application/xml; charset=utf-8")
 
 
+def _llms_revision_date(articles) -> date:
+    """Date réelle de dernière révision du contenu décrit (pas « aujourd'hui »)."""
+    dates = [site_facts.LLMS_CONTENT_DATE, site_facts.TARIFS_DATE_EFFET]
+    dates += [a.last_modified for a in articles]
+    return max(dates)
+
+
+def _llms_common_sections() -> str:
+    """Sections factuelles communes à llms.txt et llms-full.txt (source : site_facts)."""
+    from tempo_client import get_season_dates
+    start, end = get_season_dates()
+    t = site_facts.TARIFS
+    p = site_facts.fr_price
+    bt = site_facts.BACKTEST_ML
+    api_lines = "".join(
+        f"- [{ep}]({site_facts.SITE_URL}{ep})\n" for ep in PUBLIC_API_ENDPOINTS
+    )
+    return (
+        f"Saison en cours : {start.year}-{end.year} (du {site_facts.fr_date(start, with_weekday=False)} "
+        f"au {site_facts.fr_date(end, with_weekday=False)}).\n"
+        "\n"
+        "## Règles EDF Tempo\n"
+        f"- {site_facts.JOURS_ROUGES} jours rouges par saison, uniquement du 1er novembre au 31 mars\n"
+        "- Jours rouges : du lundi au vendredi, jamais le week-end ni un jour férié\n"
+        f"- Maximum {site_facts.MAX_ROUGES_CONSECUTIFS} jours rouges consécutifs\n"
+        f"- {site_facts.JOURS_BLANCS} jours blancs par saison, jamais le dimanche\n"
+        f"- {site_facts.JOURS_BLEUS} jours bleus par saison (301 quand la saison contient un 29 février)\n"
+        "- Saison Tempo : du 1er septembre au 31 août\n"
+        "- Un jour Tempo va de 6 h à 6 h le lendemain\n"
+        f"- {site_facts.ANNONCE_J1}\n"
+        "\n"
+        f"## Tarifs Tempo EDF (au {site_facts.fr_date(site_facts.TARIFS_DATE_EFFET, with_weekday=False)}, TTC, €/kWh)\n"
+        "\n"
+        f"| Couleur | Heures pleines ({site_facts.HEURES_PLEINES}) | Heures creuses ({site_facts.HEURES_CREUSES}) |\n"
+        "|---|---|---|\n"
+        f"| Bleu | {p(t['BLEU']['hp'])} | {p(t['BLEU']['hc'])} |\n"
+        f"| Blanc | {p(t['BLANC']['hp'])} | {p(t['BLANC']['hc'])} |\n"
+        f"| Rouge | {p(t['ROUGE']['hp'])} | {p(t['ROUGE']['hc'])} |\n"
+        "\n"
+        f"Source : {site_facts.TARIFS_SOURCE}. Un kWh rouge en heures pleines coûte "
+        f"{site_facts.fr_num(site_facts.RATIO_ROUGE_BLEU_HP)} fois un kWh bleu en heures pleines.\n"
+        "\n"
+        "## Sources des données\n"
+        f"- Couleurs officielles : {site_facts.SOURCE_COULEURS_PHRASE}. Seule la couleur publiée par EDF fait foi.\n"
+        "- Météo : Météo France (modèles AROME et ARPEGE), moyenne pondérée de 9 villes ; Open-Meteo en secours\n"
+        "- Consommation d'électricité : prévisions RTE\n"
+        "\n"
+        "## Performance (nature exacte des chiffres)\n"
+        f"- Backtest historique du modèle de machine learning, avec la météo observée (et non les prévisions "
+        f"disponibles à l'avance), sur {site_facts.fr_num(bt['jours'], 0)} jours réels ({bt['periode']}) : "
+        f"F1 {site_facts.fr_num(bt['f1'])} %, précision {site_facts.fr_num(bt['precision'])} %, "
+        f"rappel {site_facts.fr_num(bt['rappel'])} % (détection des jours rouges au seuil retenu), "
+        f"exactitude globale {site_facts.fr_num(bt['exactitude'])} % ; résultat consigné en {bt['date_doc']}. "
+        "Ce n'est pas une mesure en conditions réelles.\n"
+        f"- En conditions réelles : taux de prévisions correctes de {site_facts.HORIZON_FIABLE} sur 30 jours, "
+        f"publié sur {site_facts.SITE_URL}/methodologie et {site_facts.SITE_URL}/api/performance/badge\n"
+        "\n"
+        "## API publiques (JSON, gratuites, sans clé)\n"
+        f"Documentation complète : {site_facts.SITE_URL}/api-tempo\n"
+        + api_lines
+    )
+
+
 @app.get("/llms.txt", response_class=PlainTextResponse)
 async def llms_txt():
     """LLMs.txt — standard émergent pour la découverte par les LLMs.
@@ -1178,157 +1536,123 @@ async def llms_txt():
     Format spec : https://llmstxt.org/
     H1 (requis) → blockquote résumé → sections H2 avec listes de liens.
     """
-    from blog import get_all_article_meta
-    today_str = date.today().isoformat()
+    from blog import get_published_articles
+    articles = get_published_articles()
+    revision = _llms_revision_date(articles).isoformat()
+    u = site_facts.SITE_URL
 
-    # Articles de blog publiés — avec titre et description pour les LLMs
-    blog_links = ""
-    for slug, title, description, _pub in get_all_article_meta():
-        desc_part = f": {description}" if description else ""
-        blog_links += (
-            f"- [{title}](https://www.calendrier-tempo.fr/blog/{slug}){desc_part}\n"
-        )
+    blog_links = "".join(
+        f"- [{a.title}]({u}/blog/{a.slug}){': ' + a.description if a.description else ''}\n"
+        for a in articles
+    )
+    season_links = "".join(
+        f"- [Calendrier Tempo {s}]({u}/calendrier/{s}): dates réelles des jours rouges et blancs de la saison {s}\n"
+        for s in _past_seasons_with_data()
+    )
+    faq = "".join(
+        f"- Q: {it['question']} R: {site_facts.html_to_text(it['answer_html'])}\n"
+        for it in site_facts.FAQ_HOME
+    )
 
     return PlainTextResponse(
         content=(
             "# Calendrier Tempo EDF\n"
             "\n"
-            "> Service gratuit et indépendant de prévision des jours Tempo EDF.\n"
+            "> Service gratuit et indépendant (non affilié à EDF ni à RTE) : couleur Tempo EDF du jour et de demain, "
+            "calendrier des saisons Tempo et prévisions des jours rouges, blancs et bleus jusqu'à J+15.\n"
             "> Seul site en France à proposer des prévisions jusqu'à J+15 basées sur un modèle ML.\n"
-            "> Précision mesurée : 83% sur J+2 à J+5 (backtesté sur 5 saisons 2019-2026).\n"
-            f"> Dernière mise à jour : {today_str}\n"
+            f"> Dernière révision du contenu : {revision}\n"
             "\n"
             "L'offre Tempo EDF est un contrat d'électricité où le prix du kWh varie "
             "selon la couleur du jour : Bleu (300 jours/an, tarif bas), Blanc "
             "(43 jours/an, tarif moyen) et Rouge (22 jours/an, tarif très élevé). "
             "Notre algorithme combine les prévisions météo de 9 villes françaises "
             "(Météo France AROME + ARPEGE), la consommation nationale (RTE) et un "
-            "modèle de machine learning (GradientBoosting, 33 features) pour anticiper "
-            "les choix d'EDF. 900 000 foyers sont abonnés à Tempo en France.\n"
+            "modèle de machine learning (GradientBoosting, 33 variables) pour anticiper "
+            "les couleurs. 900 000 foyers sont abonnés à Tempo en France.\n"
+            "\n"
+            + _llms_common_sections() +
+            f"- [/feed.xml]({u}/feed.xml): flux RSS des articles du blog\n"
             "\n"
             "## Pages principales\n"
-            "- [Accueil](https://www.calendrier-tempo.fr/): Couleur Tempo aujourd'hui, demain et prévisions 15 jours\n"
-            "- [Calendrier](https://www.calendrier-tempo.fr/calendrier): Calendrier mensuel complet de la saison Tempo\n"
-            "- [Blog](https://www.calendrier-tempo.fr/blog/): Guides et conseils pour économiser avec Tempo EDF\n"
-            "- [Alertes](https://www.calendrier-tempo.fr/alertes): Inscription aux alertes WhatsApp gratuites\n"
-            "- [À propos](https://www.calendrier-tempo.fr/a-propos): Méthodologie de prévision et transparence\n"
+            f"- [Accueil]({u}/): couleur Tempo EDF aujourd'hui, demain et prévisions à 15 jours\n"
+            f"- [Couleur Tempo demain]({u}/couleur-tempo-demain): couleur de demain, officielle ou prévue\n"
+            f"- [Calendrier Tempo EDF]({u}/calendrier): calendrier mensuel de la saison en cours\n"
+            f"- [Tarif Tempo EDF]({u}/tarif-tempo-edf): grille tarifaire en vigueur et coût d'un jour rouge\n"
+            f"- [Méthodologie]({u}/methodologie): méthode de prévision et chiffres de performance\n"
+            f"- [API Tempo]({u}/api-tempo): documentation de l'API JSON gratuite\n"
+            f"- [Blog]({u}/blog/): guides pour économiser avec Tempo EDF\n"
+            f"- [Alertes]({u}/alertes): alertes WhatsApp gratuites : {site_facts.ALERTES_DESCRIPTION}\n"
+            f"- [À propos]({u}/a-propos): présentation du service\n"
             "\n"
-            "## API publiques\n"
-            "- [/api/today](https://www.calendrier-tempo.fr/api/today): Couleur Tempo du jour (source EDF officielle, JSON)\n"
-            "- [/api/tomorrow](https://www.calendrier-tempo.fr/api/tomorrow): Couleur Tempo de demain (confirmée EDF ou prédiction, JSON)\n"
-            "- [/api/predictions](https://www.calendrier-tempo.fr/api/predictions): Prédictions J+1 à J+15 avec confiance (JSON)\n"
-            "- [/feed.xml](https://www.calendrier-tempo.fr/feed.xml): Flux RSS des articles du blog\n"
-            "\n"
-            "## Tarifs Tempo EDF (1er août 2026, TTC)\n"
-            "- Jour Bleu : HP 0,1654 €/kWh, HC 0,1356 €/kWh\n"
-            "- Jour Blanc : HP 0,1921 €/kWh, HC 0,1536 €/kWh\n"
-            "- Jour Rouge : HP 0,7295 €/kWh, HC 0,1615 €/kWh\n"
-            "- Heures pleines : 6h-22h. Heures creuses : 22h-6h.\n"
-            "- Un jour rouge HP coûte 4,4× plus cher qu'un jour bleu HP.\n"
-            "\n"
-            "## Règles EDF Tempo\n"
-            "- 22 jours rouges par saison (1er novembre — 31 mars uniquement)\n"
-            "- Jours rouges : jamais le week-end, jamais les jours fériés\n"
-            "- 43 jours blancs par saison, jamais le dimanche\n"
-            "- 300 jours bleus par saison\n"
-            "- Saison Tempo : 1er septembre → 31 août\n"
-            "- Maximum 5 jours rouges consécutifs\n"
+            "## Saisons passées (données officielles)\n"
+            + season_links +
             "\n"
             "## Questions fréquentes\n"
-            "- Q: Comment connaître la couleur EDF Tempo de demain ? R: EDF annonce la couleur entre 11h et 12h. Notre site affiche sa prédiction dès la veille au soir, avant l'annonce officielle.\n"
-            "- Q: Peut-on anticiper les jours rouges ? R: Oui, notre algorithme prédit les jours rouges jusqu'à J+15 (précision 83% sur J+2→J+5), basé sur la météo de 9 villes et la consommation nationale RTE.\n"
-            "- Q: Quand tombent les jours rouges ? R: Uniquement du 1er novembre au 31 mars, en semaine (jamais weekends ni jours fériés). Janvier concentre environ 35% des jours rouges.\n"
-            "- Q: Combien coûte un jour rouge ? R: En heures pleines, 0,7295 €/kWh soit 4,4× le prix d'un jour bleu. Une journée non anticipée coûte environ 14 € de plus qu'un jour bleu (25 kWh en heures pleines).\n"
-            "- Q: Que faire lors d'un jour rouge ? R: Reporter lessive, sèche-linge, four, lave-vaisselle et recharge VE. Baisser le chauffage électrique. Consommer en heures creuses (22h-6h) où le tarif reste bas (0,1615 €/kWh).\n"
-            "- Q: Est-ce un service officiel EDF ? R: Non. Service indépendant et gratuit utilisant les données publiques EDF, Météo France et RTE.\n"
-            "- Q: Comment recevoir les alertes ? R: Inscription gratuite en 30 secondes sur la page Alertes. Vous recevez un récapitulatif hebdomadaire par WhatsApp avec les 7 prochains jours.\n"
+            + faq +
             "\n"
             "## Articles du blog\n"
             + blog_links +
             "\n"
             "## Optional\n"
-            "- [Mentions légales](https://www.calendrier-tempo.fr/mentions-legales): RGPD, politique de confidentialité\n"
-            "- [llms-full.txt](https://www.calendrier-tempo.fr/llms-full.txt): Version complète avec contenu de tous les articles\n"
+            f"- [Mentions légales]({u}/mentions-legales): RGPD, politique de confidentialité\n"
+            f"- [llms-full.txt]({u}/llms-full.txt): version complète avec le texte Markdown de tous les articles\n"
         ),
         media_type="text/plain; charset=utf-8",
         headers={"Cache-Control": "public, max-age=86400"},
     )
 
 
+def _demote_markdown_headings(md: str) -> str:
+    """Décale les titres Markdown d'un niveau (hors blocs de code) pour l'imbrication."""
+    out, in_code = [], False
+    for line in md.splitlines():
+        if line.lstrip().startswith("```"):
+            in_code = not in_code
+        if not in_code and line.startswith("#"):
+            line = "#" + line
+        out.append(line)
+    return "\n".join(out)
+
+
 @app.get("/llms-full.txt", response_class=PlainTextResponse)
 async def llms_full_txt():
-    """LLMs-full.txt — contenu complet du site pour les LLMs à grand contexte.
+    """LLMs-full.txt — contenu complet en Markdown brut (tableaux intacts).
 
-    Inclut le contenu intégral de tous les articles de blog en plus
-    des informations de llms.txt. Permet aux LLMs de répondre à des
-    questions détaillées sans avoir à crawler chaque page.
+    Faits essentiels, FAQ, puis le Markdown source de chaque article publié.
     """
     from blog import get_published_articles
-    import re
-    today_str = date.today().isoformat()
+    articles = get_published_articles()
+    revision = _llms_revision_date(articles).isoformat()
+    u = site_facts.SITE_URL
 
+    faq = "".join(
+        f"### {it['question']}\n\n{site_facts.html_to_text(it['answer_html'])}\n\n"
+        for it in site_facts.FAQ_HOME
+    )
     articles_content = ""
-    for a in get_published_articles():
-        # Convertir HTML en texte brut simplifié pour les LLMs
-        text = a.content_html
-        text = re.sub(r"<h[1-6][^>]*>", "\n### ", text)
-        text = re.sub(r"</h[1-6]>", "\n", text)
-        text = re.sub(r"<li[^>]*>", "- ", text)
-        text = re.sub(r"<br\s*/?>", "\n", text)
-        text = re.sub(r"<p[^>]*>", "\n", text)
-        text = re.sub(r"<a[^>]*href=\"([^\"]+)\"[^>]*>([^<]+)</a>", r"[\2](\1)", text)
-        text = re.sub(r"<strong>([^<]+)</strong>", r"**\1**", text)
-        text = re.sub(r"<em>([^<]+)</em>", r"*\1*", text)
-        text = re.sub(r"<[^>]+>", "", text)  # Supprimer les tags restants
-        text = re.sub(r"\n{3,}", "\n\n", text).strip()
-        updated = ""
-        if a.updated_date:
-            updated = f" (mis à jour le {a.updated_date.isoformat()})"
+    for a in articles:
+        updated = f" (mis à jour le {a.updated_date.isoformat()})" if a.updated_date else ""
         articles_content += (
-            f"\n---\n\n"
-            f"## {a.title}\n"
-            f"Publié le {a.publish_date.isoformat()}{updated} "
-            f"— Temps de lecture : {a.reading_time} min\n"
-            f"URL : https://www.calendrier-tempo.fr/blog/{a.slug}\n\n"
-            f"{text}\n"
+            "\n---\n\n"
+            f"## {a.title}\n\n"
+            f"URL : {u}/blog/{a.slug}\n"
+            f"Publié le {a.publish_date.isoformat()}{updated}\n\n"
+            f"{_demote_markdown_headings(a.body_md)}\n"
         )
 
     return PlainTextResponse(
         content=(
-            "# Calendrier Tempo EDF — Contenu complet\n"
+            "# Calendrier Tempo EDF : contenu complet\n"
             "\n"
-            "> Ce fichier contient l'intégralité du contenu du site calendrier-tempo.fr.\n"
-            "> Utilisez /llms.txt pour un résumé structuré.\n"
-            f"> Dernière mise à jour : {today_str}\n"
+            "> Faits essentiels, FAQ et texte intégral (Markdown) des articles publiés sur calendrier-tempo.fr.\n"
+            "> Résumé structuré : /llms.txt. Données du jour : /api/today, /api/tomorrow.\n"
+            f"> Dernière révision du contenu : {revision}\n"
             "\n"
-            "## Informations essentielles\n"
+            + _llms_common_sections() +
             "\n"
-            "L'offre Tempo EDF est un contrat d'électricité à prix variable selon "
-            "la couleur du jour. La saison court du 1er septembre au 31 août. "
-            "Chaque saison compte exactement 22 jours rouges (les plus chers, "
-            "uniquement du 1er novembre au 31 mars, jamais le week-end ni "
-            "les jours fériés), 43 jours blancs (tarif moyen, jamais le dimanche) "
-            "et 300 jours bleus (tarif avantageux).\n"
-            "\n"
-            "### Tarifs Tempo EDF (1er août 2026, TTC)\n"
-            "| Couleur | Heures Pleines (6h-22h) | Heures Creuses (22h-6h) |\n"
-            "|---------|------------------------|------------------------|\n"
-            "| Bleu    | 0,1654 €/kWh           | 0,1356 €/kWh           |\n"
-            "| Blanc   | 0,1921 €/kWh           | 0,1536 €/kWh           |\n"
-            "| Rouge   | 0,7295 €/kWh           | 0,1615 €/kWh           |\n"
-            "\n"
-            "### Règles EDF\n"
-            "- Maximum 5 jours rouges consécutifs\n"
-            "- Jours rouges : uniquement en semaine, du 1er nov au 31 mars\n"
-            "- Jours blancs : tous les jours sauf dimanche\n"
-            "- EDF annonce la couleur du lendemain entre 11h et 12h\n"
-            "\n"
-            "### Notre service\n"
-            "- Prévisions J+1 à J+15 basées sur météo (9 villes) + consommation RTE + ML\n"
-            "- Précision : 83% sur J+2 à J+5\n"
-            "- Alertes WhatsApp gratuites (récapitulatif hebdomadaire)\n"
-            "- API JSON publiques : /api/today, /api/tomorrow, /api/predictions\n"
-            "\n"
+            "## Questions fréquentes\n\n"
+            + faq +
             "## Articles du blog\n"
             + articles_content
         ),
@@ -1342,7 +1666,13 @@ async def rss_feed():
     """Flux RSS des articles du blog — enrichi avec content:encoded et categories."""
     from blog import get_published_articles
     import html as html_mod
+    from email.utils import format_datetime
     articles = get_published_articles()
+
+    def _rfc822(d: date) -> str:
+        # Minuit heure de Paris, fuseau réel (+0100 l'hiver, +0200 l'été)
+        return format_datetime(datetime(d.year, d.month, d.day, tzinfo=_PARIS_TZ))
+
     items = []
     for a in articles[:20]:
         # Category from cluster field
@@ -1355,13 +1685,13 @@ async def rss_feed():
             f"      <link>https://www.calendrier-tempo.fr/blog/{a.slug}</link>\n"
             f"      <description>{html_mod.escape(a.description)}</description>\n"
             f"      <content:encoded><![CDATA[{a.content_html}]]></content:encoded>\n"
-            f"      <pubDate>{a.publish_date.strftime('%a, %d %b %Y 00:00:00 +0100')}</pubDate>\n"
+            f"      <pubDate>{_rfc822(a.publish_date)}</pubDate>\n"
             f"      <guid isPermaLink=\"true\">https://www.calendrier-tempo.fr/blog/{a.slug}</guid>\n"
             f"      <author>contact@calendrier-tempo.fr (Calendrier Tempo EDF)</author>\n"
             f"{category}"
             "    </item>"
         )
-    last_build = _now_paris().strftime("%a, %d %b %Y %H:%M:%S +0100")
+    last_build = _rfc822(max(a.last_modified for a in articles)) if articles else _rfc822(site_facts.LLMS_CONTENT_DATE)
     xml = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom" xmlns:content="http://purl.org/rss/1.0/modules/content/">\n'
@@ -1393,24 +1723,33 @@ async def indexnow_key_file():
 
 
 @app.get("/api/indexnow/ping")
-async def indexnow_ping(url: str | None = None):
-    """Ping IndexNow pour notifier Bing/Yandex d'une mise à jour.
+async def indexnow_ping(request: Request, url: str | None = None,
+                        authorization: str | None = Header(None)):
+    """Ping IndexNow pour notifier Bing/Yandex d'une mise à jour (admin uniquement).
 
     Usage admin : GET /api/indexnow/ping?url=https://www.calendrier-tempo.fr/blog/slug
-    Si url absent, notifie les pages principales.
+    avec le header Authorization: Bearer <mot de passe admin>.
+    Si url absent, notifie les pages principales. Seules les URL du site sont acceptées.
     """
+    verify_admin(authorization, request.client.host if request.client else "unknown")
     import httpx
 
     host = "www.calendrier-tempo.fr"
     if url:
+        if not url.startswith(f"https://{host}/"):
+            raise HTTPException(status_code=400, detail="URL hors du site")
         urls_to_submit = [url]
     else:
         urls_to_submit = [
             f"https://{host}/",
             f"https://{host}/calendrier",
+            f"https://{host}/couleur-tempo-demain",
+            f"https://{host}/tarif-tempo-edf",
             f"https://{host}/blog/",
             f"https://{host}/alertes",
             f"https://{host}/a-propos",
+            f"https://{host}/methodologie",
+            f"https://{host}/api-tempo",
         ]
 
     results = []
@@ -1853,7 +2192,7 @@ async def api_history(days: int = 30):
     try:
         since = (date.today() - timedelta(days=days)).isoformat()
         rows = conn.execute(
-            "SELECT date, couleur_reelle FROM actuals WHERE date >= ? ORDER BY date",
+            "SELECT date, couleur_reelle FROM actuals WHERE date >= ? AND synthetic = 0 ORDER BY date",
             (since,)
         ).fetchall()
         return {"status": "ok", "history": [dict(r) for r in rows]}
@@ -1891,9 +2230,9 @@ async def api_performance_badge():
         "status": "ok",
         "precision_30j": acc["precision"] if acc["total"] >= min_evaluations else None,
         "total_predictions": acc["total"],
-        "label": f"Nos pr\u00e9visions J+2 \u00e0 J+5 : {acc['precision']}% de pr\u00e9cision sur {acc['total']} \u00e9valuations"
+        "label": f"Nos prévisions J+2 à J+5 : {acc['precision']}% de prévisions correctes sur {acc['total']} évaluations (30 derniers jours)"
                  if acc["total"] >= min_evaluations
-                 else "Pr\u00e9cision en cours de calcul \u2014 pas encore assez de donn\u00e9es",
+                 else "Taux de réussite en cours de calcul : pas encore assez de données",
     }
 
 

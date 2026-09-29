@@ -4,15 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Alertes EDF Tempo gratuites — Calendrier Tempo EDF</title>
-    <meta name="description" content="Alertes Tempo EDF gratuites par WhatsApp : pr&eacute;visions 7 jours, jours rouges, blancs, bleus. Inscription en 30 secondes.">
+    <meta name="description" content="Alertes Tempo EDF gratuites par WhatsApp : les 7 prochains jours chaque dimanche et une alerte avant chaque jour rouge. Inscription en 30 secondes.">
     {% if bing_verification %}<meta name="msvalidate.01" content="{{ bing_verification }}">{% endif %}
     {% if google_verification %}<meta name="google-site-verification" content="{{ google_verification }}">{% endif %}
     <meta name="geo.region" content="FR">
     <meta name="geo.placename" content="France">
     <link rel="alternate" type="application/rss+xml" title="Blog Calendrier Tempo EDF" href="https://www.calendrier-tempo.fr/feed.xml">
     <link rel="canonical" href="https://www.calendrier-tempo.fr/alertes">
-    <link rel="alternate" hreflang="x-default" href="https://www.calendrier-tempo.fr/alertes">
-    <link rel="alternate" hreflang="fr" href="https://www.calendrier-tempo.fr/alertes">
     <link rel="icon" type="image/png" sizes="192x192" href="/static/favicon-192.png">
     <link rel="icon" type="image/png" sizes="96x96" href="/static/favicon-96.png">
     <link rel="icon" type="image/svg+xml" sizes="any" href="/static/icon-192.svg">
@@ -53,8 +51,8 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="preconnect" href="https://cloud.umami.is" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-    <link rel="preload" href="/static/css/style.min.css" as="style">
-    <link rel="stylesheet" href="/static/css/style.min.css">
+    <link rel="preload" href="/static/css/style.min.css?v=20260929" as="style">
+    <link rel="stylesheet" href="/static/css/style.min.css?v=20260929">
     <script defer src="https://cloud.umami.is/script.js" data-website-id="1d187359-b4a6-4ba8-ba41-c449b356832f"></script>
     <style>
         .alertes-hero { text-align: center; padding: 32px 0 24px; }
@@ -97,6 +95,7 @@
         <nav id="main-nav" aria-label="Navigation principale">
             <a href="/">Accueil</a>
             <a href="/calendrier">Calendrier</a>
+            <a href="/tarif-tempo-edf">Tarifs</a>
             <a href="/blog/">Blog</a>
             <button type="button" class="nav-cta active" aria-current="page" onclick="openSubscribeModal()">Alertes gratuites</button>
         </nav>
@@ -113,14 +112,14 @@
     <section class="alertes-hero">
         <h1>Anticipez les 7 prochains jours EDF Tempo par WhatsApp</h1>
         <p class="hero-desc">
-            Recevez chaque jour les pr&eacute;visions <strong>rouge</strong>, <strong>blanc</strong> et <strong>bleu</strong> pour les 7 jours &agrave; venir.
+            Recevez par WhatsApp {{ facts.ALERTES_DESCRIPTION }}&nbsp;: pr&eacute;visions <strong>rouge</strong>, <strong>blanc</strong> et <strong>bleu</strong>.
             100% gratuit, sans engagement, d&eacute;sinscription en 1 clic.
         </p>
         <button type="button" class="btn btn-primary alertes-btn" onclick="openSubscribeModal()">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="#fff" style="vertical-align:middle;margin-right:6px" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>S'inscrire gratuitement
         </button>
         <p style="margin-top:12px;font-size:0.9rem;color:var(--text-secondary)">
-            D&eacute;j&agrave; plus de <strong>2&nbsp;500 foyers Tempo</strong> alert&eacute;s dans toute la France.
+            D&eacute;j&agrave; <strong>{{ facts.FOYERS_ALERTES_HTML|safe }} foyers Tempo</strong> alert&eacute;s dans toute la France.
         </p>
     </section>
 
@@ -148,14 +147,16 @@
     <!-- Aperçu SMS -->
     <div class="alertes-sms-demo">
         <div class="sms-preview">
-            <div class="sms-preview-label">&#128172; Exemple de message que vous recevrez :</div>
+            <div class="sms-preview-label">&#128172; Exemple de r&eacute;capitulatif (couleurs fictives)&nbsp;:</div>
             <div class="sms-bubble">
                 &#128200; <strong>Calendrier Tempo EDF &mdash; Semaine &agrave; venir</strong><br><br>
-                &#128308; lun. 23 f&eacute;v.<br>
-                &#128308; mar. 24 f&eacute;v.<br>
-                &#9898; mer. 25 f&eacute;v.<br>
-                &#128309; jeu. 26 f&eacute;v.<br>
-                &#128309; ven. 27 f&eacute;v.<br><br>
+                &#128308; lundi<br>
+                &#128308; mardi<br>
+                &#9898; mercredi<br>
+                &#128309; jeudi<br>
+                &#128309; vendredi<br>
+                &#128309; samedi<br>
+                &#128309; dimanche<br><br>
                 &#9888;&#65039; 2 jours rouges pr&eacute;vus cette semaine.<br>
                 &#128073; Anticipez vos machines et chauffage !
             </div>
@@ -167,7 +168,7 @@
         <h2>Comment &ccedil;a marche ?</h2>
         <ol>
             <li><strong>Inscrivez-vous</strong> en tapant votre num&eacute;ro de mobile (30 secondes).</li>
-            <li><strong>Recevez chaque jour</strong> les pr&eacute;visions Tempo pour les 5 prochains jours.</li>
+            <li><strong>Recevez</strong> {{ facts.ALERTES_DESCRIPTION }}.</li>
             <li><strong>Adaptez votre conso</strong> : reportez vos usages gourmands aux jours bleus.</li>
         </ol>
         <div style="text-align:center;margin-top:20px">
@@ -195,23 +196,7 @@
 
 {% include '_subscribe_modal.html' %}
 
-<footer role="contentinfo">
-    <div class="footer-inner">
-        <div class="footer-brand">Calendrier Tempo EDF</div>
-        <div class="footer-tagline">Service ind&eacute;pendant et gratuit pour anticiper les jours Tempo.</div>
-        <div class="footer-links">
-            <a href="/">Accueil</a>
-            <a href="/calendrier">Calendrier</a>
-            <a href="/alertes">Alertes</a>
-            <a href="/blog/">Blog</a>
-            <a href="/a-propos">&Agrave; propos</a>
-            <a href="/mentions-legales">Mentions l&eacute;gales</a>
-        </div>
-        <div class="footer-legal">
-            Seule la couleur officielle annonc&eacute;e par EDF fait foi. Nos pr&eacute;visions sont indicatives.
-        </div>
-    </div>
-</footer>
+{% include '_footer.html' %}
 
 <script>
 (function() {

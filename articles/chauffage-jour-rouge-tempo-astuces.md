@@ -1,14 +1,14 @@
 ---
 title: Chauffage jour rouge Tempo : 10 astuces pour économiser
-description: 10 astuces pour chauffer votre logement sans exploser la facture les jours rouges Tempo EDF. Inertie, programmation, alternatives.
-publish_date: 2026-03-24
-updated_date: 2026-08-09
+description: Chauffage jour rouge Tempo : 10 astuces chiffrées pour chauffer sans exploser la facture. Inertie, programmation, appoint bois et guide des équipements.
 keywords: chauffage jour rouge tempo, économie chauffage tempo, réduire consommation jour rouge, astuces tempo edf chauffage
+publish_date: 2026-03-24
+updated_date: 2026-09-29
 cluster: equipements
 ---
-Le chauffage représente le premier poste de dépense électrique des foyers français en hiver. Avec l'offre Tempo EDF, les 22 jours rouges de la saison transforment ce poste en véritable gouffre financier : **0,7295 euros/kWh en heures pleines**, soit plus de quatre fois le tarif d'un jour bleu. Ce tarif intègre la revalorisation des prix réglementés du 1er août 2026, qui a fait progresser le barème Tempo de 2,3 % à 3,3 % selon la couleur et la plage horaire. Pour un logement de 80 m2 chauffé à l'électricité, une journée rouge non anticipée peut coûter plus de 17 euros rien qu'en chauffage. Sur l'ensemble de la saison, la différence entre un foyer qui subit les jours rouges et un foyer qui les anticipe peut atteindre **300 euros**. Pour comprendre quand et pourquoi EDF déclenche ces journées, consultez notre [guide complet des jours rouges Tempo](/blog/jours-rouges-tempo-guide).
+Le chauffage représente le premier poste de dépense électrique des foyers français en hiver. Avec l'offre Tempo EDF, les 22 jours rouges de la saison transforment ce poste en véritable gouffre financier : **0,7295 euros/kWh en heures pleines**, soit 4,4 fois le tarif d'une heure pleine bleue (0,1654 euros/kWh). Ce tarif intègre la revalorisation des prix réglementés du 1er août 2026, qui a fait progresser le barème Tempo de 2,3 % à 3,3 % selon la couleur et la plage horaire (détail sur la page [tarif Tempo EDF](/tarif-tempo-edf)). Pour un logement de 80 m2 chauffé à l'électricité, une journée rouge non anticipée peut coûter plus de 17 euros rien qu'en chauffage. Sur l'ensemble de la saison, la différence entre un foyer qui subit les jours rouges et un foyer qui les anticipe peut atteindre **300 euros**. Pour comprendre quand et pourquoi EDF déclenche ces journées, consultez notre [guide complet des jours rouges Tempo](/blog/jours-rouges-tempo-guide).
 
-La bonne nouvelle, c'est qu'il existe des solutions concrètes pour maintenir un confort thermique acceptable tout en réduisant drastiquement votre consommation les jours rouges. Voici 10 astuces testées et chiffrées, classées par difficulté de mise en oeuvre.
+La bonne nouvelle, c'est qu'il existe des solutions concrètes pour maintenir un confort thermique acceptable tout en réduisant drastiquement votre consommation les jours rouges. Voici 10 astuces chiffrées, classées par difficulté de mise en oeuvre. Cet article est le guide de référence sur les équipements : chaque équipement dispose ensuite de son propre guide détaillé (voir la section « Aller plus loin par équipement » en fin d'article).
 
 ## Astuce 1 : Préchauffer le logement la veille au soir (inertie thermique)
 
@@ -22,7 +22,7 @@ Concrètement, montez votre thermostat de 1 à 2°C au-dessus de votre consigne 
 
 En décalant 4 à 6 heures de chauffage du jour rouge vers les heures creuses de la veille, vous économisez entre **4 à 7 euros par jour rouge**, selon la surface de votre logement et votre isolation. Pour anticiper les jours rouges à venir, pensez à [consulter le calendrier](/calendrier) de nos prévisions.
 
-**Difficulté : facile** -- il suffit de programmer votre thermostat ou de monter manuellement la consigne la veille au soir.
+**Difficulté : facile**. Il suffit de programmer votre thermostat ou de monter manuellement la consigne la veille au soir.
 
 ## Astuce 2 : Programmer le thermostat pour baisser de 2 à 3°C les jours rouges
 
@@ -30,13 +30,13 @@ En décalant 4 à 6 heures de chauffage du jour rouge vers les heures creuses de
 
 Chaque degré de réduction de la température de consigne diminue votre consommation de chauffage d'environ **7 %**. Baisser de 20°C à 17°C représente donc une réduction d'environ 21 % de la consommation de chauffage sur la journée. À 17°C, le confort reste acceptable avec un pull et des chaussettes épaisses, surtout si vous combinez cette astuce avec le préchauffage de la veille.
 
-Programmez votre thermostat pour basculer automatiquement sur un mode "éco" ou "absent" les jours rouges. Les thermostats connectés (Netatmo, Tado, Heatzy) permettent de créer des plannings spécifiques que vous activez en un clic la veille au soir.
+Programmez votre thermostat pour basculer automatiquement sur un mode "éco" ou "absent" les jours rouges. Les thermostats connectés (Netatmo, Tado, Heatzy) permettent de créer des plannings spécifiques que vous activez en un clic la veille au soir, ou automatiquement avec la couleur du jour fournie par notre [API Tempo](/api-tempo) gratuite.
 
 ### Economies estimées
 
 Pour un logement consommant 40 kWh/jour en chauffage, baisser de 3°C réduit la consommation d'environ 8,4 kWh. En heures pleines rouges, cela représente une économie d'environ **6,10 euros par jour rouge**, soit **environ 135 euros sur la saison** si appliqué systématiquement.
 
-**Difficulté : facile** -- un thermostat programmable suffit (investissement de 30 à 80 euros pour un modèle basique).
+**Difficulté : facile**. Un thermostat programmable suffit (investissement de 30 à 80 euros pour un modèle basique).
 
 ## Astuce 3 : Utiliser un poêle à bois ou un insert comme chauffage d'appoint
 
@@ -50,7 +50,7 @@ Si vous disposez déjà d'un conduit de cheminée, l'installation d'un insert ou
 
 Remplacer le chauffage électrique par le bois pendant les 22 jours rouges peut économiser entre **220 à 310 euros par saison**, en tenant compte du coût du bois. C'est l'astuce la plus rentable de cette liste pour les foyers qui peuvent l'appliquer.
 
-**Difficulté : moyenne à élevée** -- nécessite un conduit de cheminée et un investissement initial de 1 500 à 4 000 euros (avant aides).
+**Difficulté : moyenne à élevée**. Nécessite un conduit de cheminée et un investissement initial de 1 500 à 4 000 euros (avant aides).
 
 ## Astuce 4 : Installer des rideaux épais et des bas de porte pour l'isolation
 
@@ -64,13 +64,13 @@ Les boudins de porte ou bas de porte adhésifs éliminent les infiltrations d'ai
 
 L'ensemble rideaux thermiques + bas de porte peut réduire la consommation de chauffage de **5 à 10 %** sur l'hiver. Sur les seuls jours rouges, cela représente une économie de **1 à 2 euros par jour**, soit **22 à 44 euros par saison**. L'investissement (50 à 150 euros pour équiper un logement) est rentabilisé dès la première saison.
 
-**Difficulté : très facile** -- aucun outil nécessaire, pose en quelques minutes.
+**Difficulté : très facile**. Aucun outil nécessaire, pose en quelques minutes.
 
 ## Astuce 5 : Décaler le chauffe-eau sur les heures creuses des jours bleus
 
 ### Pourquoi ça marche
 
-Le chauffe-eau électrique représente environ **15 % de la consommation** d'un foyer, soit 3 à 4 kWh par jour pour un ballon de 200 litres. En jour rouge, chauffer l'eau en heures pleines coûte 2,92 euros (4 kWh x 0,7295 euros). En heures creuses d'un jour bleu, le même cycle coûte 0,54 euros : **plus de cinq fois moins cher**.
+Le chauffe-eau électrique est l'un des **premiers postes de consommation** d'un foyer, soit 3 à 4 kWh par jour pour un ballon de 200 litres. En jour rouge, chauffer l'eau en heures pleines coûte 2,92 euros (4 kWh x 0,7295 euros). En heures creuses d'un jour bleu, le même cycle coûte 0,54 euros : **plus de cinq fois moins cher**.
 
 Un ballon bien isolé maintient l'eau à température pendant 24 à 48 heures sans apport d'énergie. Vous pouvez donc chauffer l'eau la veille du jour rouge et couper le chauffe-eau pendant toute la journée rouge sans manquer d'eau chaude. Installez un contacteur heures creuses (souvent déjà présent sur votre tableau électrique) ou un programmateur mécanique simple.
 
@@ -78,7 +78,7 @@ Un ballon bien isolé maintient l'eau à température pendant 24 à 48 heures sa
 
 Couper le chauffe-eau pendant les 22 jours rouges (en le faisant fonctionner la veille en heures creuses) économise environ **2,38 euros par jour rouge**, soit **52 euros sur la saison**.
 
-**Difficulté : facile** -- un programmateur coûte 15 à 25 euros et se branche en 5 minutes.
+**Difficulté : facile**. Un programmateur coûte 15 à 25 euros et se branche en 5 minutes. Le détail des réglages est dans notre guide [ballon d'eau chaude Tempo](/blog/ballon-eau-chaude-tempo).
 
 ## Astuce 6 : Poser un programmateur sur les radiateurs électriques
 
@@ -92,7 +92,7 @@ Les radiateurs à inertie (pierre, fonte, céramique) sont particulièrement ada
 
 Prenons un foyer qui consomme 30 kWh par jour pour son chauffage. Les heures creuses ne durent que 8 heures (22h-6h) contre 16 heures d'heures pleines, et l'inertie des radiateurs ne tient que 2 à 4 heures : viser 100 % de report est irréaliste. En déplaçant **les deux tiers de ce chauffage, soit 20 kWh**, des heures pleines rouges (0,7295 euros/kWh) vers les heures creuses rouges (0,1615 euros/kWh), l'écart de 0,5680 euros/kWh donne une économie de **11,36 euros par jour rouge** (20 x 0,5680). Sur les 22 jours rouges de la saison : **environ 250 euros**.
 
-**Difficulté : facile** -- les prises programmables coûtent 10 à 20 euros par radiateur.
+**Difficulté : facile**. Les prises programmables coûtent 10 à 20 euros par radiateur.
 
 ## Astuce 7 : Fermer les portes des pièces inutilisées
 
@@ -106,7 +106,7 @@ Coupez les radiateurs des pièces fermées (position hors-gel à 7°C pour évit
 
 Réduire la surface chauffée de 40 % diminue la consommation de chauffage d'environ **25 à 35 %**. Sur un jour rouge, cela représente **3 à 5 euros d'économie** selon la surface totale du logement. Pour [recevoir les alertes](/#subscribe) et savoir quand appliquer cette stratégie, inscrivez-vous aux notifications.
 
-**Difficulté : très facile** -- aucun investissement, juste une habitude à prendre.
+**Difficulté : très facile**. Aucun investissement, juste une habitude à prendre.
 
 ## Astuce 8 : Utiliser une couverture chauffante plutôt que chauffer la chambre
 
@@ -120,7 +120,7 @@ L'ADEME recommande d'ailleurs une température de 16 à 17°C dans les chambres 
 
 Remplacer le chauffage de la chambre par une couverture chauffante les 22 jours rouges économise entre **5,50 et 11 euros par jour rouge** (le coût du radiateur moins celui de la couverture), soit **120 à 245 euros par saison**. L'investissement est modeste : 30 à 60 euros pour une couverture de bonne qualité.
 
-**Difficulté : très facile** -- branchez, réglez la température, et profitez.
+**Difficulté : très facile**. Branchez, réglez la température, et profitez.
 
 ## Astuce 9 : Cuisiner à la mijoteuse un jour bleu, réchauffer un jour rouge
 
@@ -134,7 +134,7 @@ La stratégie : préparez vos plats mijotés les jours bleus (ragouts, soupes, g
 
 En éliminant la cuisson au four et aux plaques les jours rouges (2 repas/jour), vous économisez environ **2 à 3 euros par jour rouge**, soit **44 à 66 euros par saison**. La mijoteuse est un investissement de 25 à 50 euros, rentabilisé en une demi-saison.
 
-**Difficulté : facile** -- demande un peu d'organisation et de planification des repas, mais [consulter le calendrier](/calendrier) pour connaître les prochains jours rouges facilite grandement la planification.
+**Difficulté : facile**. Demande un peu d'organisation et de planification des repas, mais [consulter le calendrier](/calendrier) pour connaître les prochains jours rouges facilite grandement la planification.
 
 ## Astuce 10 : Vérifier et améliorer l'isolation avant l'hiver
 
@@ -154,7 +154,7 @@ Avant chaque saison hivernale, faites un diagnostic simple : passez votre main l
 
 Une amélioration de l'isolation de 15 % sur un logement consommant 8 000 kWh/an en chauffage représente une économie de **80 à 120 euros par an** sur l'ensemble de la saison, et un impact particulièrement marqué les jours rouges (environ **3 euros par jour rouge**). Les aides de l'Etat (MaPrimeRenov, CEE, éco-PTZ) peuvent financer 40 à 75 % des travaux d'isolation selon vos revenus.
 
-**Difficulté : variable** -- de très facile (joints, rideaux) à élevée (isolation des combles ou des murs).
+**Difficulté : variable**, de très facile (joints, rideaux) à élevée (isolation des combles ou des murs).
 
 ## Tableau récapitulatif des 10 astuces
 
@@ -173,6 +173,15 @@ Une amélioration de l'isolation de 15 % sur un logement consommant 8 000 kWh/an
 
 En combinant les astuces 1, 2, 5, 6 et 7 (les plus accessibles), un foyer tout-électrique peut économiser entre **180 à 300 euros par saison** sur les seuls jours rouges, sans investissement majeur. Pour découvrir d'autres leviers d'économie au-delà du chauffage, retrouvez notre guide complet pour [économiser avec Tempo EDF](/blog/economiser-tempo-edf).
 
+## Aller plus loin par équipement
+
+- **Chauffe-eau** : [ballon d'eau chaude Tempo, réglages et économies](/blog/ballon-eau-chaude-tempo)
+- **Pompe à chaleur** : [compatibilité et stratégies](/blog/pompe-a-chaleur-tempo-edf)
+- **Compteur** : [suivre sa consommation avec Linky](/blog/linky-tempo-suivre-consommation)
+- **Véhicule électrique** : [optimiser la recharge](/blog/recharge-vehicule-electrique-tempo)
+- **Climatisation** : [faut-il s'en soucier l'été ?](/blog/climatisation-tempo-edf-ete)
+- **Automatisation** : l'[API Tempo](/api-tempo) fournit la couleur du jour à vos scénarios domotiques
+
 ## FAQ : chauffage et jours rouges Tempo
 
 ### Peut-on couper totalement le chauffage les jours rouges ?
@@ -185,8 +194,8 @@ Oui, nettement. Les radiateurs à inertie (pierre, fonte, céramique ou fluide c
 
 ### Comment savoir à l'avance quand tomberont les prochains jours rouges ?
 
-EDF n'annonce officiellement que la couleur du lendemain, chaque jour vers 11h. Pour anticiper au-delà, notre algorithme de prévision analyse les données météo (températures sur 9 villes), la consommation nationale (données RTE) et le budget saisonnier restant (nombre de jours rouges encore à placer) pour produire des prévisions à J+2 jusqu'à J+5. Inscrivez-vous à nos [alertes gratuites](/#subscribe) pour recevoir une notification dès qu'un jour rouge est prévu. Cela vous laisse le temps de préchauffer votre logement, de lancer vos appareils énergivores la veille et de préparer vos repas à l'avance.
+EDF n'annonce officiellement que la couleur du lendemain, chaque jour vers 11h. Pour anticiper au-delà, notre algorithme de prévision analyse les données météo (températures sur 9 villes), la consommation nationale (données RTE) et le budget saisonnier restant (nombre de jours rouges encore à placer) pour produire des prévisions à J+2 jusqu'à J+5. Inscrivez-vous à nos [alertes gratuites](/#subscribe) pour recevoir chaque dimanche la prévision des 7 prochains jours, et un message avant chaque jour rouge probable. Cela vous laisse le temps de préchauffer votre logement, de lancer vos appareils énergivores la veille et de préparer vos repas à l'avance.
 
 ---
 
-*Dernière mise à jour : 9 août 2026. Les tarifs indiqués correspondent au barème Tempo EDF en vigueur depuis le 1er août 2026 (prix TTC). Consultez le [calendrier Tempo](/calendrier) pour suivre les couleurs du jour en temps réel, [recevoir les alertes](/#subscribe) avant chaque jour rouge, ou comparer Tempo avec d'autres offres dans notre [comparatif Tempo vs Heures Creuses](/blog/tempo-vs-heures-creuses-edf-bleu).*
+*Mis à jour le 29 septembre 2026. Les tarifs indiqués correspondent au barème Tempo EDF en vigueur depuis le 1er août 2026 (prix TTC, sources [EDF](https://www.edf.fr/) et [Légifrance](https://www.legifrance.gouv.fr/)). Consultez le [calendrier Tempo](/calendrier) pour suivre les couleurs du jour en temps réel, [recevoir les alertes](/#subscribe) avant chaque jour rouge, ou comparer Tempo avec d'autres offres dans notre [comparatif Tempo vs Heures Creuses](/blog/tempo-vs-heures-creuses-edf-bleu).*

@@ -2623,3 +2623,22 @@ select:focus-visible {
         transform: none;
     }
 }
+
+/* === SEO/GEO 2026-09 : réponse directe SSR, titres, articles liés === */
+.home-title { font-size: 1.5rem; line-height: 1.3; margin: 20px 0 12px; color: var(--text); }
+.today-answer { background: var(--surface); box-shadow: var(--shadow); border-radius: var(--radius); padding: 14px 18px; margin: 0 0 16px; line-height: 1.6; }
+.today-answer p { margin: 0; }
+.today-answer .today-answer-links { margin-top: 6px; font-size: 0.9rem; }
+.color-word { padding: 1px 8px; border-radius: 6px; }
+.color-word.rouge { background: var(--rouge); color: #fff; }
+.color-word.blanc { background: #fff; color: var(--text); border: 1px solid var(--border); }
+.color-word.bleu { background: var(--bleu); color: #fff; }
+.faq-content .faq-list-items { margin: 8px 0 8px 20px; line-height: 1.8; }
+.blog-related { margin: 24px 0; padding: 16px 20px; background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); }
+.blog-related h2 { font-size: 1.15rem; margin: 0 0 8px; }
+.blog-related ul { margin: 0 0 0 18px; line-height: 1.8; }
+.page-content { max-width: 860px; }
+@media (max-width: 600px) { .home-title { font-size: 1.25rem; } }
+.page-content h2 { margin: 28px 0 10px; }
+.page-content h3 { margin: 18px 0 8px; }
+.page-content ul { margin: 8px 0 12px 20px; line-height: 1.8; }

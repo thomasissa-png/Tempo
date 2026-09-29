@@ -1,13 +1,12 @@
 ---
 title: Bilan saison Tempo 2025-2026 : ce qu'il faut retenir
-description: Bilan de la saison Tempo 2025-2026 : budget des jours rouges, règles EDF, répartition mensuelle et leçons pour anticiper la prochaine saison.
-publish_date: 2026-04-07
-updated_date: 2026-08-09
+description: Bilan saison Tempo 2025-2026 : budget des jours rouges, règles EDF, répartition mensuelle réelle et leçons pour anticiper la saison 2026-2027.
 keywords: bilan saison tempo 2025-2026, bilan tempo edf, saison tempo 2025-2026, jours rouges tempo bilan
+publish_date: 2026-04-07
+updated_date: 2026-09-29
 cluster: calendrier
 ---
-
-La saison hivernale s'achève, et c'est le moment idéal pour dresser le **bilan saison Tempo 2025-2026**. Depuis le 1er avril, plus aucun jour rouge ne peut tomber : la période la plus coûteuse de l'année est derrière nous. Que vous ayez réussi à esquiver les pics tarifaires ou subi quelques journées rouges de plein fouet, ce bilan vous aidera à comprendre comment fonctionne réellement le système Tempo, ce que les chiffres historiques nous enseignent, et surtout comment mieux anticiper la saison prochaine. L'objectif n'est pas seulement de regarder en arrière, mais de transformer cette expérience en avantage concret pour votre prochaine facture.
+La saison hivernale s'achève, et c'est le moment idéal pour dresser le **bilan saison Tempo 2025-2026**. Depuis le 1er avril, plus aucun jour rouge ne peut tomber : la période la plus coûteuse de l'année est derrière nous. Que vous ayez réussi à esquiver les pics tarifaires ou subi quelques journées rouges de plein fouet, ce bilan vous aidera à comprendre comment fonctionne réellement le système Tempo, ce que les chiffres historiques nous enseignent, et surtout comment mieux anticiper la saison prochaine. L'objectif n'est pas seulement de regarder en arrière, mais de transformer cette expérience en avantage concret pour votre prochaine facture. Les chiffres réels de ce bilan proviennent de la base de calendrier-tempo.fr et s'arrêtent au **20 février 2026**, dernière date vérifiée disponible pour cette saison : nous ne publions pas de total final que nous ne pourrions pas prouver.
 
 ## Comment fonctionne le budget Tempo
 
@@ -33,29 +32,29 @@ Le système Tempo obéit à des règles strictes qu'EDF ne peut pas enfreindre. 
 
 Ces règles ont des conséquences pratiques très utiles. Un samedi, un dimanche ou un 1er janvier ne sera jamais rouge : vous pouvez lancer vos appareils gourmands sans crainte. À l'inverse, un mardi de janvier glacial mérite toute votre vigilance. Pour approfondir ces mécanismes, notre [guide complet des jours rouges Tempo](/blog/jours-rouges-tempo-guide) détaille chaque cas de figure.
 
-## La répartition mensuelle typique des jours rouges
+## La répartition mensuelle des jours rouges en 2025-2026
 
-Voici l'un des enseignements les plus précieux de l'analyse historique. Sur la base des moyennes des saisons passées (2019 à 2026), les jours rouges ne se répartissent pas uniformément : ils suivent la courbe du froid. Le tableau ci-dessous présente une **répartition mensuelle typique**, à lire comme des moyennes historiques et non comme les chiffres exacts de cette saison.
+Voici la répartition réelle de la saison 2025-2026 au 20 février 2026, comparée à la moyenne des six saisons complètes précédentes (2019-2020 à 2024-2025, soit 128 rouges au total). Ces moyennes sont calculées sur nos données, saison par saison.
 
-| Mois | Jours rouges (fourchette typique) | Niveau de vigilance |
-|------|-----------------------------------|---------------------|
-| Novembre | 2 à 4 | Modéré |
-| Décembre | 4 à 6 | Élevé |
-| Janvier | 5 à 8 | Maximal |
-| Février | 3 à 5 | Élevé |
-| Mars | 1 à 3 | Décroissant |
+| Mois | 2025-2026 (au 20 février 2026) | Moyenne des 6 saisons complètes |
+|------|-------------------------------|---------------------------------|
+| Novembre | 0 | 0,3 |
+| Décembre | 2 | 4,7 |
+| Janvier | 6 | 11,5 |
+| Février | 1 (au 20 février) | 2,7 |
+| Mars | non disponible | 2,2 |
 
-**Janvier est de loin le mois le plus chargé.** C'est la période des grandes vagues de froid, où la demande de chauffage atteint son maximum sur tout le territoire. Si vous ne deviez retenir qu'une chose de ce bilan, ce serait celle-ci : c'est en janvier que la discipline paie le plus. Décembre et février encadrent ce pic, tandis que novembre et mars restent plus cléments.
+**La saison 2025-2026 a démarré lentement.** Au 20 février 2026, 9 jours rouges avaient été placés, contre 13 à 22 à la même date dans les six saisons précédentes. Le premier rouge est tombé le 29 décembre 2025, alors qu'il était tombé entre le 29 novembre et le 8 décembre lors des six saisons précédentes. Janvier reste pourtant le mois le plus chargé : 6 rouges sur 9 cette saison, et 69 rouges sur 128 (54 %) sur les six saisons complètes.
 
-Pour connaître les dates précises observées cette saison, consultez directement notre [calendrier Tempo en direct](/calendrier), qui affiche les couleurs officielles confirmées par EDF jour après jour. Et pour comparer avec les saisons antérieures, notre [historique des calendriers Tempo](/blog/calendrier-tempo-historique-saisons) recense les tendances passées.
+Pour connaître les dates précises de la saison, consultez notre article [calendrier Tempo 2025-2026 avec les dates réelles](/blog/calendrier-tempo-2025-2026-dates). Pour comparer avec les saisons antérieures, notre [historique des calendriers Tempo](/blog/calendrier-tempo-historique-saisons) recense les tendances passées, saison par saison.
 
 ## La notion de densité : pourquoi le rouge se resserre en fin d'hiver
 
 Un concept clé pour comprendre Tempo est celui de **densité budgétaire**. EDF dispose de 22 jours rouges à placer entre le 1er novembre et le 31 mars. Or, chaque jour rouge ne peut tomber qu'un jour de semaine hors férié dans cette fenêtre.
 
-À mesure que la saison avance, le nombre de journées éligibles restantes diminue. Si EDF n'a pas encore dépensé tout son budget rouge à la mi-février, la « pression » pour le faire augmente mécaniquement : il reste moins de jours possibles pour caser les rouges restants. C'est pourquoi une fin d'hiver froide peut concentrer plusieurs rouges rapprochés. À l'inverse, un hiver doux peut laisser EDF avec des rouges « non dépensés » qui se reportent sur les derniers jours éligibles de mars.
+À mesure que la saison avance, le nombre de journées éligibles restantes diminue. Si EDF n'a pas encore dépensé tout son budget rouge à la mi-février, la « pression » pour le faire augmente mécaniquement : il reste moins de jours possibles pour caser les rouges restants. Au 20 février 2026, il restait 13 rouges à placer pour 27 jours éligibles jusqu'au 31 mars, soit une densité de 48 %. Une telle densité explique qu'une fin d'hiver puisse concentrer plusieurs rouges rapprochés, y compris par température modérée : en 2023-2024, 8 rouges ont encore été placés entre le 21 février et le 29 mars 2024.
 
-Cette mécanique de densité est précisément ce que notre site modélise pour anticiper les couleurs des jours J+2 à J+5, en combinant les prévisions météo de 9 villes (Météo France), les données de consommation RTE et un modèle d'apprentissage automatique entraîné sur les saisons 2019 à 2026.
+Cette mécanique de densité est précisément ce que notre site modélise pour anticiper les couleurs des jours J+2 à J+5, en combinant les prévisions météo de 9 villes (Météo France), les données de consommation RTE et un modèle d'apprentissage automatique entraîné sur les saisons 2019 à 2026 (détails sur la page [méthodologie](/methodologie)).
 
 ## Le coût réel d'un jour rouge
 
@@ -64,7 +63,7 @@ Pourquoi tant d'attention pour ces 22 journées ? Parce que leur tarif est sans 
 - **Jour rouge, heures pleines (6h-22h) : environ 0,7060 €/kWh, tarif alors en vigueur.**
 - **Jour rouge, heures creuses (22h-6h) : environ 0,1575 €/kWh, tarif alors en vigueur.**
 
-Ces montants sont ceux qui s'appliquaient pendant la saison 2025-2026. Depuis la revalorisation du 1er août 2026, l'heure pleine rouge est passée à 0,7295 €/kWh et l'heure creuse rouge à 0,1615 €/kWh.
+Ces montants sont ceux qui s'appliquaient pendant la saison 2025-2026. Depuis la revalorisation du 1er août 2026, l'heure pleine rouge est passée à 0,7295 €/kWh et l'heure creuse rouge à 0,1615 €/kWh (grille complète sur la page [tarif Tempo EDF](/tarif-tempo-edf)).
 
 L'écart est saisissant : en heures pleines un jour rouge, l'électricité coûte plus de quatre fois le prix des heures creuses du même jour. Concrètement, lancer un cycle de chauffage électrique intensif un après-midi rouge peut coûter plusieurs euros en quelques heures. C'est pourquoi décaler ses usages vers les heures creuses, ou mieux encore vers un jour bleu, fait toute la différence. Nos astuces de [chauffage en jour rouge Tempo](/blog/chauffage-jour-rouge-tempo-astuces) vous montrent comment limiter la casse les jours où vous ne pouvez pas couper le chauffage.
 
@@ -81,7 +80,7 @@ Si vous souhaitez aller plus loin dans l'optimisation, notre article sur les [m�
 
 ## Préparer la prochaine saison
 
-Ce bilan n'a de valeur que s'il prépare l'avenir. La saison 2026-2027 démarrera le 1er septembre 2026 avec le même budget : 22 rouges, 43 blancs, environ 300 bleus. Les règles ne changeront pas.
+Ce bilan n'a de valeur que s'il prépare l'avenir. La saison 2026-2027 a démarré le 1er septembre 2026 avec le même budget : 22 rouges, 43 blancs, environ 300 bleus. Les règles n'ont pas changé, et aucun rouge n'est possible avant le 1er novembre 2026. Retrouvez le cadre complet dans notre [calendrier Tempo 2026-2027](/blog/calendrier-tempo-2026-2027-dates) et notre [checklist de préparation](/blog/preparer-saison-tempo-2026-2027).
 
 Pour aborder le prochain hiver sereinement :
 
@@ -91,11 +90,11 @@ Pour aborder le prochain hiver sereinement :
 
 Pour ne plus jamais être pris au dépourvu, [activez les alertes gratuites jours rouges](/#subscribe) : vous recevez chaque dimanche une prévision des 7 prochains jours, ainsi qu'une alerte anticipée avant chaque rouge probable. C'est l'outil idéal pour transformer les leçons de cette saison en économies réelles.
 
-## Foire aux questions
+## FAQ : questions fréquentes sur le bilan Tempo 2025-2026
 
 ### Combien de jours rouges y a-t-il eu exactement cette saison ?
 
-Le budget officiel est de 22 jours rouges par saison, du 1er septembre au 31 août. Le nombre réellement dépensé dépend de la rigueur de l'hiver. Pour connaître les dates exactes confirmées par EDF cette saison, consultez notre [calendrier Tempo en direct](/calendrier), mis à jour quotidiennement avec les couleurs officielles.
+Le budget officiel est de 22 jours rouges par saison, du 1er septembre au 31 août. Dans notre base, 9 jours rouges avaient été placés au 20 février 2026, dernière date vérifiée pour cette saison. Les dates sont listées dans l'article [calendrier Tempo 2025-2026](/blog/calendrier-tempo-2025-2026-dates). Sur les six saisons précédentes, 5 ont atteint exactement 22 rouges et une (2019-2020) s'est arrêtée à 18.
 
 ### Peut-il encore y avoir un jour rouge après le 1er avril ?
 
@@ -105,4 +104,6 @@ Non. Les jours rouges ne tombent que du 1er novembre au 31 mars. À partir du 1e
 
 EDF n'annonce officiellement la couleur que la veille vers 11h. Notre site va plus loin : il prédit les couleurs des jours J+2 à J+5 en croisant les prévisions météo de 9 villes, les données de consommation RTE et un modèle d'apprentissage automatique. Vous pouvez ainsi anticiper plusieurs jours avant l'annonce d'EDF.
 
-*Ce bilan s'appuie sur les règles officielles d'EDF et sur les moyennes historiques ; les chiffres exacts de la saison sont disponibles sur notre calendrier en direct.*
+---
+
+*Sources : règles officielles [EDF](https://www.edf.fr/), données de consommation [RTE](https://www.rte-france.com/) et couleurs Tempo confirmées par EDF, stockées dans la base de calendrier-tempo.fr (dernière date disponible pour 2025-2026 : 20 février 2026). Les couleurs de la saison en cours sont sur le [calendrier en direct](/calendrier).*

@@ -1,172 +1,137 @@
 ---
-title: Historique calendrier Tempo EDF : saisons depuis 2020
-description: Historique complet des jours rouges, blancs et bleus Tempo EDF depuis 2020. Statistiques et tendances par saison.
-publish_date: 2026-02-17
+title: Historique calendrier Tempo EDF : 7 saisons de 2019 à 2026
+description: Historique du calendrier Tempo EDF : jours rouges, blancs et bleus de 2019 à 2026, répartition par mois, séries et températures, saison par saison.
 keywords: calendrier tempo, historique tempo edf, jours rouges tempo historique, calendrier tempo edf saisons, tempo edf dates
+publish_date: 2026-02-17
+updated_date: 2026-09-29
 cluster: calendrier
 ---
+Comment se répartissent les jours rouges Tempo d'une saison à l'autre ? Cet **historique du calendrier Tempo EDF** répond avec les couleurs réellement confirmées par EDF depuis la saison 2019-2020, stockées dans la base de calendrier-tempo.fr. Tous les chiffres ci-dessous sont recalculés à partir de ces données : aucune moyenne n'est estimée ou arrondie à la louche. Six saisons sont complètes (2019-2020 à 2024-2025) et la septième, 2025-2026, s'arrête au 20 février 2026 dans notre base. Pour la saison en cours, consultez le [calendrier Tempo 2026-2027](/blog/calendrier-tempo-2026-2027-dates). Les deux dernières saisons ont leur article dédié : les [dates du calendrier Tempo 2025-2026](/blog/calendrier-tempo-2025-2026-dates) et le [bilan de la saison 2025-2026](/blog/bilan-saison-tempo-2025-2026).
 
-Vous vous demandez comment se répartissent les jours rouges Tempo d'une saison à l'autre ? Ce guide compile **l'historique complet du calendrier Tempo EDF** depuis 2020 avec des statistiques clés pour comprendre les tendances et mieux anticiper.
+## Les règles qui ne changent pas d'une saison à l'autre
 
-## Les règles immuables du calendrier Tempo
-
-Avant de plonger dans l'historique, rappelons les règles qui ne changent jamais d'une saison à l'autre :
-
-- **22 jours rouges** par saison (du 1er septembre au 31 août)
-- **43 jours blancs** par saison
-- **300 jours bleus** (le reste)
+- **22 jours rouges** et **43 jours blancs** par saison (du 1er septembre au 31 août), le reste étant bleu (environ 300 jours)
 - Jours rouges uniquement du **1er novembre au 31 mars**
 - **Jamais de rouge** le week-end ni les jours fériés
+- **Jamais de blanc** le dimanche
 - Maximum **5 jours rouges consécutifs**
 
-Ce qui change, c'est le **placement** de ces jours. Et c'est là que l'historique nous éclaire.
+Ce qui change, c'est le **placement** des jours colorés. L'historique permet de le mesurer.
 
 ## Bilan saison par saison
 
-### Saison 2025-2026 (en cours)
+Le tableau donne les rouges par mois, les totaux, la date du premier et du dernier rouge, et la température moyenne de décembre à février (moyenne pondérée de 9 villes, historique Open-Meteo).
 
-La saison en cours, débutée le 1er septembre 2025, est encore en plein coeur de sa période rouge (novembre-mars). À mi-février 2026, plusieurs tendances se dessinent déjà.
+| Saison | Nov | Déc | Jan | Fév | Mar | Rouges | Blancs | Premier rouge | Dernier rouge | Temp. déc-fév |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 2019-2020 | 0 | 2 | 8 | 3 | 5 | 18 | 47 | 4 déc. 2019 | 6 mars 2020 | 7,1 °C |
+| 2020-2021 | 0 | 5 | 13 | 4 | 0 | 22 | 43 | 2 déc. 2020 | 11 fév. 2021 | 5,8 °C |
+| 2021-2022 | 1 | 6 | 15 | 0 | 0 | 22 | 43 | 29 nov. 2021 | 27 janv. 2022 | 5,6 °C |
+| 2022-2023 | 0 | 4 | 11 | 5 | 2 | 22 | 43 | 8 déc. 2022 | 2 mars 2023 | 5,6 °C |
+| 2023-2024 | 1 | 3 | 9 | 3 | 6 | 22 | 43 | 29 nov. 2023 | 29 mars 2024 | 6,7 °C |
+| 2024-2025 | 0 | 8 | 13 | 1 | 0 | 22 | 43 | 3 déc. 2024 | 3 fév. 2025 | 5,4 °C |
+| 2025-2026 (au 20 fév. 2026) | 0 | 2 | 6 | 1 | non disponible | 9 | 32 | 29 déc. 2025 | 17 fév. 2026 | 6,6 °C |
 
-- **Début de saison rouge tardif** : les premiers jours rouges ne sont apparus qu'en novembre 2025, après un automne relativement clément. Les températures d'octobre sont restées au-dessus des moyennes saisonnières, retardant l'activation des jours rouges.
-- **Janvier 2026, fidèle à sa réputation** : comme chaque année, janvier a concentré la plus forte proportion de jours rouges, avec plusieurs épisodes de froid intense sur l'ensemble du territoire. Les vagues de froid ont touché aussi bien le nord que le sud de la France, tirant la consommation nationale vers des niveaux très élevés.
-- **Pression budgétaire à surveiller** : en fonction du nombre de jours rouges déjà placés à mi-février, la densité de placement pour les semaines restantes (jusqu'au 31 mars) peut devenir significative. Les abonnés doivent rester vigilants : si le solde de jours rouges est encore élevé, février et mars pourraient voir des jours rouges même lors de journées modérément froides.
-- **Consommation nationale stable** : contrairement à la saison 2022-2023 marquée par la crise énergétique, la disponibilité du parc nucléaire est revenue à des niveaux satisfaisants. Les jours rouges de cette saison sont donc davantage corrélés aux vagues de froid météorologiques qu'à des tensions structurelles sur le réseau.
+La température de 2025-2026 porte sur l'hiver complet (décembre 2025 à février 2026), alors que les couleurs s'arrêtent au 20 février.
 
-Pour suivre l'évolution de la saison en temps réel, consultez notre [calendrier Tempo interactif](/calendrier) qui affiche les jours confirmés par EDF et nos prévisions pour les jours à venir.
+### Ce qu'il faut en retenir
 
-### Saison 2024-2025
+- **2019-2020 est la seule saison qui n'a pas atteint 22 rouges** : 18 rouges et 47 blancs dans nos données, avec un dernier rouge le 6 mars 2020.
+- **2021-2022 détient le record de janvier** : 15 rouges en janvier 2022, dont deux semaines complètes du lundi au vendredi (10 au 14 et 17 au 21 janvier), puis plus aucun rouge en février ni en mars.
+- **2023-2024 a utilisé son solde tard** : 6 rouges en mars 2024, le maximum de mars dans notre base, dont un le 29 mars par 11,9 °C.
+- **2024-2025 a concentré ses 22 rouges entre le 3 décembre et le 3 février** : 8 en décembre, 13 en janvier, puis un seul en février et aucun en mars. C'est pourtant l'hiver le plus froid de la série (5,4 °C de moyenne de décembre à février).
+- **2025-2026 a démarré tard** : aucun rouge en novembre, un premier rouge le 29 décembre 2025, et seulement 9 rouges au 20 février 2026, contre 13 à 22 à la même date dans les six saisons précédentes.
 
-La saison 2024-2025 a été marquée par un **hiver relativement doux** avec des vagues de froid courtes mais intenses en janvier.
+## Répartition mensuelle : janvier domine, sans règle stricte
 
-- **Premiers jours rouges** : mi-novembre 2024
-- **Dernier jour rouge** : fin mars 2025
-- **Pic de concentration** : janvier 2025 (9 jours rouges)
-- **Mois le plus chargé en blancs** : décembre 2024
+Sur les six saisons complètes, 128 jours rouges ont été placés :
 
-### Saison 2023-2024
+| Mois | Rouges (6 saisons) | Part | Min et max par saison |
+|---|---|---|---|
+| Novembre | 2 | 1,6 % | 0 à 1 |
+| Décembre | 28 | 21,9 % | 2 à 8 |
+| **Janvier** | **69** | **53,9 %** | **8 à 15** |
+| Février | 16 | 12,5 % | 0 à 5 |
+| Mars | 13 | 10,2 % | 0 à 6 |
 
-Une saison influencée par la **crise énergétique** de 2022-2023 et les efforts de sobriété qui ont perduré.
+Janvier concentre donc plus de la moitié des rouges. Mais l'écart entre saisons est grand : février compte de 0 à 5 rouges, mars de 0 à 6. Le calendrier d'un mois donné ne se déduit pas d'une moyenne. Pour les blancs, la répartition est différente : sur les six saisons complètes, février arrive en tête (65 blancs), devant décembre (56) et janvier (48), et 30 blancs sont tombés entre avril et juin (18 en avril, 3 en mai, 9 en juin). Pour comprendre ces jours intermédiaires, lisez notre guide des [jours blancs Tempo](/blog/premiers-jours-blancs-tempo).
 
-- Les jours rouges ont été concentrés sur **janvier-février 2024**
-- Le mois de novembre 2023 a vu peu de rouges (hiver tardif)
-- Mars 2024 a utilisé les derniers rouges restants
+## Les jours de la semaine les plus touchés
 
-### Saison 2022-2023
+Puisque les rouges ne peuvent tomber que du lundi au vendredi, voici la répartition des 137 jours rouges de notre base (les 7 saisons) :
 
-La saison de la **crise énergétique**. Malgré des températures pas exceptionnellement froides, la tension sur le réseau électrique (indisponibilité du parc nucléaire) a conduit à une répartition atypique.
+| Jour | Rouges | Part |
+|---|---|---|
+| Lundi | 33 | 24 % |
+| Mardi | 29 | 21 % |
+| Mercredi | 33 | 24 % |
+| Jeudi | 23 | 17 % |
+| Vendredi | 19 | 14 % |
 
-- Jours rouges dès **début novembre 2022**
-- Forte concentration en **décembre 2022** et **janvier 2023**
-- Les appels à la sobriété ont modéré la consommation
+Le lundi et le mercredi sont les jours les plus souvent rouges, le vendredi le moins souvent. Les 294 jours blancs se répartissent du lundi au samedi (35 samedis, soit 12 %), et aucun ne tombe un dimanche, conformément à la règle R3.
 
-### Saison 2021-2022
+## Les séries de jours rouges consécutifs
 
-Retour à une saison plus classique après le COVID.
+Les 137 jours rouges forment 59 séries de jours consécutifs. Comme les week-ends sont exclus, une série de 5 jours correspond à une semaine complète du lundi au vendredi.
 
-- Les jours rouges se sont concentrés sur **janvier-février 2022**
-- Vague de froid fin janvier : 4-5 jours rouges consécutifs
-- Mars 2022 : quelques jours rouges tardifs
+| Longueur de la série | Nombre de séries | Part des séries |
+|---|---|---|
+| 1 jour | 25 | 42 % |
+| 2 jours | 12 | 20 % |
+| 3 jours | 9 | 15 % |
+| 4 jours | 4 | 7 % |
+| 5 jours | 9 | 15 % |
 
-### Saison 2020-2021
+Deux enseignements pratiques. D'abord, un rouge isolé n'est pas rare : 25 séries sur 59 durent un seul jour. Ensuite, les séries de 5 jours existent bel et bien : elles sont apparues au moins une fois dans chacune des six saisons complètes (9 au total). Pour regrouper les séries séparées seulement par un week-end, on obtient 47 épisodes rouges, dont 38 (81 %) sont précédés, le jour de semaine d'avant, d'un jour blanc, et 39 (83 %) suivis d'un jour blanc. Un jour blanc en semaine est donc un signal à surveiller. Découvrez aussi comment [être alerté avant un jour rouge](/blog/alerte-jour-rouge-tempo).
 
-Saison marquée par les **confinements COVID** qui ont bouleversé les profils de consommation.
+## Températures et jours rouges
 
-- Consommation industrielle réduite → moins de tension sur le réseau
-- Les jours rouges ont malgré tout été placés lors des pics de froid
-- Concentration sur **janvier 2021**
+La température est le premier facteur de placement des rouges. Sur les 137 jours rouges de la base, la température moyenne du jour (moyenne pondérée de 9 villes) a une médiane de 2,8 °C : 50 % des rouges sont tombés sous 3 °C, 78 % sous 5 °C et 98 % sous 8 °C. Les trois jours rouges au-dessus de 8 °C sont tous en mars.
 
-## Statistiques et tendances
+À l'inverse, tous les jours froids ne sont pas rouges. En regroupant tous les jours de novembre à mars (week-ends compris, donc jours qui ne peuvent pas être rouges) :
 
-### Répartition mensuelle moyenne des jours rouges
+| Température moyenne du jour | Jours | Dont rouges | Part |
+|---|---|---|---|
+| Sous 0 °C | 16 | 10 | 63 % |
+| 0 à 3 °C | 114 | 59 | 52 % |
+| 3 à 5 °C | 140 | 38 | 27 % |
+| 5 à 8 °C | 309 | 27 | 9 % |
+| 8 °C et plus | 441 | 3 | 0,7 % |
 
-En analysant les 5 dernières saisons, on observe un pattern récurrent :
+Sous 3 °C, plus d'un jour sur deux est rouge, week-ends compris ; au-dessus de 8 °C, le rouge devient exceptionnel. Le reste dépend du budget restant à placer, ce qui explique les rouges de fin d'hiver par températures modérées. Cette corrélation est ce que notre [algorithme de prévision](/methodologie) exploite. Pour adapter votre chauffage aux journées froides, découvrez nos [astuces chauffage pour les jours rouges](/blog/chauffage-jour-rouge-tempo-astuces).
 
-| Mois | Jours rouges (moyenne) | Pourcentage |
-|------|----------------------|-------------|
-| Novembre | 2-3 | ~12% |
-| Décembre | 4-5 | ~20% |
-| **Janvier** | **7-8** | **~35%** |
-| Février | 5-6 | ~25% |
-| Mars | 1-2 | ~8% |
-
-**Janvier est systématiquement le mois le plus chargé en jours rouges**, avec environ un tiers du total. C'est logique : c'est statistiquement le mois le plus froid en France.
-
-### Les jours de la semaine les plus touchés
-
-Puisque les jours rouges ne peuvent tomber ni le samedi ni le dimanche, ils se répartissent sur 5 jours ouvrés. En pratique :
-
-- **Mardi et mercredi** sont les jours les plus fréquemment rouges
-- **Lundi** est souvent rouge après un week-end froid (la demande repart)
-- **Vendredi** est moins souvent rouge (EDF évite de "coincer" les usagers avant le week-end)
-
-### Les séquences de jours rouges consécutifs
-
-L'un des patterns les plus importants à comprendre est celui des **jours rouges consécutifs**. La règle R4 autorise jusqu'à 5 jours rouges d'affilée, mais en pratique, les longues séquences sont rares. Voici ce que l'historique des 5 dernières saisons nous apprend :
-
-- **Jours rouges isolés** (1 seul jour) : environ 25 % des cas. Ils surviennent lors de pics de froid brefs, souvent un lundi après un week-end glacial.
-- **Séquences de 2-3 jours** : les plus fréquentes, représentant environ 55 % des jours rouges. Elles correspondent aux vagues de froid typiques qui durent 3 à 5 jours (avec le week-end qui interrompt la série).
-- **Séquences de 4-5 jours** : rares, environ 20 % des cas. Elles ne se produisent que lors des épisodes de froid les plus intenses (températures durablement sous 0°C). La saison 2022-2023 a vu deux séquences de 5 jours consécutifs, un record lié à la crise énergétique. La saison 2021-2022 en a compté une seule, fin janvier 2022.
-
-Pour les abonnés, cela signifie qu'un jour rouge est rarement le dernier de la série. Quand un premier jour rouge tombe, il y a environ **70 % de chances** qu'au moins un deuxième suive immédiatement. Pour approfondir les stratégies face aux jours rouges, consultez notre [guide complet des jours rouges](/blog/jours-rouges-tempo-guide).
-
-### Corrélation température et jours rouges
-
-Le facteur numéro un est la **température nationale**. Notre analyse montre que :
-
-- **90% des jours rouges** tombent quand la température moyenne des 9 principales villes est inférieure à **5°C**
-- **70%** quand elle est inférieure à **3°C**
-- En dessous de **0°C**, la probabilité d'un jour rouge dépasse **80%**
-
-C'est cette corrélation que notre [algorithme de prévision](/) exploite pour anticiper les jours rouges jusqu'à 15 jours à l'avance. Pour savoir comment adapter votre chauffage lors de ces journées froides, découvrez nos [astuces chauffage pour les jours rouges](/blog/chauffage-jour-rouge-tempo-astuces).
-
-## Leçons à retenir pour les abonnés Tempo
-
-L'analyse de six saisons d'historique Tempo permet de dégager des enseignements pratiques pour tout abonné souhaitant optimiser sa consommation et réduire sa facture.
+## Leçons pour les abonnés Tempo
 
 ### Préparez janvier comme le mois le plus critique
 
-Avec 35 % des jours rouges concentrés en janvier, c'est le mois où votre vigilance doit être maximale. Concrètement, cela signifie :
+Dans six des sept saisons, au moins un rouge est tombé entre le 1er et le 8 janvier. Concrètement : rentrez le bois avant les fêtes si vous avez un poêle, planifiez vos lessives sur les jours bleus de décembre, et activez vos [alertes](/#subscribe) avant le 1er novembre.
 
-- **Faites le plein de bois de chauffage** avant les fêtes de fin d'année si vous disposez d'un poêle ou d'un insert. Retrouvez nos [astuces chauffage pour les jours rouges](/blog/chauffage-jour-rouge-tempo-astuces) pour exploiter au mieux cette alternative.
-- **Programmez vos congés** si possible en janvier : être à domicile vous permet de mieux piloter votre consommation.
-- **Anticipez vos stocks alimentaires** pour éviter d'utiliser le four électrique les jours rouges (privilégiez les plats préparés à l'avance et réchauffés au micro-ondes).
+### Exploitez les week-ends
 
-### Exploitez les week-ends comme refuges garantis
+Les samedis et dimanches ne sont jamais rouges, et les dimanches sont toujours bleus. Lessives, cuissons au four et recharge du véhicule électrique peuvent s'y concentrer.
 
-Les samedis et dimanches ne sont jamais rouges, et les dimanches sont toujours bleus. Utilisez ces jours pour rattraper les tâches reportées en semaine : lessives, cuisson au four, recharge de véhicule électrique. Sur une saison, cela représente plus de 40 jours de week-end entre novembre et mars où vous pouvez consommer sans contrainte.
+### Surveillez le budget en fin d'hiver
 
-### Surveillez la pression budgétaire en fin de saison
-
-L'historique montre que les jours rouges de mars sont souvent les plus "surprenants" : les températures ne sont pas toujours très froides, mais EDF doit écouler son budget. Si mi-février il reste encore 5 à 8 jours rouges à placer, attendez-vous à des jours rouges réguliers jusqu'à fin mars, même par des températures de 6 à 8°C. Pour en savoir plus sur les stratégies d'économie au quotidien, consultez notre guide pour [économiser avec Tempo EDF](/blog/economiser-tempo-edf).
-
-### Ne sous-estimez pas les jours blancs
-
-Avec 43 jours blancs par saison (contre 22 rouges), les jours blancs représentent un volume non négligeable de jours à tarif intermédiaire. Les économies réalisées en modérant votre consommation les jours blancs s'additionnent sur la saison. L'historique montre que les jours blancs encadrent souvent les jours rouges : un jour blanc précède ou suit fréquemment une séquence rouge, ce qui en fait un bon indicateur d'alerte.
-
-## Comment utiliser cet historique ?
-
-L'historique du calendrier Tempo vous aide à :
-
-1. **Planifier votre hiver** : si vous savez que janvier concentre 35% des jours rouges, vous pouvez anticiper vos stocks de bois, programmer vos congés, etc.
-2. **Comprendre les patterns** : les jours rouges arrivent par "vagues" de 2-4 jours, rarement isolés
-3. **Calibrer vos attentes** : sur 22 jours rouges, la moitié tombe en janvier-février
+Une saison qui arrive en février avec beaucoup de rouges à placer peut voir des rouges par températures modérées : c'est ce qui s'est passé en mars 2024 (6 rouges). À l'inverse, 2021-2022 a soldé son budget dès le 27 janvier. Pour économiser sur l'ensemble de la saison, lisez notre guide pour [économiser avec Tempo EDF](/blog/economiser-tempo-edf).
 
 ## FAQ : vos questions sur l'historique Tempo
 
 ### Les jours rouges tombent-ils toujours aux mêmes dates chaque année ?
 
-Non, les dates exactes changent chaque saison car elles dépendent de la météo et de la consommation nationale. En revanche, les **tendances** sont stables : janvier concentre toujours 30 à 40 % des jours rouges, et les vagues de froid déclenchent systématiquement des séquences rouges. L'historique montre que les mêmes semaines de janvier reviennent souvent.
+Non. Sur six saisons complètes, le premier rouge est tombé entre le 29 novembre et le 8 décembre, et le dernier entre le 27 janvier et le 29 mars. Le mois de janvier domine (54 % des rouges), mais aucune date précise ne se répète d'une année à l'autre, car le placement dépend de la météo et de la consommation.
 
-### Combien de jours rouges y a-t-il eu en moyenne par mois depuis 2020 ?
+### Combien de jours rouges y a-t-il eu en moyenne par mois ?
 
-En moyenne sur les 6 dernières saisons : **6 à 8 jours rouges en janvier**, 3 à 5 en décembre et février, 2 à 4 en novembre, et 1 à 3 en mars. Ce schéma est remarquablement stable d'une saison à l'autre, ce qui facilite l'anticipation.
+Sur les six saisons complètes (128 rouges), la moyenne est de 0,3 en novembre, 4,7 en décembre, 11,5 en janvier, 2,7 en février et 2,2 en mars. Ces moyennes masquent de grands écarts : janvier va de 8 à 15 rouges selon la saison.
 
 ### EDF a-t-il déjà utilisé moins de 22 jours rouges dans une saison ?
 
-Non. Depuis la création de Tempo, EDF utilise la totalité des 22 jours rouges chaque saison. Même lors d'hivers doux, les jours rouges sont placés en fin de période (février-mars) pour respecter le quota budgétaire.
+Oui : la saison 2019-2020 s'est terminée à 18 rouges dans nos données. Les cinq saisons suivantes (2020-2021 à 2024-2025) affichent exactement 22 rouges et 43 blancs. Pour 2025-2026, notre base s'arrête au 20 février 2026 avec 9 rouges.
 
-## Consultez le calendrier en temps réel
+### Où trouver les couleurs de la saison en cours ?
 
-Pour voir les couleurs de la saison en cours avec les jours passés (confirmés par EDF) et les jours futurs (nos prévisions), consultez notre [calendrier Tempo EDF interactif](/calendrier).
+Sur le [calendrier Tempo EDF](/calendrier), qui affiche la couleur officielle des jours passés et notre prévision des jours à venir. Les règles et le budget de la saison sont détaillés dans le [guide des jours rouges Tempo](/blog/jours-rouges-tempo-guide).
 
-Et pour ne jamais être pris au dépourvu, [inscrivez-vous aux alertes WhatsApp gratuites](/#subscribe) : vous recevrez un message avant chaque jour rouge avec nos conseils d'action.
+---
+
+*Sources : couleurs Tempo confirmées par EDF (historique RTE pour 2019 à 2023, calendriers publiés d'après les annonces EDF pour 2023 à 2026), températures moyennes pondérées de 9 villes (Open-Meteo Archive), le tout stocké dans la base de calendrier-tempo.fr. Dernière date disponible pour 2025-2026 : 20 février 2026. Règles officielles : [EDF](https://www.edf.fr/). Données de consommation : [RTE](https://www.rte-france.com/).*

@@ -1,12 +1,12 @@
 ---
-title: Alerte jour rouge Tempo : comment être prévenu à temps
-description: Recevez une alerte WhatsApp gratuite avant chaque jour rouge Tempo EDF. Inscription en 30 secondes, sans appli.
-publish_date: 2026-03-17
-updated_date: 2026-08-09
+title: Alerte Tempo : être prévenu d'un jour rouge par WhatsApp
+description: Alerte Tempo gratuite sur WhatsApp : prévision des 7 prochains jours chaque dimanche et message avant chaque jour rouge Tempo EDF. Inscription en 30 s.
 keywords: alerte tempo, notification jour rouge tempo, alerte whatsapp tempo edf, prévenir jour rouge
+publish_date: 2026-03-17
+updated_date: 2026-09-29
 cluster: jours-rouges
 ---
-Avec l'offre Tempo EDF, rater un jour rouge peut coûter très cher. Pendant les heures pleines d'un jour rouge, le tarif grimpe à **0,7295 €/kWh**, soit plus de quatre fois le prix d'un jour bleu. Sur une seule journée, un foyer qui ne s'adapte pas peut voir sa facture exploser de 14 € ou plus. La solution ? Recevoir une **alerte jour rouge Tempo** avant qu'il ne soit trop tard. Dans cet article, nous détaillons pourquoi ces alertes sont indispensables et comment s'y inscrire gratuitement en 30 secondes sur calendrier-tempo.fr.
+Avec l'offre Tempo EDF, rater un jour rouge peut coûter très cher. Pendant les heures pleines d'un jour rouge, le tarif grimpe à **0,7295 €/kWh**, soit 4,4 fois le prix d'un jour bleu (0,1654 €/kWh). Sur une seule journée, un foyer qui ne s'adapte pas peut voir sa facture exploser de 14 € ou plus. La solution ? Mettre en place une **alerte Tempo** qui vous prévient avant qu'il ne soit trop tard. Dans cet article, nous détaillons pourquoi ces alertes sont utiles et comment s'inscrire gratuitement en 30 secondes sur calendrier-tempo.fr. Les tarifs cités sont ceux de la grille du 1er août 2026, détaillée sur la page [tarif Tempo EDF](/tarif-tempo-edf).
 
 ## Pourquoi une alerte Tempo est indispensable pour votre portefeuille
 
@@ -16,11 +16,11 @@ Le principe de l'offre Tempo EDF est simple : 300 jours bleus à prix avantageux
 
 Prenons un exemple concret. Un foyer qui consomme 25 kWh en heures pleines un jour rouge paiera **18,24 €** pour cette seule journée. La même consommation un jour bleu ne coûte que 4,14 €. La différence ? Plus de **14 € perdus** parce que vous ne saviez pas que c'était un jour rouge.
 
-Multipliez cette erreur par ne serait-ce que 5 jours rouges ratés dans la saison, et ce sont **70 à 85 € d'économies envolées**. L'alerte Tempo n'est pas un confort : c'est une nécessité financière pour tout abonné Tempo. Pour mieux comprendre le fonctionnement et les règles de ces journées critiques, consultez notre [guide complet des jours rouges Tempo](/blog/jours-rouges-tempo-guide).
+Multipliez cette erreur par ne serait-ce que 5 jours rouges ratés dans la saison, et ce sont environ **70 € d'économies envolées**. L'alerte Tempo n'est pas un confort : c'est une nécessité financière pour tout abonné Tempo. Pour mieux comprendre le fonctionnement et les règles de ces journées critiques, consultez notre [guide complet des jours rouges Tempo](/blog/jours-rouges-tempo-guide).
 
 ### Le problème : EDF ne prévient que la veille vers 11h
 
-EDF publie la couleur du lendemain aux alentours de 17 heures. Si vous ne consultez pas activement leur site ou leur application ce soir-là, vous découvrirez le jour rouge le lendemain matin, quand le compteur tourne déjà au tarif fort. De plus, aucune notification automatique n'est envoyée par EDF à moins d'avoir installé leur application et activé les notifications, ce que beaucoup d'abonnés ne font pas.
+EDF publie la couleur du lendemain vers 11h ; la page [couleur Tempo demain](/couleur-tempo-demain) l'affiche dès qu'elle est confirmée. Si vous ne consultez pas activement le site ou l'application EDF ce jour-là, vous risquez de découvrir le jour rouge trop tard, quand le compteur tourne déjà au tarif fort. De plus, aucune notification automatique n'est envoyée par EDF à moins d'avoir installé leur application et activé les notifications, ce que beaucoup d'abonnés ne font pas.
 
 C'est exactement pourquoi les services d'alerte Tempo existent : ils vous transmettent l'information automatiquement, sans effort de votre part, sur un canal que vous consultez déjà tous les jours.
 
@@ -34,11 +34,11 @@ EDF propose sa propre application mobile, EDF & Moi, qui peut envoyer des notifi
 
 Plusieurs applications tierces sur Android et iOS affichent les couleurs Tempo. Certaines proposent des widgets pour l'écran d'accueil. Ces solutions fonctionnent, mais nécessitent une installation, occupent de l'espace de stockage, et dépendent du bon vouloir de leurs développeurs pour la maintenance. Quand une application n'est plus mise à jour, les données peuvent devenir erronées sans avertissement.
 
-### L'alerte WhatsApp de calendrier-tempo.fr : la solution la plus directe
+### L'alerte WhatsApp de calendrier-tempo.fr : sans rien installer
 
-Le service que nous proposons sur [calendrier-tempo.fr](/) repose sur un principe différent : **vous recevez un message WhatsApp directement sur votre téléphone**, sans rien installer. WhatsApp est déjà utilisé quotidiennement par plus de 38 millions de Français. Un message WhatsApp se remarque immédiatement, ne se perd pas dans un centre de notifications, et ne nécessite aucune application supplémentaire.
+Le service que nous proposons sur [calendrier-tempo.fr](/) repose sur un principe différent : **vous recevez un message WhatsApp directement sur votre téléphone**, sans rien installer. Vous le consultez déjà tous les jours : le message ne se perd pas parmi des dizaines de notifications d'applications, et il ne nécessite aucune application supplémentaire.
 
-L'inscription prend **30 secondes**, ne demande qu'un numéro de téléphone, et le service est entièrement **gratuit**. Vous pouvez vous [inscrire maintenant](/#subscribe) et recevoir votre première alerte dès ce soir.
+L'inscription prend **30 secondes**, ne demande qu'un numéro de téléphone, et le service est entièrement **gratuit**. Vous pouvez vous [inscrire maintenant](/#subscribe) : un message de confirmation arrive dans les 30 secondes.
 
 ## Comment s'inscrire aux alertes Tempo sur calendrier-tempo.fr
 
@@ -52,7 +52,7 @@ Accédez à [calendrier-tempo.fr](/) et descendez jusqu'à la section "Recevez u
 
 **2. Saisissez votre numéro de téléphone**
 
-Entrez votre numéro de mobile au format français (06 ou 07). C'est la seule information obligatoire. Votre numéro est chiffré en AES-256 et ne sera jamais partagé ni revendu.
+Entrez votre numéro de mobile (France, Belgique, Suisse, Luxembourg ou Allemagne). C'est la seule information obligatoire. Votre numéro est chiffré dans notre base et ne sera jamais partagé ni revendu.
 
 **3. Validez et c'est terminé**
 
@@ -67,7 +67,7 @@ Pas de mot de passe à retenir, pas de compte à créer, pas d'application à t�
 Chaque alerte contient les informations essentielles pour agir immédiatement :
 
 - **La couleur confirmée par EDF** pour le lendemain (quand elle est disponible, généralement après 11h)
-- **Les prévisions pour les jours suivants** (J+2 à J+5), basées sur notre algorithme prédictif qui analyse la météo, la consommation nationale et les données historiques
+- **Les prévisions pour les jours suivants** (J+2 à J+5), basées sur notre algorithme prédictif qui analyse la météo, la consommation nationale et le budget de jours restant (détails sur la page [méthodologie](/methodologie))
 - **Un conseil d'action concret** : reporter les machines à laver, baisser le chauffage, décaler la recharge du véhicule électrique
 - **Un lien de gestion** pour modifier vos préférences ou vous désinscrire en un clic
 
@@ -108,9 +108,9 @@ Ce récapitulatif vous permet de planifier votre semaine entière : programmer l
 | **Désinscription** | Désinstaller l'app | Désinstaller l'app | 1 clic ou STOP |
 | **Données personnelles** | Compte EDF complet | Variable | Numéro de téléphone uniquement |
 
-La principale différence réside dans le canal de communication. Les notifications push sont facilement ignorées ou bloquées par les paramètres du téléphone. Un message WhatsApp a un taux d'ouverture supérieur à 90 %, ce qui en fait le canal le plus fiable pour une alerte que vous ne pouvez pas vous permettre de manquer.
+La principale différence réside dans le canal de communication. Les notifications push sont facilement ignorées ou bloquées par les paramètres du téléphone. Un message WhatsApp se remarque plus facilement qu'une notification noyée parmi les autres, ce qui en fait un canal adapté à une alerte que vous ne pouvez pas vous permettre de manquer.
 
-De plus, notre service de prévision anticipe les jours rouges **jusqu'à 5 jours à l'avance**, bien avant la confirmation officielle d'EDF. Cette anticipation vous donne un temps précieux pour vous organiser. Consultez nos [prévisions en temps réel](/) pour voir les couleurs attendues sur les prochains jours, retrouvez le [calendrier complet de la saison 2025-2026](/blog/calendrier-tempo-2025-2026-dates) pour une vue d'ensemble des dates et couleurs, ou découvrez notre [guide complet Tempo EDF 2026](/blog/tempo-edf-2026-guide-complet) pour tout comprendre sur l'offre.
+De plus, notre service de prévision anticipe les jours rouges **de J+2 à J+5**, bien avant la confirmation officielle d'EDF, et le récapitulatif du dimanche couvre les 7 jours suivants. Cette anticipation vous donne un temps précieux pour vous organiser. Consultez nos [prévisions en temps réel](/) pour voir les couleurs attendues sur les prochains jours, retrouvez le [calendrier Tempo 2026-2027](/blog/calendrier-tempo-2026-2027-dates) pour le cadre de la saison en cours, ou découvrez notre [guide complet Tempo EDF 2026-2027](/blog/tempo-edf-2026-guide-complet) pour tout comprendre sur l'offre.
 
 ## FAQ : vos questions sur les alertes Tempo
 
@@ -120,12 +120,12 @@ L'alerte est envoyée dès que la couleur du lendemain est confirmée par EDF, g
 
 ### Est-ce que le service d'alerte Tempo est vraiment gratuit ?
 
-Oui, le service est entièrement gratuit, sans engagement et sans publicité. L'inscription ne requiert que votre numéro de téléphone portable, chiffré en AES-256 dans notre base de données. Aucune information n'est partagée avec des tiers. Vous pouvez vous désinscrire à tout moment en un clic depuis le lien présent dans chaque message, ou en envoyant STOP. Il n'y a aucun frais caché, aucun abonnement premium, et aucune limitation de fonctionnalités.
+Oui, le service est entièrement gratuit, sans engagement et sans publicité. L'inscription ne requiert que votre numéro de téléphone portable, chiffré dans notre base de données. Aucune information n'est partagée avec des tiers. Vous pouvez vous désinscrire à tout moment en un clic depuis le lien présent dans chaque message, ou en envoyant STOP. Il n'y a aucun frais caché, aucun abonnement premium, et aucune limitation de fonctionnalités.
 
 ### Les prévisions de jours rouges sont-elles fiables plusieurs jours à l'avance ?
 
-Notre algorithme combine plusieurs sources de données pour établir ses prévisions : météo nationale (températures, pression atmosphérique), consommation électrique prévue par RTE, historique des décisions EDF, et budget restant de jours rouges et blancs dans la saison. Pour J+2 et J+3, la fiabilité est élevée car les données météorologiques à court terme sont précises. Pour J+4 et J+5, la fiabilité diminue légèrement mais reste utile pour la planification. Chaque prévision est accompagnée d'un indicateur de confiance, et la couleur n'est présentée comme certaine que lorsqu'EDF l'a officiellement confirmée. Vous pouvez [consulter le calendrier Tempo](/calendrier) à tout moment sur notre tableau de bord.
+Notre algorithme combine plusieurs sources de données pour établir ses prévisions : météo nationale (températures, pression atmosphérique), consommation électrique prévue par RTE, historique des décisions EDF, et budget restant de jours rouges et blancs dans la saison. Pour J+2 et J+3, la fiabilité est meilleure car les données météorologiques à court terme sont plus précises. Pour J+4 et J+5, elle diminue mais reste utile pour la planification, et au-delà de J+5 les prévisions ne sont qu'indicatives. Les mesures de performance (test rétrospectif, limites) sont publiées sur la page [méthodologie](/methodologie). Chaque prévision est accompagnée d'un indicateur de confiance, et la couleur n'est présentée comme certaine que lorsqu'EDF l'a officiellement confirmée. Vous pouvez [consulter le calendrier Tempo](/calendrier) à tout moment sur notre tableau de bord.
 
 ---
 
-*Dernière mise à jour : 9 août 2026, à la suite de la revalorisation des tarifs réglementés du 1er août 2026. Pour ne plus jamais subir un jour rouge sans préparation, [inscrivez-vous aux alertes WhatsApp gratuites](/#subscribe) de calendrier-tempo.fr. Inscription en 30 secondes, désinscription en 1 clic.*
+*Mis à jour le 29 septembre 2026 (grille tarifaire du 1er août 2026). Pour ne plus jamais subir un jour rouge sans préparation, [inscrivez-vous aux alertes WhatsApp gratuites](/#subscribe) de calendrier-tempo.fr. Inscription en 30 secondes, désinscription en 1 clic. Sources : [EDF](https://www.edf.fr/) pour la publication des couleurs et les tarifs, [Légifrance](https://www.legifrance.gouv.fr/) pour l'arrêté tarifaire du 29 juillet 2026.*
