@@ -70,6 +70,10 @@ def evaluate(a, b, seasons, n_boot=2000, seed=42):
         "R2 bootstrap": (ic_r[0] >= -1 and (ic_r[0] > 0 or ic_f[1] < 0),
                          f"Δrappel IC95 [{ic_r[0]:+.1f} ; {ic_r[1]:+.1f}] pts, ΔFP IC95 [{ic_f[0]:+d} ; {ic_f[1]:+d}]"),
     }
+    if all(a[k] == b[k] for k in keys):
+        # Variante qui ne change aucune couleur (ex. calibration des probabilités) :
+        # R2 exige une amélioration, il est sans objet (audit 2026-09-29-alertes-calibration).
+        out["R2 bootstrap"] = (True, "sans objet : couples (réel, prédit) identiques")
     return out, ma, mb, keys
 
 

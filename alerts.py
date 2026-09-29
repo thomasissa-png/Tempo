@@ -590,6 +590,36 @@ def _get_manage_token(user) -> str:
 # LOGIQUE D'ENVOI AVEC FILTRAGE
 # ================================================================
 
+# Politique d'alerte ROUGE (docs/audits/2026-09-29-alertes-calibration.md).
+# Quand les probabilites sont calibrees (predictor.PROBA_CALIBRATION_ENABLED et
+# calibration.json present), les niveaux « Prudent » (70) et « Recommande » (80)
+# alertent des que la probabilite ROUGE calibree atteint 50 % : rejeu 7 saisons,
+# profil par defaut, 117 rouges signales sur 136 au lieu de 93, 42 fausses
+# alertes au lieu de 85. Les autres valeurs (90, valeurs libres) gardent la regle
+# d'origine seuil <= round(p x 100). Les preferences stockees ne changent pas.
+ALERT_CALIBRATED_THRESHOLDS = {70: 0.50, 80: 0.50}
+
+
+def _calibration_active() -> bool:
+    try:
+        import predictor
+        return bool(predictor.PROBA_CALIBRATION_ENABLED and predictor._load_calibration())
+    except Exception:
+        return False
+
+
+def rouge_alert_due(seuil: int, prediction: dict, delta: int | None = None) -> bool:
+    """Un abonne de seuil `seuil` doit-il recevoir l'alerte ROUGE de cette prediction ?"""
+    if prediction.get("couleur_predite") != "ROUGE" or not seuil or int(seuil) <= 0:
+        return False
+    p = float(prediction.get("probabilite_rouge") or 0.0)
+    if _calibration_active():
+        t = ALERT_CALIBRATED_THRESHOLDS.get(int(seuil))
+        if t is not None:
+            return p >= t - 1e-9
+    return int(seuil) <= round(p * 100)
+
+
 def send_alerts_for_prediction(target_date: date, prediction: dict,
                                heure_filter: str = ""):
     """Envoie les alertes WhatsApp pour une prédiction (rouge ou blanc).
@@ -609,14 +639,12 @@ def send_alerts_for_prediction(target_date: date, prediction: dict,
     conn = get_db()
     try:
         if couleur == "ROUGE":
-            prob_pct = round(prediction.get("probabilite_rouge", 0) * 100)
-            users = conn.execute(
+            users = [u for u in conn.execute(
                 """SELECT id, phone_encrypted, seuil_alerte_rouge, delai_alerte,
                           manage_token, heure_envoi
                    FROM users
-                   WHERE actif = 1 AND seuil_alerte_rouge > 0 AND seuil_alerte_rouge <= ?""",
-                (prob_pct,)
-            ).fetchall()
+                   WHERE actif = 1 AND seuil_alerte_rouge > 0"""
+            ).fetchall() if rouge_alert_due(u["seuil_alerte_rouge"], prediction)]
             format_fn = format_alert_rouge
             type_alerte = "prediction_rouge"
         else:  # BLANC

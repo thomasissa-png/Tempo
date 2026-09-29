@@ -1048,6 +1048,172 @@ def _ensure_prob_coherence(pred: dict) -> None:
             pred[p] = round(pred[p] / total, 3)
 
 
+# ================================================================
+# CALIBRATION DES PROBABILITES PAR HORIZON
+# ================================================================
+# Audit docs/audits/2026-09-29-alertes-calibration.md : la probabilite issue du
+# softmax du score (_compute_probabilities) n'est pas calibree (un ROUGE annonce
+# a 80 % est reel environ une fois sur deux) et ne distingue pas les vrais ROUGE
+# des faux. Recalibrage : regression logistique multinomiale par horizon
+# (calibration.json, apprise par tools/replay/calibrate.py sur les rejeux reels),
+# puis regles EDF (0 %) et coherence couleur/probabilite. Les couleurs predites
+# ne changent jamais ici.
+
+PROBA_CALIBRATION_ENABLED = True
+CALIBRATION_FILE = "calibration.json"
+_CALIBRATION: dict | None = None
+_CALIBRATION_LOADED = False
+_CAL_CLASSES = ("BLEU", "BLANC", "ROUGE")
+_CAL_KEYS = {"BLEU": "probabilite_bleu", "BLANC": "probabilite_blanc", "ROUGE": "probabilite_rouge"}
+
+
+def _load_calibration() -> dict | None:
+    """Charge calibration.json une fois (None si absent ou illisible)."""
+    global _CALIBRATION, _CALIBRATION_LOADED
+    if not _CALIBRATION_LOADED:
+        _CALIBRATION_LOADED = True
+        try:
+            import json
+            from pathlib import Path
+            path = Path(__file__).resolve().parent / CALIBRATION_FILE
+            with open(path, encoding="utf-8") as fh:
+                _CALIBRATION = json.load(fh)
+        except Exception as e:
+            logger.warning(f"[Calibration] {CALIBRATION_FILE} indisponible : {e}")
+            _CALIBRATION = None
+    return _CALIBRATION
+
+
+def calibration_features(pred: dict) -> dict[str, float]:
+    """Variables de calibration, toutes presentes dans le dict de prediction."""
+    def lg(p):
+        return math.log(max(float(p or 0.0), 1e-3))
+    couleur = pred.get("couleur_predite")
+    twin = pred.get("rte_twin") or ""
+    ml = pred.get("score_ml_rouge")
+    return {
+        "lp_rouge": lg(pred.get("probabilite_rouge")),
+        "lp_blanc": lg(pred.get("probabilite_blanc")),
+        "lp_bleu": lg(pred.get("probabilite_bleu")),
+        "pred_rouge": 1.0 if couleur == "ROUGE" else 0.0,
+        "pred_blanc": 1.0 if couleur == "BLANC" else 0.0,
+        "twin_rouge": 1.0 if twin == "ROUGE" else 0.0,
+        "twin_blanc": 1.0 if twin == "BLANC" else 0.0,
+        "twin_bleu": 1.0 if twin == "BLEU" else 0.0,
+        "ml_rouge": float(ml) if ml is not None else 0.0,
+        "ml_absent": 0.0 if ml is not None else 1.0,
+        "score": float(pred.get("score_risque") or 0.0) / 100.0,
+    }
+
+
+def _impossible_colors(pred: dict, target: date) -> set:
+    """Couleurs a 0 % : regles EDF R1-R3, quota epuise, ou deja a 0 avant calibration."""
+    out = set()
+    if not (target.month >= 11 or target.month <= 3):
+        out.add("ROUGE")
+    if target.weekday() >= 5 or is_french_holiday(target):
+        out.add("ROUGE")
+    if target.weekday() == 6:
+        out.add("BLANC")
+    if pred.get("jours_rouges_restants") == 0:
+        out.add("ROUGE")
+    if pred.get("jours_blancs_restants") == 0:
+        out.add("BLANC")
+    for c, k in _CAL_KEYS.items():
+        if not pred.get(k):
+            out.add(c)
+    return out
+
+
+def calibrate_prediction(pred: dict, delta: int, model: dict | None = None) -> bool:
+    """Remplace les probabilites d'une prediction non confirmee par leur version
+    calibree pour l'horizon `delta` (modele de l'horizon le plus proche).
+    Garde la couleur predite, met a 0 les couleurs impossibles, renormalise puis
+    applique la coherence couleur = probabilite max. Renvoie True si applique."""
+    model = model or _load_calibration()
+    if not model or pred.get("confirmed") or delta < 0:
+        return False
+    hz = model.get("horizons", {})
+    if not hz:
+        return False
+    key = str(min(max(delta, 1), max(int(h) for h in hz)))
+    m = hz.get(key)
+    if m and not pred.get("rte_twin") and m.get("sans_jumeau"):
+        m = m["sans_jumeau"]  # jumeau inactif ou hors J+2..J+5 : modele appris sans ses variables
+    if not m:
+        return False
+    feats = calibration_features(pred)
+    x = [feats[f] for f in m["features"]]
+    logits = [b + sum(w * v for w, v in zip(row, x)) for row, b in zip(m["coef"], m["intercept"])]
+    mx = max(logits)
+    ex = [math.exp(v - mx) for v in logits]
+    probs = {c: e for c, e in zip(m["classes"], ex)}
+    impossible = _impossible_colors(pred, date.fromisoformat(pred["date"]))
+    impossible.discard(pred.get("couleur_predite"))  # la decision de couleur prime (comme la coherence)
+    for c in impossible:
+        probs[c] = 0.0
+    total = sum(probs.values())
+    if total <= 0:
+        return False
+    pred["probabilites_brutes"] = [pred.get("probabilite_rouge"), pred.get("probabilite_blanc"),
+                                   pred.get("probabilite_bleu")]
+    p_r = round(probs.get("ROUGE", 0.0) / total, 3)
+    p_b = round(probs.get("BLANC", 0.0) / total, 3)
+    pred["probabilite_rouge"], pred["probabilite_blanc"] = p_r, p_b
+    pred["probabilite_bleu"] = round(max(0.0, 1.0 - p_r - p_b), 3)
+    if CALIBRATION_COHERENCE == "minimale":
+        _minimal_prob_coherence(pred)
+    else:
+        _ensure_prob_coherence(pred)  # ne redonne jamais de masse a une couleur a 0
+    return True
+
+
+CALIBRATION_COHERENCE = "minimale"  # "minimale" ou "existante" (_ensure_prob_coherence, +5 pts)
+
+
+def _minimal_prob_coherence(pred: dict, margin: float = 0.002) -> None:
+    """Couleur predite = probabilite max, avec le plus petit transfert possible.
+
+    Nivellement : les couleurs au-dessus de la couleur predite sont ramenees a
+    un niveau commun L, la masse retiree va a la couleur predite (qui atteint L),
+    puis un ecart de `margin` departage. Contrairement a _ensure_prob_coherence
+    (max + 5 points), une prediction dont la couleur est contestee par la
+    calibration s'affiche comme une hesitation (ex. 46 % / 45 %), pas a 75 %.
+    Une couleur a 0 le reste."""
+    c = pred["couleur_predite"]
+    kc = _CAL_KEYS[c]
+    others = {k: pred[k] for col, k in _CAL_KEYS.items() if col != c}
+    if pred[kc] > max(others.values()):
+        return
+    above = sorted((v for v in others.values() if v >= pred[kc]), reverse=True)
+    # plus petit L tel que p_c + somme(max(0, p_o - L)) = L
+    level = pred[kc]
+    for n in range(1, len(above) + 1):
+        level = (pred[kc] + sum(above[:n])) / (n + 1)
+        if n == len(above) or above[n] <= level:
+            break
+    capped = [k for k, v in others.items() if v > level]
+    for k in capped:
+        pred[k] = level - margin / len(capped)
+    pred[kc] = level + margin
+    total = sum(pred[k] for k in _CAL_KEYS.values())
+    for k in _CAL_KEYS.values():
+        pred[k] = round(pred[k] / total, 3)
+    rest = [k for k in _CAL_KEYS.values() if k != kc]
+    pred[kc] = round(1.0 - sum(pred[k] for k in rest), 3)
+
+
+def _apply_probability_calibration(predictions: list[dict]) -> None:
+    today = date.today()
+    for p in predictions:
+        if p.get("confirmed"):
+            continue
+        try:
+            calibrate_prediction(p, (date.fromisoformat(p["date"]) - today).days)
+        except Exception as e:  # jamais bloquant : probabilites brutes conservees
+            logger.warning(f"[Calibration] ignoree pour {p.get('date')} : {e}")
+
+
 def predict_range(forecasts: list[dict],
                   rte_score: dict | None = None,
                   vigilance: dict | None = None) -> list[dict]:
@@ -1147,6 +1313,10 @@ def predict_range(forecasts: list[dict],
     if Config.RTE_TWIN_ENABLED:
         predictions = _apply_rte_twin(predictions, forecasts, remaining,
                                       {**actuals_cache, **actuals_future})
+
+    # Probabilites calibrees par horizon (les couleurs ne changent pas)
+    if PROBA_CALIBRATION_ENABLED:
+        _apply_probability_calibration(predictions)
 
     return predictions
 
@@ -1928,7 +2098,7 @@ def store_prediction(pred: dict, horizon: str = "J-1",
         # Récupérer la prédiction précédente pour le même (date, horizon)
         # pour la détection de changements
         prev = conn.execute(
-            "SELECT couleur_predite, score_risque, confirmed, couleur_originale "
+            "SELECT couleur_predite, score_risque, confirmed, couleur_originale, simulated "
             "FROM predictions WHERE date = ? AND horizon = ?",
             (pred["date"], horizon)
         ).fetchone()
@@ -1952,6 +2122,13 @@ def store_prediction(pred: dict, horizon: str = "J-1",
             elif not prev["confirmed"] and pred.get("confirmed"):
                 # La prédiction va être confirmée : sauver la couleur prédite actuelle
                 preserved_originale = prev["couleur_predite"]
+
+        # Une confirmation EDF ne change jamais le statut simulé d'une ligne
+        # existante (sinon une prédiction simulée devient « réelle » dans
+        # l'historique public et l'admin, audit 2026-09-29-alertes-calibration).
+        simulated_flag = 1 if pred.get("simulated") else 0
+        if prev and pred.get("confirmed"):
+            simulated_flag = 1 if prev["simulated"] else 0
 
         couleur_precedente = ""
         if prev and prev["couleur_predite"] != pred["couleur_predite"]:
@@ -2042,7 +2219,7 @@ def store_prediction(pred: dict, horizon: str = "J-1",
              pred.get("score_weekday_raw", 0), pred.get("score_gradient_raw", 0),
              pred.get("score_clustering_raw", 0), pred.get("score_rte_raw", 0),
              cycle_id, couleur_precedente,
-             1 if pred.get("simulated") else 0,
+             simulated_flag,
              1 if pred.get("confirmed") else 0,
              preserved_originale),
         )
@@ -2063,6 +2240,9 @@ def confirm_prediction(date_str: str, couleur_officielle: str) -> int:
     Appelee par task_daily_verification (11h30) quand EDF confirme une couleur.
     Met a jour la table predictions pour que /api/predictions reflète immédiatement
     la couleur officielle au lieu de l'ancienne prediction.
+
+    Ne modifie jamais `simulated` : une prediction simulee confirmee reste
+    simulee (exclue de l'historique public, de l'admin et de l'evaluation).
 
     Retourne le nombre de lignes mises a jour.
     """
@@ -2086,7 +2266,6 @@ def confirm_prediction(date_str: str, couleur_officielle: str) -> int:
                    probabilite_bleu = ?, probabilite_blanc = ?, probabilite_rouge = ?,
                    score_risque = ?,
                    confirmed = 1,
-                   simulated = 0,
                    raison = 'Couleur officielle EDF'
                WHERE date = ? AND confirmed = 0""",
             (couleur_officielle, p_bl, p_b, p_r, score, date_str),

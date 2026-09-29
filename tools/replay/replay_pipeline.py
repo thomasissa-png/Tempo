@@ -24,6 +24,10 @@ Usage (depuis la racine du dépôt, Python avec les dépendances du projet) :
   --weights default|prod   Config.DEFAULT_WEIGHTS ou dernière ligne non rejetée de weights_history
   --thresholds 0.19,0.20   seuils ML imposés (sinon ceux du modèle / du pli)
   --rte-twin off|on  jumeau RTE coupé ou branché (défaut : Config.RTE_TWIN_ENABLED)
+  --calibration off|on  calibration des probabilités (défaut : predictor.PROBA_CALIBRATION_ENABLED)
+  --detail  ajoute le cycle de 7 h 30 (J+1 pas encore publié) et, pour chaque cycle,
+            les prédictions non confirmées J+1..J+5 avec leurs probabilités
+            (entrée de tools/replay/alert_sim.py et tools/replay/calibrate.py)
   --ml shipped|none|folds=PATH
       shipped : ml_model.pkl du dépôt (attention : vu à l'entraînement sur ces saisons)
       none    : ML et micro-ML désactivés
@@ -49,6 +53,10 @@ from config import Config  # noqa: E402
 
 HORIZONS = (2, 3, 4, 5)
 N_FC = 8  # D..D+7 : même fenêtre que la cohérence thermique en prod
+N_DETAIL = 5  # --detail : prédictions non confirmées J+1..J+5 (alertes, calibration)
+DETAIL_COLS = ["cycle", "jour_emission", "date_cible", "delta", "reel", "predit",
+               "p_rouge", "p_blanc", "p_bleu", "jumeau", "score_risque", "ml_rouge", "saison",
+               "p_rouge_brute", "restants_rouge", "restants_blanc"]
 
 
 def season_end(d: date) -> date:
@@ -99,7 +107,8 @@ def _setup_rte_twin(enabled: bool, WX: dict):
 
 
 def run(weights_mode: str = "default", ml_mode: str = "shipped",
-        thresholds: tuple[float, float] | None = None, rte_twin_on: bool = False) -> dict:
+        thresholds: tuple[float, float] | None = None, rte_twin_on: bool = False,
+        morning: bool = False, detail: list | None = None, calibration: str = "config") -> dict:
     dump = json.load(open(ROOT / "db_dump.json", encoding="utf-8"))["tables"]
     weights = load_weights(weights_mode, dump)
     data = T.load_data()
@@ -135,6 +144,43 @@ def run(weights_mode: str = "default", ml_mode: str = "shipped",
     seasons = sorted({T.season_of(date.fromisoformat(d)) for d in ACT})
     predictor.date = _FakeDate
     install_twin = _setup_rte_twin(rte_twin_on, WX)
+    if calibration != "config":
+        predictor.PROBA_CALIBRATION_ENABLED = calibration == "on"
+
+    def _predict_at(kind: str, day: date):
+        """Cycle de production du jour `day` : « soir » = 18 h (couleurs EDF
+        connues jusqu'à day+1, RTE jusqu'à day-1) ; « matin » = 7 h 30 (J+1 pas
+        encore publié : couleurs connues jusqu'à day, RTE jusqu'à day-2)."""
+        known_to = day + timedelta(1) if kind == "soir" else day
+        fc = []
+        for i in range(N_FC):
+            r = WX.get((day + timedelta(i)).isoformat())
+            if not r:
+                break
+            fc.append(dict(r, source="arome" if i <= 2 else "arpege"))
+        if len(fc) < N_FC or any((day + timedelta(k)).isoformat() not in ACT
+                                 for k in range((known_to - day).days + 1)):
+            return None
+        used = defaultdict(int)
+        k = season_start(day)
+        while k <= known_to:
+            used[ACT.get(k.isoformat(), "")] += 1
+            k += timedelta(1)
+        n_days = (season_end(day) - season_start(day)).days + 1
+        state["remaining"] = {
+            "ROUGE": max(0, Config.JOURS_ROUGES_TOTAL - used["ROUGE"]),
+            "BLANC": max(0, Config.JOURS_BLANCS_TOTAL - used["BLANC"]),
+            "BLEU": max(0, n_days - Config.JOURS_ROUGES_TOTAL - Config.JOURS_BLANCS_TOTAL - used["BLEU"]),
+        }
+        lo = (day - timedelta(7)).isoformat()
+        state["recent"] = {d: c for d, c in ACT.items() if lo <= d <= known_to.isoformat()}
+        state["future"] = {(day + timedelta(k)).isoformat(): ACT[(day + timedelta(k)).isoformat()]
+                           for k in range((known_to - day).days + 1)}
+        _Today.value = day
+        predictor.days_left_in_season = lambda D=day: max(0, (season_end(D) - D).days)
+        cut["d"] = day - timedelta(1 if kind == "soir" else 2)
+        return predictor.predict_range(fc)
+
     for s in seasons:
         install_twin(s)
         if folds:
@@ -146,40 +192,22 @@ def run(weights_mode: str = "default", ml_mode: str = "shipped",
         y0 = int(s[:4])
         D = date(y0, 9, 1)
         while D <= last - timedelta(2) and D < date(y0 + 1, 9, 1):
-            J1 = D + timedelta(1)
-            fc = []
-            for i in range(N_FC):
-                r = WX.get((D + timedelta(i)).isoformat())
-                if not r:
-                    break
-                fc.append(dict(r, source="arome" if i <= 2 else "arpege"))
-            if len(fc) < N_FC or D.isoformat() not in ACT or J1.isoformat() not in ACT:
-                D += timedelta(1)
-                continue
-            used = defaultdict(int)
-            k = season_start(D)
-            while k <= J1:
-                used[ACT.get(k.isoformat(), "")] += 1
-                k += timedelta(1)
-            n_days = (season_end(D) - season_start(D)).days + 1
-            state["remaining"] = {
-                "ROUGE": max(0, Config.JOURS_ROUGES_TOTAL - used["ROUGE"]),
-                "BLANC": max(0, Config.JOURS_BLANCS_TOTAL - used["BLANC"]),
-                "BLEU": max(0, n_days - Config.JOURS_ROUGES_TOTAL - Config.JOURS_BLANCS_TOTAL - used["BLEU"]),
-            }
-            lo = (D - timedelta(7)).isoformat()
-            state["recent"] = {d: c for d, c in ACT.items() if lo <= d <= J1.isoformat()}
-            state["future"] = {D.isoformat(): ACT[D.isoformat()], J1.isoformat(): ACT[J1.isoformat()]}
-            _Today.value = D
-            predictor.days_left_in_season = lambda D=D: max(0, (season_end(D) - D).days)
-            cut["d"] = D - timedelta(1)
-
-            preds = predictor.predict_range(fc)
-            for h in HORIZONS:
-                p = preds[h]
-                t = p["date"] if isinstance(p["date"], str) else p["date"].isoformat()
-                if t in ACT:
-                    out[(h, s)].append((t, ACT[t], p["couleur_predite"]))
+            runs_today = (("soir", D),) if not morning else (("matin", D), ("soir", D))
+            for kind, day in runs_today:
+                preds = _predict_at(kind, day)
+                if preds is None:
+                    continue
+                for i, p in enumerate(preds):
+                    t = p["date"] if isinstance(p["date"], str) else p["date"].isoformat()
+                    if kind == "soir" and i in HORIZONS and t in ACT:
+                        out[(i, s)].append((t, ACT[t], p["couleur_predite"]))
+                    if detail is not None and 1 <= i <= N_DETAIL and t in ACT and not p.get("confirmed"):
+                        detail.append([kind, day.isoformat(), t, i, ACT[t], p["couleur_predite"],
+                                       p["probabilite_rouge"], p["probabilite_blanc"], p["probabilite_bleu"],
+                                       p.get("rte_twin") or "", p.get("score_risque"),
+                                       p.get("score_ml_rouge"), s,
+                                       (p.get("probabilites_brutes") or [None])[0],
+                                       p.get("jours_rouges_restants"), p.get("jours_blancs_restants")])
             D += timedelta(1)
         print(s, flush=True)
     return dict(out)
@@ -194,12 +222,21 @@ def main(argv=None) -> int:
     ap.add_argument("--rte-twin", choices=("off", "on"), default="on" if Config.RTE_TWIN_ENABLED else "off",
                     help="Config.RTE_TWIN_ENABLED pendant le rejeu (défaut : valeur de config.py ; "
                          "coefficients C_nette appris hors saison)")
+    ap.add_argument("--calibration", choices=("config", "off", "on"), default="config",
+                    help="predictor.PROBA_CALIBRATION_ENABLED pendant le rejeu (défaut : valeur du module)")
+    ap.add_argument("--detail", action="store_true",
+                    help="ajoute les cycles 7 h 30 et le détail J+1..J+5 (probabilités, jumeau) "
+                         "pour alert_sim.py et calibrate.py ; environ deux fois plus long")
     ap.add_argument("--out", required=True, help="JSON des paires (réel, prédit) par horizon/saison")
     a = ap.parse_args(argv)
     thr = tuple(float(x) for x in a.thresholds.split(",")) if a.thresholds else None
-    res = run(a.weights, a.ml, thr, a.rte_twin == "on")
-    json.dump({"args": vars(a), "pairs": {f"{h}|{s}": v for (h, s), v in res.items()}},
-              open(a.out, "w", encoding="utf-8"))
+    detail = [] if a.detail else None
+    res = run(a.weights, a.ml, thr, a.rte_twin == "on", morning=a.detail, detail=detail,
+              calibration=a.calibration)
+    blob = {"args": vars(a), "pairs": {f"{h}|{s}": v for (h, s), v in res.items()}}
+    if detail is not None:
+        blob["detail_cols"], blob["detail"] = DETAIL_COLS, detail
+    json.dump(blob, open(a.out, "w", encoding="utf-8"))
     allp = [x[1:] for v in res.values() for x in v]
     m = T.metrics(allp)
     for c in ("ROUGE", "BLANC"):
