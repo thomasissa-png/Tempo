@@ -1243,14 +1243,31 @@ async function loadSmsLogs() {
     } catch (e) { console.error('loadSmsLogs:', e); container.innerHTML='<p style="color:#DC2626">Erreur de chargement</p>'; }
 }
 
+// Archives de prévisions (lecture seule) : weather_forecast_log (v18), rte_forecast_log (v25)
+function renderForecastLogs(logs) {
+    if (!logs) return '';
+    const labels = {weather_forecast_log: 'Pr&eacute;visions m&eacute;t&eacute;o (weather_forecast_log)',
+                    rte_forecast_log: 'Pr&eacute;visions RTE (rte_forecast_log)'};
+    let html = '<div style="overflow-x:auto;margin-top:16px"><table class="sub-table"><thead><tr><th>Archive</th><th>Lignes</th><th>Derni&egrave;re date d&rsquo;&eacute;mission</th><th>Dernier enregistrement</th></tr></thead><tbody>';
+    for (const [table, st] of Object.entries(logs)) {
+        const rows = st.rows === null || st.rows === undefined
+            ? '<span style="color:#DC2626">illisible</span>'
+            : (st.rows === 0 ? '<span style="color:#D97706;font-weight:600">0 (vide)</span>' : String(st.rows));
+        const fetched = st.last_fetched_at ? escapeHtml(String(st.last_fetched_at).slice(0, 16).replace('T', ' ')) : '—';
+        html += `<tr><td>${labels[table] || escapeHtml(table)}</td><td>${rows}</td><td>${escapeHtml(st.last_forecast_date || '—')}</td><td>${fetched}</td></tr>`;
+    }
+    return html + '</tbody></table></div>';
+}
+
 async function loadSchedulerStatus() {
     const container = document.getElementById('scheduler-status');
     try {
         const resp = await fetch('/admin/scheduler-status', { headers:{'Authorization':`Bearer ${adminPassword}`} });
         if (!resp.ok) { console.error('loadSchedulerStatus HTTP', resp.status); container.innerHTML='<p style="color:#DC2626">Erreur HTTP '+resp.status+'</p>'; return; }
         const data = await resp.json(); if (data.status!=='ok') return;
+        const logsHtml = renderForecastLogs(data.forecast_logs);
         if (!data.jobs || data.jobs.length === 0) {
-            container.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Aucune t&acirc;che planifi&eacute;e.</p>';
+            container.innerHTML = '<p style="color:var(--text-secondary);font-size:0.85rem">Aucune t&acirc;che planifi&eacute;e.</p>' + logsHtml;
             return;
         }
         const runningHtml = data.running
@@ -1270,7 +1287,7 @@ async function loadSchedulerStatus() {
                 : '<span style="color:var(--text-secondary)">Termin&eacute;</span>';
             html += `<tr><td>${escapeHtml(j.name)}</td><td>${nextStr}</td><td>${stateHtml}</td></tr>`;
         }
-        html += '</tbody></table></div>';
+        html += '</tbody></table></div>' + logsHtml;
         container.innerHTML = html;
     } catch (e) { console.error('loadSchedulerStatus:', e); container.innerHTML='<p style="color:#DC2626">Erreur de chargement</p>'; }
 }

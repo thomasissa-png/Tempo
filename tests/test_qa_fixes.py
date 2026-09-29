@@ -392,7 +392,7 @@ class TestMigrationV8:
         conn = get_db()
         try:
             version = conn.execute("PRAGMA user_version").fetchone()[0]
-            assert version == 24
+            assert version == 25
         finally:
             conn.close()
 

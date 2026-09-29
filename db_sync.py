@@ -19,6 +19,7 @@ Tables exportées (données de prédiction/évaluation — PAS les users/SMS) :
 - performance    : évaluations de précision
 - weather_cache  : dernière météo par date
 - weather_forecast_log : historique des prévisions météo
+- rte_forecast_log : archive des prévisions RTE (conso, éolien, solaire), v25
 - rte_daily      : données RTE agrégées
 - weights_history : historique des recalibrations
 """
@@ -41,6 +42,7 @@ SYNC_TABLES = [
     "performance",
     "weather_cache",
     "weather_forecast_log",
+    "rte_forecast_log",
     "rte_daily",
     "weights_history",
 ]
@@ -72,7 +74,12 @@ TABLE_COLUMNS = {
     "weather_forecast_log": [
         "target_date", "forecast_date", "horizon_days",
         "temp_min", "temp_max", "temp_moy",
-        "pressure", "humidity", "wind_speed", "fetched_at",
+        "pressure", "humidity", "wind_speed", "source", "fetched_at",
+    ],
+    "rte_forecast_log": [
+        "target_date", "forecast_date", "horizon_days", "conso_mw",
+        "wind_onshore_mw", "wind_offshore_mw", "solar_mw", "net_conso_mw",
+        "source", "fetched_at",
     ],
     "rte_daily": [
         "date", "conso_peak_mw", "conso_mean_mw", "prevision_j1_peak_mw",
@@ -92,6 +99,7 @@ CONFLICT_COLS = {
     "performance": "(date_prediction, date_cible, jours_avance)",
     "weather_cache": "(date)",  # will use latest fetched_at
     "weather_forecast_log": "(target_date, forecast_date)",
+    "rte_forecast_log": "(target_date, forecast_date)",
     "rte_daily": "(date)",
     "weights_history": None,  # no natural key, always insert
 }

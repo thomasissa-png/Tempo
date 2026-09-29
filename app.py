@@ -2819,7 +2819,15 @@ async def admin_scheduler_status(request: Request, authorization: str | None = H
             "pending": next_run is not None,
         })
     jobs.sort(key=lambda j: j["next_run"] or "9999")
-    return {"status": "ok", "jobs": jobs, "running": _scheduler.running}
+    # Diagnostic lecture seule : volume et fraîcheur des archives de prévisions
+    try:
+        from database import get_forecast_log_stats
+        forecast_logs = await asyncio.to_thread(get_forecast_log_stats)
+    except Exception as e:
+        logger.warning(f"[Admin] Stats archives de prévisions indisponibles: {e}")
+        forecast_logs = None
+    return {"status": "ok", "jobs": jobs, "running": _scheduler.running,
+            "forecast_logs": forecast_logs}
 
 
 @app.get("/admin/weights-history")

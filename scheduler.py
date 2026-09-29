@@ -692,9 +692,12 @@ def _store_weather_cache(forecasts: list[dict]) -> None:
     """
     from database import get_db
     conn = get_db()
+    now_iso = datetime.now().isoformat()
+    today_str = date.today().isoformat()
+    # 1) weather_cache, commité seul : un échec de l'historique ne doit plus
+    #    faire perdre le cache (sous PostgreSQL, une requête en échec avorte
+    #    toute la transaction).
     try:
-        now_iso = datetime.now().isoformat()
-        today_str = date.today().isoformat()
         for f in forecasts:
             d = f.get("date")
             if not d:
@@ -717,11 +720,25 @@ def _store_weather_cache(forecasts: list[dict]) -> None:
                  f.get("pressure"), f.get("humidity"), f.get("wind_speed"),
                  f.get("source", "api"), now_iso),
             )
+        conn.commit()
+    except Exception as e:
+        # WARNING (et non DEBUG) : un échec ici était invisible dans les logs
+        logger.warning(f"[Weather Cache] Erreur stockage weather_cache: {e}")
+        try:
+            conn.rollback()
+        except Exception:
+            pass
 
-            # Historique par horizon (J+0..J+15) pour backtests
+    # 2) Historique par horizon (J+0..J+15) pour backtests
+    logged = 0
+    try:
+        today = date.fromisoformat(today_str)
+        for f in forecasts:
+            d = f.get("date")
+            if not d:
+                continue
             try:
                 target = date.fromisoformat(d)
-                today = date.fromisoformat(today_str)
                 horizon = (target - today).days
                 if 0 <= horizon <= 15:
                     conn.execute(
@@ -746,14 +763,42 @@ def _store_weather_cache(forecasts: list[dict]) -> None:
                          f.get("pressure"), f.get("humidity"), f.get("wind_speed"),
                          f.get("source", "api"), now_iso),
                     )
+                    logged += 1
             except (ValueError, TypeError):
                 pass  # date invalide, on skip le log
 
         conn.commit()
+        if forecasts and not logged:
+            logger.warning(f"[Weather Log] Aucune ligne weather_forecast_log écrite "
+                           f"({len(forecasts)} prévisions, aucune à J+0..J+15)")
     except Exception as e:
-        logger.debug(f"[Weather Cache] Erreur stockage: {e}")
+        logger.warning(f"[Weather Log] Erreur stockage weather_forecast_log: {e}")
     finally:
         conn.close()
+
+
+async def _archive_rte_forecasts(trigger: str) -> int:
+    """Archive les prévisions RTE du jour dans rte_forecast_log (v25).
+
+    Best-effort, jamais bloquant : aucun impact sur les prédictions (ces
+    données ne sont PAS utilisées par le scoring, elles servent à valider
+    plus tard un jumeau RTE alimenté par les prévisions RTE).
+    Retourne le nombre de lignes stockées (0 en cas d'échec).
+    """
+    try:
+        from rte_client import fetch_forecasts_for_archive
+        from database import store_rte_forecast_log
+        rows = await fetch_forecasts_for_archive()
+        if not rows:
+            logger.info(f"[{trigger}] RTE archive : aucune prévision disponible")
+            return 0
+        n = await asyncio.to_thread(store_rte_forecast_log, rows)
+        logger.info(f"[{trigger}] RTE archive : {n} lignes rte_forecast_log "
+                    f"(J+{rows[0]['horizon_days']}..J+{rows[-1]['horizon_days']})")
+        return n
+    except Exception as e:
+        logger.warning(f"[{trigger}] RTE archive échouée (non bloquant): {e}")
+        return 0
 
 
 async def _store_rte_daily(rte_score: dict | None) -> None:
@@ -1087,23 +1132,28 @@ async def task_daily_predictions():
     retries différés à 10 min, 30 min et 60 min pour laisser les circuit
     breakers se réinitialiser et les APIs revenir.
     """
-    for attempt in range(2):
-        try:
-            logger.info("[Task 18h00] Début génération des prédictions")
-            count = await _refresh_predictions("18h", send_sms=True)
-            if count:
-                logger.info(f"[Task 18h00] Terminé — {count} prédictions")
+    try:
+        for attempt in range(2):
+            try:
+                logger.info("[Task 18h00] Début génération des prédictions")
+                count = await _refresh_predictions("18h", send_sms=True)
+                if count:
+                    logger.info(f"[Task 18h00] Terminé — {count} prédictions")
+                    return
+                # count == 0 : météo indisponible, planifier des retries différés
+                logger.warning("[Task 18h00] Météo indisponible — retries différés planifiés")
+                _schedule_deferred_retries()
                 return
-            # count == 0 : météo indisponible, planifier des retries différés
-            logger.warning("[Task 18h00] Météo indisponible — retries différés planifiés")
-            _schedule_deferred_retries()
-            return
-        except Exception as e:
-            logger.error(f"[Scheduler] task_daily_predictions attempt {attempt+1} failed: {e}")
-            if attempt == 0:
-                await asyncio.sleep(30)
-    logger.error("[Scheduler] task_daily_predictions failed after 2 attempts")
-    _schedule_deferred_retries()
+            except Exception as e:
+                logger.error(f"[Scheduler] task_daily_predictions attempt {attempt+1} failed: {e}")
+                if attempt == 0:
+                    await asyncio.sleep(30)
+        logger.error("[Scheduler] task_daily_predictions failed after 2 attempts")
+        _schedule_deferred_retries()
+    finally:
+        # Archive des prévisions RTE (v25) : après la météo et les prédictions,
+        # indépendante de leur succès, jamais bloquante.
+        await _archive_rte_forecasts("18h")
 
 
 def _schedule_deferred_retries():

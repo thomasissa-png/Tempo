@@ -71,6 +71,7 @@ _CONFLICT_COLS = {
     'actuals': '(date)',
     'learning_journal': '(pattern_type, pattern_key, date_analysis)',
     'weather_forecast_log': '(target_date, forecast_date)',
+    'rte_forecast_log': '(target_date, forecast_date)',
     'performance': '(date_prediction, date_cible, jours_avance)',
     'scheduler_executions': '(task_id)',
     'agent_files': '(path)',
@@ -1391,6 +1392,56 @@ def init_db():
         conn.commit()
         logger.info("Migration v24 appliquee (table agent_files)")
 
+    if version < 25:
+        # Migration v25 — archive quotidienne des prévisions RTE
+        # (consommation, éolien terrestre/en mer, solaire, consommation nette)
+        # par date d'archivage. Aucune archive n'existe côté RTE : sans elle,
+        # impossible de valider plus tard un jumeau RTE alimenté par ces
+        # prévisions. Moyennes journalières sur la journée Tempo 6 h-6 h
+        # (ou calendaire, précisé dans `source`).
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS rte_forecast_log (
+                target_date TEXT NOT NULL,
+                forecast_date TEXT NOT NULL,
+                horizon_days INTEGER,
+                conso_mw REAL,
+                wind_onshore_mw REAL,
+                wind_offshore_mw REAL,
+                solar_mw REAL,
+                net_conso_mw REAL,
+                source TEXT,
+                fetched_at TEXT NOT NULL,
+                PRIMARY KEY (target_date, forecast_date)
+            )
+        """)
+        # Convergence si la table préexiste avec un schéma minimal :
+        # chaque colonne est ajoutée si absente (SAVEPOINT auto sous PG).
+        for col, ddl in (
+            ("horizon_days", "INTEGER"),
+            ("conso_mw", "REAL"),
+            ("wind_onshore_mw", "REAL"),
+            ("wind_offshore_mw", "REAL"),
+            ("solar_mw", "REAL"),
+            ("net_conso_mw", "REAL"),
+            ("source", "TEXT"),
+            ("fetched_at", "TEXT"),
+        ):
+            try:
+                conn.execute(f"ALTER TABLE rte_forecast_log ADD COLUMN {col} {ddl}")
+            except _DbOperationalError:
+                logger.debug(f"Migration v25: colonne {col} existe deja")
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_rfl_target_forecast "
+            "ON rte_forecast_log(target_date, forecast_date)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_rfl_forecast_date "
+            "ON rte_forecast_log(forecast_date)"
+        )
+        conn.execute("PRAGMA user_version = 25")
+        conn.commit()
+        logger.info("Migration v25 appliquee (table rte_forecast_log)")
+
     # Poids initiaux si vide
     existing = conn.execute("SELECT COUNT(*) as c FROM weights_history").fetchone()
     if not existing or existing["c"] == 0:
@@ -1635,3 +1686,65 @@ def _atomic_write(full_path: str, content: str) -> None:
     finally:
         if os.path.exists(tmp):
             os.remove(tmp)
+
+
+# ================================================================
+# Archive des prévisions RTE (migration v25)
+# ================================================================
+
+_RTE_FORECAST_LOG_COLS = (
+    "target_date", "forecast_date", "horizon_days", "conso_mw",
+    "wind_onshore_mw", "wind_offshore_mw", "solar_mw", "net_conso_mw",
+    "source", "fetched_at",
+)
+
+
+def store_rte_forecast_log(rows: list[dict]) -> int:
+    """Upsert des lignes rte_forecast_log (clé target_date + forecast_date).
+
+    Relancer le même jour met à jour la ligne (dernière prévision du jour).
+    Retourne le nombre de lignes écrites.
+    """
+    if not rows:
+        return 0
+    cols = ", ".join(_RTE_FORECAST_LOG_COLS)
+    marks = ", ".join("?" for _ in _RTE_FORECAST_LOG_COLS)
+    updates = ", ".join(f"{c} = excluded.{c}" for c in _RTE_FORECAST_LOG_COLS[2:])
+    sql = (f"INSERT INTO rte_forecast_log ({cols}) VALUES ({marks}) "
+           f"ON CONFLICT(target_date, forecast_date) DO UPDATE SET {updates}")
+    conn = get_db()
+    try:
+        for r in rows:
+            conn.execute(sql, tuple(r.get(c) for c in _RTE_FORECAST_LOG_COLS))
+        conn.commit()
+        return len(rows)
+    finally:
+        conn.close()
+
+
+def get_forecast_log_stats() -> dict:
+    """Diagnostic admin (lecture seule) : volume et fraîcheur des archives
+    de prévisions météo (v18) et RTE (v25)."""
+    stats = {}
+    conn = get_db()
+    try:
+        for table in ("weather_forecast_log", "rte_forecast_log"):
+            try:
+                row = conn.execute(
+                    f"SELECT COUNT(*) AS n, MAX(forecast_date) AS last_forecast, "
+                    f"MAX(fetched_at) AS last_fetched FROM {table}"
+                ).fetchone()
+                stats[table] = {"rows": row["n"] or 0,
+                                "last_forecast_date": row["last_forecast"],
+                                "last_fetched_at": row["last_fetched"]}
+            except Exception as e:
+                logger.warning(f"[Diag] {table} illisible: {e}")
+                try:
+                    conn.rollback()  # PG : libérer la transaction avortée
+                except Exception:
+                    pass
+                stats[table] = {"rows": None, "last_forecast_date": None,
+                                "last_fetched_at": None, "error": str(e)[:200]}
+    finally:
+        conn.close()
+    return stats

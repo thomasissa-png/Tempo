@@ -278,3 +278,223 @@ async def fetch_realised_consumption(target: date | None = None) -> dict | None:
     except Exception as e:
         logger.warning(f"[RTE] Erreur consommation realisee: {e}")
         return None
+
+
+# ================================================================
+# ARCHIVE DES PREVISIONS RTE (migration v25, table rte_forecast_log)
+# ================================================================
+# Observabilite / archive uniquement : aucune de ces valeurs n'alimente le
+# scoring. Horizons fournis par l'API (doc RTE, Consumption v1.2 et
+# Generation Forecast v3) :
+#   - consumption/v1/short_term : type D-1 (J+1) et D-2 (J+2)
+#   - consumption/v1/weekly_forecasts : J+3 a J+9 (pas d'emission le week-end)
+#   - generation_forecast/v3/forecasts : types D-1, D-2, D-3 (J+1 a J+3)
+#     pour WIND_ONSHORE, WIND_OFFSHORE, SOLAR
+# Chaque serie ne garde que les points de SON jour (D-k -> jour J+k) : on
+# archive ce qui etait disponible le jour de l'archivage, sans substituer une
+# emission plus ancienne.
+
+ARCHIVE_TIMEOUT_S = 10
+ARCHIVE_MAX_HORIZON = 9          # J+9 = dernier jour des weekly_forecasts
+ARCHIVE_GEN_TYPES = (1, 2, 3)    # D-1, D-2, D-3
+ARCHIVE_COVERAGE_MIN = 0.9       # 90 % de la fenetre couverte pour une moyenne
+_TEMPO_DAY_START_HOUR = 6
+
+_GEN_COMPONENTS = {
+    "WIND_ONSHORE": "wind_onshore_mw",
+    "WIND_OFFSHORE": "wind_offshore_mw",
+    "SOLAR": "solar_mw",
+}
+_SOURCE_LABELS = {
+    "conso_mw": "conso",
+    "wind_onshore_mw": "eol_terre",
+    "wind_offshore_mw": "eol_mer",
+    "solar_mw": "solaire",
+}
+
+
+def _parse_rte_dt(value) -> datetime | None:
+    """ISO 8601 RTE ('2026-01-15T06:00:00+01:00') -> datetime UTC."""
+    if not value or not isinstance(value, str):
+        return None
+    try:
+        dt = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=_PARIS_TZ)
+    return dt.astimezone(timezone.utc)
+
+
+def _paris_bound(d: date, hour: int) -> datetime:
+    """Instant d a `hour` h heure de Paris, en UTC (gere les jours DST)."""
+    return datetime(d.year, d.month, d.day, hour, tzinfo=_PARIS_TZ).astimezone(timezone.utc)
+
+
+def _collect_points(forecasts: list, kind: str, keep_day: date | None,
+                    min_day: date | None, points: dict) -> None:
+    """Ajoute les pas de temps d'une reponse RTE dans `points` (cle = debut UTC).
+
+    Filtre sur le jour de Paris du pas : `keep_day` (series D-k) ou
+    `>= min_day` (weekly). Les emissions les plus recentes (updated_date)
+    ecrasent les plus anciennes.
+    """
+    def _upd(f):
+        return str(f.get("updated_date") or "")
+
+    for fc in sorted((f for f in forecasts or [] if isinstance(f, dict)), key=_upd):
+        maj = (fc.get("updated_date") or "")[:10]
+        for val in fc.get("values") or []:
+            v = val.get("value")
+            start = _parse_rte_dt(val.get("start_date"))
+            end = _parse_rte_dt(val.get("end_date"))
+            if v is None or start is None or end is None or end <= start:
+                continue
+            day = start.astimezone(_PARIS_TZ).date()
+            if keep_day is not None and day != keep_day:
+                continue
+            if min_day is not None and day < min_day:
+                continue
+            label = f"{kind}(maj {maj})" if kind == "hebdo" and maj else kind
+            points[start] = (end, float(v), label)
+
+
+def _window_mean(points: dict, w_start: datetime, w_end: datetime):
+    """Moyenne ponderee par la duree sur [w_start, w_end[ -> (moyenne, kinds).
+
+    None si moins de ARCHIVE_COVERAGE_MIN de la fenetre est couverte.
+    """
+    covered = 0.0
+    acc = 0.0
+    kinds: set[str] = set()
+    for start, (end, v, kind) in points.items():
+        lo, hi = max(start, w_start), min(end, w_end)
+        if hi > lo:
+            sec = (hi - lo).total_seconds()
+            covered += sec
+            acc += v * sec
+            kinds.add(kind)
+    total = (w_end - w_start).total_seconds()
+    if total <= 0 or covered < ARCHIVE_COVERAGE_MIN * total:
+        return None, kinds
+    return acc / covered, kinds
+
+
+def build_forecast_log_rows(series: dict[str, dict], today: date,
+                            fetched_at: str) -> list[dict]:
+    """Agrege les points horaires en lignes rte_forecast_log (J+1..J+9).
+
+    `series` : {"conso_mw": points, "wind_onshore_mw": points, ...}.
+    Une seule methode par ligne (toutes les colonnes sont comparables) :
+    journee Tempo 6 h-6 h si chaque composante disponible la couvre, sinon
+    moyenne calendaire 0 h-24 h ; la methode est ecrite dans `source`.
+    net_conso_mw = conso - eolien terrestre - eolien en mer - solaire,
+    uniquement si les 4 composantes existent.
+    """
+    rows = []
+    for h in range(1, ARCHIVE_MAX_HORIZON + 1):
+        target = today + timedelta(days=h)
+        nxt = target + timedelta(days=1)
+        windows = {
+            "6h-6h": (_paris_bound(target, _TEMPO_DAY_START_HOUR),
+                      _paris_bound(nxt, _TEMPO_DAY_START_HOUR)),
+            "calendaire": (_paris_bound(target, 0), _paris_bound(nxt, 0)),
+        }
+        means = {m: {col: _window_mean(series.get(col) or {}, *w)
+                     for col in _SOURCE_LABELS}
+                 for m, w in windows.items()}
+        # 6h-6h seulement si aucune composante n'est perdue par rapport au calendaire
+        tempo_ok = all(means["6h-6h"][c][0] is not None
+                       for c in _SOURCE_LABELS if means["calendaire"][c][0] is not None)
+        method = "6h-6h" if tempo_ok else "calendaire"
+        chosen = means[method]
+        if all(v is None for v, _ in chosen.values()):
+            continue
+        row = {"target_date": target.isoformat(), "forecast_date": today.isoformat(),
+               "horizon_days": h, "fetched_at": fetched_at}
+        parts = []
+        for col, label in _SOURCE_LABELS.items():
+            value, kinds = chosen[col]
+            row[col] = round(value, 1) if value is not None else None
+            if value is not None:
+                parts.append(f"{label}={'+'.join(sorted(kinds))}")
+        comps = [row[c] for c in _SOURCE_LABELS]
+        row["net_conso_mw"] = (
+            round(comps[0] - comps[1] - comps[2] - comps[3], 1)
+            if all(c is not None for c in comps) else None
+        )
+        row["source"] = f"rte/{method};" + ";".join(parts)
+        rows.append(row)
+    return rows
+
+
+async def _archive_get(client, api: str, path: str, params: dict) -> dict | None:
+    """GET RTE pour l'archive : jamais d'exception, warning en cas d'echec."""
+    token = await _get_token(api)
+    if not token:
+        return None
+    try:
+        resp = await client.get(f"{Config.RTE_API_BASE}{path}",
+                                headers={"Authorization": f"Bearer {token}"},
+                                params=params)
+        if resp.status_code in (401, 403):
+            (_token_conso if api == "consumption" else _token_generation)["token"] = None
+            logger.warning(f"[RTE Archive] {path} {params.get('type', '')}: HTTP {resp.status_code}")
+            return None
+        resp.raise_for_status()
+        return resp.json()
+    except Exception as e:
+        logger.warning(f"[RTE Archive] {path} {params.get('production_type', '')} "
+                       f"{params.get('type', '')}: {e}")
+        return None
+
+
+def _window_params(d_from: date, d_to: date) -> dict:
+    return {"start_date": f"{d_from.isoformat()}T00:00:00{_paris_offset_str(d_from)}",
+            "end_date": f"{d_to.isoformat()}T00:00:00{_paris_offset_str(d_to)}"}
+
+
+async def fetch_forecasts_for_archive(today: date | None = None) -> list[dict]:
+    """Recupere les previsions RTE disponibles aujourd'hui pour l'archive.
+
+    Retourne les lignes rte_forecast_log (liste vide si pas de credentials
+    ou si toutes les requetes echouent). Ne leve jamais d'exception.
+    """
+    try:
+        if today is None:
+            today = datetime.now(_PARIS_TZ).date()
+        if not _get_credentials("consumption") and not _get_credentials("generation"):
+            return []
+        d = lambda k: today + timedelta(days=k)  # noqa: E731
+        calls = [("conso_mw", "short_term", 1, "consumption", "/open_api/consumption/v1/short_term",
+                  {"type": "D-1", **_window_params(d(1), d(2))}),
+                 ("conso_mw", "short_term", 2, "consumption", "/open_api/consumption/v1/short_term",
+                  {"type": "D-2", **_window_params(d(2), d(3))}),
+                 ("conso_mw", "weekly_forecasts", None, "consumption",
+                  "/open_api/consumption/v1/weekly_forecasts",
+                  _window_params(d(3), d(ARCHIVE_MAX_HORIZON + 1)))]
+        for ptype, col in _GEN_COMPONENTS.items():
+            for k in ARCHIVE_GEN_TYPES:
+                calls.append((col, "forecasts", k, "generation",
+                              "/open_api/generation_forecast/v3/forecasts",
+                              {"production_type": ptype, "type": f"D-{k}",
+                               **_window_params(d(k), d(k + 1))}))
+        async with httpx.AsyncClient(timeout=ARCHIVE_TIMEOUT_S) as client:
+            payloads = await asyncio.gather(
+                *(_archive_get(client, api, path, params)
+                  for _, _, _, api, path, params in calls),
+                return_exceptions=True,
+            )
+        series: dict[str, dict] = {}
+        for (col, key, k, _, _, _), payload in zip(calls, payloads):
+            if not isinstance(payload, dict):
+                continue
+            pts = series.setdefault(col, {})
+            if k is None:
+                _collect_points(payload.get(key), "hebdo", None, d(3), pts)
+            else:
+                _collect_points(payload.get(key), f"D-{k}", d(k), None, pts)
+        return build_forecast_log_rows(series, today, datetime.now(_PARIS_TZ).isoformat())
+    except Exception as e:
+        logger.warning(f"[RTE Archive] Echec collecte previsions: {e}")
+        return []
