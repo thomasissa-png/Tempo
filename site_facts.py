@@ -119,6 +119,7 @@ PAGE_LASTMOD = {
     "/tarif-tempo-edf": date(2026, 9, 29),
     "/api-tempo": date(2026, 9, 29),
     "/methodologie": date(2026, 9, 29),
+    "/historique-previsions": date(2026, 9, 29),
 }
 LLMS_CONTENT_DATE = date(2026, 9, 29)  # dernière révision éditoriale de llms.txt
 
@@ -388,7 +389,9 @@ FAQ_HOME: list[dict] = [
             "décision importante (grosse lessive, recharge d'un véhicule), fiez-vous plutôt aux "
             "prévisions à 2 ou 3 jours. Notre taux de réussite mesuré en conditions réelles est "
             "détaillé sur la page "
-            "<a href=\"/methodologie\">méthodologie</a>.</p>"
+            "<a href=\"/methodologie\">méthodologie</a>, et chaque prévision passée est comparée à la "
+            "couleur officielle sur notre "
+            "<a href=\"/historique-previsions\">historique des prévisions</a>.</p>"
         ),
     },
 ]

@@ -103,6 +103,11 @@ def invalidate_predictions_cache():
         invalidate_perf_summary_cache()
     except Exception:
         pass
+    try:
+        from prediction_history import invalidate_history_cache
+        invalidate_history_cache()
+    except Exception:
+        pass
 
 # === Fix #16 : Rate limiting simple pour /api/subscribe ===
 _rate_limit_store: dict[str, list[float]] = defaultdict(list)
@@ -366,6 +371,8 @@ _CACHE_RULES: list[tuple[str, str]] = [
     ("/api/performance/badge", "public, max-age=300, stale-while-revalidate=300"),
     # Pages mois / saison du calendrier (SSR, prévisions recalculées chaque jour)
     ("/calendrier/", "public, max-age=600, stale-while-revalidate=1800"),
+    # Historique des prévisions, saisons passées
+    ("/historique-previsions/", "public, max-age=600, stale-while-revalidate=1800"),
 ]
 
 
@@ -382,6 +389,9 @@ _CACHE_EXACT: dict[str, str] = {
     "/tarif-tempo-edf": "public, max-age=3600, stale-while-revalidate=7200",
     "/api-tempo": "public, max-age=3600, stale-while-revalidate=7200",
     "/methodologie": "public, max-age=3600, stale-while-revalidate=7200",
+    # Historique des prévisions : change à chaque confirmation EDF (cache 10 min)
+    "/historique-previsions": "public, max-age=600, stale-while-revalidate=1800",
+    "/historique-previsions.csv": "public, max-age=600, stale-while-revalidate=1800",
     # Couleur de demain : change quand EDF publie (fin de matinée)
     "/couleur-tempo-demain": "public, max-age=120, stale-while-revalidate=60",
     # SEO files — Bing re-fetche robots.txt et sitemap.xml à chaque crawl sans cache
@@ -402,7 +412,7 @@ async def add_cache_and_security_headers(request: Request, call_next):
     response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     # --- Content-Language pour les pages HTML (aide Bing à classifier la langue) ---
-    if path in _CACHE_EXACT or path.startswith(("/blog/", "/calendrier/")):
+    if path in _CACHE_EXACT or path.startswith(("/blog/", "/calendrier/", "/historique-previsions/")):
         response.headers["Content-Language"] = "fr"
     # --- Cache-Control --- (jamais sur les erreurs : une 404 ne doit pas être mise en cache 1 h)
     if response.status_code >= 400:
@@ -1122,6 +1132,69 @@ async def page_methodologie(request: Request):
     })
 
 
+# ================================================================
+# Historique public des prévisions (prediction_history.py)
+# ================================================================
+
+def _history_data() -> dict:
+    """Historique réel ; vide (jamais d'exception) si la base n'est pas prête."""
+    if not _db_ready.is_set():
+        return {"seasons": {}, "last_evaluation": None}
+    from prediction_history import get_history
+    return get_history()
+
+
+def _render_history(request: Request, label: str):
+    from prediction_history import page_context, season_path, season_start_year, today_paris, season_label
+    current = season_label(season_start_year(today_paris()))
+    ctx = page_context(_history_data(), label, current)
+    path = season_path(label, current)
+    crumbs = [("Accueil", "/"), ("Historique des prévisions", "/historique-previsions")]
+    if path != "/historique-previsions":
+        crumbs.append((f"Saison {label}", path))
+    return templates.TemplateResponse("historique_previsions.html", {
+        "request": request,
+        "canonical_path": path,
+        "breadcrumb_ld": site_facts.breadcrumb_jsonld(crumbs),
+        **ctx,
+    })
+
+
+@app.api_route("/historique-previsions", methods=["GET", "HEAD"], response_class=HTMLResponse)
+async def page_historique_previsions(request: Request):
+    """Historique de nos prévisions J-2 à J-5 face aux couleurs EDF, saison en cours.
+
+    SSR à chaque requête (cache mémoire 5 min + HTTP 10 min) : change à chaque confirmation EDF.
+    """
+    from prediction_history import season_start_year, today_paris, season_label
+    return _render_history(request, season_label(season_start_year(today_paris())))
+
+
+@app.api_route("/historique-previsions.csv", methods=["GET", "HEAD"])
+async def historique_previsions_csv():
+    """Export CSV complet (toutes saisons), séparateur « ; », UTF-8 avec BOM."""
+    from starlette.responses import Response
+    from prediction_history import to_csv_bytes
+    return Response(
+        content=to_csv_bytes(_history_data()),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="historique-previsions-tempo.csv"'},
+    )
+
+
+@app.api_route("/historique-previsions/{saison}", methods=["GET", "HEAD"], response_class=HTMLResponse)
+async def page_historique_previsions_saison(request: Request, saison: str):
+    """Historique d'une saison passée ; la saison en cours redirige vers /historique-previsions."""
+    from prediction_history import parse_season_label, season_start_year, today_paris
+    y = parse_season_label(saison)
+    current_y = season_start_year(today_paris())
+    if y is None or y > current_y or y < 2000:
+        raise HTTPException(status_code=404, detail="Saison inconnue")
+    if y == current_y:
+        return RedirectResponse("/historique-previsions", status_code=301)
+    return _render_history(request, saison)
+
+
 async def _render_blog_index(request: Request):
     """Render blog index page (shared by /blog and /blog/)."""
     from blog import get_published_articles
@@ -1404,6 +1477,32 @@ def _data_lastmods() -> tuple[date | None, dict[str, date]]:
     return last_pred, per_month
 
 
+def _history_sitemap_urls() -> list[str]:
+    """Pages /historique-previsions : lastmod = dernière évaluation réelle (jamais « aujourd'hui »)."""
+    from prediction_history import season_path, season_start_year, today_paris, season_label
+    content_date = site_facts.PAGE_LASTMOD["/historique-previsions"]
+    try:
+        data = _history_data()
+    except Exception as e:
+        logger.debug(f"[Sitemap] Historique indisponible : {e}")
+        data = {"seasons": {}}
+    current = season_label(season_start_year(today_paris()))
+
+    def lm(iso: str | None) -> date:
+        try:
+            return max(content_date, date.fromisoformat(iso)) if iso else content_date
+        except ValueError:
+            return content_date
+
+    seasons = data.get("seasons", {})
+    cur = seasons.get(current, {})
+    urls = [_sitemap_url("/historique-previsions", lm(cur.get("last_evaluation") or data.get("last_evaluation")), "daily", "0.6")]
+    for label in sorted(seasons, reverse=True):
+        if label != current:
+            urls.append(_sitemap_url(season_path(label, current), lm(seasons[label]["last_evaluation"]), "monthly", "0.4"))
+    return urls
+
+
 @app.get("/sitemap.xml", response_class=PlainTextResponse)
 async def sitemap_xml():
     """Sitemap XML dynamique avec des lastmod réels.
@@ -1430,6 +1529,7 @@ async def sitemap_xml():
         _sitemap_url("/api-tempo", site_facts.PAGE_LASTMOD["/api-tempo"], "monthly", "0.6"),
         _sitemap_url("/methodologie", site_facts.PAGE_LASTMOD["/methodologie"], "monthly", "0.6"),
         _sitemap_url("/a-propos", site_facts.PAGE_LASTMOD["/a-propos"], "monthly", "0.5"),
+        *_history_sitemap_urls(),
         _sitemap_url("/mentions-legales", site_facts.PAGE_LASTMOD["/mentions-legales"], "yearly", "0.3"),
     ]
     # Pages saison (dates réelles) et pages mois (jusqu'au mois en cours)
@@ -1576,6 +1676,9 @@ async def llms_txt():
             f"- [Calendrier Tempo EDF]({u}/calendrier): calendrier mensuel de la saison en cours\n"
             f"- [Tarif Tempo EDF]({u}/tarif-tempo-edf): grille tarifaire en vigueur et coût d'un jour rouge\n"
             f"- [Méthodologie]({u}/methodologie): méthode de prévision et chiffres de performance\n"
+            f"- [Historique des prévisions]({u}/historique-previsions): nos prévisions faites 2 à 5 jours avant, "
+            "comparées jour par jour aux couleurs officielles, sans sélection (export CSV : "
+            f"{u}/historique-previsions.csv)\n"
             f"- [API Tempo]({u}/api-tempo): documentation de l'API JSON gratuite\n"
             f"- [Blog]({u}/blog/): guides pour économiser avec Tempo EDF\n"
             f"- [Alertes]({u}/alertes): alertes WhatsApp gratuites : {site_facts.ALERTES_DESCRIPTION}\n"

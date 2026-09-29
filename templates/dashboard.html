@@ -132,11 +132,11 @@
     <script type="application/ld+json">{{ itemlist_ld|tojson }}</script>
     {% endif %}
     <link rel="preconnect" href="https://cloud.umami.is" crossorigin>
-    <link rel="preload" href="/static/css/style.min.css?v=20260929" as="style">
+    <link rel="preload" href="/static/css/style.min.css?v=20260929b" as="style">
     <link rel="preload" href="/static/js/app.min.js?v=20260929" as="script">
     <link rel="preload" href="/static/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="/static/css/fonts.css?v=20260929">
-    <link rel="stylesheet" href="/static/css/style.min.css?v=20260929">
+    <link rel="stylesheet" href="/static/css/style.min.css?v=20260929b">
     <script defer src="https://cloud.umami.is/script.js" data-website-id="1d187359-b4a6-4ba8-ba41-c449b356832f"></script>
 </head>
 <body>
@@ -200,8 +200,8 @@
     <!-- Welcome banner — compact one-liner -->
     <section class="welcome-banner" id="welcome-banner">
         <p>
-            Un jour <span class="color-tag rouge">rouge</span> co&ucirc;te <strong>{{ facts.RATIO }} fois plus cher</strong> en heures pleines qu'un jour bleu &mdash;
-            le Calendrier Tempo EDF vous aide &agrave; l'anticiper <strong>jusqu'&agrave; 15 jours &agrave; l'avance</strong>.
+            Un jour <span class="color-tag rouge">rouge</span> co&ucirc;te <strong>{{ facts.RATIO }} fois plus cher</strong> en heures pleines qu'un jour bleu.
+            Le Calendrier Tempo EDF vous aide &agrave; l'anticiper <strong>jusqu'&agrave; 15 jours &agrave; l'avance</strong>.
         </p>
     </section>
 
@@ -278,19 +278,19 @@
             <div class="label">Jours rouges restants</div>
             <!-- P-21 : barre de progression visuelle -->
             <div class="counter-progress" id="progress-rouge"><div class="counter-progress-fill rouge-fill"></div></div>
-            <div class="counter-help">HP 0,73&nbsp;&euro;/kWh &mdash; les plus chers</div>
+            <div class="counter-help">HP 0,73&nbsp;&euro;/kWh, les plus chers</div>
         </div>
         <div class="counter-card blanc" aria-label="Jours blancs restants">
             <div class="count" id="count-blanc" aria-live="polite">{% if ssr.remaining %}{{ ssr.remaining.BLANC }}{% else %}&mdash;{% endif %}</div>
             <div class="label">Jours blancs restants</div>
             <div class="counter-progress" id="progress-blanc"><div class="counter-progress-fill blanc-fill"></div></div>
-            <div class="counter-help">HP 0,19&nbsp;&euro;/kWh &mdash; prix moyen</div>
+            <div class="counter-help">HP 0,19&nbsp;&euro;/kWh, prix moyen</div>
         </div>
         <div class="counter-card bleu" aria-label="Jours bleus restants">
             <div class="count" id="count-bleu" aria-live="polite">{% if ssr.remaining %}{{ ssr.remaining.BLEU }}{% else %}&mdash;{% endif %}</div>
             <div class="label">Jours bleus restants</div>
             <div class="counter-progress" id="progress-bleu"><div class="counter-progress-fill bleu-fill"></div></div>
-            <div class="counter-help">HP 0,17&nbsp;&euro;/kWh &mdash; tarif avantageux</div>
+            <div class="counter-help">HP 0,17&nbsp;&euro;/kWh, tarif avantageux</div>
         </div>
     </div>
     <p class="days-left-text" id="days-left"></p>

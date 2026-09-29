@@ -51,8 +51,8 @@
     {% endif %}
     <link rel="preload" href="/static/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="/static/css/fonts.css?v=20260929">
-    <link rel="preload" href="/static/css/style.min.css?v=20260929" as="style">
-    <link rel="stylesheet" href="/static/css/style.min.css?v=20260929">
+    <link rel="preload" href="/static/css/style.min.css?v=20260929b" as="style">
+    <link rel="stylesheet" href="/static/css/style.min.css?v=20260929b">
     <script defer src="https://cloud.umami.is/script.js" data-website-id="1d187359-b4a6-4ba8-ba41-c449b356832f"></script>
 </head>
 <body>
@@ -96,7 +96,7 @@
                 </time>
                 {% if article.updated_date and article.updated_date != article.publish_date %}
                 <time datetime="{{ article.updated_date.isoformat() }}">
-                    &mdash; Mis &agrave; jour le {{ article.updated_date.strftime('%d/%m/%Y') }}
+                    &middot; Mis &agrave; jour le {{ article.updated_date.strftime('%d/%m/%Y') }}
                 </time>
                 {% endif %}
                 <span class="blog-reading-time">{{ article.reading_time }} min de lecture</span>

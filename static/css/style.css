@@ -2642,3 +2642,42 @@ select:focus-visible {
 .page-content h2 { margin: 28px 0 10px; }
 .page-content h3 { margin: 18px 0 8px; }
 .page-content ul { margin: 8px 0 12px 20px; line-height: 1.8; }
+
+/* === Historique des prévisions (/historique-previsions) === */
+.history-seasons { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 4px; }
+.history-seasons a { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 16px; border: 1px solid var(--border); border-radius: 50px; background: var(--surface); color: var(--text); font-size: 0.9rem; font-weight: 600; text-decoration: none; }
+.history-seasons a:hover { border-color: var(--bleu); color: var(--bleu); }
+.history-seasons a.active { background: var(--bleu); border-color: var(--bleu); color: #fff; }
+.history-download { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; margin: 0 0 8px; }
+.history-download .btn { text-decoration: none; }
+.history-download-note { margin-top: 16px; font-size: 0.85rem; color: var(--text-secondary); }
+.history-empty { margin: 20px 0; padding: 16px 20px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); line-height: 1.6; }
+.history-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 16px 0 8px; }
+.history-card { background: var(--surface); border-radius: var(--radius-sm); box-shadow: var(--shadow); border-top: 4px solid var(--bleu); padding: 16px 18px; }
+.page-content .history-card h3 { margin: 0 0 10px; font-size: 1.15rem; }
+.history-card-sub { display: block; font-size: 0.85rem; font-weight: 400; color: var(--text-secondary); }
+.history-stat { padding: 10px 0; border-top: 1px solid var(--border); line-height: 1.5; font-size: 0.95rem; }
+.history-stat p { margin: 2px 0; }
+.history-stat-title { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+.history-note { margin: 4px 0 0; font-size: 0.85rem; color: var(--text-secondary); }
+.table-scroll { position: relative; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 12px 0 20px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+.table-scroll:focus-visible { outline: 3px solid var(--bleu); outline-offset: 2px; }
+.history-table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 0.9rem; }
+.history-table-compact { min-width: 480px; }
+.history-table th, .history-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; vertical-align: middle; }
+.history-table thead th { background: var(--bg); font-size: 0.85rem; vertical-align: bottom; }
+.history-table tbody tr:last-child th, .history-table tbody tr:last-child td { border-bottom: 0; }
+.history-table tbody th { font-weight: 600; }
+.history-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.history-th-sub { display: block; font-weight: 400; font-size: 0.75rem; color: var(--text-secondary); }
+.history-mark { display: inline-block; margin-left: 4px; font-weight: 700; }
+.history-mark.ok { color: var(--vert); }
+.history-mark.ko { color: var(--rouge); }
+.history-none { display: inline-block; padding: 0 8px; border: 1px dashed var(--incertain); border-radius: 10px; color: var(--text-secondary); font-size: 0.8rem; }
+.table-scroll-hint { display: none; margin: 8px 0 -4px; font-size: 0.8rem; color: var(--text-secondary); }
+.page-content .history-legend { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 20px; margin: 8px 0 0; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.6; }
+@media (max-width: 600px) {
+    .history-grid { grid-template-columns: 1fr; }
+    .history-download-note { margin-top: 0; }
+    .table-scroll-hint { display: block; }
+}
