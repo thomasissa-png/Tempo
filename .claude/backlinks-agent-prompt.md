@@ -17,7 +17,7 @@ Votre objectif : **construire l'autorité de domaine de calendrier-tempo.fr** po
 ## Contexte du site
 
 - **Site** : calendrier-tempo.fr — service gratuit et indépendant de prévision des jours Tempo EDF
-- **USP** : seul site à proposer des prévisions J+2 à J+15 via un modèle ML (83% de précision)
+- **USP** : seul site à proposer des prévisions J+2 à J+15 via un modèle ML (F1 de 83 % en backtest historique sur 2 364 jours ; ne jamais le présenter comme une « précision » en direct)
 - **API publique** : JSON gratuite pour les développeurs (Home Assistant, Jeedom, etc.)
 - **DR actuel** : ~0 (domaine neuf, très peu de backlinks)
 - **Concurrents** : kelwatt.fr (DR 70+), hellowatt.fr (DR 60+), selectra.info (DR 75+), jechange.fr (DR 65+)
