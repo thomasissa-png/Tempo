@@ -372,7 +372,7 @@ def _build_recap_template(predictions: list[dict], manage_token: str) -> tuple[s
     if summary_parts:
         summary_lines.append("⚠️ " + " et ".join(summary_parts) + " cette semaine.")
     else:
-        summary_lines.append("✅ Semaine 100% bleue — profitez-en !")
+        summary_lines.append("✅ Semaine 100% bleue : profitez-en !")
     if bleu_days:
         summary_lines.append(f"👉 Lancez vos machines {', '.join(bleu_days)} (bleu).")
     if rouge_days:
@@ -404,7 +404,7 @@ def format_alert_rouge(target_date: date, prediction: dict, manage_token: str = 
         f"⚠️ *Calendrier Tempo EDF*\n\n"
         f"*Jour ROUGE* prévu {date_fr} ({prob}% confiance).\n"
         f"Temp min: {temp_str}.\n\n"
-        f"💰 Heures pleines (6h-22h) à *0,73€/kWh* — jusqu'à 4,4× le tarif bleu !"
+        f"💰 Heures pleines (6h-22h) à *0,73€/kWh*, jusqu'à 4,4× le tarif bleu !"
     )
     msg += "\n\n" + _msg_footer(manage_token)
     return msg
@@ -418,7 +418,7 @@ def format_alert_blanc(target_date: date, prediction: dict, manage_token: str = 
     msg = (
         f"📢 *Calendrier Tempo EDF*\n\n"
         f"*Jour BLANC* prévu {date_fr} ({prob}% confiance).\n\n"
-        f"💰 Heures pleines à *0,19€/kWh* — tarif intermédiaire.\n\n"
+        f"💰 Heures pleines à *0,19€/kWh* (tarif intermédiaire).\n\n"
         f"👉 OK pour lancer les machines.\n"
         f"Évitez four et chauffage d'appoint en heures pleines (6h-22h)."
     )
@@ -434,11 +434,11 @@ def format_alert_officiel(target_date: date, couleur: str, manage_token: str = "
     msg = f"{emoji} *Tempo confirmé : {couleur}* {date_fr}."
     if couleur == "ROUGE":
         msg += (
-            "\n✅ Comme anticipé — heures pleines 6h-22h à *0,73€/kWh*."
+            "\n✅ Comme anticipé : heures pleines 6h-22h à *0,73€/kWh*."
         )
     elif couleur == "BLANC":
         msg += (
-            "\n💡 Tarif intermédiaire — OK pour les machines,"
+            "\n💡 Tarif intermédiaire : OK pour les machines,"
             "\névitez le four en heures pleines."
         )
     msg += "\n\n" + _msg_footer(manage_token)
@@ -471,7 +471,7 @@ def format_change_alert(target_date: date, old_color: str, new_color: str,
 
 def format_recap_hebdo(predictions: list[dict], manage_token: str = "") -> str:
     """Récapitulatif hebdomadaire enrichi (dimanche soir)."""
-    lines = ["📊 *Calendrier Tempo EDF — Semaine à venir*\n"]
+    lines = ["📊 *Calendrier Tempo EDF : Semaine à venir*\n"]
 
     rouge_count = 0
     blanc_count = 0
@@ -504,7 +504,7 @@ def format_recap_hebdo(predictions: list[dict], manage_token: str = "") -> str:
     if summary_parts:
         lines.append("⚠️ " + " et ".join(summary_parts) + " cette semaine.")
     else:
-        lines.append("✅ *Semaine 100% bleue* — profitez-en !")
+        lines.append("✅ *Semaine 100% bleue* : profitez-en !")
 
     # Plan d'action
     lines.append("")
@@ -710,13 +710,18 @@ def send_alerts_for_prediction(target_date: date, prediction: dict,
         conn.close()
 
 
-def send_change_alerts(target_date: date, old_color: str, new_color: str):
+def send_change_alerts(target_date: date, old_color: str, new_color: str,
+                       prediction: dict | None = None):
     """Envoie une alerte quand une prédiction change de couleur.
 
     Notifie un utilisateur si :
     - Le changement implique ROUGE (vers ou depuis)
     - L'utilisateur a déjà reçu une alerte initiale pour cette date
       OU la date est dans sa fenêtre d'alerte (J+1 à delai_alerte)
+    - Passage À ROUGE pour un utilisateur jamais alerté sur cette date :
+      même règle que l'alerte rouge normale (rouge_alert_due, probabilité
+      calibrée), sinon un rouge peu probable réintroduirait les fausses
+      alertes que la calibration a supprimées (QA 2026-09-29).
     """
     if not _is_red_season():
         return
@@ -733,7 +738,7 @@ def send_change_alerts(target_date: date, old_color: str, new_color: str):
     conn = get_db()
     try:
         users = conn.execute(
-            """SELECT id, phone_encrypted, manage_token, delai_alerte
+            """SELECT id, phone_encrypted, manage_token, delai_alerte, seuil_alerte_rouge
                FROM users WHERE actif = 1 AND seuil_alerte_rouge > 0"""
         ).fetchall()
 
@@ -748,6 +753,9 @@ def send_change_alerts(target_date: date, old_color: str, new_color: str):
                 (user["id"], target_date.isoformat()),
             ).fetchone()
             if not was_alerted and delta > user["delai_alerte"]:
+                continue
+            if (not was_alerted and new_color == "ROUGE" and prediction is not None
+                    and not rouge_alert_due(user["seuil_alerte_rouge"], prediction)):
                 continue
             # B6 fix: dédup changement par (user, date_cible)
             existing = conn.execute(

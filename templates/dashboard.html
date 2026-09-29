@@ -133,7 +133,7 @@
     {% endif %}
     <link rel="preconnect" href="https://cloud.umami.is" crossorigin>
     <link rel="preload" href="/static/css/style.min.css?v=20260929b" as="style">
-    <link rel="preload" href="/static/js/app.min.js?v=20260929" as="script">
+    <link rel="preload" href="/static/js/app.min.js?v=20260929b" as="script">
     <link rel="preload" href="/static/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="/static/css/fonts.css?v=20260929">
     <link rel="stylesheet" href="/static/css/style.min.css?v=20260929b">
@@ -274,20 +274,20 @@
     </p>
     <div class="counters" role="region" aria-label="Jours restants par couleur">
         <div class="counter-card rouge" aria-label="Jours rouges restants">
-            <div class="count" id="count-rouge" aria-live="polite">{% if ssr.remaining %}{{ ssr.remaining.ROUGE }}{% else %}&mdash;{% endif %}</div>
+            <div class="count" id="count-rouge" aria-live="polite">{% if ssr.remaining %}{{ ssr.remaining.ROUGE }}{% else %}?{% endif %}</div>
             <div class="label">Jours rouges restants</div>
             <!-- P-21 : barre de progression visuelle -->
             <div class="counter-progress" id="progress-rouge"><div class="counter-progress-fill rouge-fill"></div></div>
             <div class="counter-help">HP 0,73&nbsp;&euro;/kWh, les plus chers</div>
         </div>
         <div class="counter-card blanc" aria-label="Jours blancs restants">
-            <div class="count" id="count-blanc" aria-live="polite">{% if ssr.remaining %}{{ ssr.remaining.BLANC }}{% else %}&mdash;{% endif %}</div>
+            <div class="count" id="count-blanc" aria-live="polite">{% if ssr.remaining %}{{ ssr.remaining.BLANC }}{% else %}?{% endif %}</div>
             <div class="label">Jours blancs restants</div>
             <div class="counter-progress" id="progress-blanc"><div class="counter-progress-fill blanc-fill"></div></div>
             <div class="counter-help">HP 0,19&nbsp;&euro;/kWh, prix moyen</div>
         </div>
         <div class="counter-card bleu" aria-label="Jours bleus restants">
-            <div class="count" id="count-bleu" aria-live="polite">{% if ssr.remaining %}{{ ssr.remaining.BLEU }}{% else %}&mdash;{% endif %}</div>
+            <div class="count" id="count-bleu" aria-live="polite">{% if ssr.remaining %}{{ ssr.remaining.BLEU }}{% else %}?{% endif %}</div>
             <div class="label">Jours bleus restants</div>
             <div class="counter-progress" id="progress-bleu"><div class="counter-progress-fill bleu-fill"></div></div>
             <div class="counter-help">HP 0,17&nbsp;&euro;/kWh, tarif avantageux</div>
@@ -353,6 +353,6 @@
 
 <button class="back-to-top" id="back-to-top" aria-label="Retour en haut de page">&#8593;</button>
 
-<script src="/static/js/app.min.js?v=20260929"></script>
+<script src="/static/js/app.min.js?v=20260929b"></script>
 </body>
 </html>

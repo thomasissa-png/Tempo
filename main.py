@@ -235,6 +235,11 @@ def _load_real_app():
 
         # Reproduire la logique du lifespan FastAPI (qui ne sera pas appelé
         # par uvicorn car c'est le proxy qui gère le lifespan)
+        for _src in ("ADMIN_PASSWORD", "SESSION_SECRET"):
+            if os.getenv(_src, ""):
+                logger.info("[Admin] Mot de passe source: %s env var (longueur=%d)",
+                            _src, len(os.getenv(_src, "")))
+                break
         if not Config.ADMIN_PASSWORD:
             import secrets
             Config.ADMIN_PASSWORD = secrets.token_urlsafe(24)

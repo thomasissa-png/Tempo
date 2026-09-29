@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gérer mes alertes — Calendrier Tempo EDF</title>
+    <title>Gérer mes alertes | Calendrier Tempo EDF</title>
     <meta name="robots" content="noindex, nofollow">
     <link rel="icon" type="image/png" sizes="192x192" href="/static/favicon-192.png">
     <link rel="icon" type="image/png" sizes="96x96" href="/static/favicon-96.png">
@@ -39,7 +39,7 @@
     <section class="subscribe-section" style="margin-top:16px">
         <h2 style="text-align:center">G&eacute;rer mes alertes</h2>
         <p class="sub-desc" style="text-align:center">
-            Compte ****{{ user.phone_last4 }} — Modifiez vos préférences ci-dessous.
+            Compte ****{{ user.phone_last4 }} : modifiez vos préférences ci-dessous.
         </p>
 
         <form id="manage-form">
@@ -47,24 +47,24 @@
                 <div class="form-group">
                     <label for="seuil_rouge">Quand vous prévenir ?</label>
                     <select id="seuil_rouge" name="seuil_rouge">
-                        <option value="70" {% if user.seuil_alerte_rouge == 70 %}selected{% endif %}>Prudent — dès qu'un jour rouge est probable</option>
-                        <option value="80" {% if user.seuil_alerte_rouge == 80 %}selected{% endif %}>Recommandé — bon équilibre</option>
-                        <option value="90" {% if user.seuil_alerte_rouge == 90 %}selected{% endif %}>Sûr — alertes rares, quasi certaines</option>
+                        <option value="70" {% if user.seuil_alerte_rouge == 70 %}selected{% endif %}>Prudent : dès qu'un jour rouge est probable</option>
+                        <option value="80" {% if user.seuil_alerte_rouge == 80 %}selected{% endif %}>Recommandé : bon équilibre</option>
+                        <option value="90" {% if user.seuil_alerte_rouge == 90 %}selected{% endif %}>Sûr : alertes rares, quasi certaines</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label for="delai">Combien de temps avant ?</label>
                     <select id="delai" name="delai">
-                        <option value="1" {% if user.delai_alerte == 1 %}selected{% endif %}>La veille — le plus fiable</option>
+                        <option value="1" {% if user.delai_alerte == 1 %}selected{% endif %}>La veille (le plus fiable)</option>
                         <option value="2" {% if user.delai_alerte == 2 %}selected{% endif %}>2 jours avant</option>
-                        <option value="3" {% if user.delai_alerte == 3 %}selected{% endif %}>3 jours avant — pour mieux planifier</option>
+                        <option value="3" {% if user.delai_alerte == 3 %}selected{% endif %}>3 jours avant (pour mieux planifier)</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label for="heure_envoi">Heure d'envoi</label>
                     <select id="heure_envoi" name="heure_envoi">
-                        <option value="matin" {% if user.heure_envoi == 'matin' or not user.heure_envoi %}selected{% endif %}>Matin (7h30) — pour planifier votre journée</option>
-                        <option value="soir" {% if user.heure_envoi == 'soir' %}selected{% endif %}>Soir (18h) — pour préparer le lendemain</option>
+                        <option value="matin" {% if user.heure_envoi == 'matin' or not user.heure_envoi %}selected{% endif %}>Matin (7h30), pour planifier votre journée</option>
+                        <option value="soir" {% if user.heure_envoi == 'soir' %}selected{% endif %}>Soir (18h), pour préparer le lendemain</option>
                     </select>
                 </div>
                 <div class="form-group">

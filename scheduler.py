@@ -625,12 +625,14 @@ async def _refresh_predictions(trigger: str, send_sms: bool = False) -> int:
                     + ", ".join(f"{c['date']} {c['couleur_avant']}→{c['couleur_apres']}"
                                 for c in changes))
         from alerts import send_change_alerts
+        preds_by_date = {p["date"]: p for p in predictions}
         for c in changes:
             try:
                 target = date.fromisoformat(c["date"])
                 await asyncio.to_thread(
                     send_change_alerts, target,
-                    c["couleur_avant"], c["couleur_apres"]
+                    c["couleur_avant"], c["couleur_apres"],
+                    preds_by_date.get(c["date"])
                 )
             except Exception as e:
                 logger.debug(f"[{trigger}] Erreur alerte changement: {e}")

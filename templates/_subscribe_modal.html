@@ -139,6 +139,12 @@
         var dayOfWeek = d.getDay(); // 0=Sun, 1=Mon
         var daysUntilMon = (dayOfWeek === 0) ? 1 : (dayOfWeek === 1) ? 7 : (8 - dayOfWeek);
         d.setDate(d.getDate() + daysUntilMon);
+        // Jours rouges uniquement du 1er novembre au 31 mars (règle EDF R1) :
+        // hors saison, l'exemple montre la première semaine complète de décembre.
+        if (d.getMonth() >= 3 && d.getMonth() <= 9) {
+            d = new Date(d.getFullYear(), 11, 1);
+            while (d.getDay() !== 1) d.setDate(d.getDate() + 1);
+        }
 
         var redCount = 0;
         var lines = [];
@@ -152,7 +158,7 @@
 
         var bubble = document.getElementById('modal-sms-bubble');
         if (!bubble) return;
-        var html = '\uD83D\uDCC8 <strong>Calendrier Tempo EDF \u2014 Semaine \u00e0 venir</strong><br><br>';
+        var html = '\uD83D\uDCC8 <strong>Calendrier Tempo EDF\u00a0: Semaine \u00e0 venir</strong><br><br>';
         html += lines.join('<br>');
         html += '<br><br>\u26A0\uFE0F ' + redCount + ' jour' + (redCount > 1 ? 's' : '') + ' rouge' + (redCount > 1 ? 's' : '') + ' pr\u00e9vu' + (redCount > 1 ? 's' : '') + ' cette semaine.';
         html += '<br>\uD83D\uDC49 Anticipez vos machines et chauffage\u00a0!';

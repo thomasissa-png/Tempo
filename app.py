@@ -975,7 +975,7 @@ async def page_calendrier_slug(request: Request, slug: str):
     m = _re.fullmatch(r"(\d{4})-(\d{2})", slug)
     if m:
         year, month = int(m.group(1)), int(m.group(2))
-        if not 1 <= month <= 12:
+        if not 1 <= month <= 12 or year < 1:
             raise HTTPException(status_code=404, detail="Mois inconnu")
         first_month, last_month = _calendar_bounds()
         if not first_month <= date(year, month, 1) <= last_month:
@@ -984,7 +984,7 @@ async def page_calendrier_slug(request: Request, slug: str):
         return templates.TemplateResponse(
             "calendrier.html", _calendar_context(request, data, _month_path(year, month)))
     m = _re.fullmatch(r"(\d{4})-(\d{4})", slug)
-    if m and int(m.group(2)) == int(m.group(1)) + 1:
+    if m and int(m.group(2)) == int(m.group(1)) + 1 and int(m.group(1)) >= 1:
         start_year = int(m.group(1))
         from tempo_client import get_season_dates
         current_start, _ = get_season_dates()
@@ -1305,7 +1305,7 @@ async def manifest_json():
         content={
             "name": "Calendrier Tempo EDF",
             "short_name": "Calendrier Tempo",
-            "description": "Prévision des jours Tempo EDF — couleur du jour et 15 jours à l'avance",
+            "description": "Prévision des jours Tempo EDF : couleur du jour et 15 jours à l'avance",
             "start_url": "/",
             "display": "standalone",
             "background_color": "#ffffff",
@@ -2307,13 +2307,16 @@ async def api_history(days: int = 30):
 
 @app.get("/api/performance")
 async def api_performance(request: Request, authorization: str | None = Header(None),
-                          season: str = "2025-2026"):
+                          season: str | None = None):
     """Métriques de performance complètes (admin).
 
     Args:
-        season: saison au format "YYYY-YYYY" (ex: "2025-2026").
+        season: saison au format "YYYY-YYYY" (ex: "2025-2026"). Absente = saison en cours.
     """
     verify_admin(authorization, request.client.host if request.client else "unknown")
+    import re as _re
+    if season is not None and not _re.fullmatch(r"\d{4}-\d{4}", season):
+        raise HTTPException(status_code=400, detail="Saison invalide (format AAAA-AAAA)")
     from performance_tracker import get_performance_summary
     return {"status": "ok", **get_performance_summary(season=season)}
 
@@ -2486,11 +2489,12 @@ async def api_unsubscribe(request: Request, phone: str = Form(...)):
         raise HTTPException(status_code=400, detail="Format invalide. Utilisez un format international (+33, +32, +41...).")
 
     from alerts import unsubscribe_user
-    result = unsubscribe_user(phone)
-    if "error" in result:
-        # H-07 QA : message générique (ne pas révéler si le numéro existe)
-        raise HTTPException(status_code=400, detail="Désinscription impossible. Vérifiez votre numéro.")
-    return result
+    # Numéro nettoyé (points, tirets, espaces) : même hash qu'à l'inscription
+    unsubscribe_user(phone_clean)
+    # Réponse identique que le numéro soit inscrit ou non : ne pas révéler
+    # l'existence d'un abonnement (QA 2026-09-29, énumération des abonnés).
+    return {"success": True,
+            "message": "Si ce numéro était inscrit, la désinscription est effectuée."}
 
 
 @app.post("/api/resend-manage-link")
@@ -2525,6 +2529,7 @@ async def api_resend_manage_link(
     generic_msg = "Si ce numéro est inscrit, vous recevrez un message WhatsApp avec votre lien de gestion."
 
     from alerts import hash_phone
+    from database import get_db
     phone_h = hash_phone(phone_clean)
     conn = get_db()
     try:
@@ -2579,6 +2584,7 @@ async def whatsapp_webhook_incoming(request: Request):
     BUG-01 QA : endpoint pour l'opt-out par message.
     """
     from alerts import handle_incoming_sms
+    from database import get_db
 
     # C-1 Sécurité : vérification de la signature HMAC-SHA256 Meta
     raw_body = await request.body()
@@ -2904,6 +2910,7 @@ async def admin_whatsapp_diagnostic(request: Request, authorization: str | None 
     # Dernier statut d'envoi par template depuis sms_logs
     recent_errors = {}
     try:
+        from database import get_db
         conn = get_db()
         try:
             for tpl in templates:
