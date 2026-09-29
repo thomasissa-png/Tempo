@@ -3,11 +3,11 @@
 Module autonome qui charge le modele entraine (ml_model.pkl) et fournit
 un score 0-100 base sur les probabilites du classifieur.
 
-Le modele a ete entraine sur 1827 jours (saisons 2019-2026) et teste
-sur 530 jours (saison 2024-2026) :
-  - Accuracy : 83.4%
-  - ROUGE recall : 23.3%
-  - ROUGE precision : 43.8%
+Modele et metriques : voir ml_train.py (script reproductible) et les
+metadonnees du pkl (periode d'entrainement reelle, metriques hors
+echantillon par saison laissee de cote, meteo observee). Ancien modele
+(entraine 2019-09 -> 2024-08) conserve dans ml_model_2024-08.pkl.
+Audit : docs/audits/2026-09-29-reentrainement-ml.md
 
 Features utilisees (33) :
   - Temperatures : moy, min, max, moyennes 3j/7j, gradient, cold streak
@@ -101,12 +101,8 @@ def compute_ml_score(
         p_blanc = float(proba[classes.index("BLANC")])
         p_bleu = float(proba[classes.index("BLEU")])
 
-        # Threshold-based prediction (from model metadata)
-        # Backtest 2364 jours (2019-2026) : seuil 0.19 optimal
-        # F1=83.1 (+3.7 vs 0.10), precision=85.4% (+9.4), recall=81.0% (-2.2)
-        # ATTENTION (audit 2026-09-29) : chiffres mesures en grande partie sur les jours
-        # d'entrainement, a ne pas publier. Hors echantillon (2024-2026) : 6 ROUGE sur 30.
-        # Moins de fausses alertes ROUGE, perte minimale de recall.
+        # Seuils lus dans les metadonnees du modele (choix documente dans
+        # ml_train.PIPELINE_THRESHOLDS et l'audit du 2026-09-29).
         rouge_thresh = (_METADATA or {}).get("rouge_threshold", 0.19)
         blanc_thresh = (_METADATA or {}).get("blanc_threshold", 0.20)
 
@@ -168,14 +164,22 @@ def _build_features(
     forecasts: list[dict] | None,
     target_idx: int,
     actuals_cache: dict[str, str] | None,
+    rte_lag_fn=None,
 ) -> list[float]:
     """Construit le vecteur de 33 features pour le modele.
+
+    Source de verite unique : ml_train.py appelle cette meme fonction pour
+    construire les donnees d'entrainement. `rte_lag_fn` (optionnel, meme
+    signature que _get_rte_lag) permet a l'entrainement de lire rte_daily
+    depuis db_dump.json ; a l'inference il vaut None et _get_rte_lag (base)
+    est utilise, comportement inchange.
 
     Audit DS — features mortes à remplacer au prochain retraining :
       - pos 9  cold_streak   → remplacer par HDD (heating degree days)
       - pos 15 in_red_season → remplacer par remaining_rouge_pct (budget restant)
       - pos 32 has_rte       → remplacer par conso_surprise (actual vs forecast)
-    Ne PAS modifier les positions tant que ml_model.pkl n'est pas retrainé.
+    Positions conservees au re-entrainement 2026-09 (ml_train.py) : les
+    changer impose de re-entrainer ET de mettre a jour ml_train.FEATURE_NAMES.
     """
     month = target_date.month
     dow = target_date.weekday()
@@ -266,9 +270,10 @@ def _build_features(
     temp_x_pressure = temp_moy * (pressure - 1013) / 10
 
     # RTE lag features (D-1 and rolling averages)
-    rte_d1 = _get_rte_lag(target_date, 1, 1)
-    rte_3d = _get_rte_lag(target_date, 1, 3)
-    rte_7d = _get_rte_lag(target_date, 1, 7)
+    lag_fn = rte_lag_fn or _get_rte_lag
+    rte_d1 = lag_fn(target_date, 1, 1)
+    rte_3d = lag_fn(target_date, 1, 3)
+    rte_7d = lag_fn(target_date, 1, 7)
 
     has_rte = 1.0 if rte_d1 else 0.0
 
