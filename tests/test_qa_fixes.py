@@ -2099,8 +2099,14 @@ class TestForwardClustering:
         from predictor import predict_range
         from unittest.mock import patch
         # 5 jours froids consécutifs → le clustering devrait s'activer
-        # grâce au forward clustering
-        base = date.today() + timedelta(days=2)
+        # grâce au forward clustering.
+        # "Aujourd'hui" figé en hiver : avec date.today() réel, le test échouait
+        # d'avril à octobre (R1 interdit le ROUGE hors 1er nov - 31 mars).
+        class _FixedDate(date):
+            @classmethod
+            def today(cls):
+                return cls(2027, 1, 9)  # samedi → cibles lun 11 → ven 15 janv.
+        base = _FixedDate.today() + timedelta(days=2)
         forecasts = []
         for i in range(5):
             d = base + timedelta(days=i)
@@ -2112,7 +2118,8 @@ class TestForwardClustering:
             })
         # Mock get_remaining_days pour avoir assez de ROUGE
         with patch("predictor.get_remaining_days",
-                    return_value={"ROUGE": 15, "BLANC": 20, "BLEU": 150}):
+                    return_value={"ROUGE": 15, "BLANC": 20, "BLEU": 150}), \
+             patch("predictor.date", _FixedDate):
             preds = predict_range(forecasts)
         # Avec 5 jours à 1°C, au moins 2 devraient être ROUGE
         rouge_count = sum(1 for p in preds if p["couleur_predite"] == "ROUGE")

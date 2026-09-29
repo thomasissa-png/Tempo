@@ -1,5 +1,5 @@
 ---
-title: Jours blancs Tempo : à quoi s'attendre en automne
+title: Jours blancs Tempo EDF : à quoi s'attendre en automne
 description: Jours blancs Tempo : ce qu'est un jour blanc, quand il tombe, la règle du dimanche et comment gérer ce tarif intermédiaire pour limiter la facture.
 keywords: jours blancs tempo, jour blanc tempo edf, tarif jour blanc tempo, tempo jour blanc
 publish_date: 2026-09-29

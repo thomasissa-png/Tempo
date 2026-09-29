@@ -206,6 +206,11 @@ class TestHistoryDepthCentralized:
         """app.py ne doit pas recalculer la profondeur manuellement."""
         with open(os.path.join(ROOT, "app.py")) as f:
             source = f.read()
+        # Exception explicite : l'endpoint de diagnostic affiche la plage brute
+        # de la table performance (perf_min_date), ce n'est pas un calcul de
+        # profondeur d'historique.
+        source = source.replace(
+            "(SELECT MIN(date_cible) FROM performance) as perf_min_date", "")
         assert "MIN(date_cible)" not in source, (
             "app.py contient une requête MIN(date_cible) inline !\n"
             "Utiliser get_history_depth_days() à la place."

@@ -361,15 +361,10 @@ class TestConfigIntegration:
         # Saison active (Nov-Mar) = weekly
         for m in [11, 12, 1, 2, 3]:
             assert s[m] == "weekly", f"Month {m} should be weekly"
-        # Morte-saison (Jun-Aug) = off
-        for m in [6, 7, 8]:
-            assert s[m] == "off", f"Month {m} should be off"
-        # Pré-saison (Sep-Oct) = bimonthly
-        for m in [9, 10]:
+        # Hors saison + pré-saison (Apr-Oct) = bimonthly
+        # (publication estivale evergreen activée le 2026-05-26, commit 10a3a41)
+        for m in [4, 5, 6, 7, 8, 9, 10]:
             assert s[m] == "bimonthly", f"Month {m} should be bimonthly"
-        # Post-saison (Apr-May) = monthly
-        for m in [4, 5]:
-            assert s[m] == "monthly", f"Month {m} should be monthly"
 
 
 # ================================================================
@@ -412,15 +407,22 @@ class TestShouldPublishToday:
     def test_weekly_dec(self):
         assert self.should_publish(date(2025, 12, 2)) is True
 
-    # --- off (Jun-Aug) ---
-    def test_off_july(self):
-        assert self.should_publish(date(2025, 7, 1)) is False
+    # --- été (Jun-Aug) : bimonthly depuis le 2026-05-26 ---
+    def test_summer_july_first_tuesday(self):
+        assert self.should_publish(date(2025, 7, 1)) is True
 
-    def test_off_august(self):
-        assert self.should_publish(date(2025, 8, 5)) is False
+    def test_summer_august_first_tuesday(self):
+        assert self.should_publish(date(2025, 8, 5)) is True
 
-    def test_off_june(self):
-        assert self.should_publish(date(2025, 6, 3)) is False
+    def test_summer_june_second_tuesday_skipped(self):
+        assert self.should_publish(date(2025, 6, 10)) is False
+
+    # --- mode "off" (plus utilisé par défaut, logique conservée) ---
+    def test_off_mode_never_publishes(self):
+        from unittest.mock import patch
+        from config import Config
+        with patch.dict(Config.SEO_SEASON_SCHEDULE, {7: "off"}):
+            assert self.should_publish(date(2025, 7, 1)) is False
 
     # --- bimonthly (Sep-Oct) ---
     def test_bimonthly_first_tuesday(self):
@@ -443,18 +445,26 @@ class TestShouldPublishToday:
         # Oct 7 2025 = 1st Tue
         assert self.should_publish(date(2025, 10, 7)) is True
 
-    # --- monthly (Apr-May) ---
-    def test_monthly_first_tuesday(self):
+    # --- avril : bimonthly depuis le 2026-05-26 ---
+    def test_april_first_tuesday(self):
         # Apr 1 2025 = 1st Tue
         assert self.should_publish(date(2025, 4, 1)) is True
 
-    def test_monthly_second_tuesday_skipped(self):
+    def test_april_second_tuesday_skipped(self):
         # Apr 8 2025 = 2nd Tue
         assert self.should_publish(date(2025, 4, 8)) is False
 
-    def test_monthly_third_tuesday_skipped(self):
+    def test_april_third_tuesday(self):
         # Apr 15 2025 = 3rd Tue
-        assert self.should_publish(date(2025, 4, 15)) is False
+        assert self.should_publish(date(2025, 4, 15)) is True
+
+    # --- mode "monthly" (plus utilisé par défaut, logique conservée) ---
+    def test_monthly_third_tuesday_skipped(self):
+        from unittest.mock import patch
+        from config import Config
+        with patch.dict(Config.SEO_SEASON_SCHEDULE, {4: "monthly"}):
+            assert self.should_publish(date(2025, 4, 1)) is True
+            assert self.should_publish(date(2025, 4, 15)) is False
 
     def test_monthly_may(self):
         # May 6 2025 = 1st Tue

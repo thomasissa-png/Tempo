@@ -1,5 +1,5 @@
 ---
-title: Rentrée Tempo EDF 2026-2027 : tout ce qui change
+title: Rentrée Tempo EDF 2026-2027 : tout ce qui change pour vous
 description: Tempo EDF 2026-2027 : budget des jours rouges réinitialisé au 1er septembre, calendrier, règles et checklist de rentrée pour la nouvelle saison.
 keywords: tempo edf 2026-2027, rentrée tempo edf, saison tempo 2026-2027, nouvelle saison tempo
 publish_date: 2026-09-01
