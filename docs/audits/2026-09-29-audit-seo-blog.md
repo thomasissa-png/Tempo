@@ -1,5 +1,7 @@
 # Audit SEO technique, on-page et blog : calendrier-tempo.fr
 
+> **Décisions fondateur du 2026-09-29, prioritaires sur cet audit** : lien Selectra de la home conservé tel quel en dofollow (accord Selectra) ; chiffre « 2 500 foyers » conservé ; Replit reste l'hébergement pour la prochaine mise à jour.
+
 Date : 2026-09-29. Périmètre : repo uniquement (site live non joignable, aucun outil de volumes). Aucune donnée de trafic, position, volume ou backlink n'est avancée ici : tout ce qui exige le live est en section « À vérifier en ligne ». Aucun fichier du repo n'a été modifié, hors ce livrable.
 
 ## 1. Synthèse

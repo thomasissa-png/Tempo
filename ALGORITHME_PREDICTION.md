@@ -1,17 +1,43 @@
 # Algorithme de Prediction Tempo EDF — Documentation technique
 
-## Vue d'ensemble
+> **Etat au 2026-09-29.** Les sections 2 et suivantes decrivent chaque facteur en detail ;
+> leurs principes restent valables, mais la ponderation et la decision ont evolue depuis
+> la v2.1. **La reference est le code** (`config.py`, `predictor.py`, `ml_scorer.py`,
+> `confusion_zone_ml.py`). Resume de l'etat actuel ci-dessous.
 
-L'algorithme TempoForecast predit la couleur Tempo EDF (BLEU, BLANC, ROUGE) pour chaque jour des 15 prochains jours. Il combine 6 facteurs de scoring ponderes, un bonus "vague de froid" hors-poids, et une conversion en probabilites via sigmoide logistique.
+## Vue d'ensemble (etat actuel)
 
-**Fichier source** : `predictor.py` (~740 lignes)
-**Version** : v2.1 (post-audit complet)
+L'algorithme predit la couleur Tempo EDF (BLEU, BLANC, ROUGE) de J+1 a J+15. Il combine :
+
+1. **Un scoring pondere sur 7 sous-scores** (`config.py:DEFAULT_WEIGHTS`, recalibres les 1er et 15 du mois par regression logistique, avec garde-fous) :
+
+   | Sous-score | Poids par defaut |
+   |---|---|
+   | Temperature nationale ponderee (9 villes) | 38 % |
+   | Budget de jours restants (pression) | 18 % |
+   | Consommation nette estimee (C_nette, RTE) | 18 % |
+   | Pression atmospherique | 10 % |
+   | Jour de la semaine | 8 % |
+   | Gradient thermique | 6 % |
+   | Clustering | 2 % |
+
+   En novembre-decembre, `WEIGHTS_EARLY_SEASON` augmente la temperature et reduit le budget (non discriminant en debut de saison).
+
+2. **Des seuils dynamiques** : seuil ROUGE et seuil BLANC fonctions de la temperature (`SEUIL_ROUGE_TEMP_CURVE`, `SEUIL_BLANC_TEMP_CURVE`), modulation saisonniere, et abaissement progressif quand la densite de jours ROUGE restants l'impose (density override).
+
+3. **Deux modeles ML en ensemble** : GradientBoosting (33 variables, `ml_scorer.py`, `ml_model.pkl`) en filet de securite ROUGE et filtre des faux BLANC ; micro-modele de la zone ambigue 50-70 (`confusion_zone_ml.py`).
+
+4. **Les regles EDF** : ROUGE du 1er novembre au 31 mars seulement, jamais le week-end ni un jour ferie ; BLANC jamais le dimanche ; 5 ROUGE consecutifs au maximum ; 22 ROUGE et 43 BLANC par saison.
+
+5. **Des probabilites** coherentes avec la couleur predite (couleurs impossibles mises a 0 %).
+
+Performance : les chiffres de backtest (meteo observee, J+1) ne sont pas comparables a la performance en direct J+2 a J+5, suivie dans `/admin`.
 
 ---
 
-## 1. Architecture du scoring
+## 1. Architecture du scoring (historique v2.1)
 
-Chaque jour recoit un **score de risque de 0 a 100** calcule comme suit :
+Formule de la v2.1, conservee pour memoire (les poids actuels sont dans le tableau ci-dessus) :
 
 ```
 score_risque = (temp * 0.30) + (budget * 0.20) + (gradient * 0.15)
@@ -19,11 +45,11 @@ score_risque = (temp * 0.30) + (budget * 0.20) + (gradient * 0.15)
              + bonus_vague_de_froid
 ```
 
-Les poids (0.30, 0.20, etc.) sont **ajustables mensuellement** par regression logistique via le module `performance_tracker.py`. Les poids par defaut sont stockes dans `config.py:DEFAULT_WEIGHTS`.
+Les poids par defaut sont dans `config.py:DEFAULT_WEIGHTS` et sont recalibres automatiquement par `performance_tracker.py`.
 
 ---
 
-## 2. Les 6 facteurs de scoring
+## 2. Les facteurs de scoring (detail, poids v2.1 entre parentheses)
 
 ### 2.1 Temperature nationale ponderee (poids: 30%)
 

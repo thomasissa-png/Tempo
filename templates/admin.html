@@ -227,7 +227,7 @@
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
                 <span style="font-size:0.82rem;font-weight:600;color:var(--text-secondary)">Saison :</span>
                 <select id="season-select" class="season-select" aria-label="Saison">
-                    <option value="2025-2026">2025-2026</option>
+                    <!-- options remplies au chargement (saison en cours par défaut) -->
                 </select>
             </div>
 
@@ -459,7 +459,12 @@
 
 <script>
 let adminPassword = '';
-let currentSeason = '2025-2026';
+// Saison Tempo en cours (1er septembre → 31 août), calculée à l'ouverture
+let currentSeason = (() => {
+    const d = new Date();
+    const y = d.getMonth() >= 8 ? d.getFullYear() : d.getFullYear() - 1;
+    return `${y}-${y + 1}`;
+})();
 let _recapData = []; // cached for month filter
 let _selectedMonth = 'all'; // D5: persist month filter across reloads
 let _perfData = null; // cached full performance data for version filtering
@@ -504,9 +509,12 @@ async function loadAdminData() {
         document.getElementById('admin-login').style.display = 'none';
         document.getElementById('admin-content').style.display = 'block';
 
-        if (data.available_seasons && data.available_seasons.length > 0) {
+        {
+            const seasons = (data.available_seasons || []).slice();
+            if (!seasons.includes(currentSeason)) seasons.push(currentSeason);
+            seasons.sort();
             const sel = document.getElementById('season-select');
-            sel.innerHTML = data.available_seasons.map(s =>
+            sel.innerHTML = seasons.map(s =>
                 `<option value="${escapeHtml(s)}" ${s===currentSeason?'selected':''}>${escapeHtml(s)}</option>`
             ).join('');
         }

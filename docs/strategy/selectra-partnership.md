@@ -4,6 +4,7 @@
 **Demandeur** : Selectra (comparateur d'énergie FR)
 **Projet** : calendrier-tempo.fr
 **Statut** : Livré
+**Décision finale (2026-09-29, Thomas)** : le lien vers Selectra dans la FAQ de la home est conservé tel quel, en dofollow. C'est l'accord passé avec Selectra ; ne pas le passer en nofollow/sponsored.
 
 ---
 

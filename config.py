@@ -240,9 +240,9 @@ class Config:
     # Si vide, la tâche est silencieusement ignorée.
     ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
     # Modèle Claude à utiliser (Sonnet = bon rapport qualité/coût).
-    # Sonnet 5 depuis le 2026-08-19 (auparavant Sonnet 4.5). Ne PAS suffixer de date :
-    # "claude-sonnet-5" est l'identifiant complet.
-    SEO_AGENT_MODEL = os.getenv("SEO_AGENT_MODEL", "claude-sonnet-5")
+    # Sonnet 5.5 depuis le 2026-09-29 (Sonnet 5 depuis le 2026-08-19). Ne PAS suffixer
+    # de date : "claude-sonnet-5-5" est l'identifiant complet.
+    SEO_AGENT_MODEL = os.getenv("SEO_AGENT_MODEL", "claude-sonnet-5-5")
     # Nombre max de tours d'interaction agent (sécurité anti-boucle infinie)
     SEO_AGENT_MAX_TURNS = int(os.getenv("SEO_AGENT_MAX_TURNS", "40"))
 
@@ -277,6 +277,10 @@ class Config:
         "2026-02-19": "v3.1 C_nette proxy + seuil dynamique RTE",
         "2026-02-20": "v3.5 calibration (85→87%, ROUGE 80→96%)",
         "2026-02-21": "Fix confirmations EDF + météo v19",
+        "2026-03-11": "Pression budget réduite (EDF n'épuise pas forcément les 22 rouges)",
+        "2026-03-14": "Réglages density override (garde thermique) + atténuations fin de saison",
+        "2026-03-17": "Retour du prédicteur à la version du 8 mars (algorithme en production depuis)",
+        "2026-09-01": "Début de la saison 2026-2027 (algorithme inchangé depuis le 17/03)",
     }
 
     # Date de début des prédictions réelles (tout avant est ignoré dans les métriques)

@@ -1,4 +1,7 @@
 # Rapport QA — TempoForecast
+
+> **Document historique (2026-02-09).** Il ne reflète plus l'état actuel. Suite de tests à jour : `pytest tests/` (plus de 600 tests). Audits récents : `docs/audits/`.
+
 **Date** : 2026-02-09
 **QA Engineer** : Audit fonctionnel et end-to-end
 **Version** : commit `205213e` (branche `claude/edf-tempo-predictor-gSmra`)

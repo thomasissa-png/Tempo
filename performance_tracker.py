@@ -1014,7 +1014,7 @@ def get_color_recall_by_horizon(color: str, days: int = 90,
         conn.close()
 
 
-def get_monthly_performance(season: str = "2025-2026") -> list[dict]:
+def get_monthly_performance(season: str | None = None) -> list[dict]:
     """Accuracy per horizon (J-1 to J-15) per month."""
     conn = get_db()
     try:
@@ -1167,8 +1167,19 @@ def get_version_performance() -> list[dict]:
         conn.close()
 
 
-def parse_season(season: str) -> tuple[date, date]:
-    """Parse '2025-2026' into (date(2025,9,1), date(2026,8,31))."""
+def current_season(today: date | None = None) -> str:
+    """Saison Tempo en cours (1er septembre → 31 août), ex. '2026-2027'."""
+    today = today or _now_paris().date()
+    start = today.year if today.month >= 9 else today.year - 1
+    return f"{start}-{start + 1}"
+
+
+def parse_season(season: str | None) -> tuple[date, date]:
+    """Parse '2025-2026' into (date(2025,9,1), date(2026,8,31)).
+
+    None = saison en cours.
+    """
+    season = season or current_season()
     parts = season.split("-")
     start_year = int(parts[0])
     return date(start_year, 9, 1), date(start_year + 1, 8, 31)
@@ -1231,7 +1242,7 @@ def _build_error_diagnostic(predicted: str, actual: str,
     return " — ".join(parts)
 
 
-def get_daily_recap(season: str = "2025-2026") -> list[dict]:
+def get_daily_recap(season: str | None = None) -> list[dict]:
     """Récapitulatif jour par jour avec 15 horizons de prévision.
 
     Horizons en format J-N (J-1 = veille, J-15 = 15 jours avant).
@@ -1546,7 +1557,7 @@ def get_weather_reliability(days: int = 90) -> dict:
         conn.close()
 
 
-def get_rouge_postmortem(season: str = "2025-2026") -> list[dict]:
+def get_rouge_postmortem(season: str | None = None) -> list[dict]:
     """D10: Detailed analysis of each ROUGE day in the season.
 
     For each actual ROUGE day: temperature, predictions at each horizon,
@@ -1639,7 +1650,7 @@ def get_rouge_postmortem(season: str = "2025-2026") -> list[dict]:
         conn.close()
 
 
-def get_data_coverage(season: str = "2025-2026") -> dict:
+def get_data_coverage(season: str | None = None) -> dict:
     """D12: Data coverage indicator.
 
     For each horizon J-1 to J-15, count how many days have predictions
@@ -1713,13 +1724,15 @@ def invalidate_perf_summary_cache():
     _perf_summary_cache["ts"] = 0
 
 
-def get_performance_summary(season: str = "2025-2026") -> dict:
+def get_performance_summary(season: str | None = None) -> dict:
     """Résumé complet des performances pour le dashboard admin.
 
     Args:
-        season: saison au format "YYYY-YYYY" (ex: "2025-2026").
+        season: saison au format "YYYY-YYYY" (ex: "2025-2026"). None = saison en cours.
     """
     import time as _time
+
+    season = season or current_season()
 
     # B7: Check cache
     now_ts = _time.time()

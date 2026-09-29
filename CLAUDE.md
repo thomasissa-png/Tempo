@@ -156,7 +156,8 @@ Agents dans `.claude/agents/`. Ambiguïté de domaine → trancher soi-même (fo
 ```
 Pytest is installed via uv at `/root/.local/bin/pytest`. It uses its own Python at `/root/.local/share/uv/tools/pytest/bin/python`.
 
-**Step 2: Create dependency stubs** (needed because pypi.org is blocked by proxy)
+**Step 2: Install real dependencies (preferred) or create stubs**
+PyPI is reachable from sessions (checked 2026-09-29): `uv pip install --python /root/.local/share/uv/tools/pytest/bin/python -r requirements.txt`. Real deps make the two known quirks pass. Stubs below = last resort only if PyPI is blocked.
 The pytest environment does NOT have project dependencies (fastapi, httpx, etc.) installed. Create minimal stubs in pytest's site-packages:
 ```bash
 PYTEST_SITE="/root/.local/share/uv/tools/pytest/lib/python3.11/site-packages"
@@ -191,7 +192,7 @@ python3 -c "import ast; ast.parse(open('alerts.py').read()); print('OK')"
 ```bash
 /root/.local/bin/pytest tests/test_qa_fixes.py --tb=short 2>&1 | tail -40
 ```
-Expected: 318+ passed, 0 failed (excluding known false positives listed above).
+Expected: 620+ passed, 0 failed.
 
 **Step 5: Run targeted tests on changed areas**
 ```bash
@@ -253,7 +254,7 @@ git push -u origin <branch-name>
 - Each predicted ROUGE/BLANC decrements `sim_remaining` → pressure increases for subsequent days
 - BLEU predictions do NOT decrement, but eligible days shrink (deadline approaches) → density rises naturally
 - `_score_budget_v2` recalculates `red_d_left` / `white_d_left` from **target_date** (not today) → correct per-day pressure
-- Budget weight is only 12% → max 12 points contribution even at budget_score=100
+- Budget weight is 18% (`DEFAULT_WEIGHTS["jours_restants"]`, 10% in Nov-Dec) → max 18 points contribution even at budget_score=100
 - **Exact eligible day counting** (`_count_eligible_days`): replaces the old `* 5/7` and `* 6/7` approximations. Iterates day by day from `start` to `end`, checking weekday + holiday status. ROUGE mode: weekdays excluding French holidays (R2). BLANC mode: all days except Sundays (R3). Accounts for ~3-4 weekday holidays in RED season (Toussaint, Armistice, Noël, Jour de l'an) that the 5/7 formula ignored.
 - **Density override progressive** : quand la densité RED (remaining/eligible) est élevée, le seuil ROUGE effectif est abaissé proportionnellement. Calibration : densité 20% → pas de réduction, 35% → -3 pts, 50% → -10 pts, 70% → -22 pts. Cela permet de capturer les jours « moyennement froids » (5-7°C) quand la densité l'exige, sans forcer ROUGE sur les jours doux (≥ 8°C).
 - **Density override critique** (slack <= 1): when eligible - remaining <= 1, temperature is irrelevant — EDF MUST place these days. Override forces ROUGE/BLANC BEFORE EDF rules (which still enforce weekends/holidays/R1-R4). Slack adapts naturally to any eligible count (avoids fixed-threshold bugs where density dips mid-sequence). Uses `_count_eligible_days` for exact slack calculation.
@@ -289,7 +290,7 @@ git push -u origin <branch-name>
 - Generation forecast (v3 API, AGGREGATED_FRANCE) — observabilité uniquement, pas de scoring
 - **Nuclear unavailable**: NUCLEAR n'est pas un type valide dans l'API Generation Forecast RTE. La disponibilité nucléaire nécessiterait l'API Actual Generation (non implémentée). Le scoring fonctionne correctement sans ce signal.
 - If consumption API fails: returns `{"score": 50, "available": False}` → predictor uses 50 (neutral)
-- RTE weight is 10% → max 10 points contribution on final score
+- RTE / C_nette weight is 18% → max 18 points contribution on final score
 
 ### Learning System (performance_tracker.py)
 - **Weight recalculation**: LogisticRegression multinomial, cost-sensitive (ROUGE=25, BLANC=3, BLEU=1)
@@ -391,13 +392,18 @@ git push -u origin <branch-name>
 - **Season selector**: Only shows seasons with non-simulated predictions after `PREDICTION_START_DATE`.
 - **Staircase version boundaries**: `_renderRecapTable()` computes for each cell (date, J-N) which version was active when the prediction was made (`_getActiveVersion(targetDate, horizon)` = latest version deployed ≤ target_date - N days). Borders appear where adjacent cells (above or left) belong to different versions: `border-top` for horizontal steps, `border-left` for vertical connectors. **Latest version**: solid 2px `#7B1FA2` (purple). **Older versions**: dashed **2px** `#B39DDB` (light purple). Both solid and dashed must be 2px because CSS `border-collapse: collapse` makes solid win over dashed at the same width — at 1px, dashed borders would disappear.
 
+## Décisions fondateur (NE PAS remettre en cause, NE PAS « corriger »)
+- **Lien Selectra** (`templates/dashboard.html`, FAQ « Combien coûte réellement un jour rouge ? ») : conservé TEL QUEL, en dofollow, sans `rel="nofollow"`/`sponsored`. C'est l'accord passé avec Selectra (décision Thomas, 2026-09-29). Ne pas le modifier, le déplacer ni le signaler comme risque dans les audits.
+- **« Plus de 2 500 foyers alertés »** : chiffre conservé (décision Thomas, 2026-09-29). Ne pas le retirer ; seule sa centralisation en constante est permise.
+- **Hébergement** : Replit reste la prod pour la prochaine mise à jour (décision 2026-09-29). La config Cloudflare (`cloudflare/`) est prête mais inactive ; la migration n'est lancée que sur demande explicite.
+
 ## Common Pitfalls
 - **Data leakage**: Never use same-day RTE consumption for predictions (only lag features D-1+)
 - **Multi-horizon storage**: `store_prediction` blocks ANY new non-confirmed prediction if the date already has a confirmed row (any horizon). This prevents new horizons from shadowing confirmed predictions via `GROUP BY date + MAX(id)` queries
 - **Orphan cleanup**: Must preserve multi-horizon prediction history (clean per-horizon, not per-date)
 - **Weather insert**: `fetched_at` column is NOT NULL — always include it in INSERT statements
 - **DB migrations**: Always update version assertions in tests when adding new migrations
-- **Dependencies**: `fastapi` requires `python-multipart` for Form data — ensure both are installed
+- **Dependencies**: `fastapi` requires `python-multipart` for Form data — pinned in `requirements.txt` since 2026-09-29 (without it FastAPI never loads and the startup proxy serves the loading page forever)
 - **SQL portability**: Never use SQLite-specific functions (`strftime`, `GROUP_CONCAT`, `typeof`, `julianday`) in SQL queries — see Database section for compatible alternatives
 - **Admin password diagnostic**: At startup, the lifespan logs the password source (`ADMIN_PASSWORD` env, `SESSION_SECRET`, or generated random) and length. Failed login attempts log length mismatch. Check Replit logs if login fails after changing the Secret.
 - **EDF confirmation propagation**: API endpoints (`/api/today`, `/api/tomorrow`) call `store_actual()` + `evaluate_predictions_for_date()` + `confirm_prediction()` via `_propagate_edf_confirmation()`. Evaluation is called BEFORE confirmation (same order as scheduler) to ensure predictions are evaluated even if the 11h30 scheduler fails. Also invalidates `_perf_summary_cache`.
@@ -444,7 +450,7 @@ git push -u origin <branch-name>
 - **Robots.txt**: Explicit `Allow: /calendrier`, `Allow: /blog/`. Disallows `/admin`, `/api/`, `/manage/`. AI bot rules: GPTBot, ChatGPT-User, ClaudeBot, PerplexityBot, Google-Extended allowed on `/`, `/calendrier`, `/blog/`, `/api/today`, `/api/tomorrow`, `/api/predictions`, `/llms.txt`, `/feed.xml`.
 - **AI discovery**: `/llms.txt` endpoint for AI crawlers. `/feed.xml` RSS 2.0 feed for blog articles.
 - **Internal linking**: "Calendrier" in nav across all templates. Footer links to Calendrier, Blog, Alertes, Mentions légales on every page. Blog articles cross-link to each other (17+ internal links across 7 articles) and to `/calendrier` and `/#subscribe`.
-- **Blog SEO articles**: 8 articles total — 6 original + "Tempo EDF 2026 guide complet" (targets "tempo edf") + "Historique calendrier Tempo" (targets "calendrier tempo", expanded to 1655 words).
+- **Blog SEO articles**: 22 articles in `articles/` (2026-09-29), 5 topic clusters. Count with `ls articles/[!_]*.md`.
 - **Heading hierarchy**: Only homepage has `<h1>` in header. All other pages use `<span class="header-title">` in header to avoid duplicate H1 (each page has its own content `<h1>`).
 - **Google Fonts**: Loaded via `<link rel="preconnect">` + `<link rel="stylesheet">` in HTML (not CSS `@import`).
 - **Minified assets**: `style.min.css` (37KB, -31%) and `app.min.js` (18KB, -47%). All templates reference minified versions.
@@ -478,7 +484,7 @@ git push -u origin <branch-name>
 - **Editorial calendar**: `articles/_calendrier_editorial.yaml` (YAML format, single source of truth — no `.md` duplicate). Tracks 10+ weeks ahead, updated each Tuesday.
 - **Publication log**: `articles/_publication_log.md` — persistent log of every publication action
 - **Scheduler**: `task_seo_agent` in scheduler.py — CronTrigger every Tuesday at 9h00 Paris time. `_should_publish_today()` gates execution based on seasonal frequency. Silently skipped if `ANTHROPIC_API_KEY` not set.
-- **Seasonal schedule** (`Config.SEO_SEASON_SCHEDULE`): Nov-Mar (saison active) = weekly; Sep-Oct (pré-saison) = bimonthly (1er+3e mardi); Apr-May (post-saison) = monthly (1er mardi); Jun-Aug (morte-saison) = off. ~30 articles/an au lieu de 52, concentrés quand le trafic Tempo est actif.
+- **Seasonal schedule** (`Config.SEO_SEASON_SCHEDULE`): Nov-Mar (saison active) = weekly; Apr-Oct = bimonthly (1er+3e mardi), publication estivale evergreen activée le 2026-05-26. Modes "monthly" et "off" supportés mais non utilisés.
 - **API key**: Requires `ANTHROPIC_API_KEY` in environment variables (Replit Secrets). One-time setup. Uses Claude Sonnet for cost efficiency.
 - **Manual trigger**: Available via admin panel `/admin` → task `seo_agent`, or `run_task_now("seo_agent")` (bypasses seasonal gate)
 - **Schedule**: Each eligible Tuesday, the agent runs the full cycle: SEO monitoring → inventory → calendar → writing → review → bidirectional linking → publication → logging
@@ -495,7 +501,7 @@ git push -u origin <branch-name>
 - **Publishing**: Articles auto-appear on `/blog/`, `/sitemap.xml`, `/feed.xml` when `publish_date <= today`
 - **Style**: Vouvoiement, expert accessible tone, 1200-2000 words per article
 - **SEO requirements**: Min 5 internal links per article (3 blog + /calendrier + /#subscribe + pillar). Keyword in title/description/H1/intro. FAQ section (2-3 PAA questions). 1+ featured snippet element per H2. Meta description 140-155 chars max. Title 50-65 chars.
-- **Existing coverage**: 8 articles through March 24, 2026. Calendar planned through June 2, 2026.
+- **Existing coverage**: see `articles/` and `articles/_calendrier_editorial.yaml` (planned through 2027-03-30 as of 2026-09-29).
 - **Context management**: Agent trims messages to last 16 when context exceeds 20 messages (keeps initial user message). Prevents context overflow on long runs.
 - **Cost tracking**: Agent logs estimated token costs (Sonnet pricing) and returns `tokens` dict in result (input, output, est_cost_usd).
 - **Web search**: DuckDuckGo HTML scraping with 3-level fallback (structured title+snippet → snippets only → titles only). Fragile but functional.
