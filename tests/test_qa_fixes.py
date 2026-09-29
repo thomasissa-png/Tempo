@@ -1538,18 +1538,28 @@ class TestGoogleFontsOptimization:
         lines = [l for l in content.split('\n') if l.strip().startswith('@import')]
         assert len(lines) == 0, f"Active @import found in style.css: {lines}"
 
-    def test_templates_have_preconnect(self):
-        """Key templates use preconnect for Google Fonts."""
-        templates_dir = os.path.join(
-            os.path.dirname(os.path.dirname(__file__)), "templates"
-        )
-        for tpl in ["dashboard.html", "calendrier.html", "alertes.html"]:
-            filepath = os.path.join(templates_dir, tpl)
-            with open(filepath) as f:
+    def test_templates_use_local_fonts(self):
+        """Inter est hébergée localement (RGPD) : aucune requête vers Google Fonts,
+        police principale préchargée."""
+        root = os.path.dirname(os.path.dirname(__file__))
+        templates_dir = os.path.join(root, "templates")
+        for tpl in os.listdir(templates_dir):
+            if not tpl.endswith(".html"):
+                continue
+            with open(os.path.join(templates_dir, tpl), encoding="utf-8") as f:
                 content = f.read()
-            assert 'rel="preconnect" href="https://fonts.googleapis.com"' in content, (
-                f"Missing preconnect in {tpl}"
+            assert "fonts.googleapis.com" not in content and "fonts.gstatic.com" not in content, (
+                f"Google Fonts encore chargé dans {tpl}"
             )
+        for tpl in ["dashboard.html", "calendrier.html", "alertes.html"]:
+            with open(os.path.join(templates_dir, tpl), encoding="utf-8") as f:
+                content = f.read()
+            assert 'href="/static/fonts/inter-latin-wght-normal.woff2" as="font"' in content, (
+                f"Police locale non préchargée dans {tpl}"
+            )
+            assert "/static/css/fonts.css" in content
+        for font in ["inter-latin-wght-normal.woff2", "inter-latin-ext-wght-normal.woff2"]:
+            assert os.path.isfile(os.path.join(root, "static", "fonts", font))
 
 
 class TestBreadcrumbsComplete:

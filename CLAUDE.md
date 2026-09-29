@@ -454,7 +454,7 @@ git push -u origin <branch-name>
 - **Internal linking**: "Calendrier" in nav across all templates. Footer links to Calendrier, Blog, Alertes, Mentions légales on every page. Blog articles cross-link to each other (17+ internal links across 7 articles) and to `/calendrier` and `/#subscribe`.
 - **Blog SEO articles**: 22 articles in `articles/` (2026-09-29), 5 topic clusters. Count with `ls articles/[!_]*.md`.
 - **Heading hierarchy**: exactly one `<h1>` per page, in the main content (header uses `<span class="header-title">`).
-- **Google Fonts**: Loaded via `<link rel="preconnect">` + `<link rel="stylesheet">` in HTML (not CSS `@import`).
+- **Fonts (RGPD, 2026-09-29)**: Inter is self-hosted (`static/fonts/*.woff2`, `static/css/fonts.css`, SIL OFL licence). NEVER load Google Fonts again (visitor IP sent to Google without consent). Main woff2 preloaded; test `test_templates_use_local_fonts` enforces it.
 - **Minified assets**: `style.min.css` and `app.min.js`, referenced with a `?v=` cache-busting query. Keep them in sync with the sources.
 
 ### Alert UX
