@@ -32,6 +32,7 @@ Invariants à ne jamais casser :
 - `check_access.py` : vérifie accès et secrets, et surtout que la clé relit les numéros des abonnés.
 - `copy_database.py` : copie complète Replit (`REPLIT_DATABASE_URL`) → Neon (`NEON_DATABASE_URL`).
 - `push_secrets.py` : secrets de l'app (environnement de la session) → Worker.
+- `merge_users.py` : abonnés modifiés sur Replit pendant la transition DNS → Neon.
 - `scripts/docker-proxy-ca.sh` : build Docker derrière le proxy TLS des sessions Claude.
 
 ## Déployer depuis une session Claude Code
@@ -71,23 +72,36 @@ toutes les pages en 200, IP réelle transmise, canonicals en https, scheduler d�
    sans `ANTHROPIC_API_KEY`, les agents SEO/backlinks sont ignorés.
 4. Vérifier sur `https://calendrier-tempo.<sous-domaine>.workers.dev` : pages, `/admin`,
    logs (`npx wrangler tail`), `[RTE twin]` actif, prédictions générées.
+5. Abaisser à 60 s le TTL des enregistrements DNS `www` et apex (toujours vers Replit) : la
+   bascule se propagera en une minute au lieu de cinq.
 
-## Phase 2 : bascule (fenêtre 13h-17h, pas un mardi ni un dimanche)
+## Phase 2 : bascule SANS COUPURE (fenêtre 13h-17h, pas un mardi ni un dimanche)
 
-Ordre choisi pour n'avoir ni doublon d'alerte ni perte de données :
-1. Fondateur : Replit → Deployments → **Stop** (plus aucune écriture ni alerte côté Replit).
-   La base Replit reste lisible après l'arrêt.
-2. Claude : `copy_database.py` (état final) puis `push_secrets.py --prod`. Le Worker détecte le
-   changement de secrets et redémarre le conteneur (empreinte dans `worker.ts`).
-3. Claude : supprimer les enregistrements DNS `www` et apex qui pointent vers Replit, activer
-   les deux `custom_domain` dans `wrangler.jsonc`, `wrangler deploy`.
-4. Vérifier : `/health`, home, `/admin`, `GET /admin/whatsapp-diagnostic` (Bearer `ADMIN_PASSWORD`)
-   doit renvoyer `token_set: true`, webhook WhatsApp (message « RECAP » de test), logs du
-   scheduler. L'URL du webhook Meta reste `https://www.calendrier-tempo.fr/...` : rien à changer chez Meta.
+Décision fondateur : le site ne doit jamais être hors ligne. Principe : Replit continue de
+servir pendant toute la bascule ; on n'arrête Replit qu'une fois le trafic passé sur Cloudflare.
+Entre 13h et 17h aucune tâche n'envoie d'alerte (7h30, 18h, dimanche 20h) : les deux
+serveurs peuvent coexister quelques minutes sans doublon.
 
-Retour arrière : redémarrer le déploiement Replit, restaurer les enregistrements DNS.
-Les données écrites côté Neon entre-temps se recopient avec `copy_database.py` en
-inversant les deux variables (REPLIT_DATABASE_URL = Neon, NEON_DATABASE_URL = Replit).
+Prérequis : zone `active` ; TTL des enregistrements `www` et apex abaissé à 60 s (fait en phase 1,
+au moins 1 h avant).
+1. Claude : `copy_database.py` (Replit toujours en ligne), puis `push_secrets.py --prod`. Le Worker
+   détecte le changement de secrets et redémarre le conteneur (empreinte dans `worker.ts`).
+   Vérifier sur `*.workers.dev` : `GET /admin/whatsapp-diagnostic` (Bearer `ADMIN_PASSWORD`)
+   renvoie `token_set: true`, pages et `/admin` OK. Au moindre doute : on s'arrête là, rien n'a changé
+   pour les visiteurs.
+2. Claude : remplacer les enregistrements DNS `www` et apex (Replit) par les deux `custom_domain`
+   de `wrangler.jsonc`, `wrangler deploy`. Pendant la propagation (quelques minutes), une partie
+   des visiteurs voit encore Replit, les autres Cloudflare : le site répond toujours.
+3. Claude : vérifier que `www.calendrier-tempo.fr` répond depuis Cloudflare (`/health`, home,
+   `/admin`, message « RECAP » de test au webhook WhatsApp). L'URL du webhook Meta ne change pas.
+4. Après 10 minutes, avant 17h30 : fondateur, Replit → Deployments → **Stop**. Indispensable :
+   sinon le scheduler Replit enverrait aussi les alertes de 18h (doublons).
+5. Claude : `merge_users.py` rapatrie les inscriptions, désinscriptions et changements de
+   préférences arrivés sur Replit pendant la transition (clé `phone_hash`, le plus récent gagne).
+
+Retour arrière (avant l'étape 4) : remettre les enregistrements DNS vers Replit, qui n'a jamais
+été arrêté. Après l'étape 4 : redémarrer le déploiement Replit, remettre le DNS, et recopier
+Neon → Replit avec `copy_database.py` en inversant les deux variables.
 
 Après 7 jours sans incident : le fondateur peut résilier Replit (garder un export avant).
 
