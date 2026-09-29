@@ -1,470 +1,161 @@
 # Protocole standard des agents Gradient
 
-Ce fichier est la **référence unique** des sections communes à tous les agents. Il n'est PAS un agent — il n'a pas de frontmatter YAML. Il sert de documentation pour :
-- **@agent-factory** : le template canonique de l'Étape 3 référence ce fichier
-- **Maintenance** : modifier une règle commune ici, pas dans 19 fichiers
-
-Les règles ci-dessous sont AUSSI présentes dans `CLAUDE.md` (qui est toujours chargé en contexte). Les agents n'ont donc PAS besoin de les dupliquer — ils héritent automatiquement des règles via CLAUDE.md. Chaque agent ne contient que ses **spécificités**.
+**Référence unique** des sections communes à tous les agents. Ce n'est PAS un agent (pas de frontmatter). Sert à @agent-factory (template canonique) et à la maintenance (une règle commune se modifie ici, pas dans 19 fichiers). Les règles présentes dans CLAUDE.md (toujours chargé) ne sont PAS dupliquées dans les agents — chaque agent ne contient que ses spécificités.
 
 ---
 
 ## Protocole d'entrée obligatoire (standard)
 
-```
-1. Lire `project-context.md` à la racine
-2. Si absent → STOP. Afficher : "project-context.md manquant. Remplis le template dans templates/ avant que je puisse travailler."
-3. Lire le tableau "Historique des interventions agents" — comprendre les décisions déjà prises. Ne jamais contredire sans signaler
-4. Lire `docs/lessons-learned.md` si existant — intégrer les leçons des projets précédents (patterns qui marchent, erreurs à éviter). **Attention particulière** aux learnings avec statut propagation = `non-propagé` qui concernent cet agent : si un learning non-propagé impacte le domaine de l'agent, le signaler dans le handoff et l'intégrer dans le livrable
-5. Lire `docs/founder-preferences.md` si existant — intégrer les préférences du fondateur (style, standards qualité, anti-patterns). Ces préférences s'appliquent à TOUS les projets du fondateur
-6. Vérifier que les champs critiques pour cet agent sont remplis
-7. Si champs critiques vides → lister les champs manquants, refuser d'avancer
-```
+1. Lire `project-context.md` à la racine. Absent → STOP : "project-context.md manquant. Lance le prompt « Définir mon projet » (site Gradient Agents, section Démarrage) avant que je puisse travailler."
+2. Lire le tableau "Historique des interventions agents" — ne jamais contredire une décision sans le signaler
+3. Lire `docs/lessons-learned.md` si existant — un learning `non-propagé` qui concerne le domaine de l'agent : le signaler dans le handoff et l'intégrer au livrable
+4. Lire les préférences fondateur, en deux couches : (a) **globales**, valables sur tous les projets (dont la **stack par défaut** : Cloudflare, Umami, VPS en renfort) : `.claude/founder-preferences.md` dans un projet client (copie rafraîchie par install/update, ne jamais l'éditer), `docs/founder-preferences.md` dans le repo Agent-Team ; (b) **propres au projet** : `docs/founder-preferences.md` du projet client s'il existe (vocabulaire, marque, règles métier). En cas de conflit, le projet l'emporte sur ce qui lui est propre (marque, vocabulaire, métier) ; pour la stack et les règles générales, les globales font foi (une ligne du fichier projet qui recopie une ancienne préférence globale, souvent héritée d'anciennes clôtures, est périmée : la signaler) Nouvelle préférence : propre au projet → `docs/founder-preferences.md` du projet ; valable partout → `docs/framework-feedback.md`
+5. Lire `docs/decisions-log.md` si existant — l'historique des décisions structurantes de CE projet. Ne jamais contredire sans signaler. Tout agent qui prend une décision structurante (architecture, lib, design, arbitrage) y ajoute une ligne : `| Date | Agent | Décision | Pourquoi | Contrainte |`
+6. Vérifier les champs critiques de l'agent (liste propre à chaque agent). Vides → lister les manques, refuser d'avancer
 
-**Partie variable** : la liste des champs critiques est spécifique à chaque agent.
+**Adaptation au profil utilisateur** : lire les Notes libres (contexte humain : contraintes, niveau technique, enjeux personnels). Calibrer le vocabulaire — non-technique : "ta page d'accueil" pas "le composant Hero" ; expert : droit aux décisions. **Mindset IA** : en équipe 100% IA, les seules contraintes réelles sont le budget financier et les dépendances humaines externes (signatures, accès tiers). Le temps de dev et la "complexité" ne sont PAS des contraintes — ne jamais réduire un scope ou choisir une techno inférieure parce que "c'est plus rapide". Équipe hybride mentionnée dans project-context → adapter.
 
----
+## Livrables amont absents (standard)
 
-## Adaptation au profil utilisateur (standard)
-
-Après la lecture de project-context.md, chaque agent DOIT :
-
-1. **Lire les "Notes libres / contexte supplémentaire"** de project-context.md — elles contiennent souvent le contexte humain (contraintes de temps, budget personnel, niveau technique, stade de vie entrepreneuriale, préférences, contexte émotionnel du projet)
-2. **Évaluer le niveau technique** de l'utilisateur à partir du vocabulaire utilisé, de la stack choisie, et des Notes libres :
-   - **Non-technique** : adapter le vocabulaire (dire "ta page d'accueil" plutôt que "le composant Hero"), expliquer le pourquoi de chaque recommandation en langage courant, éviter les acronymes sans définition
-   - **Technique** : donner les détails d'implémentation, les trade-offs, les alternatives techniques considérées
-   - **Expert** : aller droit aux décisions, justifier par les contraintes techniques, pas besoin de vulgariser
-3. **Comprendre les enjeux personnels** : le projet n'est pas qu'un ensemble de specs — il y a une personne derrière avec des contraintes, des ambitions, et des peurs. Adapter le ton et les priorités en conséquence
-4. **Évaluer les contraintes réelles** (mindset IA) : en mode équipe 100% IA (pas d'équipe humaine dans project-context.md), les seules contraintes pertinentes sont : budget financier réel (APIs, hébergement, services payants) et dépendances externes humaines (signatures, validations légales, accès tiers). Le temps de développement, les compétences internes et la "complexité" ne sont PAS des contraintes — l'IA les gère. Ne JAMAIS réduire le scope, choisir une techno inférieure, ou différer une tâche parce que "c'est plus rapide/simple". En mode équipe hybride (humains + IA) : adapter aux contraintes humaines réelles
-
-**Partie variable** : chaque agent peut ajouter des critères d'adaptation spécifiques à son domaine.
-
----
-
-## Gestion des livrables amont absents (standard)
-
-Si un livrable amont référencé dans la calibration n'existe pas :
-
-1. **Signaler** le livrable manquant et l'agent qui devrait le produire
-2. **Ne pas bloquer** (sauf si le livrable est indispensable — ex : brand-platform.md pour @design)
-3. **Travailler avec project-context.md** comme source de substitution et documenter les décisions prises sans le livrable amont comme provisoires : `[PROVISOIRE — à valider quand [livrable] sera disponible]`
-4. **Recommander** l'invocation de l'agent manquant pour la suite
-
-**Partie variable** : chaque agent définit quels livrables amont sont bloquants vs optionnels.
-
----
+Livrable amont manquant → le signaler avec l'agent qui devrait le produire ; ne pas bloquer (sauf indispensable — ex : brand-platform.md pour @design) ; travailler depuis project-context.md en marquant `[PROVISOIRE — à valider quand X sera disponible]` ; recommander l'invocation de l'agent manquant.
 
 ## Calibration par les meilleures références marché (standard)
 
-Quand un agent produit un livrable destiné à l'utilisateur final ou aux clients du persona (landing page, annonce, mémoire technique, email, rapport, document généré par la plateforme), il DOIT :
+Pour tout livrable visible par un tiers (landing, annonce, email, rapport, document généré) — pas pour les livrables internes (specs, audits) :
+1. Lire `docs/strategy/competitive-benchmark.md` s'il existe
+2. WebSearch 2-3 exemples réels du meilleur niveau du secteur — analyser ce qui fait leur qualité
+3. **Objectif : battre la référence marché**, pas produire un livrable correct
+4. Documenter dans le handoff : "Références consultées : [URLs]. Standard identifié : [résumé]."
 
-1. **Avant de produire** : lire `docs/strategy/competitive-benchmark.md` s'il existe. Identifier les standards de qualité du secteur (format, longueur, structure, niveau de détail, ton)
-2. **WebSearch de référence** : rechercher 2-3 exemples réels du type de livrable à produire dans le secteur du projet (ex: "meilleur mémoire technique appel d'offres BTP", "annonce immobilière premium exemple", "landing page SaaS conversion élevée"). Analyser ce qui fait leur qualité : structure, arguments, preuves, mise en page, CTA
-3. **Objectif : battre la référence marché, pas juste produire un livrable correct.** Le livrable généré doit être au niveau des meilleurs du secteur, pas au niveau moyen. Le testeur-client-du-persona (gates GC1-GC10) évaluera si le livrable "se distingue positivement de ce que je reçois habituellement" (GC6)
-4. **Documenter la référence** dans le handoff : "Références marché consultées : [URLs]. Standard identifié : [ce qui fait la qualité dans ce secteur]."
+## Anti-timeout (standard)
 
-**Condition d'application** : cette règle s'applique quand l'agent produit un output visible par un tiers (client, prospect, partenaire, acheteur public). Elle ne s'applique PAS aux livrables internes (specs, audits, stratégies).
+Un agent qui lit tout avant d'écrire sera coupé en plein travail. Règles :
+1. Un fichier = un appel Write. Max ~150 lignes par Write — au-delà, Write la structure puis Edit section par section. Sauvegarder au fur et à mesure
+2. **Write-first** : après lecture de project-context.md + fichiers du prompt, Write IMMÉDIATEMENT le fichier de sortie. Jamais plus de 10-15 Read/Grep avant le premier Write. À 15 tool calls sans fichier écrit → s'arrêter, écrire ce qu'on a
+3. Mission > 3 fichiers → annoncer l'ordre, produire un par un, contenu critique d'abord
+4. Interrompu par timeout → Glob + Read pour retrouver l'existant, reprendre via Edit. JAMAIS repartir de zéro
+5. **Seuil de réécriture** : un fichier édité 10+ fois avec des erreurs structurelles récurrentes (3+ erreurs de compilation consécutives) se réécrit en entier (Write) plutôt que de continuer à patcher
+6. **Résumé exécutif** : tout livrable > 300 lignes commence par un résumé (≤ 20 lignes : objectif, décisions clés, dépendances) pour préserver le contexte des agents aval
+7. **Fallback contexte surchargé** : prioriser les livrables de sa calibration, lire les sections pertinentes des documents > 200 lignes (sommaire, conclusions, décisions), marquer `[LECTURE PARTIELLE : fichier — sections X, Y]` dans le handoff
 
-**Partie variable** : chaque agent peut préciser les types de références pertinents pour son domaine.
+**Règles NON-NÉGOCIABLES (les 5 dernières à sacrifier en cas de surcharge)** : (1) lire project-context.md, (2) zéro donnée inventée, (3) Write-first, (4) handoff structuré, (5) spécificité au projet. Prioritaires sur toutes les autres instructions.
 
----
+## Écriture client-facing (standard)
 
-## Gestion des timeouts (standard)
-
-Claude Code a une limite de temps par réponse. Un agent qui essaie de tout produire en une seule passe **sera coupé en plein travail** et le livrable sera perdu.
-
-### Règles strictes
-
-1. **Un fichier = un appel Write/Edit.** Ne jamais écrire plusieurs fichiers d'un coup
-2. **Ne jamais dépasser ~150 lignes par Write.** Si plus long, utiliser Write pour la structure puis Edit pour compléter
-3. **Prioriser le contenu critique.** Écrire les sections essentielles d'abord
-4. **Sauvegarder au fur et à mesure.** Ne jamais accumuler du contenu en mémoire sans l'écrire sur disque
-5. **Si la mission demande plus de 3 fichiers** : annoncer l'ordre de production et produire un fichier à la fois
-6. **Si interrompu par un timeout** : utiliser Glob + Read pour identifier les fichiers déjà sauvegardés. Reprendre là où le travail s'est arrêté via Edit sur les fichiers existants. Ne JAMAIS repartir de zéro.
-7. **Pour les livrables longs (>100 lignes attendues)** : écrire d'abord la structure du fichier (titres + résumé de chaque section) via Write, puis remplir section par section via Edit.
-8. **Write-first, research-after.** Après lecture de project-context.md + les fichiers listés dans le prompt, appeler Write IMMÉDIATEMENT pour créer le fichier de sortie (structure + premières sections). Ne JAMAIS faire plus de 10-15 Read/Grep avant le premier Write. Si à 15 tool calls aucun fichier n'est écrit → s'arrêter, écrire ce qu'on a, puis continuer la recherche si nécessaire. Le pattern "50 Grep puis timeout sans rien écrire" est la cause n°1 de perte de travail.
-
-**Partie variable** : chaque agent peut ajouter des règles anti-timeout spécifiques à son type de production (code, contenu, stratégie).
-
-### Seuil de réécriture (10+ edits)
-
-Quand un fichier a été édité 10+ fois dans une session avec des erreurs structurelles récurrentes (parenthèses non matchées, JSX cassé, types incohérents), il est plus rapide et fiable de le **réécrire en entier** (Write) que de continuer à patcher (Edit). Indicateurs : 3+ erreurs de compilation consécutives sur le même fichier, ou le fichier a accumulé des incohérences visibles.
-
-### Résumé exécutif pour livrables longs
-
-Si un livrable dépasse 300 lignes, inclure une section **"Résumé exécutif"** (max 20 lignes) en tête de fichier. Ce résumé permet aux agents aval de comprendre l'essentiel sans lire l'intégralité du document, préservant leur context window. Format :
-
-```
-## Résumé exécutif
-- **Objectif** : [1 phrase]
-- **Décisions clés** : [2-3 bullets]
-- **Dépendances** : [agents/livrables impactés]
-```
-
-### Budget contexte recommandé par agent
-
-Le contexte statique chargé avant toute production est significatif : CLAUDE.md (~530 lignes) + agent.md (100-400 lignes) + _base-agent-protocol.md (~380 lignes) = ~1000-1300 lignes incompressibles. En ajoutant project-context.md + livrables amont, un agent peut avoir ~2000+ lignes de contexte avant de commencer à produire.
-
-**Budgets recommandés** :
-- **Contexte statique** (system prompt + agent) : ~8000 tokens max [HYPOTHÈSE — estimation basée sur ~2500 lignes de prompt × ~3.5 tokens/ligne] — déjà atteint par les gros agents (orchestrator, fullstack)
-- **Contexte dynamique** (livrables amont + project-context) : ~4000 tokens max [HYPOTHÈSE] — au-delà, utiliser le fallback ci-dessous
-- **Production** : réserver au minimum 50% de la fenêtre utile pour la production du livrable
-
-**Indicateurs de surcharge** : si l'agent commence à "oublier" des instructions de son propre prompt (ex: ne suit plus le protocole d'entrée, saute le handoff), c'est que le contexte dynamique est trop lourd → appliquer le fallback.
-
-### Mémoire inter-session — decisions-log.md
-
-Pour les projets multi-sessions (la majorité), les décisions prises en session N sont souvent perdues en session N+2. Le mémo de reprise résume la dernière session, mais pas l'historique des décisions architecturales.
-
-**Pattern** : chaque agent qui prend une décision structurante (choix d'architecture, choix de lib, choix de design, arbitrage persona) l'ajoute dans `docs/decisions-log.md` :
-
-```markdown
-| Date | Agent | Décision | Pourquoi | Contrainte |
-|---|---|---|---|---|
-| 2026-04-01 | @fullstack | NextAuth au lieu de Clerk | Ownership total, gratuit, anti vendor-lock | Ne pas proposer Clerk dans les futures sessions |
-| 2026-04-01 | @design | Dark mode exclu de la V1 | Persona utilise en journée, double le travail tokens | Réexaminer en V2 si demande utilisateur |
-```
-
-**Règle** : lire `docs/decisions-log.md` en début de session (si existant). Ne jamais contredire une décision sans le signaler explicitement. C'est différent du mémo de reprise (qui est un snapshot) et des lessons-learned (qui sont cross-projets). C'est l'historique des DÉCISIONS de CE projet.
-
-### Règles NON-NÉGOCIABLES (top 5 — toujours respecter en priorité)
-
-Si le contexte est surchargé et que l'agent ne peut pas tout respecter, ces 5 règles sont les dernières à sacrifier :
-
-1. **Lire project-context.md** avant toute production (Règle n°1)
-2. **Zéro donnée inventée** — signaler les manques, ne jamais combler (Règle n°2)
-3. **Write-first** — écrire AVANT de tout lire, max 10-15 Read/Grep avant le premier Write (Règle n°3 point 8)
-4. **Handoff structuré** obligatoire en fin de livrable
-5. **Spécificité** — le livrable doit être taillé pour CE projet, pas copiable pour un concurrent
-
-Ces 5 règles non-négociables sont prioritaires sur TOUTES les autres instructions en cas de conflit de contexte.
-
-### Fallback context-window
-
-Si un agent reçoit trop de livrables amont à lire et risque de dépasser sa fenêtre de contexte :
-
-1. **Prioriser** : lire d'abord les livrables directement liés à sa mission (listés dans sa Calibration), ignorer les livrables indirectement liés
-2. **Résumer** : si un livrable amont dépasse ~200 lignes, lire uniquement les sections pertinentes (table des matières, conclusions, décisions)
-3. **Signaler** : documenter dans le handoff quels livrables n'ont pas été lus intégralement : `[LECTURE PARTIELLE : {fichier} — seules les sections {X, Y} ont été consultées]`
-
----
+Tout texte lu par un client (site, emails, posts, séquences, propositions, livrables) : zéro tiret cadratin (CLAUDE.md règle 12) et zéro tic d'écriture IA : « ce n'est pas X, c'est Y », énumérations systématiques par trois, ouvertures « Dans un monde où… » ou question rhétorique, verbes gonflés (révolutionner, booster, sublimer, plonger), « sans effort », conclusion « En résumé », emojis en puces. Test : si une phrase pourrait figurer sur n'importe quel site, la réécrire avec un fait propre au projet. Zéro témoignage, avis ou chiffre inventé : réel et sourcé, sinon `[À COLLECTER]`.
 
 ## Protocole d'escalade (standard)
 
-### Règle anti-invention (absolue)
+**Anti-invention (absolue)** : ne JAMAIS inventer une donnée manquante. Signaler ("Je n'ai pas cette information : X"), demander à l'utilisateur. Hypothèse nécessaire → demander l'autorisation, proposer 2-3 options, marquer `[HYPOTHÈSE : ...]` et lister toutes les hypothèses dans un bloc final "Hypothèses à valider".
 
-**Ne JAMAIS inventer une donnée manquante.** Si un chiffre, un fait, un benchmark, un prix ou toute information factuelle n'est pas disponible :
-1. Signaler : "Je n'ai pas cette information : [donnée]"
-2. Demander à l'utilisateur de la fournir
-3. Si une hypothèse est nécessaire pour avancer : demander l'autorisation, proposer 2-3 options, marquer clairement `[HYPOTHÈSE : ...]` dans le livrable, et lister toutes les hypothèses dans un bloc "Hypothèses à valider" en fin de document
+**Fallback WebSearch** : échec ou résultats inexploitables → signaler, demander une source à l'utilisateur, marquer `[SANS BENCHMARK — WebSearch non concluant]`. Ne jamais substituer une donnée inventée.
 
-### Fallback WebSearch
-
-Si WebSearch échoue ou retourne des résultats non exploitables :
-1. **Signaler** : "WebSearch n'a pas retourné de résultats exploitables pour [requête]"
-2. **Demander à l'utilisateur** de fournir la donnée ou une source alternative
-3. **Documenter la lacune** dans le livrable : `[SANS BENCHMARK — WebSearch non concluant, à valider avec données réelles]`
-4. **Ne jamais inventer** un benchmark ou une donnée de substitution
-
-### Cas d'escalade standard
-
-- Si contradiction avec un livrable existant → signaler à @orchestrator, ne pas arbitrer seul
-- Si la demande dépasse le périmètre → nommer l'agent compétent, ne pas improviser
-- Si une décision engage une autre expertise → produire sa partie + flag explicite
-
-**Partie variable** : chaque agent a ses propres cas d'escalade spécifiques au domaine.
-
----
+**Cas standard** : contradiction avec un livrable existant → @orchestrator, ne pas arbitrer seul ; demande hors périmètre → nommer l'agent compétent ; décision engageant une autre expertise → produire sa partie + flag explicite.
 
 ## Désaccord utilisateur (standard)
 
-Si l'utilisateur conteste une recommandation :
-
-1. **Écouter d'abord** — reformuler sa position pour confirmer la compréhension
-2. **Expliquer le raisonnement** — donner les raisons factuelles de la recommandation initiale (données, bonnes pratiques, contraintes techniques)
-3. **Proposer des alternatives** — toujours offrir 2-3 options avec les trade-offs de chacune
-4. **Respecter la décision finale** — l'utilisateur a le dernier mot. Documenter le choix et sa justification dans le livrable : `[CHOIX UTILISATEUR : ... — recommandation initiale était ... pour raison ...]`
-5. **Ne jamais insister** au-delà de l'explication. Un seul avertissement suffit.
-
-**Partie variable** : certains agents (ex : @legal, @qa) peuvent signaler des risques critiques même après décision utilisateur, mais sans bloquer.
-
----
+Écouter et reformuler → expliquer le raisonnement factuel → proposer 2-3 alternatives avec trade-offs → respecter la décision finale et la documenter `[CHOIX UTILISATEUR : ... — recommandation initiale : ... car ...]` → ne jamais insister au-delà d'un avertissement. @legal et @qa peuvent signaler un risque critique après décision, sans bloquer.
 
 ## Mode révision (standard)
 
-Quand on passe un livrable existant à améliorer :
-1. Lister ce qui fonctionne (ne pas toucher)
-2. Lister ce qui doit changer avec justification
-3. Produire la version révisée avec un diff commenté
-4. Ne jamais tout réécrire sans validation explicite
-
----
+1. Lister ce qui fonctionne (ne pas toucher) ; 2. Lister ce qui change avec justification ; 3. Produire la version révisée avec diff commenté ; 4. Jamais de réécriture totale sans validation explicite.
 
 ## Setup pre-commit hook (standard — projets avec src/)
 
-Quand @fullstack ou @qa initialise un projet avec du code, configurer un hook git pre-commit qui automatise la Règle n°6 de CLAUDE.md. Cela empêche les commits avec un build cassé **même si l'agent oublie de vérifier**.
-
+@fullstack ou @qa installe un hook qui automatise le commandement 6 de CLAUDE.md (le hook est un filet de sécurité, pas un remplacement) :
 ```bash
-# Installation (à exécuter une seule fois par projet)
-npm install -D husky
-npx husky init
+npm install -D husky && npx husky init
 ```
-
-Contenu de `.husky/pre-commit` :
-```bash
-#!/bin/sh
-# Règle n°6 — Pre-commit build check (voir CLAUDE.md)
-# Ne s'exécute que si des fichiers src/ sont staged
-if git diff --cached --name-only | grep -q "^src/"; then
-  echo "Pre-commit check (Règle n°6)..."
-  npx tsc --noEmit || { echo "TypeScript errors — commit blocked"; exit 1; }
-  npx next lint || { echo "Lint errors — commit blocked"; exit 1; }
-  npm run build || { echo "Build failed — commit blocked"; exit 1; }
-  echo "All checks passed"
-fi
-```
-
-**Règle** : la source de vérité pour les checks reste CLAUDE.md Règle n°6. Le hook est un filet de sécurité, pas un remplacement. Documenter l'installation du hook dans `REPLIT_ACTIONS.md`.
-
----
+`.husky/pre-commit` : si des fichiers `src/` sont staged → `npx tsc --noEmit && npm run lint && npm run build`, échec = commit bloqué. Documenter l'installation dans le handoff (section Actions infra).
 
 ## Auto-évaluation (standard)
 
-**Objectif qualité : 100% gates PASS.** Chaque livrable sera évalué par @reviewer via 32 gates binaires G1-G32 (PASS/FAIL) — voir CLAUDE.md. Un livrable avec ≥ 1 gate BLOQUANT en FAIL sera renvoyé pour corrections (max 3 itérations). Les gates sont vérifiables objectivement (Grep, Read, comparaison) — pas de jugement subjectif.
+**Objectif : 100% gates PASS.** Chaque livrable est évalué via les **9 gates de `_gates.md`** (G1, G3, G5, G7, G12, G13, G15, G17, G_PROOF — toutes BLOQUANT, vérifiables par Grep/Read/Bash). ≥ 1 FAIL = renvoi pour correction (max 3 itérations).
 
-Avant de livrer, répondre mentalement à ces questions :
+Questions génériques avant de livrer :
+□ Spécifique à CE projet (pas applicable tel quel à un concurrent) ?
+□ Résiste à "pourquoi pas l'inverse ?" sur chaque choix majeur ?
+□ Un concurrent direct serait-il préoccupé en lisant ça ?
+□ Livrables amont référencés et décisions alignées ?
+□ Données manquantes signalées, hypothèses marquées ?
+□ Zéro placeholder résiduel ?
 
-### Questions génériques (obligatoires pour tous)
-□ Ce livrable est-il spécifique à CE projet ou pourrait-il s'appliquer à n'importe quel autre ? (critère Spécificité)
-□ Résiste-t-il à la question "pourquoi pas l'inverse ?" sur chaque choix majeur ? (critère Actionnabilité)
-□ Un concurrent direct lirait-il ça et serait-il préoccupé ? (critère Complétude)
-□ Ai-je explicitement référencé les livrables amont et aligné mes décisions ? (critère Cohérence)
-□ Ai-je signalé toutes les données manquantes et marqué les hypothèses ? (critère Messages)
-□ Zéro placeholder résiduel : aucun `[PLACEHOLDER]`, `[À REMPLIR]`, `[TODO]`, `[NOM]`, `[EXEMPLE]`, `[XX]` ne subsiste dans le livrable ? (critère Anti-placeholder)
-
-**Partie variable** : chaque agent a ≥5 questions spécifiques à son domaine.
-
----
+**Partie variable** : chaque agent a ≥ 5 questions spécifiques à son domaine.
 
 ## Protocole d'audit structuré — PVU (standard)
 
-Quand un agent reçoit une demande d'audit, d'analyse, de vérification ou de review (mots-clés : "audite", "vérifie", "analyse", "review", "check"), il bascule en **mode audit structuré** et applique ce protocole :
+Sur demande d'audit/review/vérification d'un existant (livrable, code, système déployé — PAS la production d'un nouveau livrable, même si le verbe "analyser" est utilisé) :
 
-**Condition d'application** : le PVU s'applique quand le sujet de la demande est un livrable existant, du code existant, ou un système déployé à vérifier. Il ne s'applique PAS quand la demande est de produire un nouveau livrable (même si le verbe "analyser" est utilisé — ex : "analyse les besoins" = production, pas audit).
+**Étape 1 — Grille AVANT l'audit** :
+- Couche 1 : filtrer les 9 gates de `_gates.md` applicables au sujet (ex : contenu → G13, G15, G17 ; code → G12, G15, G_PROOF ; stratégie → G5, G7, G12, G17)
+- Couche 2 : générer 3-7 gates ad-hoc binaires spécifiques au sujet : `| # | Gate | Classe | Méthode de vérification (Grep X / Read Y / Bash Z) |`. Les critères se définissent AVANT d'évaluer, jamais après
 
-### Étape 1 — Construction de la grille de gates
+**Étape 2 — Exécution** : tableau par gate avec Verdict PASS/FAIL + Évidence (preuve Grep/Read, fichier:ligne). Verdict final GO (tout PASS) / NO-GO (≥ 1 FAIL + actions correctives).
 
-**Couche 1 : Gates existantes applicables** — filtrer parmi G1-G32 les gates pertinentes pour le sujet audité :
-
-| Type d'audit | Gates applicables (minimum) |
-|---|---|
-| Code / feature | G15 (placeholders), G19 (5 états UI), G21 (0 hardcodé), G24 (screenshots), G26 (pipeline) |
-| Contenu / copy | G8 (ton brand), G10 (0 vague), G15 (placeholders), G16 (spécificité), G22 (registre) |
-| Design / UI | G19 (5 états), G20 (contrastes WCAG), G21 (tokens), G24 (screenshots). **Lecture visuelle obligatoire** : si `tests/screenshots/` existe, lire les PNG via `Read()` et évaluer les 10 critères Thomas (PRO, BEAU, BRAND-ALIGNED, MÊME IDENTITÉ, PROPRE, ALIGNÉ, AÉRÉ, CONVERSION, HIÉRARCHIE, ACCESSIBLE) |
-| SEO / GEO | G13 (0 donnée inventée), G16 (spécificité), G18 (exemple concret) |
-| Stratégie / specs | G5 (persona), G6 (KPI), G7 (0 contradiction), G12 (implémentable), G17 (pas copiable) |
-| Cohérence croisée | G5, G6, G7, G14 (livrables absents), G16 (spécificité) |
-| Performance / infra | G26 (pipeline), G21 (0 hardcodé), G15 (placeholders) |
-| Juridique / RGPD | G4 (sources), G13 (0 donnée inventée), G15 (placeholders), G17 (pas copiable) |
-| Analytics / tracking | G23 (KPI formule + seuil), G6 (KPI North Star), G4 (sources) |
-| IA / coûts LLM | G4 (sources), G13 (0 donnée inventée), G12 (implémentable) |
-
-**Couche 2 : Gates ad-hoc** — l'agent génère 3-7 gates spécifiques au sujet, en format binaire PASS/FAIL :
-
-```
-| # | Gate | Classe | Méthode de vérification |
-|---|---|---|---|
-| A1 | [description précise] | BLOQUANT/REQUIS | [Grep X / Read Y / test Z] |
-```
-
-**Règle** : les gates ad-hoc sont définies AVANT l'audit, pas après. Définir les critères d'abord, évaluer ensuite.
-
-### Étape 2 — Exécution et rapport
-
-```markdown
-## Audit [sujet] — @[agent]
-
-### Gates existantes applicables
-| # | Gate | Verdict | Évidence |
-|---|---|---|---|
-| GXX | [description] | PASS/FAIL | [preuve par Grep/Read] |
-
-### Gates ad-hoc
-| # | Gate | Classe | Verdict | Évidence |
-|---|---|---|---|---|
-| A1 | [description] | BLOQUANT | PASS/FAIL | [preuve] |
-
-### Verdict : GO / GO CONDITIONNEL / NO-GO
-- X gates BLOQUANT PASS / Y total
-- Actions correctives : [si FAIL]
-```
-
-### Étape 3 — Learnings
-
-Chaque gate FAIL génère un `[LEARNING DÉTECTÉ]` dans le handoff (voir section "Contribution aux learnings"). Si une gate ad-hoc revient en FAIL sur 3+ audits différents → la signaler pour promotion en gate permanente (G31+).
-
-**Partie variable** : chaque agent a ses gates ad-hoc récurrentes (spécifiques à son domaine). Les documenter dans la section d'auto-évaluation de l'agent.
-
----
+**Étape 3 — Learnings** : chaque FAIL génère un `[LEARNING DÉTECTÉ]` dans le handoff. Une gate ad-hoc en FAIL sur 3+ audits différents → proposer sa promotion en gate permanente dans `_gates.md`.
 
 ## Notification de changement (standard)
 
-Quand un agent modifie un livrable existant (pas une première production — une modification) :
-
-1. **Identifier les consommateurs aval** : lister les agents qui lisent ce livrable dans leur calibration
-2. **Documenter le changement** dans le handoff : "ATTENTION — Livrable modifié : [fichier]. Agents impactés : [@agent1, @agent2]. Modifications : [résumé]. Les livrables de ces agents doivent être re-validés."
-3. **Ne pas modifier les livrables des autres agents** — signaler le besoin de re-validation
-4. **Décision fondateur invalidante** : quand une décision du fondateur invalide un élément de livrable (tagline, promesse, persona, pricing, scope), l'agent DOIT Grep immédiatement l'ancien terme dans `docs/**/*.md` pour lister TOUTES les occurrences à propager. Ne pas attendre le reviewer — la propagation est la responsabilité de l'agent qui applique la décision.
-
-**Partie variable** : chaque agent connaît ses consommateurs aval (documentés dans son handoff).
-
----
+Quand un agent MODIFIE un livrable existant : identifier les consommateurs aval (agents qui le lisent dans leur calibration), documenter dans le handoff ("ATTENTION — Livrable modifié : X. Agents impactés : @A, @B. Leurs livrables sont à re-valider"), ne jamais modifier les livrables des autres. **Décision fondateur invalidante** (tagline, persona, pricing, scope) → Grep immédiat de l'ancien terme dans `docs/**/*.md` et propager TOUTES les occurrences — la propagation est la responsabilité de l'agent qui applique la décision, pas du reviewer.
 
 ## Protocole de fin de livrable (standard)
 
-### Vérification gates BLOQUANT (obligatoire — mode direct ET autopilot)
+**1. Gates BLOQUANT (mode direct ET autopilot)** : exécuter via Grep/Read les gates de `_gates.md` applicables — minimum G5 (persona, Grep du nom), G7 (0 contradiction — Read les 2-3 livrables amont), G12 (implémentable : verbe + objet + critère de done), G13 (0 donnée inventée : chaque chiffre a sa source), G15 (0 placeholder, Grep patterns ci-dessous), G17 (pas copiable par un concurrent). Documenter dans le handoff : `Gates BLOQUANT vérifiées : G5 PASS, G7 PASS, ...`. Un FAIL se corrige AVANT de livrer. En mode direct, c'est le SEUL filet de sécurité formel.
 
-Avant de livrer, exécuter via Grep/Read les gates BLOQUANT applicables au type de livrable produit. Utiliser le mapping du PVU (section "Protocole d'audit structuré" ci-dessus) pour sélectionner les gates pertinentes. Minimum :
-- **G5** (persona identique à project-context.md) — Grep le nom du persona
-- **G7** (0 contradiction avec livrables amont) — Read les 2-3 livrables amont référencés, vérifier l'alignement
-- **G12** (implémentable sans question) — chaque recommandation a un verbe d'action + objet clair + critère de done
-- **G15** (0 placeholder résiduel) — Grep patterns ci-dessous
-- **G19** (pas copiable tel quel pour un concurrent) — le livrable est-il spécifique au projet ?
+**2. Anti-placeholder** : Grep le livrable pour `[À REMPLIR`, `[À COMPLÉTER`, `[PLACEHOLDER`, `[TODO`, `[NOM`, `[EXEMPLE`, `[XX`, `[VOTRE`, `[INSÉRER`, `[REMPLACER`. Détecté → remplacer par la donnée réelle, ou convertir en `[HYPOTHÈSE : ...]`. Exceptions (annotations volontaires et honnêtes, pas des placeholders) : `[HYPOTHÈSE]`, `[PROVISOIRE]`, et les marqueurs de collecte `[À MESURER]`, `[À COLLECTER]` (témoignage, preuve), `[MOT-CLÉ SEO À INTÉGRER]`, `[IMAGE À REMPLACER]` ; chacun est repris dans un bloc final « À collecter / à mesurer » du handoff avec qui le fournit. **Un livrable avec un placeholder n'est pas terminé.**
 
-Documenter le résultat dans le handoff : `Gates BLOQUANT vérifiées : G5 PASS, G7 PASS, G12 PASS, G15 PASS, G19 PASS`. Si une gate FAIL → corriger AVANT de livrer. Ne JAMAIS livrer avec une gate BLOQUANT en FAIL.
+**3. Versioning du livrable** : première ligne = `<!-- Version: YYYY-MM-DDTHH:MM — @agent — Motif -->` (traçabilité des versions consommées par l'aval).
 
-**Pourquoi** : en mode direct (sans orchestrateur), c'est le SEUL filet de sécurité formel. En mode autopilot, c'est une vérification précoce qui évite les relances correctives.
+**4. Vérification par les vrais outputs (G_PROOF)** : valider sur les RÉSULTATS, pas la rédaction. Contenu : générer ≥ 1 exemple réel avec le persona et l'auditer. Code : compiler, exécuter, lire visuellement les screenshots de `tests/screenshots/` (10 critères Thomas). Stratégie : projeter chaque recommandation sur le projet réel. Prompts LLM : tester ≥ 1 prompt sur un input réaliste. Problème révélé → corriger AVANT de finaliser. Documenter le bloc `Vérifié :` (commande + 3 lignes d'output max) exigé par G_PROOF.
 
-### Vérification anti-placeholder (obligatoire)
-
-Avant de considérer un livrable comme terminé, effectuer un Grep sur le fichier produit pour détecter les placeholders oubliés :
-- Patterns à rechercher : `[À REMPLIR`, `[PLACEHOLDER`, `[TODO`, `[NOM`, `[EXEMPLE`, `[XX`, `[VOTRE`, `[INSÉRER`, `[REMPLACER`
-- Si un placeholder est détecté → le remplacer par la donnée réelle (depuis project-context.md ou les livrables amont) ou le supprimer s'il n'est pas pertinent
-- Si la donnée réelle n'est pas disponible → convertir en hypothèse marquée `[HYPOTHÈSE : ...]` conformément à la règle anti-invention
-- **Un livrable avec un placeholder oublié n'est PAS terminé.**
-- **Exception** : les marqueurs `[HYPOTHÈSE : ...]` et `[PROVISOIRE — ...]` ne sont PAS des placeholders — ce sont des annotations volontaires conformes au protocole d'escalade.
-
-### Versioning des livrables (obligatoire)
-
-Chaque livrable produit ou modifié DOIT inclure un commentaire HTML en première ligne avec la date, l'agent, et le motif :
-`<!-- Version: YYYY-MM-DDTHH:MM — @agent — Motif du changement -->`
-Cela permet de tracer quelle version un agent aval a implémentée quand un agent amont modifie un livrable après une relance corrective.
-
-### Vérification par les vrais outputs (recommandée)
-
-Ne jamais valider un livrable uniquement sur sa rédaction — valider sur ses **résultats réels** quand c'est applicable :
-- **Agents contenu** (@copywriter, @seo, @geo, @social) : si le livrable contient des templates ou des prompts de génération, générer au moins 1 exemple réel avec le profil du persona de project-context.md et vérifier la qualité de l'output
-- **Agents code** (@fullstack, @infrastructure, @qa) : le code doit compiler/s'exécuter, les tests doivent passer. Si des screenshots existent dans `tests/screenshots/`, les LIRE visuellement via `Read("tests/screenshots/[page]-[device].png")` et vérifier les 10 critères Thomas
-- **Agents stratégie** (@creative-strategy, @product-manager, @growth) : vérifier que les recommandations sont directement actionnables en les projetant sur le projet réel ("si je suivais cette recommandation maintenant, que se passerait-il concrètement ?")
-- **Agents IA** (@ia) : si le livrable contient des prompts LLM, tester au moins 1 prompt avec un input réaliste et évaluer l'output
-
-Si les vrais outputs révèlent des problèmes (hallucinations, incohérences, placeholders non remplacés, ton inadapté), corriger le livrable AVANT de le finaliser.
-
-### Contribution aux learnings (standard)
-
-Si un agent détecte pendant sa production un problème, un pattern efficace, un biais, ou une incohérence qui pourrait bénéficier aux sessions futures, il DOIT le documenter dans son handoff avec le format :
-
+**5. Learnings** : tout problème/pattern/biais utile aux sessions futures → bloc dans le handoff :
 ```
 [LEARNING DÉTECTÉ]
-- Description : [ce qui a été observé]
-- Catégorie : problème / pattern / biais / insistance / recommandation
-- Sévérité estimée : P0 / P1 / P2
-- Cible propagation : règle-globale / agent-spécifique / prompts / documentation / founder-prefs / aucune
-- Fichiers impactés : [liste exacte si connue]
+- Description / Catégorie (problème·pattern·biais·recommandation) / Sévérité P0-P2
+- Cible propagation : règle-globale / agent / prompts / founder-prefs
+- Fichiers impactés : [liste]
 ```
+L'agent ne modifie PAS lessons-learned.md — il signale, l'orchestrateur centralise en clôture.
 
-L'orchestrateur collecte ces signaux et les inscrit dans `docs/lessons-learned.md` lors de la clôture. L'agent NE modifie PAS lessons-learned.md lui-même — il signale, l'orchestrateur centralise.
+**6. Historique** : ajouter une ligne au tableau "Historique des interventions agents" de project-context.md : `| agent | date | fichiers | décisions clés | pourquoi, alternatives écartées |`.
 
-### Mise à jour de l'historique
+## Personnaliser un agent Gradient dans un projet (standard)
 
-Après chaque livrable terminé, ajouter une ligne dans le tableau "Historique des interventions agents" de `project-context.md` :
-
-```
-| [nom-agent] | [DATE] | [fichiers produits] | [décisions clés] | [pourquoi ces choix, alternatives écartées] |
-```
-
----
+Les fichiers des 19 agents et des protocoles appartiennent au framework : update.sh les remplace. Une règle propre au projet pour un agent (ex. « pas de barrel exports » pour @fullstack) s'écrit en fin de fichier dans un bloc que update.sh recolle à chaque mise à jour : une ligne contenant uniquement `<!-- PROJECT-RULES-START -->`, puis un titre « Règles propres à ce projet » et les règles, puis une ligne contenant uniquement `<!-- PROJECT-RULES-END -->`.
+Rien n'est jamais perdu : des lignes ajoutées en fin de fichier hors bloc sont rangées automatiquement dans un bloc ; une modification au milieu du fichier bloque la mise à jour de cet agent (fichier conservé, nouvelle version en attente dans `.claude/gradient-backup/pending/`, avertissement) jusqu'à ce que la règle soit déplacée dans le bloc. Règles transverses au projet → `project-context.md` (Notes libres) ou `CLAUDE.md` hors du bloc Gradient. Jamais de copie d'agent dans un sous-dossier de `.claude/agents/` : Claude Code charge ce dossier récursivement.
 
 ## Versioning des agents (standard)
 
-Le champ `version` du frontmatter YAML suit une convention simplifiée :
-
-- **Incrémenter le dernier chiffre** (ex : 2.0 → 2.1) pour : corrections de prompt, ajouts de questions d'auto-évaluation, mises à jour de calibration, ajustements de handoff
-- **Incrémenter le premier chiffre** (ex : 2.1 → 3.0) pour : changement de périmètre, ajout/suppression de livrables types, changement de modèle, refonte structurelle
-- **Qui incrémente** : l'agent ou la personne qui modifie le fichier agent. @agent-factory gère le versioning pour les agents qu'il crée ou modifie
-- **Documentation** : noter le changement dans le CHANGELOG.md à la racine si le changement est structurel (version majeure)
-
----
+Frontmatter `version` : dernier chiffre (2.0→2.1) pour corrections de prompt, calibration, auto-évaluation ; premier chiffre (2.1→3.0) pour changement de périmètre, livrables, modèle, refonte. Changement majeur → noter dans CHANGELOG.md (repo Agent-Team).
 
 ## Handoff (standard)
 
-Terminer chaque livrable par un bloc de handoff :
-
+Chaque livrable se termine par :
 ```
 ---
-**Handoff → @[agent-destinataire]**
-- Fichiers produits : liste avec chemins complets
+**Handoff → @[destinataire]**
+- Fichiers produits : [chemins complets]
 - Décisions prises : [résumé]
-- Points d'attention : [ce que l'agent suivant doit savoir]
-- **Actions infra requises** : [OBLIGATOIRE si le livrable modifie src/ ou config]
-  - [ ] Nouvelles variables d'environnement : [NOM=description, JAMAIS de valeur en clair]
-  - [ ] Packages ajoutés : [liste]
-  - [ ] Migration DB : [commande exacte]
-  - [ ] **Futurs projets CF** : changement `wrangler.toml` / `.github/workflows/deploy.yml` / secrets `wrangler pages secret put` : [description]
-  - [ ] **Projets legacy Replit** : changement `.replit` / `replit.nix` / Replit Secrets : [description]
-  - Si aucune action → écrire : `Aucune action Cloudflare/GitHub requise.` (futurs projets) OU `Aucune action Replit requise.` (legacy).
+- Points d'attention : [pour l'agent suivant]
+- **Actions infra requises** (OBLIGATOIRE si le livrable touche src/ ou config) :
+  - Variables d'environnement (NOM=description, JAMAIS de valeur en clair) / packages / migration DB (commande exacte)
+  - Futurs projets CF : wrangler.toml / GH Actions / `wrangler secret put` — Legacy Replit : .replit / Replit Secrets
+  - Sinon : `Aucune action Cloudflare/GitHub requise.` OU `Aucune action Replit requise.`
 ---
 ```
-
-**Partie variable** : chaque agent a ses destinataires par défaut selon le contexte (invoqué par orchestrator vs en direct).
 
 ## Convention de chemin des livrables
 
-Tous les livrables dans `docs/` à la racine, organisés par agent :
+`docs/strategy` @creative-strategy · `docs/product` @product-manager · `docs/analytics` @data-analyst · `docs/ux` @ux · `docs/design` @design · `docs/copy` @copywriter · `docs/seo` @seo · `docs/geo` @geo · `docs/growth` @growth · `docs/sales` @sales-enablement · `docs/social` @social · `docs/legal` @legal · `docs/infra` @infrastructure · `docs/ia` @ia · `docs/qa` @qa · `docs/reviews` @reviewer + @elon.
+Exceptions : @agent-factory → `.claude/agents/`, @orchestrator → `docs/` racine, @fullstack → `src/`. Hors arborescence = rejeté par @reviewer.
 
-```
-docs/
-├── strategy/    ← @creative-strategy
-├── product/     ← @product-manager
-├── analytics/   ← @data-analyst
-├── ux/          ← @ux
-├── design/      ← @design
-├── copy/        ← @copywriter
-├── seo/         ← @seo
-├── geo/         ← @geo
-├── growth/      ← @growth
-├── sales/       ← @sales-enablement
-├── social/      ← @social
-├── legal/       ← @legal
-├── infra/       ← @infrastructure
-├── ia/          ← @ia
-├── qa/          ← @qa
-├── reviews/     ← @reviewer, @elon
-```
+## Mémoire organisationnelle
 
-Exceptions : @agent-factory → `.claude/agents/`, @orchestrator → `docs/` racine, @fullstack → `src/`.
-Tout livrable hors de cette arborescence sera rejeté par @reviewer.
-
-## Mémoire organisationnelle — Apprentissage inter-projets
-
-Après chaque session, l'orchestrateur met à jour `docs/lessons-learned.md` (format tableau v2, 11 colonnes documenté en tête du fichier).
-
-**Règles essentielles** :
-- Un learning est "terminé" quand correction = `fait` ET propagation = `propagé`
-- Gate bloquante en reprise : propager les P0/P1 non-propagés AVANT tout nouveau travail
-- Préférences fondateur → copiées dans `docs/founder-preferences.md`
-- **Cap actif : 80 lignes max** dans `lessons-learned.md` (commandement n°8 CLAUDE.md). Au-delà, archiver dans `lessons-archive.md`.
-- **TTL learnings** : tout learning a une durée de vie de **5 sessions OU 90 jours (le plus court des deux)**. À expiration : (a) si le pattern s'est répété 3+ fois → promouvoir en règle dans l'agent concerné et SUPPRIMER du lessons-learned, (b) sinon → déplacer dans `lessons-archive.md`. Audit automatique à chaque clôture de session par @orchestrator.
-- Gestion volume : > 30 learnings non-terminés → synthétiser en règles permanentes
+L'orchestrateur met à jour `docs/lessons-learned.md` (tableau v2, 11 colonnes) à chaque clôture. Un learning est "terminé" quand correction = `fait` ET propagation = `propagé`. **Gate bloquante en reprise** : propager les P0/P1 non-propagés AVANT tout nouveau travail. Préférences fondateur → `docs/founder-preferences.md` dans le repo Agent-Team (source unique) ; dans un projet client, les préférences propres au projet vont dans son `docs/founder-preferences.md`, celles valables partout et les recommandations framework dans `docs/framework-feedback.md`, intégré côté Agent-Team par le prompt « Intégrer des learnings d'un autre projet ». Caps et TTL : voir CLAUDE.md commandement 8 (lessons 80L, TTL 5 sessions/90j, archivage vers `docs/lessons-learned-archive.md`).
 
 ## Protocole de test du framework
 
-### Test unitaire (1 agent)
-1. Remplir project-context.md → invoquer un agent → vérifier : lit-il project-context ? Refuse-t-il si champs manquants ?
-
-### Test d'intégration (2-3 agents)
-1. @creative-strategy → @copywriter → @design → vérifier cohérence inter-livrables
-
-### Test E2E
-1. @orchestrator sur projet complet → @reviewer en fin → incohérences détectées ?
-
-Projet test : `tests/project-context-test.md` (PulseBoard).
+- Unitaire : remplir project-context.md → invoquer 1 agent → lit-il le contexte ? refuse-t-il si champs manquants ?
+- Intégration : @creative-strategy → @copywriter → @design → cohérence inter-livrables ?
+- E2E : @orchestrator sur projet complet + @reviewer en fin → incohérences détectées ?
+- Projet test : `tests/project-context-test.md` (PulseBoard).

@@ -1,0 +1,7 @@
+#!/bin/sh
+# GRADIENT-HOOK : pre-commit fourni par Gradient Agents.
+# Tant que ce marqueur est présent, update.sh peut remplacer ce fichier.
+# Pour ajouter vos propres vérifications (tsc, tests...), retirez le marqueur :
+# le fichier devient alors le vôtre et ne sera plus jamais écrasé.
+# Gardez simplement la ligne d'appel au garde-fou ci-dessous.
+sh "$(dirname "$0")/claude-md-guard.sh" || exit 1
