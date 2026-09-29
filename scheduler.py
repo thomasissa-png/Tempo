@@ -277,7 +277,9 @@ def start_scheduler():
         _tracked("bimonthly_weights", task_monthly_weights),
         CronTrigger(day="1,15", hour=2, minute=0, timezone="Europe/Paris"),
         id="bimonthly_weights",
-        name="Recalcul bimensuel des poids",
+        name=("Recalcul bimensuel des poids" if auto_weights_recalc_enabled()
+              else "Recalcul bimensuel des poids (EN PAUSE : recalcul auto désactivé, "
+                   "manuel uniquement)"),
         replace_existing=True,
     )
 
@@ -478,11 +480,14 @@ async def _task_post_startup():
         if patterns:
             logger.info(f"[Post-startup] {len(patterns)} patterns détectés sur {history_days}j")
 
-        new_weights = await loop.run_in_executor(None, recalculate_weights)
-        if new_weights:
-            logger.info("[Post-startup] Poids ML recalculés")
+        if auto_weights_recalc_enabled():
+            new_weights = await loop.run_in_executor(None, recalculate_weights)
+            if new_weights:
+                logger.info("[Post-startup] Poids ML recalculés")
+            else:
+                logger.info("[Post-startup] Recalcul poids: pas assez de données")
         else:
-            logger.info("[Post-startup] Recalcul poids: pas assez de données")
+            logger.warning(f"[Post-startup] {AUTO_WEIGHTS_PAUSED_MSG} : poids inchangés")
     except Exception as e:
         logger.error(f"[Post-startup] Erreur recalcul ML: {e}")
 
@@ -1195,8 +1200,24 @@ async def _task_deferred_retry_no_sms():
 # TÂCHE 3 : Recalcul mensuel des poids (1er du mois)
 # ================================================================
 
-async def task_monthly_weights():
-    """1er du mois — Recalcule les poids de l'algorithme via régression."""
+AUTO_WEIGHTS_PAUSED_MSG = "recalcul automatique des poids désactivé"
+
+
+def auto_weights_recalc_enabled() -> bool:
+    """Interrupteur Config.AUTO_WEIGHTS_RECALC_ENABLED (absent = désactivé, par prudence)."""
+    from config import Config
+    return bool(getattr(Config, "AUTO_WEIGHTS_RECALC_ENABLED", False))
+
+
+async def task_monthly_weights(manual: bool = False) -> str:
+    """1er/15 du mois — Recalcule les poids de l'algorithme via régression.
+
+    Recalcul en pause depuis le 2026-09-29 (Config.AUTO_WEIGHTS_RECALC_ENABLED) :
+    en automatique, seuls le rattrapage, l'analyse d'erreurs et le nettoyage RGPD
+    tournent ; les poids et weights_history ne sont pas touchés. manual=True
+    (déclenchement explicite depuis /admin) recalcule quand même.
+    """
+    outcome = "Tâche mensuelle terminée"
     for attempt in range(2):
         try:
             from performance_tracker import recalculate_weights, get_accuracy_global
@@ -1218,22 +1239,40 @@ async def task_monthly_weights():
                     f"détectés sur {history_days}j d'historique"
                 )
 
-            new_weights = recalculate_weights()
-            if new_weights:
-                logger.info(f"[Task mensuel] Nouveaux poids : {new_weights}")
+            if manual:
+                logger.warning(
+                    "[Task mensuel] Recalcul des poids MANUEL et explicite "
+                    "(déclenché depuis /admin) : les poids de production peuvent changer"
+                )
+            if manual or auto_weights_recalc_enabled():
+                new_weights = recalculate_weights()
+                if new_weights:
+                    logger.info(f"[Task mensuel] Nouveaux poids : {new_weights}")
+                    outcome = f"Recalcul manuel des poids : nouveaux poids enregistrés {new_weights}"
+                else:
+                    logger.info("[Task mensuel] Recalcul reporté (pas assez de données)")
+                    outcome = ("Recalcul manuel des poids : poids inchangés "
+                               "(données insuffisantes, garde-fou ou différence < 1 %)")
             else:
-                logger.info("[Task mensuel] Recalcul reporté (pas assez de données)")
+                logger.warning(
+                    f"[Task mensuel] {AUTO_WEIGHTS_PAUSED_MSG} "
+                    "(Config.AUTO_WEIGHTS_RECALC_ENABLED = False) : poids de production "
+                    "et weights_history inchangés"
+                )
+                outcome = (f"Tâche mensuelle terminée : {AUTO_WEIGHTS_PAUSED_MSG}, "
+                           "poids inchangés")
 
             # Nettoyage RGPD des users inactifs
             cleanup_inactive_users(months=6)
 
             logger.info("[Task mensuel] Tâches mensuelles terminées")
-            return
+            return outcome
         except Exception as e:
             logger.error(f"[Scheduler] task_monthly_weights attempt {attempt+1} failed: {e}")
             if attempt == 0:
                 await asyncio.sleep(30)
     logger.error("[Scheduler] task_monthly_weights failed after 2 attempts")
+    return "ERREUR : tâche mensuelle des poids en échec après 2 tentatives (voir logs)"
 
 
 # ================================================================
@@ -1541,6 +1580,15 @@ async def run_task_now(task_name: str) -> str:
             return f"Agent terminé en {result['turns']} tours. {summary}"
         else:
             return f"ERREUR agent : {result['error']}"
+
+    if task_name == "weights":
+        # Déclenchement MANUEL et explicite : seul chemin qui recalcule les poids
+        # tant que Config.AUTO_WEIGHTS_RECALC_ENABLED = False (pause 2026-09-29).
+        logger.warning("[Admin] Recalcul des poids déclenché MANUELLEMENT (explicite)")
+        result = await task_monthly_weights(manual=True)
+        prefix = "" if auto_weights_recalc_enabled() else (
+            f"[Recalcul auto en pause : {AUTO_WEIGHTS_PAUSED_MSG}] ")
+        return f"{prefix}Exécution manuelle explicite. {result}"
 
     tasks = {
         "verification": task_daily_verification,

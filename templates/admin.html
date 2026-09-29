@@ -407,7 +407,7 @@
                     <div class="action-grid">
                         <button class="action-btn blue" onclick="runTask('verification')">Vérification EDF</button>
                         <button class="action-btn blue" onclick="runTask('predictions')">Prédictions + Alertes</button>
-                        <button class="action-btn green" onclick="runTask('weights')">Recalcul poids</button>
+                        <button class="action-btn green" onclick="runTask('weights')" title="Recalcul automatique en pause depuis le 2026-09-29 : ce bouton lance un recalcul manuel explicite">Recalcul poids (manuel)</button>
                         <button class="action-btn gray" onclick="runTask('recap')">Récap hebdo</button>
                         <button class="action-btn gray" onclick="runTask('backfill')">Backfill saison</button>
                         <button class="action-btn purple" onclick="runTask('seo_agent')">Agent SEO</button>
@@ -1165,7 +1165,10 @@ document.getElementById('btn-current-month')?.addEventListener('click', () => {
 /* TASKS, SUBSCRIBERS, AGENTS        */
 /* ══════════════════════════════════ */
 async function runTask(taskName) {
-    if (!confirm(`Exécuter « ${taskName} » ?`)) return;
+    const confirmMsg = taskName === 'weights'
+        ? 'Le recalcul automatique des poids est en pause (décision du 2026-09-29).\n\nLancer un recalcul MANUEL et explicite ? Il peut modifier les poids de production.'
+        : `Exécuter « ${taskName} » ?`;
+    if (!confirm(confirmMsg)) return;
     const r = document.getElementById('task-result');
     r.style.display='block'; r.style.background='var(--bg)'; r.style.color='var(--text-secondary)'; r.textContent=`Exécution de « ${taskName} »...`;
     try {
@@ -1259,7 +1262,10 @@ async function loadSchedulerStatus() {
             const nextStr = j.next_run
                 ? new Date(j.next_run).toLocaleString('fr-FR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})
                 : '—';
-            const stateHtml = j.pending
+            const paused = j.id === 'bimonthly_weights' && String(j.name||'').includes('EN PAUSE');
+            const stateHtml = paused
+                ? '<span style="color:#D97706;font-weight:600" title="Le job tourne mais ne recalcule pas les poids (Config.AUTO_WEIGHTS_RECALC_ENABLED = False)">En pause (recalcul auto d&eacute;sactiv&eacute;)</span>'
+                : j.pending
                 ? '<span style="color:#16A34A">Planifi&eacute;</span>'
                 : '<span style="color:var(--text-secondary)">Termin&eacute;</span>';
             html += `<tr><td>${escapeHtml(j.name)}</td><td>${nextStr}</td><td>${stateHtml}</td></tr>`;

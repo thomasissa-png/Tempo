@@ -1242,13 +1242,46 @@ def _build_error_diagnostic(predicted: str, actual: str,
     return " — ".join(parts)
 
 
+def _confidence_pct(*probas) -> int | None:
+    """Probabilité max en pourcentage entier (0-100), None si aucune > 0.
+
+    Échelle réelle en base : 0-1 (predictor._result, confirm_prediction).
+    Une valeur > 1 est traitée comme un pourcentage déjà en 0-100 (tolérance
+    pour d'éventuelles données historiques), bornée à 100.
+    """
+    values = []
+    for p in probas:
+        try:
+            v = float(p) if p is not None else 0.0
+        except (TypeError, ValueError):
+            v = 0.0
+        if v == v and v > 0:  # exclut NaN
+            values.append(v)
+    if not values:
+        return None
+    best = max(values)
+    pct = best * 100 if best <= 1 else best
+    return int(round(min(pct, 100)))
+
+
 def get_daily_recap(season: str | None = None) -> list[dict]:
     """Récapitulatif jour par jour avec 15 horizons de prévision.
 
     Horizons en format J-N (J-1 = veille, J-15 = 15 jours avant).
     Inclut l'évolution de la météo prévue à chaque horizon,
     le premier horizon correct, et un diagnostic pour les erreurs.
+
+    Correctifs 2026-09-29 :
+    - horizon N = date cible - date d'émission (prediction_history.emission_horizon,
+      même règle que performance.jours_avance), plus le libellé predictions.horizon ;
+    - lignes de backtest exclues (cycle_id « backtest* » ou évaluation « backtest »
+      pour la même clé (date, N)), en plus des lignes simulées ;
+    - confidence en pourcentage 0-100 (probabilités stockées en 0-1, ancienne
+      échelle 0-100 tolérée) ; None pour une ligne confirmée (probabilités
+      écrasées par la couleur EDF, ce n'est plus notre confiance).
     """
+    from prediction_history import emission_horizon, is_backtest
+
     conn = get_db()
     try:
         season_start, season_end = parse_season(season)
@@ -1263,7 +1296,7 @@ def get_daily_recap(season: str | None = None) -> list[dict]:
             """SELECT date, horizon, couleur_predite, couleur_originale,
                       score_risque, confirmed, raison,
                       probabilite_bleu, probabilite_blanc, probabilite_rouge,
-                      temp_moy_prevue, timestamp_prediction
+                      temp_moy_prevue, timestamp_prediction, cycle_id
                FROM predictions
                WHERE date >= ? AND date <= ? AND simulated = 0
                ORDER BY date, timestamp_prediction""",
@@ -1280,16 +1313,30 @@ def get_daily_recap(season: str | None = None) -> list[dict]:
         # 2b) Fallback: original predicted colors from performance table
         # When couleur_originale is empty on confirmed rows (data import race),
         # performance.couleur_predite has our real prediction (eval runs BEFORE confirm)
+        # Backtest : une prédiction importée sans cycle_id (db_sync n'exporte pas
+        # cette colonne) est reconnue par son évaluation « backtest » (même règle
+        # que prediction_history._load_preds).
         perf_orig = conn.execute(
-            """SELECT date_cible, jours_avance, couleur_predite
+            """SELECT date_prediction, date_cible, jours_avance, couleur_predite,
+                      contexte_meteo
                FROM performance
                WHERE date_cible >= ? AND date_cible <= ?""",
             (since, until),
         ).fetchall()
         # {(date, "J-N"): couleur_predite}
         perf_orig_map = {}
+        backtest_keys = set()
         for r in perf_orig:
-            key = (r["date_cible"], f"J-{r['jours_avance']}")
+            try:
+                n_perf = int(r["jours_avance"])
+            except (TypeError, ValueError):
+                continue
+            if emission_horizon(r["date_cible"], r["date_prediction"]) != n_perf:
+                continue
+            key = (str(r["date_cible"])[:10], f"J-{n_perf}")
+            if is_backtest(r["contexte_meteo"]):
+                backtest_keys.add(key)
+                continue
             perf_orig_map[key] = r["couleur_predite"]
 
         # 3) Weather forecast evolution from weather_forecast_log
@@ -1332,6 +1379,15 @@ def get_daily_recap(season: str | None = None) -> list[dict]:
         dates_raison = {}  # raison from closest available prediction
         for r in pred_rows:
             dt = r["date"]
+            if is_backtest(r["cycle_id"]):
+                continue
+            # Horizon réel (date d'émission), pas le libellé de la colonne horizon
+            n_real = emission_horizon(dt, r["timestamp_prediction"])
+            if n_real is None or not 1 <= n_real <= 15:
+                continue
+            horizon = f"J-{n_real}"
+            if (dt, horizon) in backtest_keys:
+                continue
             if dt not in dates_data:
                 dates_data[dt] = {}
 
@@ -1342,11 +1398,9 @@ def get_daily_recap(season: str | None = None) -> list[dict]:
             # 3. Last resort → couleur_predite (may be EDF color for confirmed rows)
             couleur = r["couleur_originale"] if r["couleur_originale"] else r["couleur_predite"]
             if r["confirmed"] and not r["couleur_originale"]:
-                horizon = r["horizon"]
                 perf_key = (dt, horizon)
                 if perf_key in perf_orig_map:
                     couleur = perf_orig_map[perf_key]
-            horizon = r["horizon"]  # DB format: J-1, J-2, ... J-15
 
             actual = actuals_map.get(dt)
             correct = None
@@ -1373,13 +1427,9 @@ def get_daily_recap(season: str | None = None) -> list[dict]:
             if temp_prevue is None and r["temp_moy_prevue"] is not None:
                 temp_prevue = round(r["temp_moy_prevue"], 1)
 
-            # C8: include max probability as confidence indicator
-            prob_values = [
-                r["probabilite_bleu"] or 0,
-                r["probabilite_blanc"] or 0,
-                r["probabilite_rouge"] or 0,
-            ]
-            confidence = round(max(prob_values)) if any(p > 0 for p in prob_values) else None
+            # C8: include max probability as confidence indicator (0-100 %)
+            confidence = None if r["confirmed"] else _confidence_pct(
+                r["probabilite_bleu"], r["probabilite_blanc"], r["probabilite_rouge"])
 
             # Extract actual date prediction was made (for version scoping)
             pred_made_date = None

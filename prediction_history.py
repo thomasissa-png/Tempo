@@ -20,9 +20,9 @@ Sources et exclusions :
 - weather_cache : température moyenne observée (dernier relevé du jour).
 - weather_forecast_log : température prévue si la ligne de prédiction ne l'a pas.
 
-Pas d'appel à performance_tracker.get_daily_recap() : il suit le libellé
-d'horizon et n'exclut pas les backtests ; ici tout est aligné sur la règle
-d'évaluation (date d'émission). SQL portable SQLite/PostgreSQL, agrégation en Python.
+Pas d'appel à performance_tracker.get_daily_recap() (vue admin, autres
+agrégats) ; les deux partagent emission_horizon() et is_backtest() pour ne pas
+diverger sur l'horizon (date d'émission) ni sur l'exclusion des backtests. SQL portable SQLite/PostgreSQL, agrégation en Python.
 """
 
 from __future__ import annotations
@@ -88,8 +88,32 @@ def _pct(num: int, den: int) -> int | None:
     return round(100 * num / den)
 
 
-def _is_backtest(value) -> bool:
+def is_backtest(value) -> bool:
+    """cycle_id ou évaluation (performance.contexte_meteo) issus d'un backtest."""
     return str(value or "").strip().lower().startswith("backtest")
+
+
+_is_backtest = is_backtest  # alias historique
+
+
+def emission_horizon(target, emitted) -> int | None:
+    """Horizon réel N = date cible - date d'émission, en jours.
+
+    Même règle que performance.jours_avance ; le libellé predictions.horizon
+    n'est pas fiable (il peut diverger de l'écart réel). Accepte date/datetime
+    ou chaîne ISO (seuls les 10 premiers caractères comptent). None si illisible.
+    Fonction commune à cette page et à performance_tracker.get_daily_recap().
+    """
+    try:
+        t = target if isinstance(target, date) else date.fromisoformat(str(target)[:10])
+        e = emitted if isinstance(emitted, date) else date.fromisoformat(str(emitted)[:10])
+    except (TypeError, ValueError):
+        return None
+    if isinstance(t, datetime):
+        t = t.date()
+    if isinstance(e, datetime):
+        e = e.date()
+    return (t - e).days
 
 
 def _num(value) -> float | None:
@@ -120,7 +144,7 @@ def _load_preds(conn, start: str) -> dict:
             n = int(p["jours_avance"])
             target = date.fromisoformat(str(p["date_cible"])[:10])
             emitted = str(p["date_prediction"])[:10]
-            if (target - date.fromisoformat(emitted)).days != n:
+            if emission_horizon(target, emitted) != n:
                 continue
         except (TypeError, ValueError):
             continue
@@ -150,7 +174,7 @@ def _load_preds(conn, start: str) -> dict:
             target = date.fromisoformat(str(r["date"])[:10])
         except ValueError:
             continue
-        n = (target - emitted).days
+        n = emission_horizon(target, emitted)
         if emitted.isoformat() < start or n not in HORIZONS:
             continue
         couleur, proba = r["couleur_predite"], None

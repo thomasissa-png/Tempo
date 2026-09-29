@@ -123,6 +123,15 @@ class Config:
         "pression": 0.10,
     }
 
+    # Recalcul automatique des poids (job bimensuel 1er/15 à 2h + post-startup).
+    # 2026-09-29, décision fondateur : EN PAUSE. Le recalcul pouvait changer les
+    # poids de production sans test préalable (audit : poids de prod avec
+    # jour_semaine 35 % = +62 fausses alertes rouges sur 7 saisons rejouées).
+    # Le job reste planifié mais ne recalcule ni n'écrit rien dans
+    # weights_history ; seul le déclenchement MANUEL depuis /admin (Actions >
+    # Recalcul poids) recalcule. Les poids en production ne sont pas modifiés.
+    AUTO_WEIGHTS_RECALC_ENABLED = False
+
     # T4 v3.5 : modulation saisonnière Nov-Déc.
     # En début de saison, le budget est quasi-plein (22 ROUGE sur 22),
     # donc budget_score est toujours bas et non-discriminant.

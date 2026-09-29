@@ -294,6 +294,7 @@ git push -u origin <branch-name>
 
 ### Learning System (performance_tracker.py)
 - **Weight recalculation**: LogisticRegression multinomial, cost-sensitive (ROUGE=25, BLANC=3, BLEU=1)
+- **PAUSED since 2026-09-29** (`Config.AUTO_WEIGHTS_RECALC_ENABLED = False`, founder decision: untested auto-recalc had put jour_semaine at 35 % = +62 false RED alerts over 7 replayed seasons). Scheduled job and post-startup log « recalcul automatique des poids désactivé » and write nothing to `weights_history`; only the manual /admin trigger (`run_task_now("weights")`) recalculates.
 - Uses **raw sub-scores** (C-1, before corrections) to avoid feedback loops
 - Guards: F1-macro >= 45%, ROUGE recall >= 30%, holdout temporal >= 65%
 - **No-change guard**: If max weight diff < 1% (0.01), recalibration is skipped (`return None`) and no new `weights_history` entry is created. Prevents spurious version entries from identical recalibrations.
@@ -307,7 +308,7 @@ git push -u origin <branch-name>
 - `daily_predictions` (18h): weather + RTE + predict_range + store
 - `daily_verification` (11h30): checks EDF official colors, confirms predictions
 - `daily_validation` (23h): evaluates prediction accuracy for the day
-- `bimonthly_weights` (1st/15th): recalculates scoring weights
+- `bimonthly_weights` (1st/15th): recalculates scoring weights — weight step paused (see Learning System), job still runs (missed-day eval, error patterns, RGPD cleanup); admin shows « En pause »
 - `weekly_recap` (Sunday 20h): sends weekly summary
 - `edf_polling` (6h-11h15, every 15min): polls EDF for today/tomorrow colors, evaluates predictions via `evaluate_predictions_for_date()` before `confirm_prediction()` for robustness if 11h30 scheduler fails
 - `post_startup` (deferred 90s): backfill + ML evaluation + predictions
@@ -379,7 +380,7 @@ git push -u origin <branch-name>
 - **`get_data_coverage(season)`**: Per horizon: prediction count, evaluation count, coverage percentage.
 - **`_get_all_version_dates()`**: Merges `Config.TOOL_UPDATE_DATES` (manual code changes) with successful weight recalculations from `weights_history` DB table. Excludes rejected entries (`REJETE%`). Code versions take precedence on same date. Returns sorted dict.
 - **`get_version_performance()`**: Per version: total, accuracy, days_count, dates_with_data, per-horizon accuracy. **Latest version first** (reversed chronological order). Uses `_get_all_version_dates()` so weight recalculations automatically appear as new versions.
-- **`get_daily_recap(season)`**: Returns `actual_status` (confirmed/pending/future), `temp_deviation`, `tool_update`. Diagnostic scoping uses `confirm_version` (version active at confirmation date) — skips horizons whose predictions predate that version.
+- **`get_daily_recap(season)`**: Returns `actual_status` (confirmed/pending/future), `temp_deviation`, `tool_update`. Diagnostic scoping uses `confirm_version` (version active at confirmation date) — skips horizons whose predictions predate that version. Horizon = real emission gap (`prediction_history.emission_horizon`, not the `horizon` label), backtest rows excluded (`is_backtest` on cycle_id or evaluation), `confidence` in 0-100 % (None on confirmed rows).
 - **`get_previous_weights()`** (in `database.py`): Returns the second-latest weights from `weights_history`. Falls back to `Config.DEFAULT_WEIGHTS` when only one entry exists. Returns `None` if no entries.
 
 #### Frontend Design Principles (`templates/admin.html`)
