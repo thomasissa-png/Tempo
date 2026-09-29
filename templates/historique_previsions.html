@@ -1,22 +1,33 @@
 {% extends "_base.html" %}
-{# Rendu : SSR à chaque requête depuis predictions/actuals (prédictions réelles uniquement, figées à leur émission), cache mémoire 5 min + HTTP 10 min #}
+{# Rendu : SSR à chaque requête depuis predictions/performance/actuals (prédictions réelles uniquement, figées à leur émission), cache mémoire 5 min + HTTP 10 min #}
 {% set noms = {'BLEU': 'Bleu', 'BLANC': 'Blanc', 'ROUGE': 'Rouge'} %}
-{% macro pl(n, sing, plur) %}{{ n }} {{ sing if n < 2 else plur }}{% endmacro %}
 {% macro tag(c) %}<span class="color-tag {{ c|lower }}">{{ noms[c] }}</span>{% endmacro %}
+{% macro ratio(num, den, pct, vide) %}{% if den %}<strong>{{ num }}</strong> sur {{ den }}{% if pct is not none %} <span class="hb-pct">({{ pct }}&nbsp;%)</span>{% endif %}{% else %}<span class="history-muted">{{ vide }}</span>{% endif %}{% endmacro %}
+{% macro bilan_row(hz) %}
+            <tr{% if hz.fiable %} class="hb-fiable"{% endif %}>
+                <th scope="row">{% if hz.n == 1 %}La veille{% else %}{{ hz.n }} jours avant{% endif %}</th>
+                <td class="num">{{ ratio(hz.ROUGE.annonces, hz.ROUGE.reels, hz.ROUGE.rappel_pct, 'aucun') }}</td>
+                <td class="num">{{ ratio(hz.ROUGE.alertes_justes, hz.ROUGE.alertes, hz.ROUGE.precision_pct, 'aucune') }}</td>
+                <td class="num">{{ ratio(hz.BLANC.annonces, hz.BLANC.reels, hz.BLANC.rappel_pct, 'aucun') }}</td>
+                <td class="num">{{ ratio(hz.BLANC.alertes_justes, hz.BLANC.alertes, hz.BLANC.precision_pct, 'aucune') }}</td>
+                <td class="num">{{ ratio(hz.justes, hz.jours, hz.justes_pct, 'aucun jour') }}{% if hz.sans_prevision %}<span class="hb-sub">dont {{ hz.sans_prevision }} sans prévision</span>{% endif %}</td>
+                <td class="num">{{ ratio(hz.toujours_bleu, hz.jours, hz.toujours_bleu_pct, 'aucun jour') }}</td>
+            </tr>
+{% endmacro %}
 {% block title %}{% if is_current %}Historique de nos prévisions Tempo EDF, jour par jour{% else %}Historique de nos prévisions Tempo EDF : saison {{ season_label }}{% endif %}{% endblock %}
-{% block description %}{% if is_current %}Nos prévisions Tempo EDF faites 2 à 5 jours avant, comparées sans filtre aux couleurs officielles : jours rouges et blancs annoncés, erreurs, export CSV.{% else %}Nos prévisions Tempo EDF de la saison {{ season_label }} faites 2 à 5 jours avant, comparées sans filtre aux couleurs officielles EDF, jour par jour, en CSV.{% endif %}{% endblock %}
+{% block description %}{% if is_current %}Nos prévisions Tempo EDF faites 1 à 15 jours avant, avec la température prévue, comparées sans filtre aux couleurs officielles EDF. Export CSV.{% else %}Nos prévisions Tempo EDF de la saison {{ season_label }}, faites 1 à 15 jours avant, comparées sans filtre aux couleurs officielles EDF. Export CSV gratuit.{% endif %}{% endblock %}
 {% block jsonld %}
     <script type="application/ld+json">{{ {
         "@context": "https://schema.org",
         "@type": "Dataset",
         "name": "Historique des prévisions Tempo EDF de calendrier-tempo.fr, saison " ~ season_label,
-        "description": "Prévisions de couleur Tempo EDF (bleu, blanc, rouge) émises 2, 3, 4 et 5 jours avant chaque jour, figées à leur émission et comparées à la couleur officielle publiée par EDF. Tous les jours sont inclus, sans sélection.",
+        "description": "Prévisions de couleur Tempo EDF (bleu, blanc, rouge) émises de 1 à 15 jours avant chaque jour, avec la température moyenne prévue utilisée, figées à leur émission et comparées à la couleur officielle publiée par EDF et à la température observée. Tous les jours sont inclus, sans sélection.",
         "url": "https://www.calendrier-tempo.fr" ~ canonical_path,
         "inLanguage": "fr",
         "isAccessibleForFree": true,
         "creator": {"@type": "Organization", "name": "Calendrier Tempo EDF", "url": "https://www.calendrier-tempo.fr/"},
         "temporalCoverage": (h.first_iso ~ "/" ~ h.last_iso) if h else (season_start_iso ~ "/" ~ season_end_iso),
-        "variableMeasured": ["Couleur Tempo officielle", "Couleur prévue 5 jours avant", "Couleur prévue 4 jours avant", "Couleur prévue 3 jours avant", "Couleur prévue 2 jours avant"],
+        "variableMeasured": ["Couleur Tempo officielle", "Couleur prévue de 1 à 15 jours avant", "Température moyenne prévue (°C)", "Température moyenne observée (°C)"],
         "distribution": [{"@type": "DataDownload", "encodingFormat": "text/csv", "contentUrl": "https://www.calendrier-tempo.fr/historique-previsions.csv"}]
     }|tojson }}</script>
 {% endblock %}
@@ -29,14 +40,14 @@
 <article class="legal-content history-page">
     <h1>Historique de nos prévisions Tempo EDF{% if not is_current %}&nbsp;: saison {{ season_label }}{% endif %}</h1>
     <p class="section-desc">
-        Chaque jour, nous prévoyons la couleur Tempo des jours suivants. Ici, nos prévisions faites 2, 3, 4 et 5 jours
-        à l'avance sont comparées, <strong>telles qu'elles ont été émises</strong>, à la couleur officielle publiée par EDF.
-        Tous les jours sont listés, y compris ceux où nous nous sommes trompés.
+        Chaque jour, nous prévoyons la couleur Tempo des 15 jours suivants à partir de la météo. Ici, chaque prévision est
+        montrée <strong>telle qu'elle a été émise</strong>, avec la température qu'elle supposait, puis comparée à la couleur
+        officielle publiée par EDF. Tous les jours sont listés, y compris ceux où nous nous sommes trompés.
     </p>
 
     <nav class="history-seasons" aria-label="Choisir une saison">
         {% for s in season_links %}
-        <a href="{{ s.path }}"{% if s.active %} class="active" aria-current="page"{% endif %}>Saison {{ s.label }}{% if loop.first and s.path == '/historique-previsions' %} (en cours){% endif %}</a>
+        <a href="{{ s.path }}"{% if s.active %} class="active" aria-current="page"{% endif %}>Saison {{ s.label }}{% if s.path == '/historique-previsions' %} (en cours){% endif %}</a>
         {% endfor %}
     </nav>
 
@@ -46,109 +57,38 @@
     </p>
 
     {% if h %}
-    <h2 id="bilan">Bilan par horizon, du {{ h.first_date }} au {{ h.last_date }}</h2>
-    <p>
-        Sur {{ pl(h.nb_days, 'jour', 'jours') }} dont la couleur officielle est connue. Chaque carte correspond à un délai
-        d'anticipation&nbsp;: <strong>J-2</strong> signifie «&nbsp;prévision faite 2 jours avant le jour concerné&nbsp;».
-    </p>
-    {% if h.horizons|selectattr('ROUGE.reels', 'lt', pct_min)|list or h.horizons|selectattr('BLANC.reels', 'lt', pct_min)|list %}
-    <p class="history-note">Pourcentage affiché seulement à partir de {{ pct_min }} jours (ou {{ pct_min }} alertes) d'une même couleur pour un délai donné&nbsp;: en dessous, seuls les effectifs bruts ont un sens.</p>
-    {% endif %}
-    <div class="history-grid">
-        {% for hz in h.horizons %}
-        <section class="history-card" aria-labelledby="hz-{{ hz.n }}">
-            <h3 id="hz-{{ hz.n }}">J-{{ hz.n }}<span class="history-card-sub">prévision faite {{ hz.n }} jours avant</span></h3>
-            {% for c, nom_pl in [('ROUGE', 'rouges'), ('BLANC', 'blancs')] %}
-            {% set st = hz[c] %}
-            <div class="history-stat history-stat-{{ c|lower }}">
-                <p class="history-stat-title"><span class="legend-dot couleur-{{ c }}" aria-hidden="true"></span>Jours {{ nom_pl }}</p>
-                {% if st.reels %}
-                <p><strong>{{ st.annonces }} annoncé{{ 's' if st.annonces > 1 }} sur {{ st.reels }}</strong>{% if st.rappel_pct is not none %} ({{ st.rappel_pct }}&nbsp;%){% endif %}{% if st.sans_prevision %}, dont {{ st.sans_prevision }} sans prévision{% endif %}</p>
-                {% else %}
-                <p>Aucun jour {{ nom_pl[:-1] }} sur la période.</p>
-                {% endif %}
-                {% if st.alertes %}
-                <p>Alertes {{ nom_pl }}&nbsp;: <strong>{{ st.alertes_justes }} juste{{ 's' if st.alertes_justes > 1 }} sur {{ st.alertes }}</strong>{% if st.precision_pct is not none %} ({{ st.precision_pct }}&nbsp;%){% endif %}</p>
-                {% else %}
-                <p>Aucune alerte {{ nom_pl[:-1] }}{{ 'he' if c == 'BLANC' }} émise.</p>
-                {% endif %}
-            </div>
-            {% endfor %}
-        </section>
-        {% endfor %}
-    </div>
-
-    <h2 id="reference">Pourquoi pas de «&nbsp;taux de réussite global&nbsp;»&nbsp;?</h2>
-    <p>
-        Chaque saison compte environ {{ facts.JOURS_BLEUS }} jours bleus sur 365. Un outil qui annoncerait «&nbsp;bleu&nbsp;» tous les jours aurait donc souvent raison,
-        sans jamais prévenir d'un jour rouge. Comparaison sur les mêmes jours&nbsp;:
-    </p>
-    <div class="table-scroll" role="region" aria-label="Exactitude comparée à la référence toujours bleu" tabindex="0">
-    <table class="history-table history-table-compact">
-        <caption class="sr-only">Nombre de jours correctement prévus, nos prévisions contre la référence «&nbsp;toujours bleu&nbsp;»</caption>
-        <thead><tr><th scope="col">Délai</th><th scope="col" class="num">Jours comparés</th><th scope="col" class="num">Nos prévisions justes</th><th scope="col" class="num">«&nbsp;Toujours bleu&nbsp;» juste</th></tr></thead>
-        <tbody>
-        {% for hz in h.horizons %}
-        <tr>
-            <th scope="row">{{ hz.n }} jours avant</th>
-            <td class="num">{{ hz.jours }}</td>
-            <td class="num">{{ hz.justes }}{% if hz.justes_pct is not none %} ({{ hz.justes_pct }}&nbsp;%){% endif %}</td>
-            <td class="num">{{ hz.toujours_bleu }}{% if hz.toujours_bleu_pct is not none %} ({{ hz.toujours_bleu_pct }}&nbsp;%){% endif %}</td>
-        </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-    </div>
-    <p>C'est pourquoi nous jugeons d'abord nos prévisions sur les jours rouges et blancs, les seuls qui coûtent cher.</p>
-
-    <h2 id="jour-par-jour">Jour par jour</h2>
-    <p>Du plus récent au plus ancien. Chaque colonne indique la couleur que nous avions prévue N jours avant.</p>
-    <ul class="history-legend" aria-label="Légende du tableau">
-        <li><span class="history-mark ok" aria-hidden="true">✓</span> prévision juste</li>
-        <li><span class="history-mark ko" aria-hidden="true">✗</span> prévision erronée</li>
-        <li><span class="history-none">aucune</span> pas de prévision émise ce jour-là (comptée comme manquée)</li>
-        <li><span class="history-none">n/a</span> service pas encore lancé</li>
-    </ul>
-    <p class="table-scroll-hint" aria-hidden="true">Faites défiler le tableau horizontalement pour voir toutes les colonnes.</p>
-    <div class="table-scroll" role="region" aria-label="Tableau jour par jour des prévisions" tabindex="0">
-    <table class="history-table">
-        <caption class="sr-only">Couleur officielle et couleurs prévues 5, 4, 3 et 2 jours avant, saison {{ season_label }}</caption>
-        <thead>
-            <tr>
-                <th scope="col">Date</th>
-                <th scope="col">Couleur officielle</th>
-                {% for n in table_horizons %}<th scope="col">J-{{ n }}<span class="history-th-sub">{{ n }} jours avant</span></th>{% endfor %}
-            </tr>
-        </thead>
-        <tbody>
-        {% for r in h.rows %}
-            <tr>
-                <th scope="row"><time datetime="{{ r.iso }}">{{ r.label }}</time></th>
-                <td>{{ tag(r.couleur) }}</td>
-                {% for c in r.cells %}
-                <td>{% if c.state == 'ok' %}{{ tag(c.couleur) }} <span class="history-mark {{ 'ok' if c.juste else 'ko' }}" aria-hidden="true">{{ '✓' if c.juste else '✗' }}</span><span class="sr-only">{{ 'juste' if c.juste else 'erronée' }}</span>{% elif c.state == 'absente' %}<span class="history-none">aucune</span>{% else %}<span class="history-none">n/a</span>{% endif %}</td>
-                {% endfor %}
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-    </div>
+    {% include "_historique_grille.html" %}
+    {% include "_historique_bilan.html" %}
     {% else %}
     <p class="history-empty" role="status">
         Pas encore de données pour cette saison. Les premières lignes apparaîtront dès qu'EDF aura publié la couleur
-        d'un jour pour lequel nous avions émis une prévision au moins 2 jours avant.
+        d'un jour pour lequel nous avions émis une prévision.
         {% if is_current %}Les jours rouges ne sont possibles que du 1<sup>er</sup> novembre au 31 mars.{% endif %}
     </p>
     {% endif %}
 
     <h2 id="methode">Méthode</h2>
     <ul>
-        <li><strong>Données brutes, sans sélection</strong>&nbsp;: chaque jour dont EDF a publié la couleur figure dans le tableau, que notre prévision ait été juste ou non.</li>
-        <li><strong>Prévision figée</strong>&nbsp;: pour chaque jour, nous gardons la dernière prévision émise 2, 3, 4 ou 5 jours avant, jamais recalculée après coup. Le délai se compte entre la date d'émission et le jour concerné&nbsp;: un calcul retardé après minuit compte pour le lendemain. Une prévision absente compte comme un jour manqué.</li>
-        <li><strong>Pourcentages</strong>&nbsp;: affichés seulement à partir de {{ pct_min }} jours d'une même couleur (ou {{ pct_min }} alertes) pour un horizon donné. En dessous, l'échantillon est trop petit pour qu'un pourcentage ait un sens.</li>
+        <li><strong>Données brutes, sans sélection</strong>&nbsp;: chaque jour dont EDF a publié la couleur figure dans la grille, que notre prévision ait été juste ou non.</li>
+        <li><strong>Prévision figée</strong>&nbsp;: pour chaque jour et chaque délai, nous gardons la dernière prévision émise ce jour-là, jamais recalculée après coup. Le délai se compte entre la date d'émission et le jour concerné&nbsp;: un calcul retardé après minuit compte pour le lendemain. Une prévision absente compte comme un jour manqué.</li>
+        <li><strong>Températures</strong>&nbsp;: moyenne pondérée de 9 villes, telle que prévue au moment de la prévision&nbsp;; la température observée est la dernière mesure enregistrée pour le jour.</li>
+        <li><strong>Pourcentages</strong>&nbsp;: affichés seulement à partir de {{ pct_min }} jours d'une même couleur (ou {{ pct_min }} alertes) pour un délai donné. En dessous, l'échantillon est trop petit pour qu'un pourcentage ait un sens.</li>
         <li><strong>Algorithme</strong>&nbsp;: il évolue au fil de la saison&nbsp;; chaque prévision est comparée telle qu'elle a été émise par la version alors en service.{% if start_date_label %} Historique tenu depuis le {{ start_date_label }}.{% endif %}</li>
     </ul>
     <p>{{ facts.PERFORMANCE_POLICY }} Détail des données et du calcul&nbsp;: <a href="/methodologie">notre méthodologie</a>.</p>
     <p>Voir aussi&nbsp;: <a href="/calendrier">calendrier Tempo EDF</a>, <a href="/couleur-tempo-demain">couleur Tempo de demain</a>.</p>
 </article>
+{% endblock %}
+{% block scripts %}
+<script>
+/* Grille : afficher d'abord les délais les plus courts (J-1, couleur officielle) sur petit écran */
+(function () {
+    function end() {
+        var g = document.querySelector('.history-grid-scroll');
+        if (g && g.scrollWidth > g.clientWidth) { g.scrollLeft = g.scrollWidth; }
+    }
+    end();
+    window.addEventListener('load', end);
+})();
+</script>
 {% endblock %}

@@ -1,0 +1,38 @@
+{# Bilan par délai J-1 → J-15 de /historique-previsions (inclus par historique_previsions.html) #}
+    <h2 id="bilan">Bilan par délai d'anticipation</h2>
+    <p>
+        Pour chaque délai&nbsp;: combien de jours rouges et blancs réels avaient été annoncés, et combien de nos alertes
+        rouges et blanches étaient justes. Pas de «&nbsp;taux de réussite global&nbsp;» en titre&nbsp;: chaque saison compte environ
+        {{ facts.JOURS_BLEUS }} jours bleus sur 365, et un outil qui annoncerait «&nbsp;bleu&nbsp;» tous les jours aurait souvent raison sans
+        jamais prévenir d'un jour rouge. La dernière colonne le montre, sur les mêmes jours.
+    </p>
+    <p class="history-note">Pourcentage affiché seulement à partir de {{ pct_min }} jours (ou {{ pct_min }} alertes) d'une même couleur pour un délai donné&nbsp;: en dessous, seuls les effectifs bruts ont un sens.</p>
+    <div class="table-scroll" role="region" aria-label="Bilan par délai d'anticipation" tabindex="0">
+    <table class="history-table history-bilan">
+        <caption class="sr-only">Effectifs par délai d'anticipation, saison {{ season_label }}</caption>
+        <thead>
+            <tr>
+                <th scope="col">Délai</th>
+                <th scope="col" class="num"><span class="legend-dot couleur-ROUGE" aria-hidden="true"></span> Jours rouges annoncés</th>
+                <th scope="col" class="num">Alertes rouges justes</th>
+                <th scope="col" class="num"><span class="legend-dot couleur-BLANC" aria-hidden="true"></span> Jours blancs annoncés</th>
+                <th scope="col" class="num">Alertes blanches justes</th>
+                <th scope="col" class="num">Prévisions justes</th>
+                <th scope="col" class="num">«&nbsp;Toujours bleu&nbsp;» juste</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr class="hb-group"><th scope="rowgroup" colspan="7">Zone la plus fiable&nbsp;: 2 à 5 jours avant</th></tr>
+            {% for hz in h.fiables %}{{ bilan_row(hz) }}{% endfor %}
+        </tbody>
+        <tbody>
+            <tr class="hb-group"><th scope="rowgroup" colspan="7">La veille&nbsp;: EDF publie la couleur du lendemain vers 11&nbsp;h</th></tr>
+            {% for hz in h.veille %}{{ bilan_row(hz) }}{% endfor %}
+        </tbody>
+        <tbody>
+            <tr class="hb-group"><th scope="rowgroup" colspan="7">Indicatif&nbsp;: 6 à 15 jours avant, la météo devient moins précise</th></tr>
+            {% set indic = h.indicatifs|selectattr('jours')|list %}
+            {% for hz in indic %}{{ bilan_row(hz) }}{% else %}<tr><td colspan="7" class="history-muted">Aucun jour comparable pour l'instant à ces délais (service lancé trop récemment).</td></tr>{% endfor %}
+        </tbody>
+    </table>
+    </div>

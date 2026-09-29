@@ -32,15 +32,17 @@ def client():
 
 
 def _pred(target: str, emitted: str, couleur: str, *, horizon: str = "", simulated: int = 0,
-          cycle_id: str = "", confirmed: int = 0, originale: str = ""):
+          cycle_id: str = "", confirmed: int = 0, originale: str = "",
+          temp: float | None = None, proba_rouge: float = 0.0):
     from database import get_db
     conn = get_db()
     n = (date.fromisoformat(target) - date.fromisoformat(emitted)).days
     conn.execute(
         "INSERT INTO predictions (date, couleur_predite, horizon, timestamp_prediction, "
-        "simulated, cycle_id, confirmed, couleur_originale) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        "simulated, cycle_id, confirmed, couleur_originale, temp_moy_prevue, probabilite_rouge) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (target, couleur, horizon or f"J-{n}", emitted + "T18:00:00", simulated, cycle_id,
-         confirmed, originale),
+         confirmed, originale, temp, proba_rouge),
     )
     conn.commit()
     conn.close()
@@ -184,9 +186,9 @@ class TestControlledCounts:
         assert (j5["BLANC"]["alertes"], j5["BLANC"]["alertes_justes"]) == (1, 0)
         assert j5["BLANC"]["sans_prevision"] == 1
 
-    def test_survives_purge_of_live_predictions(self, monkeypatch):
-        """purge_old_data() supprime les prédictions live > 90 jours : les évaluations
-        figées (performance) prennent le relais, sans les lignes de backtest."""
+    def test_performance_fallback_without_predictions(self, monkeypatch):
+        """Jours déjà purgés avant le 2026-09-29 (prédictions live > 90 jours) : les
+        évaluations figées (performance) donnent les couleurs, sans les backtests."""
         _controlled_case(monkeypatch)
         from database import get_db
         from performance_tracker import evaluate_predictions_for_date
@@ -218,10 +220,11 @@ class TestControlledCounts:
         _controlled_case(monkeypatch)
         page = client.get(PAGE + "/2025-2026").text
         article = re.search(r"<article.*?</article>", page, re.S).group(0)
-        assert "2 annoncés sur 2" in article
-        assert "2 justes sur 3" in article
-        assert "%" not in article  # tous les effectifs < 20
-        assert article.count('<th scope="row"><time') == 4
+        bilan = article[article.index('id="bilan"'):]
+        assert "<strong>2</strong> sur 2" in bilan  # rouges annoncés à 2 jours
+        assert "<strong>2</strong> sur 3" in bilan  # alertes rouges justes à 2 jours
+        assert "hb-pct" not in article and "&nbsp;%)" not in article  # effectifs < 20
+        assert article.count('<th scope="row" class="hg-date"><time') == 4
         assert "—" not in article and "&mdash;" not in article
 
     def test_percent_from_20(self, client, monkeypatch):
@@ -235,8 +238,8 @@ class TestControlledCounts:
         assert (j2["ROUGE"]["reels"], j2["ROUGE"]["rappel_pct"]) == (20, 95)
         assert j2["ROUGE"]["precision_pct"] is None  # 19 alertes < 20
         page = client.get(PAGE + "/2025-2026").text
-        assert "19 annoncés sur 20</strong> (95&nbsp;%)" in page
-        assert "18 justes" not in page
+        assert '<strong>19</strong> sur 20 <span class="hb-pct">(95&nbsp;%)</span>' in page
+        assert "<strong>19</strong> sur 19</td>" in page  # 19 alertes : pas de pourcentage
 
 
 # ------------------------------------------------------------ CSV, SEO
@@ -250,12 +253,16 @@ class TestCsvAndSeo:
         assert "attachment" in r.headers["content-disposition"]
         assert r.content.startswith(b"\xef\xbb\xbf")
         rows = list(csv.reader(io.StringIO(r.content.decode("utf-8-sig")), delimiter=";"))
-        assert rows[0][:7] == ["saison", "date", "couleur_officielle", "prevision_J-5",
-                               "prevision_J-4", "prevision_J-3", "prevision_J-2"]
+        head = rows[0]
+        assert head[:4] == ["saison", "date", "couleur_officielle", "temp_observee"]
+        assert [c for c in head if c.startswith("prevision_")] == [f"prevision_J-{n}" for n in range(15, 0, -1)]
         assert len(rows) == 1 + 4
-        by_date = {row[1]: row for row in rows[1:]}
-        assert by_date["2026-02-02"][2:7] == ["ROUGE", "ROUGE", "", "BLANC", "ROUGE"]
-        assert by_date["2026-02-05"][2:7] == ["BLEU", "BLANC", "", "BLANC", "BLEU"]
+        by_date = {row[1]: dict(zip(head, row)) for row in rows[1:]}
+        got = [by_date["2026-02-02"][f"prevision_J-{n}"] for n in (5, 4, 3, 2)]
+        assert got == ["ROUGE", "", "BLANC", "ROUGE"]
+        got = [by_date["2026-02-05"][f"prevision_J-{n}"] for n in (5, 4, 3, 2)]
+        assert got == ["BLANC", "", "BLANC", "BLEU"]
+        assert by_date["2026-02-02"]["prevision_J-15"] == ""
 
     def test_jsonld_and_meta(self, client, monkeypatch):
         _controlled_case(monkeypatch)
@@ -310,3 +317,106 @@ class TestRealDump:
         from prediction_history import get_history
         seasons = get_history(force=True)["seasons"]
         assert set(seasons) == {"2025-2026"}
+
+
+# ------------------------------------------------------------ Grille J-15 -> J-1, températures, purge
+
+def _weather(d: str, temp: float, fetched: str):
+    from database import get_db
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO weather_cache (date, temp_min, temp_max, temp_moy, fetched_at) "
+        "VALUES (?, ?, ?, ?, ?) ON CONFLICT (date) DO UPDATE SET temp_moy = excluded.temp_moy, "
+        "fetched_at = excluded.fetched_at",
+        (d, temp - 3, temp + 3, temp, fetched))
+    conn.commit()
+    conn.close()
+
+
+class TestGridAndTemperatures:
+    def _case(self, monkeypatch):
+        monkeypatch.setattr("config.Config.PREDICTION_START_DATE", "2026-01-01")
+        d = "2026-02-10"
+        _actual(d, "ROUGE")
+        _pred(d, _before(d, 12), "BLEU", temp=8.4)
+        _pred(d, _before(d, 5), "BLANC", temp=3.2)
+        _pred(d, _before(d, 2), "ROUGE", temp=-1.5, proba_rouge=0.64)
+        _pred(d, _before(d, 1), "BLEU", confirmed=1, originale="ROUGE", temp=-2.0)
+        _weather(d, -2.3, "2026-02-10T20:00:00")
+        return d
+
+    def test_grid_has_15_horizon_columns(self, client, monkeypatch):
+        self._case(monkeypatch)
+        page = client.get(PAGE + "/2025-2026").text
+        grid = re.search(r'<table class="history-grid-table">.*?</table>', page, re.S).group(0)
+        heads = re.findall(r"<abbr[^>]*>(J-\d+)</abbr>", grid)
+        assert heads == [f"J-{n}" for n in range(15, 0, -1)]
+        row = re.findall(r"<tr>.*?</tr>", grid, re.S)[1]
+        assert row.count('class="hg-cell') == 15
+
+    def test_temperatures_and_tooltips(self, client, monkeypatch):
+        self._case(monkeypatch)
+        page = client.get(PAGE + "/2025-2026").text
+        grid = re.search(r'<table class="history-grid-table">.*?</table>', page, re.S).group(0)
+        for t in ("8,4°", "3,2°", "-1,5°", "-2,0°"):
+            assert t in grid
+        assert "-2,3°" in grid  # température observée (weather_cache)
+        assert "Prévu 2 jours avant : Rouge, juste ; probabilité 64 %" in grid
+        # Ligne confirmée : couleur émise, probabilité écrasée par EDF non affichée
+        assert "Prévu la veille : Rouge, juste ; température moyenne prévue -2,0 °C" in grid
+        assert "Prévu 12 jours avant : Bleu, erroné" in grid
+        assert "n/d" not in grid
+
+    def test_nd_when_temperature_not_kept(self, client, monkeypatch):
+        monkeypatch.setattr("config.Config.PREDICTION_START_DATE", "2026-01-01")
+        _actual("2026-02-10", "BLEU")
+        _pred("2026-02-10", "2026-02-07", "BLEU")  # sans temp_moy_prevue
+        page = client.get(PAGE + "/2025-2026").text
+        assert "n/d" in page and "température prévue non conservée" in page
+
+    def test_csv_has_temperatures(self, client, monkeypatch):
+        d = self._case(monkeypatch)
+        body = client.get(PAGE + ".csv").content.decode("utf-8-sig")
+        rows = list(csv.reader(io.StringIO(body), delimiter=";"))
+        row = dict(zip(rows[0], [r for r in rows if r[1] == d][0]))
+        assert row["temp_observee"] == "-2,3"
+        assert (row["prevision_J-2"], row["temp_prevue_J-2"]) == ("ROUGE", "-1,5")
+        assert (row["prevision_J-12"], row["temp_prevue_J-12"]) == ("BLEU", "8,4")
+        assert row["prevision_J-1"] == "ROUGE"
+
+    def test_bilan_covers_1_to_15(self, client, monkeypatch):
+        self._case(monkeypatch)
+        s = _season_view()
+        assert [h["n"] for h in s["horizons"]] == list(range(1, 16))
+        assert _hz(s, 12)["justes"] == 0 and _hz(s, 1)["justes"] == 1
+        page = client.get(PAGE + "/2025-2026").text
+        assert "Zone la plus fiable" in page and "Indicatif" in page
+        assert page.count('<tr class="hb-fiable">') == 4
+
+
+class TestPurgeKeepsRealPredictions:
+    def test_purge_keeps_real_deletes_old_simulated(self):
+        import app as app_module
+        from database import get_db
+        old = (date.today() - timedelta(days=200)).isoformat()
+        _pred(old, _before(old, 3), "ROUGE", temp=1.0)
+        _pred(old, _before(old, 4), "BLEU", simulated=1)
+        _pred(old, _before(old, 5), "BLANC", horizon="BT", cycle_id="backtest")
+        app_module.purge_old_data()
+        conn = get_db()
+        rows = conn.execute("SELECT simulated, cycle_id FROM predictions WHERE date = ?", (old,)).fetchall()
+        conn.close()
+        assert sorted((r["simulated"], r["cycle_id"]) for r in rows) == [(0, ""), (0, "backtest")]
+
+
+class TestAdminUnchanged:
+    def test_daily_recap_still_works(self, monkeypatch):
+        """La page publique n'altère pas get_daily_recap (lecture seule, même sortie)."""
+        monkeypatch.setattr("config.Config.PREDICTION_START_DATE", "2026-01-01")
+        _actual("2026-02-10", "ROUGE")
+        _pred("2026-02-10", "2026-02-08", "ROUGE", temp=-1.5)
+        from performance_tracker import get_daily_recap
+        before = get_daily_recap("2025-2026")
+        _season_view()
+        after = get_daily_recap("2025-2026")
+        assert before == after and before and before[0]["date"] == "2026-02-10"

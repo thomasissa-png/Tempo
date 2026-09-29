@@ -400,7 +400,7 @@ git push -u origin <branch-name>
 ## Common Pitfalls
 - **Data leakage**: Never use same-day RTE consumption for predictions (only lag features D-1+)
 - **Multi-horizon storage**: `store_prediction` blocks ANY new non-confirmed prediction if the date already has a confirmed row (any horizon). This prevents new horizons from shadowing confirmed predictions via `GROUP BY date + MAX(id)` queries
-- **Orphan cleanup**: Must preserve multi-horizon prediction history (clean per-horizon, not per-date)
+- **Orphan cleanup / purge**: Must preserve multi-horizon prediction history (clean per-horizon, not per-date); `purge_old_data()` never deletes real predictions (only `simulated = 1` > 90 days) since /historique-previsions shows them
 - **Weather insert**: `fetched_at` column is NOT NULL — always include it in INSERT statements
 - **DB migrations**: Always update version assertions in tests when adding new migrations
 - **Dependencies**: `fastapi` requires `python-multipart` for Form data — pinned in `requirements.txt` since 2026-09-29 (without it FastAPI never loads and the startup proxy serves the loading page forever)

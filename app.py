@@ -154,9 +154,11 @@ def purge_old_data() -> None:
         deleted_cache = 0
         cutoff_preds = (date.today() - timedelta(days=90)).isoformat()
         # Fix audit ML #38 : préserver les predictions backtest (essentielles pour ML)
-        # Seules les prédictions live > 90 jours sont purgées.
+        # Historique public (2026-09-29) : les prédictions réelles ne sont plus
+        # jamais purgées (grille J-15 → J-1 et températures de /historique-previsions,
+        # ~15 lignes par jour cible). Seules les prédictions simulées > 90 jours le sont.
         deleted_preds = conn.execute(
-            "DELETE FROM predictions WHERE date < ? AND cycle_id NOT LIKE 'backtest%'",
+            "DELETE FROM predictions WHERE date < ? AND simulated = 1 AND cycle_id NOT LIKE 'backtest%'",
             (cutoff_preds,)
         ).rowcount
         # Fix audit ML #38 : ne plus purger la table performance.
@@ -179,7 +181,7 @@ def purge_old_data() -> None:
         conn.commit()
 
         logger.info(
-            "purge_old_data: deleted %d weather_cache (>30d), %d predictions live (>90d), "
+            "purge_old_data: deleted %d weather_cache (>30d), %d simulated predictions (>90d), "
             "%d orphan predictions (backtest preserved)",
             deleted_cache, deleted_preds, deleted_orphans,
         )
