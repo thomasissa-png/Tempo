@@ -1096,11 +1096,10 @@ def predict_range(forecasts: list[dict],
             pred["confirmed"] = True
             pred["simulated"] = False
             predictions.append(pred)
-            # Decrementer le quota meme pour les confirmees
-            if couleur_officielle == "ROUGE" and sim_remaining["ROUGE"] > 0:
-                sim_remaining["ROUGE"] -= 1
-            elif couleur_officielle == "BLANC" and sim_remaining["BLANC"] > 0:
-                sim_remaining["BLANC"] -= 1
+            # Pas de décrément du quota ici : get_remaining_days() compte déjà
+            # toutes les couleurs EDF publiées de la saison, J0 et J+1 compris.
+            # Les décrémenter à nouveau les comptait deux fois (audit 2026-09-29,
+            # rejeu tools/replay/ : +12 ROUGE attrapés à J+2..J+5 sur 7 saisons).
             # P1 : propager la couleur confirmée pour le forward clustering
             predicted_colors[target_str] = couleur_officielle
             continue
@@ -1144,7 +1143,73 @@ def predict_range(forecasts: list[dict],
     # ROUGE/BLANC causees par la pression budgetaire sequentielle
     predictions = _apply_thermal_coherence(predictions, forecasts)
 
+    # Jumeau RTE (filet + veto J+2..J+5), coupé si Config.RTE_TWIN_ENABLED = False
+    if Config.RTE_TWIN_ENABLED:
+        predictions = _apply_rte_twin(predictions, forecasts, remaining,
+                                      {**actuals_cache, **actuals_future})
+
     return predictions
+
+
+RTE_TWIN_HORIZONS = (2, 3, 4, 5)
+
+
+def _apply_rte_twin(predictions: list[dict], forecasts: list[dict],
+                    remaining: dict, known_colors: dict[str, str]) -> list[dict]:
+    """Variante H2 de l'étude docs/audits/2026-09-29-jumeau-rte.md.
+
+    Sur les jours non confirmés de J+2 à J+5 :
+    - filet : le jumeau RTE dit ROUGE et le pipeline non -> ROUGE (sans créer
+      plus de 5 ROUGE consécutifs) ;
+    - veto : le pipeline dit ROUGE et le jumeau ne franchit aucun seuil
+      (BLEU) -> BLANC.
+    Toute erreur ou donnée manquante laisse les prédictions inchangées.
+    """
+    try:
+        import rte_twin
+        today = date.today()
+        idx = {}
+        for i, p in enumerate(predictions):
+            d = date.fromisoformat(p["date"])
+            if not p.get("confirmed") and (d - today).days in RTE_TWIN_HORIZONS:
+                idx[d] = i
+        if not idx:
+            return predictions
+        targets = sorted(idx)
+        wx = {date.fromisoformat(f["date"]): f for f in forecasts}
+        known = {date.fromisoformat(k): v for k, v in known_colors.items()}
+        twin = rte_twin.forecast_colors(targets, wx, remaining["ROUGE"], remaining["BLANC"],
+                                        known, is_french_holiday)
+        if not twin:
+            return predictions
+        colors = dict(known)
+        for p in predictions:
+            colors.setdefault(date.fromisoformat(p["date"]), p["couleur_predite"])
+        for d in targets:
+            pred = predictions[idx[d]]
+            before, tw = pred["couleur_predite"], twin[d]
+            after = before
+            if tw == "ROUGE" and before != "ROUGE":
+                run = 1
+                for step in (-1, 1):
+                    k = d + timedelta(days=step)
+                    while colors.get(k) == "ROUGE":
+                        run += 1
+                        k += timedelta(days=step)
+                if run <= 5:
+                    after = "ROUGE"
+            elif before == "ROUGE" and tw == "BLEU":
+                after = "BLANC" if d.weekday() != 6 else "BLEU"
+            pred["rte_twin"] = tw
+            if after != before:
+                pred["couleur_predite"] = after
+                colors[d] = after
+                pred["raison"] = (pred.get("raison") or "") + f" | Jumeau RTE : {tw}, {before} -> {after}"
+                _ensure_prob_coherence(pred)
+        return predictions
+    except Exception as e:
+        logger.warning(f"[RTE twin] ignoré : {e}")
+        return predictions
 
 
 def _result_confirmed(target_date: date, couleur: str,

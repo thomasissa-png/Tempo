@@ -107,6 +107,12 @@ class Config:
     # Les jours bleus = total saison - rouges - blancs (varie si annee bissextile)
     # Calculé dynamiquement dans tempo_client.get_blue_days_total()
 
+    # Jumeau de l'algorithme RTE (rte_twin.py) en filet + veto sur J+2..J+5
+    # (predictor._apply_rte_twin). Étude et critères : docs/audits/2026-09-29-jumeau-rte.md.
+    # False = comportement strictement identique à avant le jumeau.
+    # Activé le 2026-09-29 : 6 critères pré-enregistrés passés (rejeu 6 saisons).
+    RTE_TWIN_ENABLED = True
+
     # --- Poids algorithme v3.5 (avec modulation saisonnière T4) ---
     # Poids par défaut (Jan-Mar = pic saison). En Nov-Déc, predict_day()
     # applique une modulation saisonnière qui réduit le budget et augmente

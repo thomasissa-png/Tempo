@@ -243,6 +243,11 @@ git push -u origin <branch-name>
 - **Seasonal median fallback for missing RTE**: When no RTE lag data available, uses winter medians (cp=5.5, cm=4.8, nuc=3.5, gaz=0.5, renew=1.0, nuc_ratio=0.73) instead of 0 (which is an impossible outlier that biases toward BLEU)
 - Model file: `ml_model.pkl`
 
+### RTE twin & replay (2026-09-29)
+- `rte_twin.py` reproduces RTE's published Tempo algorithm (normalised net consumption vs official thresholds A - B.JourTempo - C.Stock, stock depletion, placement rules); net consumption at J+h is estimated from weather (`rte_twin_model.json`, trained on real eCO2mix 2019-2024). Plugged into `predict_range` via `predictor._apply_rte_twin` (J+2..J+5 only: safety net to ROUGE + veto ROUGE->BLANC), switch `Config.RTE_TWIN_ENABLED`. Needs >= 330 days of previous-season `weather_cache` for normalisation, otherwise stays inactive (log `[RTE twin]`).
+- Replay (7 seasons, observed weather = optimistic bound, J+2..J+5): missed ROUGE 34 -> 18, false ROUGE alerts 404 -> 399, all pre-registered criteria passed. Report: `docs/audits/2026-09-29-jumeau-rte.md`.
+- **Every change to predictor/ml/config/rte_twin MUST be replayed before deploy**: `tools/replay/` (README). Also fixed: `predict_range` no longer double-counts J0/J+1 official colours in the remaining quota.
+
 ### Configuration
 - `config.py`: All thresholds, weights, city definitions, API keys
 - Dynamic RED threshold: piecewise-linear curve (42@-5°C→65@10°C), requires budget_score>=40
