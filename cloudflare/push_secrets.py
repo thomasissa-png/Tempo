@@ -1,11 +1,13 @@
-"""Copie les Secrets Replit vers le Worker Cloudflare, sans les afficher.
+"""Copie les secrets de l'app (variables d'environnement) vers le Worker Cloudflare, sans les afficher.
 
-À lancer depuis le Shell Replit :
+À lancer depuis une session Claude Code dont l'environnement contient les Secrets Replit
+(ou, à défaut, depuis le Shell Replit) :
     python3 cloudflare/push_secrets.py          # phase de test : AUCUN envoi WhatsApp, agents IA coupés
     python3 cloudflare/push_secrets.py --prod   # bascule : ajoute WHATSAPP_TOKEN et ANTHROPIC_API_KEY
 
-Secrets Replit nécessaires en plus des secrets habituels de l'app :
+Variables nécessaires en plus des secrets habituels de l'app :
     CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, NEON_DATABASE_URL
+Lancer d'abord cloudflare/check_access.py : il vérifie que la clé relit les numéros des abonnés.
 
 Côté Cloudflare, DATABASE_URL reçoit la valeur de NEON_DATABASE_URL (jamais la base Replit).
 Sans WHATSAPP_TOKEN, l'app passe d'elle-même en mode simulation : aucun abonné ne
@@ -38,8 +40,9 @@ APP_ENV_KEYS = [
 ]
 # Retenus en phase de test : ce sont eux qui font sortir quelque chose vers l'extérieur.
 PROD_ONLY = {"WHATSAPP_TOKEN", "ANTHROPIC_API_KEY"}
-# Indispensables : sans eux, abonnés illisibles ou admin inaccessible.
-REQUIRED = {"PHONE_ENCRYPTION_KEY", "ADMIN_PASSWORD"}
+# Clé des numéros = PHONE_ENCRYPTION_KEY, sinon dérivée d'ADMIN_PASSWORD, sinon de SESSION_SECRET
+# (database._get_fernet). Au moins une doit être présente, sinon abonnés illisibles.
+KEY_SOURCES = ("PHONE_ENCRYPTION_KEY", "ADMIN_PASSWORD", "SESSION_SECRET")
 
 
 def main() -> None:
@@ -49,9 +52,10 @@ def main() -> None:
     neon = os.getenv("NEON_DATABASE_URL", "")
     missing = [n for n, v in (("CLOUDFLARE_API_TOKEN", token), ("CLOUDFLARE_ACCOUNT_ID", account),
                               ("NEON_DATABASE_URL", neon)) if not v]
-    missing += [k for k in sorted(REQUIRED) if not os.getenv(k)]
+    if not any(os.getenv(k) for k in KEY_SOURCES):
+        missing.append(" ou ".join(KEY_SOURCES))
     if missing:
-        print("ERREUR : secrets Replit manquants : " + ", ".join(missing))
+        print("ERREUR : variables manquantes : " + ", ".join(missing))
         sys.exit(1)
 
     values = {}

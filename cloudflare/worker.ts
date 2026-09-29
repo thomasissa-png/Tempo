@@ -54,7 +54,25 @@ export class TempoApp extends Container<Env> {
       if (typeof value === "string" && value !== "") vars[key] = value;
     }
     this.envVars = vars;
+
+    // Les variables ne sont lues qu'au démarrage du conteneur. Si les secrets ont changé
+    // (ex. WHATSAPP_TOKEN ajouté à la bascule), on arrête le conteneur en cours : la requête
+    // suivante le relance avec les nouvelles valeurs. Seule l'empreinte est stockée.
+    ctx.blockConcurrencyWhile(async () => {
+      const fingerprint = await sha256(JSON.stringify(Object.entries(vars).sort()));
+      if ((await ctx.storage.get<string>("envFingerprint")) === fingerprint) return;
+      if (ctx.container?.running) {
+        console.log("[config] secrets modifiés : redémarrage du conteneur");
+        await this.stop();
+      }
+      await ctx.storage.put("envFingerprint", fingerprint);
+    });
   }
+}
+
+async function sha256(text: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
 export default {

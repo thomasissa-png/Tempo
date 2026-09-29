@@ -61,8 +61,8 @@ Sans `DATABASE_URL`, l'app utilise SQLite (`tempo.db`). Toutes les variables son
 
 ## Hébergement
 
-- **Production actuelle** : Replit (PostgreSQL via `DATABASE_URL`, Secrets Replit).
-- **Cible préparée** : Cloudflare (Worker + conteneur + Neon), runbook dans [`cloudflare/README.md`](cloudflare/README.md). Inactive tant que la migration n'est pas décidée.
+- **Production actuelle** : Replit (PostgreSQL via `DATABASE_URL`, Secrets Replit), jusqu'à la bascule.
+- **Migration en cours** vers Cloudflare (Worker + conteneur + Neon), runbook dans [`cloudflare/README.md`](cloudflare/README.md).
 
 ## Tests
 

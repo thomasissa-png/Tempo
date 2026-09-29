@@ -276,10 +276,11 @@ git push -u origin <branch-name>
 - **`humidity_prevue`** + **`wind_speed_prevue`** columns added to `predictions` (v19): stores humidity and wind speed used in C_nette proxy scoring
 - `weather_cache` continues to store the latest forecast per date (used by current scoring pipeline)
 
-### Cloudflare (migration en cours, 2026-09)
+### Cloudflare (migration décidée 2026-09-29, en cours)
 - Cible : Worker `calendrier-tempo` + conteneur (même `Dockerfile`, 1 instance) + Neon Postgres. Runbook : `cloudflare/README.md`.
 - Invariants : `max_instances: 1` (scheduler unique), IP réelle via `X-Forwarded-For` posé par le Worker, `PHONE_ENCRYPTION_KEY` identique à Replit.
 - Tant que la bascule n'est pas faite, Replit reste la prod ; Cloudflare tourne sans `WHATSAPP_TOKEN` (mode simulation).
+- Scripts lancés depuis la session : `check_access.py` (bloquant), `copy_database.py` (`REPLIT_DATABASE_URL` → `NEON_DATABASE_URL`), `push_secrets.py [--prod]`. Le Worker redémarre le conteneur quand les secrets changent (empreinte SHA-256 en stockage DO).
 
 ### Database Robustness
 - **DB-2: Broken PostgreSQL connection handling**: `PgConnectionWrapper.close()` calls `rollback()` before returning connection to pool. If rollback fails (TCP timeout), uses `putconn(conn, close=True)` to discard the broken connection instead of returning it — next `getconn()` creates a fresh one.
@@ -403,7 +404,7 @@ git push -u origin <branch-name>
 ## Décisions fondateur (NE PAS remettre en cause, NE PAS « corriger »)
 - **Lien Selectra** (`templates/dashboard.html`, FAQ « Combien coûte réellement un jour rouge ? ») : conservé TEL QUEL, en dofollow, sans `rel="nofollow"`/`sponsored`. C'est l'accord passé avec Selectra (décision Thomas, 2026-09-29). Ne pas le modifier, le déplacer ni le signaler comme risque dans les audits.
 - **« Plus de 2 500 foyers alertés »** : chiffre conservé (décision Thomas, 2026-09-29). Ne pas le retirer ; seule sa centralisation en constante est permise.
-- **Hébergement** : Replit reste la prod pour la prochaine mise à jour (décision 2026-09-29). La config Cloudflare (`cloudflare/`) est prête mais inactive ; la migration n'est lancée que sur demande explicite.
+- **Hébergement** : migration Replit → Cloudflare DEMANDÉE (décision Thomas, 2026-09-29, « j'en peux plus de Replit ») et pilotée de bout en bout par Claude depuis les sessions (runbook `cloudflare/README.md`). Aucun mode fantôme, ne rien casser : bascule seulement après `check_access.py` tout OK (numéros abonnés relus). Seule action fondateur à la bascule : Stop du déploiement Replit.
 
 ## Common Pitfalls
 - **Data leakage**: Never use same-day RTE consumption for predictions (only lag features D-1+)

@@ -1,10 +1,11 @@
 """Copie complète de la base PostgreSQL Replit vers la base Neon (Cloudflare).
 
-À lancer depuis le Shell Replit :
+À lancer depuis une session Claude Code (ou, à défaut, le Shell Replit) :
     python3 cloudflare/copy_database.py
 
-Variables d'environnement (Secrets Replit) :
-    DATABASE_URL        base source (Replit, déjà présente) : lue seulement, jamais modifiée
+Variables d'environnement :
+    REPLIT_DATABASE_URL base source (Replit) : lue seulement, jamais modifiée.
+                        Repli sur DATABASE_URL (cas du Shell Replit, où elle est déjà présente).
     NEON_DATABASE_URL   base cible (Neon) : son contenu est REMPLACÉ par celui de la source
 
 Le script :
@@ -28,6 +29,10 @@ from psycopg2.extras import execute_values
 ROOT = Path(__file__).resolve().parent.parent
 BATCH = 1000
 SKIP_TABLES = {"schema_version"}  # géré par init_db sur la cible
+# Depuis la v23, les migrations ne font qu'ajouter des tables (v24 agent_files,
+# v25 rte_forecast_log) : une source plus ancienne se copie sans perte, les
+# nouvelles tables restent vides sur la cible.
+ADDITIVE_SINCE = 23
 
 
 def _die(msg: str) -> None:
@@ -105,12 +110,12 @@ def _count(conn, table: str) -> int:
 
 
 def main() -> None:
-    source_url = os.getenv("DATABASE_URL", "")
+    source_url = os.getenv("REPLIT_DATABASE_URL") or os.getenv("DATABASE_URL", "")
     target_url = os.getenv("NEON_DATABASE_URL", "")
     if not source_url:
-        _die("DATABASE_URL (base Replit) absente.")
+        _die("REPLIT_DATABASE_URL (base Replit) absente.")
     if not target_url:
-        _die("NEON_DATABASE_URL absente : ajoutez-la dans les Secrets Replit.")
+        _die("NEON_DATABASE_URL absente.")
     if _same_database(source_url, target_url):
         _die("source et cible sont la même base : arrêt.")
 
@@ -129,9 +134,11 @@ def main() -> None:
     dst = psycopg2.connect(target_url)
 
     v_src, v_dst = _schema_version(src), _schema_version(dst)
-    if v_src != v_dst:
-        _die(f"versions de schéma différentes (Replit v{v_src}, Neon v{v_dst}). "
+    if v_src is None or v_dst is None or v_src > v_dst or (v_src < v_dst and v_src < ADDITIVE_SINCE):
+        _die(f"versions de schéma incompatibles (Replit v{v_src}, Neon v{v_dst}). "
              "Déployez le même code des deux côtés avant de copier.")
+    if v_src < v_dst:
+        print(f"     Replit v{v_src} -> Neon v{v_dst} : migrations additives, copie sans perte.")
 
     common = sorted(set(_tables(src)) & set(_tables(dst)) - SKIP_TABLES)
     only_src = sorted(set(_tables(src)) - set(_tables(dst)) - SKIP_TABLES)

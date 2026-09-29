@@ -9,6 +9,13 @@ from datetime import date, timedelta
 # Ajouter le répertoire racine au path pour les imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Les sessions de migration portent les vrais secrets de prod dans l'environnement
+# (cloudflare/README.md). Les tests ne doivent jamais toucher une vraie base ni
+# envoyer un message : on retire ces variables AVANT tout import de config.py.
+for _var in ("DATABASE_URL", "REPLIT_DATABASE_URL", "NEON_DATABASE_URL",
+             "WHATSAPP_TOKEN", "ANTHROPIC_API_KEY", "CLOUDFLARE_API_TOKEN"):
+    os.environ.pop(_var, None)
+
 
 @pytest.fixture(autouse=True)
 def use_test_db(tmp_path, monkeypatch):
