@@ -73,6 +73,7 @@ _CONFLICT_COLS = {
     'weather_forecast_log': '(target_date, forecast_date)',
     'performance': '(date_prediction, date_cible, jours_avance)',
     'scheduler_executions': '(task_id)',
+    'agent_files': '(path)',
 }
 
 # Connection pool for PostgreSQL (lazy-initialized)
@@ -1370,6 +1371,26 @@ def init_db():
         conn.commit()
         logger.info("Migration v23 appliquee (table scheduler_executions)")
 
+    if version < 24:
+        # Migration v24 — table agent_files (persistance des fichiers agents)
+        # Replit autoscale = disque éphémère : les fichiers écrits par les
+        # agents SEO/backlinks (articles/, backlinks/) sont perdus à chaque
+        # redéploiement. On les persiste en base et on les restaure au boot
+        # (règle 3-voies, cf. restore_agent_files).
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS agent_files (
+                path TEXT PRIMARY KEY,
+                content TEXT NOT NULL,
+                base_hash TEXT,
+                content_hash TEXT NOT NULL,
+                agent TEXT,
+                updated_at TEXT NOT NULL
+            )
+        """)
+        conn.execute("PRAGMA user_version = 24")
+        conn.commit()
+        logger.info("Migration v24 appliquee (table agent_files)")
+
     # Poids initiaux si vide
     existing = conn.execute("SELECT COUNT(*) as c FROM weights_history").fetchone()
     if not existing or existing["c"] == 0:
@@ -1428,3 +1449,189 @@ def get_previous_weights() -> dict | None:
         return None
     finally:
         conn.close()
+
+
+# ================================================================
+# Persistance des fichiers écrits par les agents (migration v24)
+# ================================================================
+# Replit autoscale : le disque est éphémère. Tout fichier écrit par un agent
+# (seo_agent, backlinks_agent) dans son périmètre est copié en base, puis
+# restauré au démarrage selon une règle 3-voies qui ne réécrase jamais une
+# modification humaine commitée dans le dépôt.
+
+AGENT_FILE_DIRS = ("articles/", "backlinks/")
+_AGENT_FILES_ROOT = os.path.dirname(os.path.abspath(__file__))
+
+
+def _sha256_text(content: str) -> str:
+    return hashlib.sha256(content.encode("utf-8")).hexdigest()
+
+
+def normalize_agent_path(rel_path: str) -> str | None:
+    """Normalise un chemin relatif d'agent ; None s'il sort du périmètre.
+
+    Refuse : chemins absolus, composants '..', backslashes, fichiers hors de
+    AGENT_FILE_DIRS. Retourne un chemin POSIX relatif (ex. 'articles/x.md').
+    """
+    if not rel_path or not isinstance(rel_path, str):
+        return None
+    if "\\" in rel_path or "\x00" in rel_path or rel_path.startswith("/"):
+        return None
+    parts = rel_path.split("/")
+    if any(part == ".." for part in parts):
+        return None
+    norm = "/".join(part for part in parts if part not in ("", "."))
+    if not any(norm.startswith(d) and len(norm) > len(d) for d in AGENT_FILE_DIRS):
+        return None
+    return norm
+
+
+def persist_agent_file(rel_path: str, content: str, agent: str,
+                       previous_disk_content: str | None) -> bool:
+    """Upsert en base du contenu d'un fichier écrit par un agent.
+
+    ``previous_disk_content`` = contenu disque juste AVANT l'écriture de
+    l'agent (None si le fichier n'existait pas). base_hash = hash de ce
+    contenu, sauf si la ligne existe déjà et que le disque correspondait
+    encore au content précédent (on conserve alors le base_hash d'origine).
+
+    Ne lève jamais : un échec DB est loggé en WARNING et retourne False.
+    """
+    norm = normalize_agent_path(rel_path)
+    if norm is None:
+        logger.warning("[agent_files] Chemin hors périmètre ignoré : %r", rel_path)
+        return False
+    try:
+        content_hash = _sha256_text(content)
+        prev_hash = (_sha256_text(previous_disk_content)
+                     if previous_disk_content is not None else None)
+        conn = get_db()
+        try:
+            row = conn.execute(
+                "SELECT base_hash, content_hash FROM agent_files WHERE path = ?",
+                (norm,),
+            ).fetchone()
+            if row is not None and prev_hash is not None and row["content_hash"] == prev_hash:
+                base_hash = row["base_hash"]
+            else:
+                base_hash = prev_hash
+            conn.execute(
+                """INSERT INTO agent_files
+                   (path, content, base_hash, content_hash, agent, updated_at)
+                   VALUES (?, ?, ?, ?, ?, ?)
+                   ON CONFLICT (path) DO UPDATE SET
+                       content = excluded.content,
+                       base_hash = excluded.base_hash,
+                       content_hash = excluded.content_hash,
+                       agent = excluded.agent,
+                       updated_at = excluded.updated_at""",
+                (norm, content, base_hash, content_hash, agent,
+                 datetime.now().isoformat()),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        return True
+    except Exception as e:
+        logger.warning("[agent_files] Persistance DB échouée pour %s : %s", norm, e)
+        return False
+
+
+def restore_agent_files(root: str | None = None) -> dict:
+    """Restaure sur disque les fichiers d'agents persistés en base.
+
+    Règle 3-voies pour chaque ligne (hash disque = sha256 du fichier actuel) :
+    - fichier absent                → écrire le content de l'agent ;
+    - hash disque == content_hash   → rien (déjà à jour) ;
+    - hash disque == base_hash      → le dépôt n'a pas bougé depuis la
+                                      modification de l'agent → écrire ;
+    - sinon (modifié par un humain) → garder le disque, WARNING « conflit »,
+      et aligner la ligne sur le disque pour ne plus jamais l'écraser.
+
+    Ne lève jamais. Retourne les compteurs par branche.
+    """
+    stats = {"restored": 0, "unchanged": 0, "conflicts": 0, "skipped": 0, "errors": 0}
+    root_dir = os.path.realpath(root or _AGENT_FILES_ROOT)
+    try:
+        conn = get_db()
+    except Exception as e:
+        logger.warning("[agent_files] Restauration impossible (DB) : %s", e)
+        stats["errors"] += 1
+        return stats
+    try:
+        rows = conn.execute(
+            "SELECT path, content, base_hash, content_hash FROM agent_files"
+        ).fetchall()
+        for row in rows:
+            path = row["path"]
+            try:
+                norm = normalize_agent_path(path)
+                full = os.path.realpath(os.path.join(root_dir, norm)) if norm else None
+                if full is None or not any(
+                    full.startswith(os.path.join(root_dir, d.rstrip("/")) + os.sep)
+                    for d in AGENT_FILE_DIRS
+                ):
+                    logger.warning("[agent_files] Chemin hors périmètre ignoré : %r", path)
+                    stats["skipped"] += 1
+                    continue
+                content = row["content"]
+                if not os.path.exists(full):
+                    _atomic_write(full, content)
+                    stats["restored"] += 1
+                    continue
+                with open(full, "rb") as f:
+                    disk_bytes = f.read()
+                disk_hash = hashlib.sha256(disk_bytes).hexdigest()
+                if disk_hash == row["content_hash"]:
+                    stats["unchanged"] += 1
+                elif row["base_hash"] is not None and disk_hash == row["base_hash"]:
+                    _atomic_write(full, content)
+                    stats["restored"] += 1
+                else:
+                    logger.warning(
+                        "[agent_files] Conflit sur %s : fichier modifié dans le dépôt "
+                        "depuis l'écriture de l'agent — version du dépôt conservée", norm,
+                    )
+                    try:
+                        disk_text = disk_bytes.decode("utf-8")
+                        conn.execute(
+                            "UPDATE agent_files SET content = ?, base_hash = ?, "
+                            "content_hash = ?, updated_at = ? WHERE path = ?",
+                            (disk_text, disk_hash, disk_hash,
+                             datetime.now().isoformat(), path),
+                        )
+                    except UnicodeDecodeError:
+                        conn.execute("DELETE FROM agent_files WHERE path = ?", (path,))
+                    conn.commit()
+                    stats["conflicts"] += 1
+            except Exception as e:
+                logger.warning("[agent_files] Restauration échouée pour %r : %s", path, e)
+                stats["errors"] += 1
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+    except Exception as e:
+        logger.warning("[agent_files] Lecture de la table agent_files échouée : %s", e)
+        stats["errors"] += 1
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+    if stats["restored"] or stats["conflicts"]:
+        logger.info("[agent_files] Restauration : %s", stats)
+    return stats
+
+
+def _atomic_write(full_path: str, content: str) -> None:
+    """Écrit un fichier via un fichier temporaire + os.replace (pas de lecture partielle)."""
+    os.makedirs(os.path.dirname(full_path), exist_ok=True)
+    tmp = f"{full_path}.tmp-{os.getpid()}-{threading.get_ident()}"
+    try:
+        with open(tmp, "w", encoding="utf-8", newline="") as f:
+            f.write(content)
+        os.replace(tmp, full_path)
+    finally:
+        if os.path.exists(tmp):
+            os.remove(tmp)

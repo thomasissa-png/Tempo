@@ -351,6 +351,17 @@ def schedule_post_startup():
     from datetime import timedelta
     from apscheduler.triggers.date import DateTrigger
 
+    # Restauration des fichiers agents (articles/, backlinks/) le plus tôt
+    # possible, hors du chemin critique du health check : job one-shot à +1s
+    # exécuté en thread pool (lecture DB + quelques écritures disque).
+    scheduler.add_job(
+        _task_restore_agent_files,
+        DateTrigger(run_date=datetime.now() + timedelta(seconds=1)),
+        id="restore_agent_files",
+        name="Restauration des fichiers agents depuis la DB",
+        replace_existing=True,
+    )
+
     run_at = datetime.now() + timedelta(seconds=90)
     scheduler.add_job(
         _task_post_startup,
@@ -360,6 +371,44 @@ def schedule_post_startup():
         replace_existing=True,
     )
     logger.info(f"[Scheduler] Backfill + prédictions planifiés à {run_at.strftime('%H:%M:%S')}")
+
+
+def _invalidate_blog_caches() -> None:
+    """Vide les caches mémoïsés du blog/sitemap s'il y en a (lru_cache).
+
+    Aujourd'hui blog.py relit le disque à chaque requête ; cette invalidation
+    générique couvre un futur @lru_cache sans couplage fort.
+    """
+    try:
+        import blog
+    except Exception:
+        return
+    for attr in dir(blog):
+        fn = getattr(blog, attr, None)
+        if callable(fn) and hasattr(fn, "cache_clear"):
+            try:
+                fn.cache_clear()
+            except Exception:
+                pass
+
+
+def restore_agent_files_and_invalidate() -> dict:
+    """Restaure les fichiers agents persistés en DB puis invalide les caches blog."""
+    from database import restore_agent_files
+    stats = restore_agent_files()
+    if stats.get("restored"):
+        _invalidate_blog_caches()
+    return stats
+
+
+async def _task_restore_agent_files():
+    """Job one-shot au démarrage : restaure articles/ et backlinks/ depuis la DB."""
+    loop = asyncio.get_running_loop()
+    try:
+        stats = await loop.run_in_executor(None, restore_agent_files_and_invalidate)
+        logger.info(f"[Startup] Fichiers agents : {stats}")
+    except Exception as e:
+        logger.warning(f"[Startup] Restauration fichiers agents ignorée: {e}")
 
 
 async def _task_post_startup():
@@ -375,6 +424,15 @@ async def _task_post_startup():
     3. Recalcul des prédictions (9 appels météo + RTE)
     """
     loop = asyncio.get_running_loop()
+
+    # 0a. Restauration des fichiers agents (disque éphémère Replit) — rejoue
+    # la règle 3-voies (idempotent : sans effet si le job à +1s l'a déjà fait)
+    try:
+        stats = await loop.run_in_executor(None, restore_agent_files_and_invalidate)
+        if stats.get("restored") or stats.get("conflicts"):
+            logger.info(f"[Post-startup] Fichiers agents : {stats}")
+    except Exception as e:
+        logger.warning(f"[Post-startup] Restauration fichiers agents ignorée: {e}")
 
     # 0. Auto-import si la DB production est vide (sync depuis db_dump.json)
     try:

@@ -70,6 +70,7 @@ Exécutez les 8 étapes dans l'ordre. Chaque étape doit être complétée avant
 - Mettez à jour le fichier `articles/_seo_rules.yaml` (les règles SEO sont stockées dans ce fichier séparé, PAS dans ce prompt)
 - Documentez le changement avec la date et la source dans la section `historique` du YAML
 - **Garde-fou** : ne modifiez JAMAIS les règles fondamentales (E-E-A-T, pas de bourrage, liens internes) — seulement les pratiques techniques qui évoluent
+- **Garde-fou** : la section `decisions_fondateur` du YAML est intouchable et prime sur toute règle SEO (ex. le lien Selectra de la home reste tel quel, en dofollow ; le chiffre « 2 500 foyers » est conservé)
 
 **Vérifiez les tendances** : nouveaux mots-clés, questions émergentes, sujets d'actualité Tempo. Ajustez le calendrier éditorial si pertinent.
 
@@ -268,7 +269,7 @@ wc -w < articles/{slug}.md
 1. **Écrivez** le fichier dans `/articles/{slug}.md`
 2. **Mettez à jour** `/articles/_calendrier_editorial.yaml` (statut → "publié")
 3. **Vérifiez le frontmatter** : relisez les 6 premières lignes du fichier pour confirmer qu'il est valide
-4. **Committez et poussez** :
+4. **Committez et poussez** (facultatif) : chaque fichier écrit via `write_file` ou `edit_file` dans `articles/` est persisté automatiquement en base de données et restauré au redémarrage du serveur. C'est ce mécanisme qui garantit la durabilité en production (disque éphémère) ; le `git push` ci-dessous n'est qu'une copie de confort et peut échouer sans perte de données :
    ```bash
    git add articles/{slug}.md articles/_calendrier_editorial.yaml articles/_publication_log.md
    # Ajoutez aussi les articles modifiés par le maillage rétroactif
@@ -279,7 +280,7 @@ wc -w < articles/{slug}.md
 5. **Vérification post-publication** : relisez le fichier avec `read_file` pour confirmer qu'il est bien enregistré et que le frontmatter est parseable.
 
 **Gestion d'erreurs** :
-- Si `git push` échoue : réessayez 3 fois avec 5s d'attente. Si toujours en échec, loguez l'erreur dans le rapport.
+- Si `git push` échoue : réessayez 3 fois avec 5s d'attente. Si toujours en échec, loguez l'erreur dans le rapport (sans gravité : l'article est déjà persisté en base).
 - Si le frontmatter est mal formé après écriture : corrigez et re-committez.
 - Si un fichier modifié par le maillage rétroactif a un conflit : ne touchez pas ce fichier, loguez-le dans le rapport.
 

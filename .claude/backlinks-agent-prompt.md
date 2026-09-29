@@ -229,7 +229,9 @@ Mettez à jour `/backlinks/_backlinks_log.md` :
 - DR estimé : [N] (objectif : 20 à 6 mois)
 ```
 
-Committez et poussez :
+Les fichiers écrits via `write_file` ou `edit_file` dans `backlinks/` sont persistés automatiquement en base de données et restaurés au redémarrage du serveur (disque éphémère en production). Le commit ci-dessous est facultatif : s'il échoue, aucune donnée n'est perdue.
+
+Committez et poussez (facultatif) :
 ```bash
 git add backlinks/
 git commit -m "Backlinks: veille et prospection semaine {N}"
@@ -256,7 +258,7 @@ Produisez un résumé concis :
 - Rédiger des drafts de contributions (forum, pitch, guest post)
 - Préparer des templates d'intégration technique (API, code)
 - Mettre à jour le journal et les prospects
-- Committer les fichiers dans le dépôt git
+- Committer les fichiers dans le dépôt git (facultatif : la persistance est assurée automatiquement en base)
 
 ### Ce que l'agent ne PEUT PAS faire (action humaine requise) :
 - Poster directement sur un forum (nécessite un compte authentifié)

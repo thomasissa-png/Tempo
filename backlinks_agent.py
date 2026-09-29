@@ -147,6 +147,30 @@ def _resolve_path(path: str) -> Path:
     return p
 
 
+def _read_previous(p: Path) -> str | None:
+    """Contenu disque avant écriture (None si absent ou illisible)."""
+    try:
+        return p.read_text(encoding="utf-8") if p.is_file() else None
+    except (OSError, UnicodeDecodeError):
+        return None
+
+
+def _persist_to_db(p: Path, content: str, previous: str | None) -> None:
+    """Persiste en base un fichier écrit par l'agent (disque Replit éphémère).
+
+    Seuls les fichiers du périmètre agents (articles/, backlinks/) sont
+    persistés. Un échec DB ne fait jamais échouer l'outil.
+    """
+    try:
+        from database import normalize_agent_path, persist_agent_file
+        rel = p.resolve().relative_to(_PROJECT_ROOT.resolve()).as_posix()
+        if normalize_agent_path(rel) is None:
+            return
+        persist_agent_file(rel, content, "backlinks_agent", previous)
+    except Exception as e:
+        logger.warning("[Agent Backlinks] Persistance DB ignorée pour %s : %s", p, e)
+
+
 def _exec_tool(name: str, input_data: dict) -> str:
     """Exécute un outil et retourne le résultat sous forme de texte."""
     try:
@@ -158,8 +182,10 @@ def _exec_tool(name: str, input_data: dict) -> str:
 
         elif name == "write_file":
             p = _resolve_path(input_data["path"])
+            previous = _read_previous(p)
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text(input_data["content"], encoding="utf-8")
+            _persist_to_db(p, input_data["content"], previous)
             return f"OK : {p} écrit ({len(input_data['content'])} caractères)"
 
         elif name == "edit_file":
@@ -171,8 +197,10 @@ def _exec_tool(name: str, input_data: dict) -> str:
             new = input_data["new_string"]
             if old not in content:
                 return f"ERREUR : chaîne introuvable dans {p}"
+            previous = content
             content = content.replace(old, new, 1)
             p.write_text(content, encoding="utf-8")
+            _persist_to_db(p, content, previous)
             return f"OK : remplacement effectué dans {p}"
 
         elif name == "list_files":
@@ -371,7 +399,7 @@ def run_backlinks_agent() -> dict:
         model = Config.SEO_AGENT_MODEL  # même modèle que l'agent SEO
     except Exception:
         max_turns = 35
-        model = "claude-sonnet-5"
+        model = "claude-sonnet-5-5"
 
     # Trace le modele reellement resolu : la variable d'environnement
     # SEO_AGENT_MODEL ecrase le defaut du code. Sans ce log, un Secret
