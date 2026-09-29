@@ -1,0 +1,19 @@
+# Image Cloudflare Containers : on n'embarque que ce qui sert au runtime.
+# Garder : *.py, templates/, static/, articles/, .claude/seo-agent-prompt.md,
+# .claude/backlinks-agent-prompt.md, ml_model.pkl, confusion_zone_model.pkl,
+# db_dump.json (auto-import si base vide).
+.git
+.githooks
+.claude/gradient-backup
+.claude/agents
+**/__pycache__
+**/node_modules
+cloudflare
+tests
+logs/*.log
+*.db
+.env
+*.xls
+*.xlsx
+*.pdf
+*.ics

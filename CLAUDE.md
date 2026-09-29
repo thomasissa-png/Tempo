@@ -223,7 +223,7 @@ git push -u origin <branch-name>
 - **Dual-mode**: SQLite (`tempo.db`) locally, PostgreSQL on Replit (configured via `DATABASE_URL` env var). Replit migrated to PostgreSQL to avoid SQLite concurrency issues with subscribers. `PgConnectionWrapper` in `database.py` emulates the sqlite3 interface (parameter `?` → `%s`, `AUTOINCREMENT` → `SERIAL`, `INSERT OR IGNORE` → `ON CONFLICT DO NOTHING`, `INSERT OR REPLACE` → `ON CONFLICT (...) DO UPDATE SET`, `PRAGMA user_version` → `schema_version` table, `BEGIN/BEGIN EXCLUSIVE` → no-op (PG implicit transactions), `executescript` → split and execute, `lastrowid` → `SELECT lastval()`). Connection pooling via `ThreadedConnectionPool` (minconn=1, maxconn=10). `row_factory` attribute supported (no-op setter). Schema version table initialized once per process. All existing migration code works unmodified on both backends.
 - **DDL SAVEPOINT protection**: In PostgreSQL, a failed query aborts the ENTIRE transaction (unlike SQLite where only the statement fails). `execute()` auto-wraps `ALTER TABLE` and `DROP` statements in `SAVEPOINT/RELEASE`, and `executescript()` wraps the entire script. This allows migration `try/except` blocks to catch expected errors (e.g. "column already exists") without poisoning the transaction.
 - **Literal `%` escaping**: `execute()` escapes `%` → `%%` in SQL strings when params are present (psycopg2 interprets `%` as format specifiers). `LIKE 'backtest%'` with params becomes `'backtest%%'` for psycopg2, then PostgreSQL receives `'backtest%'`. Without params, no escaping (psycopg2 skips `%` processing).
-- Migration version 20. Key tables: `predictions`, `actuals`, `weather_cache`, `weather_forecast_log`, `rte_daily`, `weights`, `subscribers`
+- Migration version 23. Key tables: `predictions`, `actuals`, `weather_cache`, `weather_forecast_log`, `rte_daily`, `weights`, `subscribers`
 - **`_CONFLICT_COLS` mapping**: `_convert_sql()` uses a table→conflict_columns mapping to auto-convert any remaining `INSERT OR REPLACE` (safety net for tests/legacy code). Tables: predictions `(date, horizon)`, weather_cache `(date)`, rte_daily `(date)`, actuals `(date)`, learning_journal `(pattern_type, pattern_key, date_analysis)`, weather_forecast_log `(target_date, forecast_date)`, performance `(date_prediction, date_cible, jours_avance)`.
 - **SQL compatibility rules** (CRITICAL — must work in both SQLite AND PostgreSQL):
   - NEVER use `strftime()` in SQL queries — use `SUBSTR(date_column, 1, 7)` for month extraction (dates are ISO `YYYY-MM-DD` text)
@@ -267,6 +267,11 @@ git push -u origin <branch-name>
 - **`temp_moy_prevue`** column added to `predictions` table (v18): stores the 9-city weighted average temperature used for scoring each prediction
 - **`humidity_prevue`** + **`wind_speed_prevue`** columns added to `predictions` (v19): stores humidity and wind speed used in C_nette proxy scoring
 - `weather_cache` continues to store the latest forecast per date (used by current scoring pipeline)
+
+### Cloudflare (migration en cours, 2026-09)
+- Cible : Worker `calendrier-tempo` + conteneur (même `Dockerfile`, 1 instance) + Neon Postgres. Runbook : `cloudflare/README.md`.
+- Invariants : `max_instances: 1` (scheduler unique), IP réelle via `X-Forwarded-For` posé par le Worker, `PHONE_ENCRYPTION_KEY` identique à Replit.
+- Tant que la bascule n'est pas faite, Replit reste la prod ; Cloudflare tourne sans `WHATSAPP_TOKEN` (mode simulation).
 
 ### Database Robustness
 - **DB-2: Broken PostgreSQL connection handling**: `PgConnectionWrapper.close()` calls `rollback()` before returning connection to pool. If rollback fails (TCP timeout), uses `putconn(conn, close=True)` to discard the broken connection instead of returning it — next `getconn()` creates a fresh one.
