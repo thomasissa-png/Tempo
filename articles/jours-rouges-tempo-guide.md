@@ -99,7 +99,7 @@ C'est là que Calendrier Tempo EDF entre en jeu. Notre algorithme combine plusie
 - **Données météo** : nous analysons les prévisions de température, nébulosité et vent sur 9 grandes villes françaises représentatives du mix de consommation national (Paris, Lyon, Marseille, Lille, Strasbourg, Bordeaux, Nantes, Toulouse, Nice).
 - **Consommation RTE** : les prévisions de consommation nationale publiées par RTE (Réseau de Transport d'Electricité) nous donnent un signal direct sur la tension du réseau.
 - **Budget saisonnier** : notre modèle intègre le nombre de jours rouges restants à placer et le nombre de jours éligibles restants dans la saison, pour calculer la pression budgétaire d'EDF.
-- **Machine learning** : un algorithme d'apprentissage automatique, entraîné sur les saisons 2019 à 2026, affine les prédictions en détectant des combinaisons de facteurs que des règles simples ne capturent pas. Sa mesure de performance (F1 de 83 % lors d'un test rétrospectif sur 2 364 jours réels) et ses limites sont détaillées sur la page [méthodologie](/methodologie).
+- **Machine learning** : un algorithme d'apprentissage automatique, entraîné sur les saisons passées, affine les prédictions en détectant des combinaisons de facteurs que des règles simples ne capturent pas. Sa performance mesurée en conditions réelles (prévisions de J+2 à J+5 comparées aux couleurs publiées par EDF) et ses limites sont détaillées sur la page [méthodologie](/methodologie).
 
 Consultez [notre calendrier Tempo](/calendrier) pour connaître les jours rouges à venir et organiser votre consommation en conséquence.
 

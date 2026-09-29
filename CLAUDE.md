@@ -239,7 +239,7 @@ git push -u origin <branch-name>
 ### ML Model
 - GradientBoosting, 33 features, trained on 1827 samples (seasons 2019-2026)
 - Cost-sensitive: ROUGE weight=25, BLANC=3, BLEU=1
-- Thresholds: rouge_thresh=0.19, blanc_thresh=0.20 (Pareto-optimal from backtest on 2364 real days: F1=83.1%, precision=85.4%, recall=81.0%, accuracy=94.1%)
+- Thresholds: rouge_thresh=0.19, blanc_thresh=0.20. The old figures (F1=83.1%, recall=81%) were measured mostly on training days: NEVER publish them. `ml_model.pkl` was actually trained on 2019-09 → 2024-08 only; out-of-sample 2024-2026 ROUGE recall = 6/30. See `docs/audits/2026-09-29-audit-algorithme.md`. Public pages show ONLY live J+2→J+5 performance (`site_facts.PERFORMANCE_POLICY`).
 - **Seasonal median fallback for missing RTE**: When no RTE lag data available, uses winter medians (cp=5.5, cm=4.8, nuc=3.5, gaz=0.5, renew=1.0, nuc_ratio=0.73) instead of 0 (which is an impossible outlier that biases toward BLEU)
 - Model file: `ml_model.pkl`
 
@@ -445,7 +445,7 @@ git push -u origin <branch-name>
 - **SSR last update**: Uses `MAX(timestamp_prediction)` from predictions table (NOT `created_at` which doesn't exist). Displayed as "Dernière mise à jour" banner above the 10-day summary.
 - **No duplicate today/tomorrow block**: Today/tomorrow colors are shown ONLY in the 10-day summary (week-summary dots with "Aujourd'hui"/"Demain" labels). Do NOT add a separate today/tomorrow block above it — the user explicitly removed it to avoid redundancy.
 - **Calendar pages**: `/calendrier` (current month) and `/calendrier/AAAA-MM` month pages, navigation by plain HTML links (crawlable, no AJAX); legacy `?month=&year=` → 301. Days without data are grey ("non publié" / "pas encore prévu"), never blue. Season pages `/calendrier/AAAA-AAAA` list real red/white dates from `actuals` (synthetic rows excluded).
-- **Other SEO pages (2026-09-29)**: `/tarif-tempo-edf`, `/couleur-tempo-demain`, `/api-tempo` (WebAPI + Dataset), `/methodologie` (backtest F1 labelled as backtest, live accuracy shown only from 10 verified predictions).
+- **Other SEO pages (2026-09-29)**: `/tarif-tempo-edf`, `/couleur-tempo-demain`, `/api-tempo` (WebAPI + Dataset), `/methodologie` (no backtest score published, live accuracy shown only from 10 verified predictions).
 - **Single source of truth for figures and FAQs**: `site_facts.py` (tariffs, 4,4 ratio, 7-day alerts, "2 500 foyers", Fernet AES-128, FAQ lists). Visible FAQ and FAQPage JSON-LD are generated from the same list (test enforces equality). Never hardcode these figures in templates.
 - **Structured Data (JSON-LD)**: Homepage has `SoftwareApplication`, `AggregateRating`, `Organization`, `BreadcrumbList`, `HowTo` (3 steps), `FAQPage` (12 questions, from `site_facts.FAQ_HOME`), `WebSite`. Calendar page has `Dataset`, `BreadcrumbList`, `FAQPage` (6 questions). Blog articles have `Article` + `BreadcrumbList`. All breadcrumbs include `item` URL on last element.
 - **Sitemap**: Dynamic `/sitemap.xml` with real lastmod (dated constants per static page, last prediction cycle, articles' `updated_date` else `publish_date`). Includes static pages, month and season calendar pages, new SEO pages, blog. `feed.xml` is NOT in the sitemap.

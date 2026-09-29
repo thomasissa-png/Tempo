@@ -104,6 +104,8 @@ def compute_ml_score(
         # Threshold-based prediction (from model metadata)
         # Backtest 2364 jours (2019-2026) : seuil 0.19 optimal
         # F1=83.1 (+3.7 vs 0.10), precision=85.4% (+9.4), recall=81.0% (-2.2)
+        # ATTENTION (audit 2026-09-29) : chiffres mesures en grande partie sur les jours
+        # d'entrainement, a ne pas publier. Hors echantillon (2024-2026) : 6 ROUGE sur 30.
         # Moins de fausses alertes ROUGE, perte minimale de recall.
         rouge_thresh = (_METADATA or {}).get("rouge_threshold", 0.19)
         blanc_thresh = (_METADATA or {}).get("blanc_threshold", 0.20)

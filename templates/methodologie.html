@@ -1,6 +1,5 @@
 {% extends "_base.html" %}
 {# Rendu : SSR (poids par défaut lus dans config.py, mesure en direct lue en base), cache 1 h #}
-{% set bt = facts.BACKTEST_ML %}
 {% block title %}Méthodologie : comment nous prévoyons les jours Tempo EDF{% endblock %}
 {% block description %}Comment nous prévoyons les jours Tempo EDF rouges, blancs et bleus : météo, consommation RTE, scoring pondéré, machine learning, règles EDF et performance.{% endblock %}
 {% block jsonld %}
@@ -83,13 +82,8 @@
     <p>Pas encore assez de pr&eacute;visions v&eacute;rifi&eacute;es sur les 30 derniers jours (minimum 10 pr&eacute;visions de {{ facts.HORIZON_FIABLE }})
         pour publier un taux fiable. La mesure s'affiche ici d&egrave;s que ce seuil est atteint.</p>
     {% endif %}
-    <h3>En backtest historique</h3>
-    <p>Sur {{ bt.jours // 1000 }}&nbsp;{{ '%03d'|format(bt.jours % 1000) }} jours r&eacute;els ({{ bt.periode }}), {{ bt.nature }}&nbsp;:
-        F1 <strong>{{ bt.f1|string|replace('.', ',') }}&nbsp;%</strong>, pr&eacute;cision {{ bt.precision|string|replace('.', ',') }}&nbsp;% et
-        rappel {{ bt.rappel|string|replace('.', ',') }}&nbsp;% pour la d&eacute;tection des jours rouges, exactitude globale
-        {{ bt.exactitude|string|replace('.', ',') }}&nbsp;% (r&eacute;sultat consign&eacute; en {{ bt.date_doc }}).</p>
-    <p><strong>Ces chiffres de backtest ne sont pas une pr&eacute;cision en direct</strong>&nbsp;: la m&eacute;t&eacute;o observ&eacute;e est plus fiable que les
-        pr&eacute;visions m&eacute;t&eacute;o disponibles plusieurs jours &agrave; l'avance, donc la performance r&eacute;elle de {{ facts.HORIZON_FIABLE }} peut &ecirc;tre nettement plus faible.</p>
+    <h3>Ce que nous ne publions pas</h3>
+    <p>{{ facts.PERFORMANCE_POLICY }}</p>
 
     <h2>6. Limites</h2>
     <ul>

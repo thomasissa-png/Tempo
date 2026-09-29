@@ -96,24 +96,17 @@ HORIZON_FIABLE = "J+2 à J+5"
 HORIZON_INDICATIF = "J+6 à J+15"
 
 # ================================================================
-# Performance : chiffres existants dans le repo, avec leur nature exacte
-# (ml_scorer.py, commentaire du seuil ROUGE 0,19 ; ALGORITHME_PREDICTION.md :
-#  « les chiffres de backtest (météo observée, J+1) ne sont pas comparables
-#  à la performance en direct J+2 à J+5 »)
+# Performance : politique de publication (audit algorithme du 2026-09-29,
+# docs/audits/2026-09-29-audit-algorithme.md). Les anciens chiffres de backtest
+# (F1 83,1 %, rappel 81 %) étaient mesurés en grande partie sur les jours
+# d'entraînement : ils ne doivent plus être publiés.
 # ================================================================
-BACKTEST_ML = {
-    "jours": 2364,
-    "periode": "2019 à 2026",
-    "f1": 83.1,
-    "precision": 85.4,
-    "rappel": 81.0,
-    "exactitude": 94.1,
-    "date_doc": "mars 2026",  # date où le résultat a été consigné dans ml_scorer.py
-    "nature": (
-        "backtest historique du modèle de machine learning, avec la météo observée "
-        "et non les prévisions météo disponibles à l'avance"
-    ),
-}
+PERFORMANCE_POLICY = (
+    "Nous publions uniquement notre performance mesurée en conditions réelles : "
+    "nos prévisions de J+2 à J+5, figées au moment où elles sont émises, comparées "
+    "aux couleurs publiées par EDF. Les tests rétrospectifs sur des données passées "
+    "ne sont pas publiés, car ils surestiment la fiabilité réelle."
+)
 
 # ================================================================
 # Dates de dernière modification du contenu des pages statiques (sitemap)
@@ -239,7 +232,7 @@ def template_globals() -> dict:
         "HORIZON_MAX_JOURS": HORIZON_MAX_JOURS,
         "HORIZON_FIABLE": HORIZON_FIABLE,
         "HORIZON_INDICATIF": HORIZON_INDICATIF,
-        "BACKTEST_ML": BACKTEST_ML,
+        "PERFORMANCE_POLICY": PERFORMANCE_POLICY,
     }
 
 
@@ -393,8 +386,8 @@ FAQ_HOME: list[dict] = [
             "prévisions météo deviennent moins précises, donc les nôtres aussi : de "
             f"{HORIZON_INDICATIF}, c'est une <strong>tendance</strong>, pas une certitude. Pour une "
             "décision importante (grosse lessive, recharge d'un véhicule), fiez-vous plutôt aux "
-            "prévisions à 2 ou 3 jours. Notre taux de réussite mesuré en conditions réelles et nos "
-            "résultats de backtest sont détaillés sur la page "
+            "prévisions à 2 ou 3 jours. Notre taux de réussite mesuré en conditions réelles est "
+            "détaillé sur la page "
             "<a href=\"/methodologie\">méthodologie</a>.</p>"
         ),
     },

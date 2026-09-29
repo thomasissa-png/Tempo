@@ -1479,7 +1479,6 @@ def _llms_common_sections() -> str:
     start, end = get_season_dates()
     t = site_facts.TARIFS
     p = site_facts.fr_price
-    bt = site_facts.BACKTEST_ML
     api_lines = "".join(
         f"- [{ep}]({site_facts.SITE_URL}{ep})\n" for ep in PUBLIC_API_ENDPOINTS
     )
@@ -1514,12 +1513,7 @@ def _llms_common_sections() -> str:
         "- Consommation d'électricité : prévisions RTE\n"
         "\n"
         "## Performance (nature exacte des chiffres)\n"
-        f"- Backtest historique du modèle de machine learning, avec la météo observée (et non les prévisions "
-        f"disponibles à l'avance), sur {site_facts.fr_num(bt['jours'], 0)} jours réels ({bt['periode']}) : "
-        f"F1 {site_facts.fr_num(bt['f1'])} %, précision {site_facts.fr_num(bt['precision'])} %, "
-        f"rappel {site_facts.fr_num(bt['rappel'])} % (détection des jours rouges au seuil retenu), "
-        f"exactitude globale {site_facts.fr_num(bt['exactitude'])} % ; résultat consigné en {bt['date_doc']}. "
-        "Ce n'est pas une mesure en conditions réelles.\n"
+        f"- {site_facts.PERFORMANCE_POLICY}\n"
         f"- En conditions réelles : taux de prévisions correctes de {site_facts.HORIZON_FIABLE} sur 30 jours, "
         f"publié sur {site_facts.SITE_URL}/methodologie et {site_facts.SITE_URL}/api/performance/badge\n"
         "\n"

@@ -115,7 +115,7 @@ chiffres_harmonises:
   horizon_alertes_whatsapp: "7 jours : recapitulatif chaque dimanche des 7 prochains jours + message avant chaque jour rouge probable. Jamais '5 jours' ni '15 jours' pour les alertes"
   horizon_previsions: "J+2 a J+5 = zone fiable ; J+6 a J+15 = tendance indicative"
   annonce_edf_j1: "vers 11h (jamais 17h)"
-  score_83_pct: "F1 en backtest historique (2 364 jours reels), pas une precision en direct ; a toujours renvoyer vers /methodologie"
+  score_83_pct: "NE PLUS JAMAIS CITER (audit algorithme du 2026-09-29 : chiffre mesure en grande partie sur les jours d'entrainement). Seule la performance en conditions reelles J+2 a J+5 publiee sur /methodologie peut etre citee ; aucun score de backtest"
   regles_edf: "rouge : 1er novembre au 31 mars, jamais week-end ni ferie ; blanc : jamais le dimanche ; max 5 rouges consecutifs ; budget 22 rouges / 43 blancs / environ 300 bleus"
   marque: "Calendrier Tempo EDF (jamais TempoForecast)"
   chiffrement_numero: "ne pas citer AES-256 (Fernet en base) : ecrire 'chiffre dans notre base'"

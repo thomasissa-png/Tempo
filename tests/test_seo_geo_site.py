@@ -248,11 +248,12 @@ class TestSeoPages:
         types = {b.get("@type") for b in _jsonld_blocks(client.get("/api-tempo").text)}
         assert {"WebAPI", "Dataset"} <= types
 
-    def test_methodologie_backtest_not_presented_as_live(self, client):
+    def test_methodologie_publishes_no_backtest_score(self, client):
+        """Audit algorithme 2026-09-29 : l'ancien F1 83,1 % était mesuré sur les
+        jours d'entraînement. Seule la performance en conditions réelles est publiée."""
         text = html.unescape(client.get("/methodologie").text)
-        assert "F1 <strong>83,1" in text
-        assert "météo observée" in text
-        assert "ne sont pas une précision en direct" in text
+        assert "83,1" not in text and "83 %" not in text
+        assert "uniquement notre performance mesurée en conditions réelles" in text
 
     def test_tarif_page_matches_constants(self, client):
         text = client.get("/tarif-tempo-edf").text
@@ -307,7 +308,8 @@ class TestCrawlFiles:
         assert "relayées par api-couleur-tempo.fr" in txt
         assert "source EDF officielle" not in txt
         assert "Précision mesurée : 83%" not in txt
-        assert "F1 83,1 %" in txt
+        assert "83,1" not in txt and "83 %" not in txt
+        assert "uniquement notre performance mesurée en conditions réelles" in txt
 
     def test_llms_full_is_raw_markdown(self, client):
         txt = client.get("/llms-full.txt").text
