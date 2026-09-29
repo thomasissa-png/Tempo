@@ -1,4 +1,5 @@
 {% extends "_base.html" %}
+{% set nav_active = 'historique' %}
 {# Rendu : SSR à chaque requête depuis predictions/performance/actuals (prédictions réelles uniquement, figées à leur émission), cache mémoire 5 min + HTTP 10 min #}
 {% set noms = {'BLEU': 'Bleu', 'BLANC': 'Blanc', 'ROUGE': 'Rouge'} %}
 {% macro tag(c) %}<span class="color-tag {{ c|lower }}">{{ noms[c] }}</span>{% endmacro %}
