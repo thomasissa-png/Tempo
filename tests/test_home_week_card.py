@@ -193,10 +193,34 @@ class TestHomeCardSsr:
         assert "EDF publie la couleur de demain vers 11&nbsp;h" in card
         assert "—" not in card
 
-    def test_links_are_secondary_pills(self):
+    def test_single_button_and_tomorrow_dot_is_the_link(self, client):
+        # Retour fondateur du 2026-09-30 : un seul bouton, le lien SEO est porté par la pastille Demain
+        _insert_predictions()
+        card = _card(client.get("/").text)
+        assert card.count('class="btn') == 1
+        assert "week-summary-links" not in card
+        assert card.count('href="/couleur-tempo-demain"') == 1
+        link = re.search(r'<a class="week-dot week-dot-highlight week-dot-hero week-dot-link" '
+                         r'href="/couleur-tempo-demain" aria-label="([^"]+)">(.*?)</a>', card, re.S)
+        assert link, "la grande pastille Demain doit être le lien"
+        demain = date.today() + timedelta(days=1)
+        assert link.group(1) == (f"Couleur Tempo de demain, {site_facts.fr_date(demain, with_year=False)} : "
+                                 "Blanc, prévu à 62&nbsp;%, voir le détail")
+        assert "<strong>Demain</strong>" in link.group(2)
+        # aujourd'hui reste une pastille simple (pas de lien)
+        assert '<div class="week-dot week-dot-highlight week-dot-hero">' in card
+
+    def test_light_card_css(self):
         css = (ROOT / "static" / "css" / "style.css").read_text(encoding="utf-8")
-        rule = re.search(r"\.week-summary-links a \{([^}]*)\}", css).group(1)
-        assert "border-radius" in rule and "text-decoration: none" in rule and "min-height: 44px" in rule
+        assert ".week-summary-links" not in css
+        hero = re.search(r"\.week-dot\.week-dot-hero \{([^}]*)\}", css).group(1)
+        assert "border" not in hero and "background" not in hero  # pas de cadre dans le cadre
+        hero_group = re.search(r"\.week-dots-hero \{([^}]*)\}", css).group(1)
+        assert "border" not in hero_group  # plus de séparateur vertical
+        confirmed = re.search(r"\.week-dot-confirmed \{([^}]*)\}", css).group(1)
+        assert "background" not in confirmed
+        focus = re.search(r"a\.week-dot-link:focus-visible \{([^}]*)\}", css).group(1)
+        assert "outline: 2px solid" in focus
 
 
 # ---------------------------------------------------------------- parité SSR / JS

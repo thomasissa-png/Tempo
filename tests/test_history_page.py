@@ -541,3 +541,48 @@ class TestCouleursVoisines:
 def get_history_force():
     from prediction_history import get_history
     return get_history(force=True)
+
+
+class TestCouleursVoisinesCasReel:
+    """Lignes réelles de production (mar. 29/09 et mer. 30/09/2026, Neon) : prévisions
+    BLEU à tous les délais sauf les jours d'émission sans calcul (15, 17 et 23/09)
+    et le 27/09 (calcul enregistré pour d'autres dates seulement)."""
+    ROWS = {"2026-09-29": {2, 6, 12, 14}, "2026-09-30": {3, 7, 13, 15}}  # délais sans prévision
+
+    def _case(self, monkeypatch):
+        monkeypatch.setattr("config.Config.PREDICTION_START_DATE", "2026-09-01")
+        for d, trous in self.ROWS.items():
+            _actual(d, "BLEU")
+            for n in range(1, 16):
+                if n not in trous:
+                    _pred(d, _before(d, n), "BLEU", temp=20.0)
+        _pred("2026-10-01", "2026-09-27", "BLEU", temp=20.0)  # le 27/09 a bien calculé
+        _forecast_log("2026-09-30", "2026-09-17", 18.7)  # météo prévue enregistrée ce jour-là
+
+    def test_fills_real_rows(self, monkeypatch):
+        self._case(monkeypatch)
+        s = _season_view("2026-2027")
+        days = {d["date"]: d for d in s["days"]}
+        # J-15 du 30/09 : un seul voisin (J-14) -> reste vide
+        assert set(days["2026-09-30"]["remplies"]) == {3, 7, 13}
+        assert set(days["2026-09-29"]["remplies"]) == {2, 6, 12, 14}
+        assert days["2026-09-30"]["causes"][13] == ("interruption", "2026-09-17")
+        assert days["2026-09-30"]["remplies"][13] == {"couleur": "BLEU", "temp": 18.7}
+        assert days["2026-09-30"]["remplies"][3]["temp"] is None
+        # Case remplie du 30/09 toujours comptée « sans prévision », jamais « émise »
+        assert (_hz(s, 13)["emises"], _hz(s, 13)["justes"], _hz(s, 13)["sans_prevision"]) == (1, 1, 1)
+
+    def test_page_real_rows(self, client, monkeypatch):
+        self._case(monkeypatch)
+        page = client.get(PAGE).text
+        grid = re.search(r'<table class="history-grid-table">.*?</table>', page, re.S).group(0)
+        for d, attendu in (("2026-09-30", {3, 7, 13}), ("2026-09-29", {2, 6, 12, 14})):
+            row = re.search(r'datetime="%s".*?</tr>' % d, grid, re.S).group(0)
+            cells = re.findall(r'<td class="hg-cell[^"]*" title="([^"]*)">(.*?)</td>', row, re.S)
+            by_n = {15 - i: c for i, c in enumerate(cells)}
+            assert {n for n, (t, _) in by_n.items() if "prévisions voisines" in t} == attendu
+            for n in attendu:
+                assert 'class="hg-dot hg-bleu hg-ok"' in by_n[n][1] and "hg-none" not in by_n[n][1]
+        row30 = re.search(r'datetime="2026-09-30".*?</tr>', grid, re.S).group(0)
+        cells30 = re.findall(r'<td class="hg-cell[^"]*" title="[^"]*">(.*?)</td>', row30, re.S)
+        assert "18,7°" in cells30[15 - 13] and "hg-none" in cells30[0]  # J-13 rempli, J-15 vide

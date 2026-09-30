@@ -299,7 +299,7 @@ def breadcrumb_jsonld(items: list[tuple[str, str]]) -> dict:
 
 # Version des assets (style.min.css, app.min.js, fonts.css) : à incrémenter à chaque
 # régénération des fichiers minifiés. Un seul endroit, lu par tous les templates.
-ASSET_VERSION = "20260930c"
+ASSET_VERSION = "20260930d"
 
 
 def template_globals() -> dict:

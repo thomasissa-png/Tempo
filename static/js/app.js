@@ -446,7 +446,13 @@ function weekDotHtml(x, hero) {
     const srOnly = hero ? ''
         : `<span class="sr-only">${frJour(x.d, true)} : ${COULEUR_NOM[x.couleur]}${x.confirmed ? ', couleur officielle' : `, prévision ${x.confidence}&nbsp;%`}</span>`;
     const iso = `${x.d.getFullYear()}-${String(x.d.getMonth() + 1).padStart(2, '0')}-${String(num).padStart(2, '0')}`;
-    return `<div class="week-dot${hero ? ' week-dot-highlight week-dot-hero' : ''}">`
+    // Grande pastille Demain : lien vers /couleur-tempo-demain (seul lien de la carte hors bouton)
+    const link = hero && x.isTomorrow;
+    const tag = link ? 'a' : 'div';
+    const linkAttrs = link
+        ? ` href="/couleur-tempo-demain" aria-label="Couleur Tempo de demain, ${frJour(x.d, true)} : ${COULEUR_NOM[x.couleur]}, ${x.confirmed ? 'confirmé par EDF' : `prévu à ${x.confidence}&nbsp;%`}, voir le détail"`
+        : '';
+    return `<${tag} class="week-dot${hero ? ' week-dot-highlight week-dot-hero' : ''}${link ? ' week-dot-link' : ''}"${linkAttrs}>`
         + `<div class="week-dot-circle${shapeClass}${confirmedClass}" style="background:var(--${x.couleur.toLowerCase()})" aria-hidden="true">${x.couleur[0]}</div>`
         + srOnly
         + `<div class="week-dot-text"${hero ? '' : ' aria-hidden="true"'}>`
@@ -454,7 +460,7 @@ function weekDotHtml(x, hero) {
         + (hero ? `<span class="week-dot-date"><time datetime="${iso}">${JOURS[x.d.getDay()]} ${num === 1 ? '1er' : num}&nbsp;${MOIS[x.d.getMonth()]}</time></span>`
             + `<span class="week-dot-color">${COULEUR_NOM[x.couleur]}</span>` : '')
         + `<div class="week-dot-info">${info}</div>`
-        + '</div></div>';
+        + `</div></${tag}>`;
 }
 
 function renderWeekSummary(preds) {
@@ -489,8 +495,7 @@ function renderWeekSummary(preds) {
     html += `<div class="week-dots-next">${days.filter(x => !x.isHero).map(x => weekDotHtml(x, false)).join('')}</div>`;
     html += '</div>';
 
-    // La phrase SSR (couleur du jour et de demain) et les liens restent dans la carte ;
-    // #week-outlook (la suite) est placé sous cette phrase.
+    // Le pied de carte (#week-outlook + bouton) reste en place : seule la phrase est réécrite.
     const card = document.getElementById('week-summary-card');
     if (card) card.classList.toggle('has-rouge', days.some(x => x.couleur === 'ROUGE'));
     container.innerHTML = html;

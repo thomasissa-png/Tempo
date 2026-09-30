@@ -159,7 +159,7 @@ class TestSharedParts:
         css = (ROOT / "static" / "css" / "style.css").read_text(encoding="utf-8")
         css_min = (ROOT / "static" / "css" / "style.min.css").read_text(encoding="utf-8")
         for sel in (".data-table", ".history-bref", ".notfound-links", ".btn-outline",
-                    ".week-dots-hero", ".week-dot-color", ".week-summary-links a", ".week-dot-date",
+                    ".week-dots-hero", ".week-dot-color", "a.week-dot-link", ".week-summary-foot", ".week-dot-date",
                     ".fc-temp-val", ".forecast-temp-note", ".fc-compact", ".hg-none"):
             assert sel in css and sel in css_min, sel
         js = (ROOT / "static" / "js" / "app.js").read_text(encoding="utf-8")
