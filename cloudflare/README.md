@@ -57,7 +57,13 @@ Constats du 2026-09-30 (session avec les secrets du fondateur) :
   sous leur vrai nom.
 - Jeton du 2026-09-30 : lecture Workers OK, **conteneurs 403** (droit Containers manquant ou
   forfait Workers Paid inactif), sous-domaine workers.dev 403.
-- Domaine : registrar IONOS ; le fondateur veut que le domaine soit traité **à la fin**, par Claude.
+- Domaine : registrar IONOS ; traité **à la fin**. Pas de clé API IONOS : le fondateur envoie une
+  capture de la page DNS IONOS du domaine (données publiques). Claude la recoupe avec le DNS public
+  (DNS-over-HTTPS) pour ne rien oublier (MX, SPF, DKIM, DMARC, vérifications), crée la zone et
+  les enregistrements à l'identique chez Cloudflare via l'API, puis donne au fondateur les 2 serveurs
+  DNS à saisir chez IONOS (sa seule action sur le domaine).
+- Jeton Cloudflare = jeton **utilisateur** (Profil > API Tokens), variable `CLOUDFLARE_Token_Value`
+  à renommer `CLOUDFLARE_API_TOKEN` (sinon : lire `CLOUDFLARE_Token_Value`).
 
 Toujours commencer par `python3 cloudflare/check_access.py` (dépendances : `pip install -r requirements.txt`).
 
