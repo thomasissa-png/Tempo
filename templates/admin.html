@@ -1263,6 +1263,18 @@ function renderForecastLogs(logs) {
     return html + '</tbody></table></div>';
 }
 
+// Filet du calcul de 18h : dernière prévision émise + jours sans calcul (30 j)
+function renderEmissionStatus(data) {
+    const last = data.derniere_emission
+        ? escapeHtml(String(data.derniere_emission).slice(0, 16).replace('T', ' ')) : 'aucune';
+    const n = data.jours_sans_calcul_30j;
+    const gaps = (n === null || n === undefined) ? 'n/d'
+        : (n === 0 ? '<span style="color:#16A34A">0</span>'
+           : `<span style="color:#DC2626;font-weight:600" title="${escapeHtml((data.jours_sans_calcul_30j_dates || []).join(', '))}">${n}</span>`);
+    return `<div class="metric-row"><span>Derni&egrave;re pr&eacute;vision &eacute;mise</span><span class="metric-value">${last}</span></div>`
+         + `<div class="metric-row" style="margin-bottom:12px"><span>Jours sans calcul (30 derniers jours)</span><span class="metric-value">${gaps}</span></div>`;
+}
+
 async function loadSchedulerStatus() {
     const container = document.getElementById('scheduler-status');
     try {
@@ -1278,6 +1290,7 @@ async function loadSchedulerStatus() {
             ? '<span style="color:#16A34A;font-weight:600">Actif</span>'
             : '<span style="color:#DC2626;font-weight:600">Arr&ecirc;t&eacute;</span>';
         let html = `<div class="metric-row" style="margin-bottom:12px"><span>Scheduler</span><span class="metric-value">${runningHtml}</span></div>`;
+        html += renderEmissionStatus(data);
         html += '<div style="overflow-x:auto"><table class="sub-table"><thead><tr><th>T&acirc;che</th><th>Prochaine ex&eacute;cution</th><th>&Eacute;tat</th></tr></thead><tbody>';
         for (const j of data.jobs) {
             const nextStr = j.next_run

@@ -152,5 +152,9 @@ Après 7 jours sans incident : le fondateur peut résilier Replit (garder un exp
 
 ## Limites connues (à traiter après la bascule)
 
-- Un redémarrage du conteneur pile à l'heure d'une tâche la fait sauter (APScheduler sans
-  `misfire_grace_time`) ; la tâche post-démarrage relance prédictions et backfill.
+- Prévisions de 18h : `misfire_grace_time` 3600 s + `coalesce` (réveil tardif jusqu'à 1 h),
+  rattrapage sans alerte à 18h45, 20h et 22h si aucune prévision n'est émise ce jour-là
+  (22h : log ERROR « [Rattrapage] aucune prévision émise aujourd'hui »), et au démarrage
+  après 18h15. Suivi : `/admin/scheduler-status` (`derniere_emission`, `jours_sans_calcul_30j`).
+- Les autres tâches (7h30, 11h30, 23h, dimanche 20h) n'ont pas ce filet : un redémarrage pile à
+  leur heure est rattrapé par `recover_overdue_tasks` au post-démarrage (jobstore en mémoire).

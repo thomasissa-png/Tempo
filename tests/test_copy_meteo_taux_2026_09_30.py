@@ -223,11 +223,13 @@ class TestCasesSansPrevision:
     def test_grid_labels_and_gap_list(self, client, monkeypatch):
         self._case(monkeypatch)
         page = html.unescape(client.get("/historique-previsions/2025-2026").text)
-        assert "3 jours avant : pas de prévision, service interrompu le 4 février 2026" in page
-        assert "La veille : pas de prévision, couleur déjà publiée par EDF avant notre calcul de 18 h" in page
+        # Décision fondateur 2026-09-30 : plus aucune case vide quand la couleur officielle est connue
+        assert "3 jours avant : Bleu, juste ; Couleur des prévisions voisines, calcul non enregistré ce jour-là" in page
+        assert "La veille : Bleu, juste ; Couleur publiée par EDF avant notre calcul de 18 h" in page
         assert "Jours sans calcul de prévision (1)" in page
         assert "4 février 2026." in page
-        assert 'class="hg-none hg-none-interruption"' in page and 'class="hg-none hg-none-publiee"' in page
+        grid = re.search(r'<table class="history-grid-table">.*?</table>', page, re.S).group(0)
+        assert 'class="hg-none' not in grid
 
     def test_small_grey_dot_css(self):
         for f in ("style.css", "style.min.css"):

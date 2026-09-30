@@ -260,12 +260,19 @@ class TestCsvAndSeo:
         assert len(rows) == 1 + 4
         by_date = {row[1]: dict(zip(head, row)) for row in rows[1:]}
         got = [by_date["2026-02-02"][f"prevision_J-{n}"] for n in (5, 4, 3, 2)]
-        assert got == ["ROUGE", "", "BLANC", "ROUGE"]
+        # J-4 : voisines différentes (ROUGE à J-5, BLANC à J-3) -> la plus récente
+        assert got == ["ROUGE", "BLANC", "BLANC", "ROUGE"]
+        assert by_date["2026-02-02"]["emise_le_J-4"].startswith("non enregistrée")
         got = [by_date["2026-02-05"][f"prevision_J-{n}"] for n in (5, 4, 3, 2)]
         # J-4 : aucune prévision réelle, encadrée par BLANC et BLANC -> couleur des voisines
         assert got == ["BLANC", "BLANC", "BLANC", "BLEU"]
         assert by_date["2026-02-05"]["emise_le_J-4"].startswith("non enregistrée")
-        assert by_date["2026-02-02"]["prevision_J-15"] == ""
+        # J-15 : un seul côté -> la prévision émise la plus proche (J-5) ; J-1 : couleur officielle
+        assert by_date["2026-02-02"]["prevision_J-15"] == "ROUGE"
+        assert by_date["2026-02-02"]["prevision_J-1"] == "ROUGE"
+        assert by_date["2026-02-02"]["emise_le_J-1"] == (
+            "non enregistrée (couleur publiée par EDF avant notre calcul de 18 h)")
+        assert all(v != "" for k, v in by_date["2026-02-02"].items() if k.startswith("prevision_"))
 
     def test_jsonld_and_meta(self, client, monkeypatch):
         _controlled_case(monkeypatch)
@@ -441,7 +448,8 @@ def _forecast_log(target: str, emitted: str, temp: float):
 
 
 class TestCouleursVoisines:
-    """Décision fondateur du 2026-09-30 : rendu seulement, jamais compté."""
+    """Décisions fondateur du 2026-09-30 : rendu seulement, jamais compté. Plus aucune
+    case vide quand la couleur officielle est connue."""
     D = "2026-02-10"  # officiel BLEU
     E = "2026-02-11"  # officiel ROUGE
 
@@ -450,34 +458,53 @@ class TestCouleursVoisines:
         d, e = self.D, self.E
         _actual(d, "BLEU")
         _actual(e, "ROUGE")
-        # D : 12 BLEU | 8 BLANC | 6 BLEU | 3 BLEU ; seules 5 et 4 sont encadrées par la même couleur
+        # D : 12 BLEU | 8 BLANC | 6 BLEU | 3 BLEU
         for n, c in {12: "BLEU", 8: "BLANC", 6: "BLEU", 3: "BLEU"}.items():
             _pred(d, _before(d, n), c, temp=4.0 + n)
         _forecast_log(d, _before(d, 4), 5.5)  # vraie température prévue le jour d'émission J-4
-        _forecast_log(d, _before(d, 7), 9.9)  # case non remplie : jamais affichée
-        # E : BLEU encadre J-4, officiel ROUGE -> case remplie évaluée « erronée »
+        _forecast_log(d, _before(d, 7), 9.9)
+        _forecast_log(d, _before(d, 1), 3.3)  # veille : météo relevée, prévision non enregistrée
+        # E : BLEU à J-5 et J-3, officiel ROUGE -> cases reprises « erronées », J-1 officiel juste
         _pred(e, _before(e, 5), "BLEU", temp=3.0)
         _pred(e, _before(e, 3), "BLEU", temp=2.0)
 
     def test_fill_rule(self, monkeypatch):
         self._case(monkeypatch)
         days = {d["date"]: d for d in _season_view()["days"]}
-        assert set(days[self.D]["remplies"]) == {4, 5}
-        assert days[self.D]["remplies"][4] == {"couleur": "BLEU", "temp": 5.5}
-        assert days[self.D]["remplies"][5] == {"couleur": "BLEU", "temp": None}  # jamais interpolée
-        assert set(days[self.E]["remplies"]) == {4}
+        rd, re_ = days[self.D]["remplies"], days[self.E]["remplies"]
+        assert set(rd) == {1, 2, 4, 5, 7, 9, 10, 11, 13, 14, 15}
+        assert set(re_) == {1, 2, 4} | set(range(6, 16))
+        # J-1 vide : couleur officielle EDF + vraie température relevée la veille
+        assert rd[1] == {"couleur": "BLEU", "temp": 3.3, "source": "edf"}
+        assert re_[1]["couleur"] == "ROUGE" and re_[1]["source"] == "edf"
+        # Voisines identiques (3 et 6 BLEU) : BLEU ; température réelle seulement
+        assert rd[4] == {"couleur": "BLEU", "temp": 5.5, "source": "voisines"}
+        assert rd[5] == {"couleur": "BLEU", "temp": None, "source": "voisines"}
+        # Voisines différentes (8 BLANC, 6 BLEU) : la plus récente (délai plus petit)
+        assert rd[7] == {"couleur": "BLEU", "temp": 9.9, "source": "voisines"}
+        assert rd[9]["couleur"] == "BLANC"
+        # Un seul côté : J-2 reprend J-3, J-13..15 reprennent J-12
+        assert rd[2]["couleur"] == "BLEU" and rd[15]["couleur"] == "BLEU"
         # Les cellules restent vides : ce ne sont pas des prévisions
-        assert days[self.D]["cells"][4] is None and days[self.D]["cells"][5] is None
+        assert all(days[self.D]["cells"][n] is None for n in rd)
 
-    def test_no_fill_when_colours_differ_or_one_side(self):
+    def test_rule_unit(self):
         from prediction_history import _couleurs_voisines, NA
         cells = {n: None for n in range(1, 16)}
         cells[8] = {"couleur": "BLANC"}
         cells[6] = {"couleur": "BLEU"}
-        assert _couleurs_voisines(cells) == {}  # 7 : couleurs différentes ; 1-5, 9-15 : un seul côté
+        got = _couleurs_voisines(cells, "ROUGE")
+        assert got[1] == "ROUGE"  # J-1 vide : couleur officielle
+        assert got[7] == "BLEU"  # voisines différentes : la plus récente
+        assert all(got[n] == "BLEU" for n in (2, 3, 4, 5))  # un seul côté (plus ancien)
+        assert all(got[n] == "BLANC" for n in range(9, 16))  # J-15 : un seul voisin
+        assert 6 not in got and 8 not in got
+        assert 1 not in _couleurs_voisines(cells)  # sans couleur officielle : pas de J-1
         cells.update({n: NA for n in range(13, 16)})
-        cells[12] = {"couleur": "BLANC"}
-        assert _couleurs_voisines(cells) == {9: "BLANC", 10: "BLANC", 11: "BLANC"}
+        cells[12] = {"couleur": "BLEU"}
+        got = _couleurs_voisines(cells, "BLEU")
+        assert {n: got[n] for n in (9, 10, 11)} == {9: "BLANC", 10: "BLANC", 11: "BLANC"}
+        assert not {13, 14, 15} & set(got)  # service pas encore lancé : jamais rempli
 
     def test_stats_unchanged(self, monkeypatch):
         self._case(monkeypatch)
@@ -487,6 +514,7 @@ class TestCouleursVoisines:
             assert h["sans_prevision"] == (2 if n == 4 else 1)
             assert h["emises"] == (0 if n == 4 else 1) and h["justes"] == 0
         assert _hz(s, 3)["emises"] == 2 and _hz(s, 3)["justes"] == 1
+        assert (_hz(s, 1)["emises"], _hz(s, 1)["sans_prevision"]) == (0, 2)
         from prediction_history import season_summary
         b = season_summary(get_history_force(), "2025-2026")
         assert (b["emises"], b["justes"], b["sans_prevision"]) == (3, 1, 5)
@@ -496,11 +524,12 @@ class TestCouleursVoisines:
         self._case(monkeypatch)
         from prediction_history import last_complete_season_summary
         with_fill = get_history_force()
-        monkeypatch.setattr("prediction_history._couleurs_voisines", lambda cells: {})
+        monkeypatch.setattr("prediction_history._couleurs_voisines", lambda *a, **k: {})
         without = get_history_force()
         a, b = with_fill["seasons"]["2025-2026"], without["seasons"]["2025-2026"]
         assert a["horizons"] == b["horizons"]
-        assert sum(len(d["remplies"]) for d in a["days"]) == 3
+        assert a["jours_sans_calcul"] == b["jours_sans_calcul"]
+        assert sum(len(d["remplies"]) for d in a["days"]) == 24
         assert sum(len(d["remplies"]) for d in b["days"]) == 0
         today = date(2026, 9, 30)
         assert last_complete_season_summary(with_fill, today) == last_complete_season_summary(without, today)
@@ -517,13 +546,18 @@ class TestCouleursVoisines:
         assert "4 jours avant : Bleu, juste ; Couleur des prévisions voisines, calcul non enregistré ce jour-là" in title4
         assert "température moyenne prévue 5,5 °C" in title4
         assert 'class="hg-dot hg-bleu hg-ok"' in html4 and "5,5°" in html4
-        assert "hg-none" not in html4
         title5, html5 = by_n[5]
         assert 'class="hg-dot hg-bleu hg-ok"' in html5 and "hg-temp" not in html5 and "°" not in title5
-        assert "9,9°" not in grid and "hg-none" in by_n[7][1]
+        title1, html1 = by_n[1]
+        assert "La veille : Bleu, juste ; Couleur publiée par EDF avant notre calcul de 18 h" in title1
+        assert 'class="hg-dot hg-bleu hg-ok"' in html1 and "3,3°" in html1
+        assert "9,9°" in by_n[7][1]
         cells_e = re.findall(r'<td class="hg-cell[^"]*" title="([^"]*)">(.*?)</td>', rows[self.E], re.S)
         assert 'class="hg-dot hg-bleu hg-ko"' in cells_e[15 - 4][1]
-        assert "reprend cette couleur" in page and "sans coche" not in page
+        assert 'class="hg-dot hg-rouge hg-ok"' in cells_e[15 - 1][1]
+        # Plus aucune case vide : couleur officielle connue sur chaque ligne
+        assert "hg-none" not in grid and "pas de prévision ce jour-là" not in page
+        assert "prévision voisine la plus récente" in page and "sans coche" not in page
         # Une case reprise sans température n'est pas une température « non conservée »
         assert "hg-nd" not in grid and "température prévue non conservée" not in page
 
@@ -533,9 +567,12 @@ class TestCouleursVoisines:
         rows = list(csv.reader(io.StringIO(body), delimiter=";"))
         row = dict(zip(rows[0], [r for r in rows if r[1] == self.D][0]))
         assert (row["prevision_J-4"], row["temp_prevue_J-4"]) == ("BLEU", "5,5")
-        assert row["emise_le_J-4"].startswith("non enregistrée")
+        assert row["emise_le_J-4"].startswith("non enregistrée (couleur des prévisions voisines")
         assert (row["prevision_J-5"], row["temp_prevue_J-5"]) == ("BLEU", "")
-        assert (row["prevision_J-7"], row["prevision_J-2"], row["prevision_J-13"]) == ("", "", "")
+        assert (row["prevision_J-7"], row["temp_prevue_J-7"]) == ("BLEU", "9,9")
+        assert (row["prevision_J-1"], row["temp_prevue_J-1"]) == ("BLEU", "3,3")
+        assert "publiée par EDF" in row["emise_le_J-1"]
+        assert all(row[f"prevision_J-{n}"] for n in range(1, 16))
 
 
 def get_history_force():
@@ -563,11 +600,11 @@ class TestCouleursVoisinesCasReel:
         self._case(monkeypatch)
         s = _season_view("2026-2027")
         days = {d["date"]: d for d in s["days"]}
-        # J-15 du 30/09 : un seul voisin (J-14) -> reste vide
-        assert set(days["2026-09-30"]["remplies"]) == {3, 7, 13}
+        # J-15 du 30/09 : un seul voisin (J-14) -> sa couleur
+        assert set(days["2026-09-30"]["remplies"]) == {3, 7, 13, 15}
         assert set(days["2026-09-29"]["remplies"]) == {2, 6, 12, 14}
         assert days["2026-09-30"]["causes"][13] == ("interruption", "2026-09-17")
-        assert days["2026-09-30"]["remplies"][13] == {"couleur": "BLEU", "temp": 18.7}
+        assert days["2026-09-30"]["remplies"][13] == {"couleur": "BLEU", "temp": 18.7, "source": "voisines"}
         assert days["2026-09-30"]["remplies"][3]["temp"] is None
         # Case remplie du 30/09 toujours comptée « sans prévision », jamais « émise »
         assert (_hz(s, 13)["emises"], _hz(s, 13)["justes"], _hz(s, 13)["sans_prevision"]) == (1, 1, 1)
@@ -576,7 +613,7 @@ class TestCouleursVoisinesCasReel:
         self._case(monkeypatch)
         page = client.get(PAGE).text
         grid = re.search(r'<table class="history-grid-table">.*?</table>', page, re.S).group(0)
-        for d, attendu in (("2026-09-30", {3, 7, 13}), ("2026-09-29", {2, 6, 12, 14})):
+        for d, attendu in (("2026-09-30", {3, 7, 13, 15}), ("2026-09-29", {2, 6, 12, 14})):
             row = re.search(r'datetime="%s".*?</tr>' % d, grid, re.S).group(0)
             cells = re.findall(r'<td class="hg-cell[^"]*" title="([^"]*)">(.*?)</td>', row, re.S)
             by_n = {15 - i: c for i, c in enumerate(cells)}
@@ -585,4 +622,13 @@ class TestCouleursVoisinesCasReel:
                 assert 'class="hg-dot hg-bleu hg-ok"' in by_n[n][1] and "hg-none" not in by_n[n][1]
         row30 = re.search(r'datetime="2026-09-30".*?</tr>', grid, re.S).group(0)
         cells30 = re.findall(r'<td class="hg-cell[^"]*" title="[^"]*">(.*?)</td>', row30, re.S)
-        assert "18,7°" in cells30[15 - 13] and "hg-none" in cells30[0]  # J-13 rempli, J-15 vide
+        assert "18,7°" in cells30[15 - 13] and 'class="hg-dot hg-bleu hg-ok"' in cells30[0]
+        # Plus aucun point gris sur les lignes réelles
+        assert "hg-none" not in grid
+
+    def test_stats_unchanged_real_rows(self, monkeypatch):
+        self._case(monkeypatch)
+        with_fill = get_history_force()["seasons"]["2026-2027"]
+        monkeypatch.setattr("prediction_history._couleurs_voisines", lambda *a, **k: {})
+        without = get_history_force()["seasons"]["2026-2027"]
+        assert with_fill["horizons"] == without["horizons"]

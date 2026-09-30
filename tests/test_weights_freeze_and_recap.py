@@ -113,8 +113,11 @@ class TestAutoWeightsPause:
             def __init__(self):
                 self.jobs = {}
 
-            def add_job(self, fn, trigger, id, name, replace_existing=True):
+            def add_job(self, fn, trigger, id, name, replace_existing=True, **options):
                 self.jobs[id] = (name, trigger)
+
+            def get_jobs(self):
+                return list(self.jobs)
 
             def start(self):
                 pass

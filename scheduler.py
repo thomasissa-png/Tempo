@@ -17,6 +17,7 @@ Résilience Autoscale (D+C) :
 import asyncio
 import logging
 import time
+import functools
 import uuid
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -37,6 +38,16 @@ _backfill_done = asyncio.Event()
 # Cooldown pour éviter les rattrapages en boucle via /keepalive
 _last_recovery_check = 0.0
 _RECOVERY_COOLDOWN_S = 300  # 5 minutes
+
+# Jobs de prévisions : un réveil tardif (boucle occupée, conteneur ralenti) jusqu'à
+# 1 h après l'heure prévue exécute quand même la tâche, une seule fois (coalesce).
+# Un redémarrage complet du conteneur, lui, est couvert par _task_post_startup.
+PREDICTION_JOB_OPTIONS = {"misfire_grace_time": 3600, "coalesce": True}
+
+# Rattrapage des prévisions (heure de Paris) ; le dernier créneau journalise une
+# erreur s'il ne trouve toujours aucune émission.
+CATCHUP_TIMES = ((18, 45), (20, 0), (22, 0))
+CATCHUP_STARTUP_AFTER = (18, 15)  # post-démarrage : rattrapage seulement après 18h15
 
 
 def _now_paris() -> datetime:
@@ -270,7 +281,22 @@ def start_scheduler():
         id="daily_predictions",
         name="Prédictions quotidiennes 18h00",
         replace_existing=True,
+        **PREDICTION_JOB_OPTIONS,
     )
+
+    # 18h45, 20h00, 22h00 : filet de sécurité si le calcul de 18h n'a rien
+    # enregistré (processus coupé en cours de route). Jamais d'alerte WhatsApp.
+    for hour, minute in CATCHUP_TIMES:
+        final = (hour, minute) == CATCHUP_TIMES[-1]
+        scheduler.add_job(
+            _tracked("catchup_predictions",
+                     functools.partial(task_catchup_predictions, final=final)),
+            CronTrigger(hour=hour, minute=minute, timezone="Europe/Paris"),
+            id=f"catchup_predictions_{hour:02d}{minute:02d}",
+            name=f"Rattrapage des prévisions {hour}h{minute:02d} (sans alerte)",
+            replace_existing=True,
+            **PREDICTION_JOB_OPTIONS,
+        )
 
     # 1er et 15 du mois à 2h00 — recalcul des poids (W-1 : bimensuel)
     scheduler.add_job(
@@ -333,7 +359,7 @@ def start_scheduler():
     )
 
     scheduler.start()
-    logger.info("[Scheduler] Démarré avec 10 tâches planifiées")
+    logger.info(f"[Scheduler] Démarré avec {len(scheduler.get_jobs())} tâches planifiées")
 
 
 def stop_scheduler():
@@ -508,6 +534,14 @@ async def _task_post_startup():
     except Exception as e:
         logger.error(f"[Post-startup] Erreur rattrapage: {e}")
 
+    # 5. Filet du calcul de 18h : redémarrage après 18h15 sans prévision émise aujourd'hui
+    try:
+        now = _now_paris()
+        if (now.hour, now.minute) >= CATCHUP_STARTUP_AFTER:
+            await task_catchup_predictions(trigger="rattrapage_startup")
+    except Exception as e:
+        logger.error(f"[Post-startup] Erreur rattrapage des prévisions: {e}")
+
     logger.info("[Post-startup] Toutes les tâches différées terminées")
 
 
@@ -544,7 +578,8 @@ async def _task_backfill_retry():
 # HELPER : recalcul des prédictions (partagé polling / 11h30 / 18h)
 # ================================================================
 
-async def _refresh_predictions(trigger: str, send_sms: bool = False) -> int:
+async def _refresh_predictions(trigger: str, send_sms: bool = False,
+                               alerts: bool = True) -> int:
     """Recalcule les prédictions J+1→J+15 avec météo et RTE frais.
 
     Fix #28 : fonction partagée pour que le polling, la tâche 11h30
@@ -553,6 +588,9 @@ async def _refresh_predictions(trigger: str, send_sms: bool = False) -> int:
     Args:
         trigger: identifiant du déclencheur (pour cycle_id et logs)
         send_sms: si True, envoie les alertes SMS (uniquement cycle 18h)
+        alerts: si False, AUCUN message WhatsApp (ni alerte, ni changement) :
+            utilisé par le rattrapage des prévisions, qui ne doit jamais écrire
+            aux abonnés (send_sms est alors ignoré).
 
     Returns:
         Nombre de prédictions générées, ou 0 si météo indisponible.
@@ -563,6 +601,8 @@ async def _refresh_predictions(trigger: str, send_sms: bool = False) -> int:
     from app import invalidate_predictions_cache
 
     cycle_id = f"{date.today().isoformat()}_{trigger}_{uuid.uuid4().hex[:8]}"
+    if not alerts:
+        send_sms = False
 
     # 1. Météo fraîche — avec retry en cas d'échec transitoire
     #    Si les deux sources (MF + Open-Meteo) échouent, on retente 2 fois
@@ -620,7 +660,9 @@ async def _refresh_predictions(trigger: str, send_sms: bool = False) -> int:
                 )
 
     # #6 : alerter les utilisateurs sur les changements de prédiction
-    if changes:
+    if changes and not alerts:
+        logger.info(f"[{trigger}] {len(changes)} changements, aucune alerte (rattrapage)")
+    elif changes:
         logger.info(f"[{trigger}] {len(changes)} changements: "
                     + ", ".join(f"{c['date']} {c['couleur_avant']}→{c['couleur_apres']}"
                                 for c in changes))
@@ -1246,6 +1288,119 @@ async def _task_deferred_retry_no_sms():
         logger.info(f"[Retry-late] Récupération réussie — {count} prédictions (sans SMS)")
     else:
         logger.warning("[Retry-late] Météo toujours indisponible après 4 tentatives")
+
+
+# ================================================================
+# RATTRAPAGE : aucune prévision émise aujourd'hui (filet du calcul de 18h)
+# ================================================================
+
+def count_emissions_today(today: date | None = None) -> int:
+    """Prévisions réelles émises aujourd'hui (heure de Paris) pour J+2..J+15.
+
+    Non simulées, hors backtest, horodatage du jour : ce sont exactement les cases
+    que /historique-previsions affichera pour ce jour d'émission.
+    """
+    from database import get_db
+    from prediction_history import is_backtest
+
+    today = today or _now_paris().date()
+    conn = get_db()
+    try:
+        rows = conn.execute(
+            "SELECT cycle_id FROM predictions WHERE simulated = 0 "
+            "AND timestamp_prediction >= ? AND timestamp_prediction < ? "
+            "AND date >= ? AND date <= ?",
+            (today.isoformat(), (today + timedelta(days=1)).isoformat(),
+             (today + timedelta(days=2)).isoformat(),
+             (today + timedelta(days=15)).isoformat()),
+        ).fetchall()
+    finally:
+        conn.close()
+    return sum(1 for r in rows if not is_backtest(r["cycle_id"]))
+
+
+async def task_catchup_predictions(final: bool = False, trigger: str = "rattrapage") -> int:
+    """Relance le calcul si AUCUNE prévision n'a été émise aujourd'hui.
+
+    Cause des jours sans calcul : le calcul de 18h démarrait (météo relevée) puis le
+    processus était coupé avant d'enregistrer. Ce rattrapage n'envoie JAMAIS de
+    message WhatsApp (alerts=False : ni alerte, ni changement), il ne peut donc pas
+    doubler une alerte déjà envoyée. final=True (22h) : erreur explicite si rien
+    n'a encore été émis. Retourne le nombre de prévisions calculées (0 = rien fait).
+    """
+    loop = asyncio.get_running_loop()
+    n = await loop.run_in_executor(None, count_emissions_today)
+    if n:
+        logger.info(f"[Rattrapage] {n} prévisions déjà émises aujourd'hui, rien à faire")
+        return 0
+    if final:
+        logger.error("[Rattrapage] aucune prévision émise aujourd'hui (22h) : "
+                     "nouvelle tentative, vérifier les logs du calcul de 18h")
+    else:
+        logger.warning("[Rattrapage] aucune prévision émise aujourd'hui : relance du calcul (sans alerte)")
+    count = 0
+    try:
+        count = await _refresh_predictions(trigger, send_sms=False, alerts=False)
+    except Exception as e:
+        logger.error(f"[Rattrapage] échec du calcul : {e}")
+    finally:
+        try:
+            await _archive_rte_forecasts(trigger)
+        except Exception as e:
+            logger.debug(f"[Rattrapage] archive RTE ignorée : {e}")
+    if count:
+        logger.info(f"[Rattrapage] {count} prévisions émises (aucune alerte envoyée)")
+    elif final:
+        logger.error("[Rattrapage] aucune prévision émise aujourd'hui")
+    return count
+
+
+def get_emission_status(today: date | None = None, days: int = 30) -> dict:
+    """Admin : dernière prévision émise et jours sans calcul sur les `days` derniers jours
+    (aujourd'hui exclu), même définition que /historique-previsions."""
+    from database import get_db
+    from prediction_history import is_backtest, _start_date
+
+    today = today or _now_paris().date()
+    start = today - timedelta(days=days)
+    emissions: set = set()
+    derniere = None
+    conn = get_db()
+    try:
+        for r in conn.execute(
+            "SELECT timestamp_prediction, cycle_id FROM predictions "
+            "WHERE simulated = 0 AND timestamp_prediction >= ?", (start.isoformat(),),
+        ).fetchall():
+            if is_backtest(r["cycle_id"]):
+                continue
+            ts = str(r["timestamp_prediction"] or "")
+            emissions.add(ts[:10])
+            derniere = max(derniere, ts) if derniere else ts
+        for r in conn.execute(
+            "SELECT date_prediction, contexte_meteo FROM performance "
+            "WHERE date_prediction >= ?", (start.isoformat(),),
+        ).fetchall():
+            if not is_backtest(r["contexte_meteo"]):
+                emissions.add(str(r["date_prediction"])[:10])
+        if derniere is None:
+            row = conn.execute(
+                "SELECT MAX(timestamp_prediction) AS m FROM predictions WHERE simulated = 0 "
+                "AND (cycle_id IS NULL OR cycle_id NOT LIKE ?)", ("backtest%",),
+            ).fetchone()
+            derniere = row["m"] if row and row["m"] else None
+    finally:
+        conn.close()
+    first = start
+    try:
+        launch = date.fromisoformat(_start_date())  # service pas encore lancé : pas un trou
+        first = max(first, launch)
+    except ValueError:
+        pass
+    trous = [(first + timedelta(days=i)).isoformat() for i in range((today - first).days)
+             if (first + timedelta(days=i)).isoformat() not in emissions]
+    return {"derniere_emission": str(derniere) if derniere else None,
+            "jours_sans_calcul_30j": len(trous),
+            "jours_sans_calcul_30j_dates": trous}
 
 
 # ================================================================

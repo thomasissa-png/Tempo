@@ -2944,8 +2944,16 @@ async def admin_scheduler_status(request: Request, authorization: str | None = H
     except Exception as e:
         logger.warning(f"[Admin] Stats archives de prévisions indisponibles: {e}")
         forecast_logs = None
+    # Filet du calcul de 18h : dernière prévision émise, jours sans calcul (30 j)
+    try:
+        from scheduler import get_emission_status
+        emission = await asyncio.to_thread(get_emission_status)
+    except Exception as e:
+        logger.warning(f"[Admin] Statut des émissions indisponible: {e}")
+        emission = {"derniere_emission": None, "jours_sans_calcul_30j": None,
+                    "jours_sans_calcul_30j_dates": []}
     return {"status": "ok", "jobs": jobs, "running": _scheduler.running,
-            "forecast_logs": forecast_logs}
+            "forecast_logs": forecast_logs, **emission}
 
 
 @app.get("/admin/weights-history")
