@@ -160,6 +160,48 @@ def couleur_label(couleur: str | None) -> str:
     return COULEUR_LABEL.get((couleur or "").upper(), "Inconnue")
 
 
+def _jour_court(d: date) -> str:
+    """date(2026, 10, 5) -> 'lundi 5' ; le 1er du mois -> 'jeudi 1er'."""
+    return f"{JOURS_FR[d.weekday()]} {'1er' if d.day == 1 else d.day}"
+
+
+def week_outlook_html(days: list[dict]) -> str:
+    """Phrase « la suite » sous les pastilles de l'accueil (après aujourd'hui et demain).
+
+    `days` = période affichée (dicts avec date ISO, couleur, is_hero). Miroir exact de
+    weekOutlookHtml() dans static/js/app.js : toute modification se fait des deux côtés
+    (test tests/test_home_week_card.py).
+    """
+    if not days:
+        return ""
+    dates = [date.fromisoformat(d["date"]) for d in days]
+    rest = [(dt, d["couleur"]) for dt, d in zip(dates, days) if not d.get("is_hero")]
+    if not rest:
+        return ""
+    fin = f"d'ici le {fr_date(dates[-1], with_year=False)}"
+    parts = []
+    for couleur, nom in (("ROUGE", "rouge"), ("BLANC", "blanc")):
+        jours = [_jour_court(dt) for dt, c in rest if c == couleur]
+        if jours:
+            s = "s" if len(jours) > 1 else ""
+            parts.append(f"<strong>{len(jours)} jour{s} {nom}{s}</strong> ({', '.join(jours)})")
+    if parts:
+        total = sum(1 for _, c in rest if c in ("ROUGE", "BLANC"))
+        txt = (f"{' et '.join(parts)} prévu{'s' if total > 1 else ''} {fin}. "
+               "<strong>Planifiez vos machines les jours bleus.</strong>")
+    else:
+        txt = f"Aucun jour rouge ni blanc prévu {fin}."
+    if any(d.get("is_hero") and d["couleur"] in ("ROUGE", "BLANC") for d in days):
+        txt = "Ensuite, " + txt[0].lower() + txt[1:]
+    # Règle EDF R1 : rouge seulement du 1er novembre au 31 mars
+    if all(4 <= dt.month <= 10 for dt in dates):
+        if dates[0].month >= 9:
+            txt += " Aucun jour rouge possible avant le 1er novembre (règle EDF)."
+        else:
+            txt += " Plus de jour rouge depuis le 31 mars : aucun avant le 1er novembre (règle EDF)."
+    return txt
+
+
 def html_to_text(fragment: str) -> str:
     """Convertit un fragment HTML de FAQ en texte brut (JSON-LD, llms.txt)."""
     text = re.sub(r"<li[^>]*>", " ", fragment)
@@ -199,7 +241,7 @@ def breadcrumb_jsonld(items: list[tuple[str, str]]) -> dict:
 
 # Version des assets (style.min.css, app.min.js, fonts.css) : à incrémenter à chaque
 # régénération des fichiers minifiés. Un seul endroit, lu par tous les templates.
-ASSET_VERSION = "20260930"
+ASSET_VERSION = "20260930b"
 
 
 def template_globals() -> dict:

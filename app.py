@@ -517,7 +517,9 @@ def _get_ssr_data() -> dict:
         "today_iso": today_d.isoformat(), "today_label": site_facts.fr_date(today_d),
         "tomorrow_iso": tomorrow_d.isoformat(),
         "tomorrow_label": site_facts.fr_date(tomorrow_d, with_year=False),
+        "tomorrow_label_year": site_facts.fr_date(tomorrow_d),
         "tomorrow_forecast_color": None, "tomorrow_forecast_confidence": None,
+        "week_outlook": "",
     }
     if not _db_ready.is_set():
         return ssr
@@ -535,6 +537,13 @@ def _get_ssr_data() -> dict:
             ).fetchone()
             if row:
                 ssr["today_color"] = row["couleur_reelle"]
+            else:
+                row = conn.execute(
+                    "SELECT couleur_predite FROM predictions WHERE date = ? AND confirmed = 1 LIMIT 1",
+                    (today_str,)
+                ).fetchone()
+                if row:
+                    ssr["today_color"] = row["couleur_predite"]
 
             # Couleur de demain depuis actuals ou predictions confirmées
             row = conn.execute(
@@ -596,8 +605,10 @@ def _get_ssr_data() -> dict:
                         today_d = date.today()
                         tomorrow_d = today_d + timedelta(days=1)
                         prob_key = f"probabilite_{couleur.lower()}"
-                        confidence = round((r[prob_key] or 0) * 100)
+                        # Arrondi « demi vers le haut » comme Math.round côté JS (même HTML)
+                        confidence = int((r[prob_key] or 0) * 100 + 0.5)
                         ssr["week_summary"].append({
+                            "date": r["date"],
                             "day_label": JOURS_SSR[d.weekday()],
                             "day_num": d.day,
                             "date_label": site_facts.fr_date(d, with_year=False),
@@ -607,6 +618,7 @@ def _get_ssr_data() -> dict:
                             "confidence": confidence,
                             "is_today": d == today_d,
                             "is_tomorrow": d == tomorrow_d,
+                            "is_hero": d in (today_d, tomorrow_d),
                         })
                     except Exception:
                         pass
@@ -615,6 +627,9 @@ def _get_ssr_data() -> dict:
                     prob = r[f"probabilite_{(couleur or '').lower()}"] if couleur in ("BLEU", "BLANC", "ROUGE") else None
                     ssr["tomorrow_forecast_color"] = couleur
                     ssr["tomorrow_forecast_confidence"] = round(prob * 100) if prob is not None else None
+
+            # Phrase « la suite » sous les pastilles (même texte que renderWeekSummary en JS)
+            ssr["week_outlook"] = site_facts.week_outlook_html(ssr["week_summary"])
 
             # SSR: dernière mise à jour (reco 21)
             try:
@@ -2566,9 +2581,12 @@ async def api_resend_manage_link(
 
         def _send_manage_link():
             try:
-                from alerts import _build_manage_link_template, send_whatsapp_template
+                from alerts import (KIND_TRANSACTIONAL, _build_manage_link_template,
+                                    send_whatsapp_template)
                 tpl_name, tpl_components = _build_manage_link_template(manage_url)
-                send_whatsapp_template(phone_clean, tpl_name, tpl_components)
+                # Transactionnel : demandé par la personne, jamais retenu en mode test
+                send_whatsapp_template(phone_clean, tpl_name, tpl_components,
+                                       kind=KIND_TRANSACTIONAL)
             except Exception as e:
                 logger.warning(f"[ResendManage] Erreur envoi: {e}")
 
@@ -2652,11 +2670,12 @@ async def whatsapp_webhook_incoming(request: Request):
                     messages_processed += 1
                     # B1 fix: envoyer la réponse au user via WhatsApp
                     if reply:
-                        from alerts import send_whatsapp
+                        from alerts import KIND_TRANSACTIONAL, send_whatsapp
                         phone_for_reply = from_number
                         if not phone_for_reply.startswith("+"):
                             phone_for_reply = f"+{phone_for_reply}"
-                        send_whatsapp(phone_for_reply, reply)
+                        # Réponse du bot (STOP/START/RECAP) : transactionnelle
+                        send_whatsapp(phone_for_reply, reply, kind=KIND_TRANSACTIONAL)
 
             # --- Statuts de livraison (sent/delivered/read/failed) ---
             for status in value.get("statuses", []):
@@ -2909,7 +2928,7 @@ async def admin_whatsapp_diagnostic(request: Request, authorization: str | None 
     """
     verify_admin(authorization, request.client.host if request.client else "unknown")
 
-    from alerts import _is_whatsapp_configured
+    from alerts import _is_whatsapp_configured, whatsapp_test_numbers
 
     templates = [
         {"name": Config.WHATSAPP_TEMPLATE_WELCOME, "usage": "Bienvenue", "body_params": 2,
@@ -2954,6 +2973,9 @@ async def admin_whatsapp_diagnostic(request: Request, authorization: str | None 
         "language": Config.WHATSAPP_TEMPLATE_LANG,
         "phone_number_id": bool(Config.WHATSAPP_PHONE_NUMBER_ID),
         "token_set": bool(Config.WHATSAPP_TOKEN),
+        # Mode test (WHATSAPP_TEST_NUMBERS) : jamais les numéros eux-mêmes
+        "test_mode": bool(whatsapp_test_numbers()),
+        "test_numbers_count": len(whatsapp_test_numbers()),
         "templates": templates,
         "recent_errors": recent_errors,
         "note": "Chaque template Meta doit avoir EXACTEMENT le nombre de {{body}} params "

@@ -6,6 +6,27 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def normalize_phone(raw: str) -> str:
+    """Normalise un numéro saisi (espaces, tirets, points retirés).
+
+    Même règle que l'inscription (alerts.register_user) : le numéro stocké
+    chiffré est exactement cette forme, ce qui permet de le comparer."""
+    return (raw or "").strip().replace(" ", "").replace("-", "").replace(".", "")
+
+
+def _parse_phone_list(raw: str) -> tuple[str, ...]:
+    """Liste de numéros séparés par des virgules → tuple normalisé, sans doublon.
+    Un numéro sans « + » mais tout en chiffres (format Meta) reçoit le « + »."""
+    numbers: list[str] = []
+    for item in (raw or "").split(","):
+        n = normalize_phone(item)
+        if n and n.isdigit():
+            n = "+" + n
+        if n and n not in numbers:
+            numbers.append(n)
+    return tuple(numbers)
+
+
 class Config:
     # --- Base de donnees ---
     DATABASE_URL = os.getenv("DATABASE_URL", "")
@@ -78,6 +99,12 @@ class Config:
     WHATSAPP_VERIFY_TOKEN = os.getenv("WHATSAPP_VERIFY_TOKEN", "")
     WHATSAPP_APP_SECRET = os.getenv("WHATSAPP_APP_SECRET", "")
     WHATSAPP_API_VERSION = os.getenv("WHATSAPP_API_VERSION", "v21.0")
+    # Mode test (bascule Cloudflare) : si non vide, les diffusions (alertes,
+    # récap hebdo, changements, confirmations) ne partent QU'À ces numéros ; les
+    # autres sont retenues (sms_logs statut « held »). Les réponses à une action
+    # de la personne (bienvenue, lien de gestion, bot STOP/RECAP) partent à tous.
+    # Format : "+33612345678,+33698765432". Vide = mode normal.
+    WHATSAPP_TEST_NUMBERS = _parse_phone_list(os.getenv("WHATSAPP_TEST_NUMBERS", ""))
 
     # --- WhatsApp Templates (noms des templates pré-approuvés Meta) ---
     # Ces noms doivent correspondre exactement aux templates créés dans Meta Business Suite

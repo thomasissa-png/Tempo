@@ -156,7 +156,8 @@ class TestSharedParts:
     def test_minified_assets_in_sync_with_sources(self):
         css = (ROOT / "static" / "css" / "style.css").read_text(encoding="utf-8")
         css_min = (ROOT / "static" / "css" / "style.min.css").read_text(encoding="utf-8")
-        for sel in (".data-table", ".history-bref", ".notfound-links", ".week-summary-answer", ".btn-outline"):
+        for sel in (".data-table", ".history-bref", ".notfound-links", ".week-summary-answer", ".btn-outline",
+                    ".week-dots-hero", ".week-dot-color", ".week-summary-links a"):
             assert sel in css and sel in css_min, sel
         js = (ROOT / "static" / "js" / "app.js").read_text(encoding="utf-8")
         js_min = (ROOT / "static" / "js" / "app.min.js").read_text(encoding="utf-8")

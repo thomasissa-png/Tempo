@@ -39,6 +39,19 @@
         .api-copy { position: absolute; top: 8px; right: 8px; min-height: 36px; padding: 4px 12px; border: 1px solid rgba(255,255,255,.35); border-radius: 50px; background: var(--cta-dark-lighter); color: #fff; font: inherit; font-size: 0.8rem; cursor: pointer; }
         .api-copy:hover { background: #334155; }
         .api-copy:focus-visible { outline: 3px solid var(--bleu); outline-offset: 2px; }
+        .api-endpoints code { white-space: nowrap; }
+        .api-source-note { font-size: 0.85rem; color: var(--text-secondary); }
+        /* Mobile : une carte par endpoint (endpoint en haut, contenu et cache dessous), jamais de coupure dans l'URL */
+        @media (max-width: 600px) {
+            .api-endpoints thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+            .api-endpoints, .api-endpoints tbody, .api-endpoints tr, .api-endpoints th, .api-endpoints td { display: block; }
+            .api-endpoints tr { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+            .api-endpoints tbody tr:last-child { border-bottom: 0; }
+            .api-endpoints th, .api-endpoints td { padding: 0; border: 0; }
+            .api-endpoints td { margin-top: 4px; }
+            .api-endpoints td.api-cache { font-size: 0.85rem; color: var(--text-secondary); }
+            .api-endpoints td.api-cache::before { content: "Cache : "; }
+        }
     </style>
 {% endblock %}
 {% block breadcrumb %}
@@ -50,27 +63,26 @@
 <article class="legal-content api-doc">
     <h1>API Tempo EDF gratuite (JSON, sans cl&eacute;)</h1>
     <p class="section-desc">
-        Calendrier Tempo EDF met &agrave; disposition une <strong>API JSON publique</strong>, sans inscription ni cl&eacute;,
-        pour conna&icirc;tre la couleur Tempo du jour et de demain, les jours restants de la saison, nos pr&eacute;visions
-        &agrave; {{ facts.HORIZON_MAX_JOURS }} jours et l'historique des couleurs. Les couleurs officielles sont les
-        {{ facts.SOURCE_COULEURS_PHRASE }}&nbsp;; seule la couleur publi&eacute;e par EDF fait foi.
+        Calendrier Tempo EDF met à disposition une <strong>API JSON publique</strong>, sans inscription ni clé&nbsp;:
+        couleur Tempo du jour et de demain, jours restants, nos prévisions à {{ facts.HORIZON_MAX_JOURS }} jours et historique des couleurs.
     </p>
 
     <h2>Les endpoints</h2>
     <div class="table-scroll">
-    <table class="data-table">
+    <table class="data-table api-endpoints">
         <caption class="sr-only">Endpoints publics de l'API Tempo</caption>
         <thead><tr><th scope="col">Endpoint</th><th scope="col">Contenu</th><th scope="col">Cache</th></tr></thead>
         <tbody>
-            <tr><th scope="row"><a href="/api/today" target="_blank" rel="noopener"><code>GET /api/today</code></a></th><td>Couleur officielle du jour</td><td>2 min</td></tr>
-            <tr><th scope="row"><a href="/api/tomorrow" target="_blank" rel="noopener"><code>GET /api/tomorrow</code></a></th><td>Couleur officielle de demain, d&egrave;s sa publication par EDF</td><td>2 min</td></tr>
-            <tr><th scope="row"><a href="/api/remaining" target="_blank" rel="noopener"><code>GET /api/remaining</code></a></th><td>Jours restants par couleur dans la saison en cours</td><td>2 min</td></tr>
-            <tr><th scope="row"><a href="/api/predictions" target="_blank" rel="noopener"><code>GET /api/predictions</code></a></th><td>Nos pr&eacute;visions jour par jour (jusqu'&agrave; J+{{ facts.HORIZON_MAX_JOURS }}), avec probabilit&eacute;s</td><td>2 min</td></tr>
-            <tr><th scope="row"><a href="/api/history?days=30" target="_blank" rel="noopener"><code>GET /api/history?days=30</code></a></th><td>Couleurs officielles des N derniers jours (1 &agrave; 365)</td><td>aucun</td></tr>
-            <tr><th scope="row"><a href="/api/performance/badge" target="_blank" rel="noopener"><code>GET /api/performance/badge</code></a></th><td>Taux de pr&eacute;visions correctes de {{ facts.HORIZON_FIABLE }} sur 30 jours</td><td>5 min</td></tr>
+            <tr><th scope="row"><a href="/api/today" target="_blank" rel="noopener"><code>GET /api/today</code></a></th><td data-label="Contenu">Couleur officielle du jour</td><td class="api-cache" data-label="Cache">2 min</td></tr>
+            <tr><th scope="row"><a href="/api/tomorrow" target="_blank" rel="noopener"><code>GET /api/tomorrow</code></a></th><td data-label="Contenu">Couleur officielle de demain, d&egrave;s sa publication par EDF</td><td class="api-cache" data-label="Cache">2 min</td></tr>
+            <tr><th scope="row"><a href="/api/remaining" target="_blank" rel="noopener"><code>GET /api/remaining</code></a></th><td data-label="Contenu">Jours restants par couleur dans la saison en cours</td><td class="api-cache" data-label="Cache">2 min</td></tr>
+            <tr><th scope="row"><a href="/api/predictions" target="_blank" rel="noopener"><code>GET /api/predictions</code></a></th><td data-label="Contenu">Nos pr&eacute;visions jour par jour (jusqu'&agrave; J+{{ facts.HORIZON_MAX_JOURS }}), avec probabilit&eacute;s</td><td class="api-cache" data-label="Cache">2 min</td></tr>
+            <tr><th scope="row"><a href="/api/history?days=30" target="_blank" rel="noopener"><code>GET /api/history?days=30</code></a></th><td data-label="Contenu">Couleurs officielles des N derniers jours (1 &agrave; 365)</td><td class="api-cache" data-label="Cache">aucun</td></tr>
+            <tr><th scope="row"><a href="/api/performance/badge" target="_blank" rel="noopener"><code>GET /api/performance/badge</code></a></th><td data-label="Contenu">Taux de pr&eacute;visions correctes de {{ facts.HORIZON_FIABLE }} sur 30 jours</td><td class="api-cache" data-label="Cache">5 min</td></tr>
         </tbody>
     </table>
     </div>
+    <p class="api-source-note">Les couleurs officielles sont les {{ facts.SOURCE_COULEURS_PHRASE }}&nbsp;; seule la couleur publiée par EDF fait foi.</p>
 
     <h2>/api/today et /api/tomorrow</h2>
     <p>Champs&nbsp;: <code>status</code> (<code>ok</code> ou <code>unavailable</code>), <code>date</code> (AAAA-MM-JJ), <code>couleur</code>

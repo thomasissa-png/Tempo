@@ -68,9 +68,11 @@
 
     <h1>Mentions l&eacute;gales et RGPD</h1>
     <p class="legal-text"><em>Derni&egrave;re mise &agrave; jour&nbsp;: <time datetime="2026-09-30">30 septembre 2026</time></em></p>
-    <nav class="page-toc" aria-label="Sommaire">
+    <nav class="page-toc page-toc--compact" aria-label="Sommaire">
+        <a href="#desinscription" class="page-toc-primary">Se désinscrire</a>
+        <details class="page-toc-more">
+        <summary>Sommaire</summary>
         <ul>
-            <li><a href="#desinscription">Se désinscrire</a></li>
             <li><a href="#editeur">Éditeur</a></li>
             <li><a href="#hebergeur">Hébergeur</a></li>
             <li><a href="#nature-du-service">Nature du service</a></li>
@@ -80,7 +82,9 @@
             <li><a href="#sources">Sources</a></li>
             <li><a href="#responsabilite">Responsabilité</a></li>
         </ul>
+        </details>
     </nav>
+    <script>document.querySelectorAll('.page-toc-more a').forEach(function (a) { a.addEventListener('click', function () { a.closest('details').open = false; }); });</script>
 
     <!-- Fix #9 : classes CSS au lieu de styles inline -->
     <div class="legal-section">

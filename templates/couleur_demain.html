@@ -23,14 +23,14 @@
     {% set rouge_proche = (ssr.tomorrow_color == 'ROUGE') or (ssr.tomorrow_forecast_color == 'ROUGE') %}
     <div class="today-answer today-answer--lead{% if rouge_proche %} has-rouge{% endif %}" role="status">
         {% if ssr.tomorrow_color %}
-        <p>Demain, <time datetime="{{ ssr.tomorrow_iso }}">{{ ssr.tomorrow_label }}</time>, est un
+        <p>Demain, <time datetime="{{ ssr.tomorrow_iso }}">{{ ssr.tomorrow_label_year }}</time>, est un
             <strong class="color-tag {{ ssr.tomorrow_color|lower }}">jour {{ ssr.tomorrow_color|lower }}</strong>&nbsp;: couleur officielle publi&eacute;e par EDF.</p>
         {% elif ssr.tomorrow_forecast_color %}
-        <p>Demain, <time datetime="{{ ssr.tomorrow_iso }}">{{ ssr.tomorrow_label }}</time>&nbsp;: notre pr&eacute;vision est
+        <p>Demain, <time datetime="{{ ssr.tomorrow_iso }}">{{ ssr.tomorrow_label_year }}</time>&nbsp;: notre pr&eacute;vision est
             <strong class="color-tag {{ ssr.tomorrow_forecast_color|lower }}">jour {{ ssr.tomorrow_forecast_color|lower }}</strong>{% if ssr.tomorrow_forecast_confidence is not none %} (probabilit&eacute; {{ ssr.tomorrow_forecast_confidence }}&nbsp;%){% endif %}.
             Pr&eacute;vision&nbsp;: EDF ne l'a pas encore publi&eacute;e ({{ facts.ANNONCE_J1|lower }}).</p>
         {% else %}
-        <p>La couleur de demain (<time datetime="{{ ssr.tomorrow_iso }}">{{ ssr.tomorrow_label }}</time>) n'est pas encore disponible sur notre site.</p>
+        <p>La couleur de demain (<time datetime="{{ ssr.tomorrow_iso }}">{{ ssr.tomorrow_label_year }}</time>) n'est pas encore disponible sur notre site.</p>
         {% endif %}
         {% if ssr.today_color %}
         <p>Aujourd'hui, <time datetime="{{ ssr.today_iso }}">{{ ssr.today_label }}</time>&nbsp;: jour {{ ssr.today_color|lower }} (couleur officielle).</p>
@@ -52,9 +52,8 @@
     </div>
     {% endif %}
 
-    <p>Toute la saison sur le <a href="/calendrier">calendrier Tempo EDF</a>. Pour &ecirc;tre pr&eacute;venu sans y penser&nbsp;:
-        <a href="/alertes">alertes WhatsApp gratuites</a> ({{ facts.ALERTES_DESCRIPTION }}).
-        Donn&eacute;es brutes&nbsp;: <a href="/api-tempo">API Tempo</a>.</p>
+    <p>Toute la saison sur le <a href="/calendrier">calendrier Tempo EDF</a>&nbsp;; données brutes sur l'<a href="/api-tempo">API Tempo</a>.
+        Pour être prévenu sans y penser, découvrez nos <a href="/alertes">alertes WhatsApp gratuites</a>.</p>
 
     <section class="blog-cta page-cta">
         <h2>Anticipez les {{ facts.ALERTES_HORIZON_JOURS }} prochains jours Tempo</h2>

@@ -26,8 +26,8 @@
     <h1>Jours rouges et blancs Tempo EDF&nbsp;: <span class="nowrap">saison {{ s.season_label }}</span></h1>
     <p class="section-desc">
         La saison Tempo {{ s.season_label }} court du {{ s.season_start[8:10]|int }}<sup>er</sup> septembre {{ s.season_start[:4] }}
-        au 31 ao&ucirc;t {{ s.season_end[:4] }}. Voici les couleurs <strong>officielles publi&eacute;es par EDF</strong>
-        ({{ facts.SOURCE_COULEURS_PHRASE }}), sans aucune estimation.
+        au 31 août {{ s.season_end[:4] }}. Voici les couleurs <strong>officielles publiées par EDF</strong>, sans aucune estimation,
+        telles que les relaie api-couleur-tempo.fr, un service tiers qui diffuse les données Tempo EDF/RTE.
     </p>
 
     {% if s.days_with_data %}
@@ -70,7 +70,7 @@
     </table>
     </div>
     {% if upcoming %}
-    <p class="season-upcoming">&Agrave; venir&nbsp;: {% for m in upcoming %}<a href="{{ m.path }}">{{ m.label }}</a>{{ ', ' if not loop.last else '.' }}{% endfor %}</p>
+    <nav class="season-upcoming" aria-label="Mois à venir de la saison {{ s.season_label }}"><span>À venir&nbsp;:</span> {% for m in upcoming %}<a href="{{ m.path }}">{{ m.label }}</a> {% endfor %}</nav>
     {% endif %}
 
     {% if s.red_days or s.white_days %}

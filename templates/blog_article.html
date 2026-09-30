@@ -86,12 +86,11 @@
             </div>
             {% if article.toc %}
             <details class="blog-toc" id="blog-toc">
-                <summary>Sommaire</summary>
+                <summary>Sommaire <span class="blog-toc-count">({{ article.toc|length }} parties)</span></summary>
                 <ol>
                     {% for id, name in article.toc %}<li><a href="#{{ id }}">{{ name|safe }}</a></li>{% endfor %}
                 </ol>
             </details>
-            <script>(function () { var t = document.getElementById('blog-toc'); if (t && window.matchMedia('(min-width: 769px)').matches) t.open = true; })();</script>
             {% endif %}
         </header>
 

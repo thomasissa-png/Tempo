@@ -175,7 +175,7 @@ class TestRougeAlertDue:
         monkeypatch.setattr(alerts, "_is_red_season", lambda d=None: True)
         monkeypatch.setattr(alerts, "_get_user_phone", lambda u: "+33600000000")
         monkeypatch.setattr(alerts, "send_whatsapp_template",
-                            lambda phone, tpl, comp: (sent.append(tpl) or "SIM", "simulated"))
+                            lambda phone, tpl, comp, kind="broadcast": (sent.append(tpl) or "SIM", "simulated"))
         conn = get_db()
         for i, seuil in enumerate((70, 80, 90)):
             conn.execute(

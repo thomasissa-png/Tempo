@@ -177,20 +177,27 @@
             </p>
         </div>
         <div class="week-summary-card{% if ssr.week_summary|selectattr('couleur', 'equalto', 'ROUGE')|list %} has-rouge{% endif %}" id="week-summary-card">
-            <div id="week-summary" role="region" aria-label="Couleurs des 10 prochains jours">
+            {% macro week_dot(d, hero) -%}
+            <div class="week-dot{% if hero %} week-dot-highlight week-dot-hero{% endif %}">
+                <div class="week-dot-circle{% if d.couleur == 'BLANC' %} dot-blanc{% elif d.couleur == 'ROUGE' %} dot-rouge{% endif %}{% if d.confirmed %} confirmed-dot{% endif %}" style="background:var(--{{ d.couleur|lower }})" aria-hidden="true">{{ d.couleur[0] }}</div>
+                <span class="sr-only">{% if d.is_today %}Aujourd'hui, {% elif d.is_tomorrow %}Demain, {% endif %}{{ d.date_label }} : {{ d.couleur_label }}{% if d.confirmed %}, couleur officielle{% else %}, prévision {{ d.confidence }}&nbsp;%{% endif %}</span>
+                <div class="week-dot-text" aria-hidden="true">
+                    <span class="week-dot-label">{% if d.is_today %}<strong>Aujourd'hui</strong>{% elif d.is_tomorrow %}<strong>Demain</strong>{% else %}{{ d.day_label }} {{ d.day_num }}{% endif %}</span>
+                    {% if hero %}<span class="week-dot-color">{{ d.couleur_label }}</span>{% endif %}
+                    <div class="week-dot-info">{% if d.confirmed %}<span class="week-dot-confirmed">Confirmé</span>{% elif hero %}<span class="week-dot-proba">Prévision {{ d.confidence }}&nbsp;%</span>{% elif d.couleur != 'BLEU' or d.confidence < 90 %}<span class="week-dot-proba">{{ d.confidence }}&nbsp;%</span>{% endif %}</div>
+                </div>
+            </div>
+            {%- endmacro %}
+            <div id="week-summary" role="region" aria-label="Couleur Tempo d'aujourd'hui, de demain et des jours suivants">
                 {% if ssr.week_summary %}
+                {% set heroes = ssr.week_summary|selectattr('is_hero')|list %}
                 <div class="week-summary-dots">
-                    {% for d in ssr.week_summary %}
-                    {% if loop.index == 6 %}<div class="week-dots-separator" aria-hidden="true"></div>{% endif %}
-                    <div class="week-dot{% if d.is_today or d.is_tomorrow %} week-dot-highlight{% endif %}">
-                        <div class="week-dot-circle{% if d.couleur == 'BLANC' %} dot-blanc{% elif d.couleur == 'ROUGE' %} dot-rouge{% endif %}{% if d.confirmed %} confirmed-dot{% endif %}" style="background:var(--{{ d.couleur|lower }})" aria-hidden="true">{{ d.couleur[0] }}</div>
-                        <span class="sr-only">{{ d.date_label }} : {{ d.couleur_label }}{% if d.confirmed %}, couleur officielle{% else %}, pr&eacute;vision {{ d.confidence }}&nbsp;%{% endif %}</span>
-                        <span class="week-dot-label" aria-hidden="true">{% if d.is_today %}<strong>Aujourd'hui</strong>{% elif d.is_tomorrow %}<strong>Demain</strong>{% else %}{{ d.day_label }} {{ d.day_num }}{% endif %}</span>
-                        <div class="week-dot-info" aria-hidden="true">
-                            {% if d.confirmed %}<span class="week-dot-confirmed">Confirm&eacute;</span>{% elif d.couleur != 'BLEU' or (d.confidence is not none and d.confidence < 90) %}<span class="week-dot-proba">{{ d.confidence }}%</span>{% endif %}
-                        </div>
+                    {% if heroes %}<div class="week-dots-hero">
+                        {% for d in heroes %}{{ week_dot(d, true) }}{% endfor %}
+                    </div>{% endif %}
+                    <div class="week-dots-next">
+                        {% for d in ssr.week_summary|rejectattr('is_hero') %}{{ week_dot(d, false) }}{% endfor %}
                     </div>
-                    {% endfor %}
                 </div>
                 {% else %}
                 <div class="week-summary-dots week-summary-loading" id="week-summary-loading">
@@ -198,23 +205,22 @@
                 </div>
                 {% endif %}
             </div>
-            {% if ssr.today_color or ssr.tomorrow_color or ssr.tomorrow_forecast_color %}
-            <!-- Réponse directe SSR (SEO) : couleur du jour et de demain en toutes lettres -->
+            {% if ssr.today_color or ssr.tomorrow_color %}
+            <!-- Réponse directe SSR (SEO) : couleur du jour et de demain en toutes lettres, une seule fois -->
             <p class="week-summary-answer">
                 {% if ssr.today_color %}
-                Couleur Tempo EDF du <time datetime="{{ ssr.today_iso }}">{{ ssr.today_label }}</time>&nbsp;:
-                <strong class="color-tag {{ ssr.today_color|lower }}">{{ ssr.today_color|capitalize }}</strong> (couleur officielle EDF).
-                {% endif %}
-                {% if ssr.tomorrow_color %}
+                Couleur Tempo EDF aujourd'hui, <time datetime="{{ ssr.today_iso }}">{{ ssr.today_label }}</time>&nbsp;:
+                <strong class="color-tag {{ ssr.today_color|lower }}">{{ ssr.today_color|capitalize }}</strong>{% if not ssr.tomorrow_color %} (couleur officielle EDF){% endif %}.
                 Demain, <time datetime="{{ ssr.tomorrow_iso }}">{{ ssr.tomorrow_label }}</time>&nbsp;:
-                <strong class="color-tag {{ ssr.tomorrow_color|lower }}">{{ ssr.tomorrow_color|capitalize }}</strong> (confirm&eacute; par EDF).
-                {% elif ssr.tomorrow_forecast_color %}
-                Demain, <time datetime="{{ ssr.tomorrow_iso }}">{{ ssr.tomorrow_label }}</time>&nbsp;:
-                <strong class="color-tag {{ ssr.tomorrow_forecast_color|lower }}">{{ ssr.tomorrow_forecast_color|capitalize }}</strong>
-                (notre pr&eacute;vision{% if ssr.tomorrow_forecast_confidence is not none %}, probabilit&eacute; {{ ssr.tomorrow_forecast_confidence }}&nbsp;%{% endif %} ; EDF ne l'a pas encore publi&eacute;e).
+                {% if ssr.tomorrow_color %}<strong class="color-tag {{ ssr.tomorrow_color|lower }}">{{ ssr.tomorrow_color|capitalize }}</strong> (couleurs officielles EDF).{% else %}pas encore publi&eacute;e par EDF (vers 11&nbsp;h).{% endif %}
+                {% else %}
+                Couleur Tempo EDF demain, <time datetime="{{ ssr.tomorrow_iso }}">{{ ssr.tomorrow_label }}</time>&nbsp;:
+                <strong class="color-tag {{ ssr.tomorrow_color|lower }}">{{ ssr.tomorrow_color|capitalize }}</strong> (couleur officielle EDF).
                 {% endif %}
             </p>
             {% endif %}
+            <!-- La suite (après aujourd'hui et demain) : même texte en SSR et en JS (weekOutlookHtml) -->
+            <p class="week-summary-text" id="week-outlook"{% if not ssr.week_outlook %} hidden{% endif %}>{{ ssr.week_outlook|safe }}</p>
             <div class="week-summary-actions">
                 <a href="/calendrier" class="btn btn-cta-summary">Voir les pr&eacute;visions d&eacute;taill&eacute;es des 15 prochains jours &rarr;</a>
                 <span class="week-summary-links"><a href="/couleur-tempo-demain">Couleur Tempo de demain</a> <a href="/calendrier">Calendrier de la saison</a></span>

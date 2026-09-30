@@ -15,7 +15,7 @@ import logging
 import secrets
 from datetime import datetime, date, timedelta
 from zoneinfo import ZoneInfo
-from config import Config
+from config import Config, normalize_phone
 from database import get_db, hash_phone, encrypt_phone, decrypt_phone
 
 
@@ -35,6 +35,70 @@ def _is_whatsapp_configured() -> bool:
     return bool(Config.WHATSAPP_TOKEN and Config.WHATSAPP_PHONE_NUMBER_ID)
 
 
+# ----------------------------------------------------------------
+# Mode test WhatsApp (Config.WHATSAPP_TEST_NUMBERS)
+# ----------------------------------------------------------------
+# Point de décision UNIQUE pour savoir si un message peut partir.
+#   - "broadcast"     : envoi à l'initiative du site (alertes rouge/blanc matin
+#                       et soir, changements de couleur, confirmations EDF,
+#                       récap hebdo, toute diffusion scheduler/admin).
+#   - "transactional" : réponse immédiate à une action de la personne
+#                       (bienvenue après inscription, renvoi du lien de gestion,
+#                       réponse du bot STOP/START/RECAP).
+# Tout appel sans kind (ou avec un kind inconnu) est traité comme "broadcast" :
+# un nouvel envoi planifié oublié reste retenu en mode test (fail closed).
+KIND_BROADCAST = "broadcast"
+KIND_TRANSACTIONAL = "transactional"
+STATUS_HELD = "held"
+
+
+def whatsapp_test_numbers() -> frozenset[str]:
+    """Numéros autorisés en mode test (normalisés). Vide = mode normal."""
+    return frozenset(normalize_phone(n) for n in (Config.WHATSAPP_TEST_NUMBERS or ()) if n)
+
+
+def is_whatsapp_test_mode() -> bool:
+    return bool(whatsapp_test_numbers())
+
+
+def _allowed_recipient(phone: str, kind: str = KIND_BROADCAST) -> bool:
+    """Le message de type `kind` peut-il partir vers `phone` ?
+    Mode normal : toujours oui. Mode test : transactionnel oui, diffusion
+    seulement vers un numéro de la liste de test."""
+    numbers = whatsapp_test_numbers()
+    if not numbers or kind == KIND_TRANSACTIONAL:
+        return True
+    return normalize_phone(phone) in numbers
+
+
+def _held(phone_number: str, what: str) -> tuple[str, str]:
+    """Envoi retenu par le mode test : aucun appel Meta, statut "held"."""
+    logger.debug(f"[WhatsApp] mode test : {what} retenu → ****{phone_number[-4:]}")
+    return ("", STATUS_HELD)
+
+
+class _BroadcastStats:
+    """Compteur pour le log agrégé du mode test (un log INFO par diffusion)."""
+
+    def __init__(self, label: str):
+        self.label = label
+        self.held = 0
+        self.test_sent = 0
+
+    def add(self, statut: str):
+        if statut == STATUS_HELD:
+            self.held += 1
+        elif is_whatsapp_test_mode():
+            self.test_sent += 1
+
+    def log(self):
+        if is_whatsapp_test_mode():
+            logger.info(
+                f"[WhatsApp] mode test ({self.label}) : {self.held} envois retenus, "
+                f"{self.test_sent} envoyés aux numéros de test"
+            )
+
+
 def _is_red_season(d: date | None = None) -> bool:
     """Vérifie si la date est en saison rouge (1er nov — 31 mars).
     Les jours ROUGE n'existent que pendant cette période (règle R1 EDF)."""
@@ -50,10 +114,14 @@ def _is_tempo_season(d: date | None = None) -> bool:
     return True
 
 
-def send_whatsapp(phone_number: str, message: str) -> tuple[str, str]:
+def send_whatsapp(phone_number: str, message: str,
+                  kind: str = KIND_BROADCAST) -> tuple[str, str]:
     """Envoie un message WhatsApp via Meta Cloud API avec retry exponentiel.
     H-03 QA : retry 2 fois avec backoff sur échec API.
-    Retourne (message_id, statut) — message_id vide si échec."""
+    `kind` : "broadcast" (défaut) ou "transactional", voir _allowed_recipient.
+    Retourne (message_id, statut) — message_id vide si échec ou retenu ("held")."""
+    if not _allowed_recipient(phone_number, kind):
+        return _held(phone_number, "message")
     if not _is_whatsapp_configured():
         logger.info(f"[WhatsApp] Mode simulation → ****{phone_number[-4:]}: {message[:80]}...")
         return ("SIM_" + _now_paris().strftime("%H%M%S"), "simulated")
@@ -128,11 +196,15 @@ _LANG_FALLBACKS = {"fr": "fr_FR", "fr_FR": "fr"}
 
 
 def send_whatsapp_template(phone_number: str, template_name: str,
-                           components: list[dict] | None = None) -> tuple[str, str]:
+                           components: list[dict] | None = None,
+                           kind: str = KIND_BROADCAST) -> tuple[str, str]:
     """Envoie un message WhatsApp via template pré-approuvé Meta.
     Requis pour les messages business-initiated (hors fenêtre 24h).
     Retry auto avec code langue alternatif sur erreur 132018.
-    Retourne (message_id, statut)."""
+    `kind` : "broadcast" (défaut) ou "transactional", voir _allowed_recipient.
+    Retourne (message_id, statut) — statut "held" si retenu par le mode test."""
+    if not _allowed_recipient(phone_number, kind):
+        return _held(phone_number, f"template '{template_name}'")
     if not _is_whatsapp_configured():
         logger.info(f"[WhatsApp] Mode simulation template '{template_name}' → ****{phone_number[-4:]}")
         return ("SIM_" + _now_paris().strftime("%H%M%S"), "simulated")
@@ -656,6 +728,7 @@ def send_alerts_for_prediction(target_date: date, prediction: dict,
             format_fn = format_alert_blanc
             type_alerte = "prediction_blanc"
 
+        stats = _BroadcastStats(f"{type_alerte} {target_date}")
         for user in users:
             # Filtre horaire (matin/soir)
             if heure_filter:
@@ -698,12 +771,15 @@ def send_alerts_for_prediction(target_date: date, prediction: dict,
                 tpl_name, tpl_components = _build_rouge_template(target_date, prediction, token)
             else:
                 tpl_name, tpl_components = _build_blanc_template(target_date, prediction, token)
-            sid, statut = send_whatsapp_template(phone, tpl_name, tpl_components)
+            sid, statut = send_whatsapp_template(phone, tpl_name, tpl_components,
+                                                 kind=KIND_BROADCAST)
+            stats.add(statut)
 
             _log_sms(conn, user["id"], type_alerte, couleur, message, statut, sid,
                      date_cible=target_date.isoformat())
 
         conn.commit()
+        stats.log()
         logger.info(f"[Alertes] Envoi terminé pour {couleur} {target_date}")
 
     finally:
@@ -742,6 +818,7 @@ def send_change_alerts(target_date: date, old_color: str, new_color: str,
                FROM users WHERE actif = 1 AND seuil_alerte_rouge > 0"""
         ).fetchall()
 
+        stats = _BroadcastStats(f"changement {target_date}")
         for user in users:
             # Vérifier si l'user a déjà reçu une alerte initiale pour cette date
             # (prediction_rouge ou prediction_blanc). Si oui, il DOIT recevoir
@@ -777,11 +854,14 @@ def send_change_alerts(target_date: date, old_color: str, new_color: str,
 
             # Envoi via template (business-initiated)
             tpl_name, tpl_components = _build_change_template(target_date, old_color, new_color, token)
-            sid, statut = send_whatsapp_template(phone, tpl_name, tpl_components)
+            sid, statut = send_whatsapp_template(phone, tpl_name, tpl_components,
+                                                 kind=KIND_BROADCAST)
+            stats.add(statut)
             _log_sms(conn, user["id"], "changement", new_color, message, statut, sid,
                      date_cible=target_date.isoformat())
 
         conn.commit()
+        stats.log()
         logger.info(f"[Alertes] Changement {old_color}→{new_color} pour {target_date}")
     finally:
         conn.close()
@@ -808,6 +888,7 @@ def send_official_alerts(target_date: date, couleur: str):
                    FROM users WHERE actif = 1 AND alerte_blanc = 1"""
             ).fetchall()
 
+        stats = _BroadcastStats(f"officiel {target_date}")
         for user in users:
             # B6 fix: dédup officiel par (user, date_cible) — cross-type avec prédictions
             existing = conn.execute(
@@ -829,11 +910,14 @@ def send_official_alerts(target_date: date, couleur: str):
 
             # Envoi via template (business-initiated)
             tpl_name, tpl_components = _build_confirmation_template(target_date, couleur, token)
-            sid, statut = send_whatsapp_template(phone, tpl_name, tpl_components)
+            sid, statut = send_whatsapp_template(phone, tpl_name, tpl_components,
+                                                 kind=KIND_BROADCAST)
+            stats.add(statut)
             _log_sms(conn, user["id"], "officiel", couleur, message, statut, sid,
                      date_cible=target_date.isoformat())
 
         conn.commit()
+        stats.log()
     finally:
         conn.close()
 
@@ -854,6 +938,7 @@ def send_weekly_recap(predictions: list[dict]):
         if not users:
             return
 
+        stats = _BroadcastStats("recap_hebdo")
         for user in users:
             phone = _get_user_phone(user)
             if not phone:
@@ -864,10 +949,13 @@ def send_weekly_recap(predictions: list[dict]):
 
             # Envoi via template (business-initiated)
             tpl_name, tpl_components = _build_recap_template(predictions, token)
-            sid, statut = send_whatsapp_template(phone, tpl_name, tpl_components)
+            sid, statut = send_whatsapp_template(phone, tpl_name, tpl_components,
+                                                 kind=KIND_BROADCAST)
+            stats.add(statut)
             _log_sms(conn, user["id"], "recap_hebdo", "", message, statut, sid)
 
         conn.commit()
+        stats.log()
         logger.info(f"[Alertes] Récap hebdo envoyé à {len(users)} users")
     finally:
         conn.close()
@@ -879,7 +967,9 @@ def send_welcome(phone_number: str, manage_token: str = ""):
 
     # Envoi via template (business-initiated — l'user vient de s'inscrire sur le site)
     tpl_name, tpl_components = _build_welcome_template(predictions, manage_token)
-    sid, statut = send_whatsapp_template(phone_number, tpl_name, tpl_components)
+    # Transactionnel : réponse à l'inscription, jamais retenu par le mode test
+    sid, statut = send_whatsapp_template(phone_number, tpl_name, tpl_components,
+                                         kind=KIND_TRANSACTIONAL)
     logger.info(f"[WhatsApp] Bienvenue envoyé à ****{phone_number[-4:]}: {statut}")
     return sid, statut
 
@@ -911,6 +1001,8 @@ def _log_sms(conn, user_id: int, type_alerte: str, couleur: str,
     S4 fix: redact manage token from message_body."""
     import re
     erreur = statut if "error" in statut else ""
+    # Un envoi retenu par le mode test n'a pas de message_id Meta : garder "held"
+    stored_statut = statut if (sid or statut == STATUS_HELD) else "failed"
     # S4: masquer les tokens /manage/xxx dans le body stocké en DB
     safe_message = re.sub(r"/manage/[A-Za-z0-9_-]+", "/manage/***", message)
     conn.execute(
@@ -919,7 +1011,7 @@ def _log_sms(conn, user_id: int, type_alerte: str, couleur: str,
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
         (user_id, type_alerte, couleur, safe_message,
          _now_paris().isoformat(),
-         statut if sid else "failed",
+         stored_statut,
          sid or "",
          erreur,
          date_cible),
@@ -941,7 +1033,7 @@ def register_user(phone_number: str, seuil_rouge: int = 70,
     - recap_hebdo=True (message à plus forte valeur perçue)
     - heure_envoi='matin' (quand l'utilisateur planifie sa journée)
     """
-    phone_clean = phone_number.strip().replace(" ", "").replace("-", "").replace(".", "")
+    phone_clean = normalize_phone(phone_number)
     # Validate international phone: +CC followed by digits, total 10-15 chars
     # Supported: FR (+33), BE (+32), CH (+41), LU (+352), DE (+49)
     import re
@@ -1191,7 +1283,7 @@ def handle_incoming_sms(from_number: str, body: str) -> str:
 def _reactivate_user(phone_number: str) -> dict:
     """Réactive un user désabonné en préservant ses préférences (L3 fix).
     Utilisé par le webhook START — ne reset PAS les préférences."""
-    phone_clean = phone_number.strip().replace(" ", "").replace("-", "").replace(".", "")
+    phone_clean = normalize_phone(phone_number)
     phone_h = hash_phone(phone_clean)
     conn = get_db()
     now = _now_paris().isoformat()

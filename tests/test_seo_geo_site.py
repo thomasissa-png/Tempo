@@ -139,9 +139,9 @@ class TestSsrColors:
         _insert_actual(today + timedelta(days=1), "ROUGE")
         text = html.unescape(re.sub(r"<[^>]+>", " ", client.get("/").text))
         text = re.sub(r"\s+", " ", text)
-        assert "Couleur Tempo EDF du" in text
-        assert "Bleu (couleur officielle EDF)" in text
-        assert "Rouge (confirmé par EDF)" in text
+        assert "Couleur Tempo EDF aujourd'hui," in text
+        assert ": Bleu . Demain," in text
+        assert "Rouge (couleurs officielles EDF)" in text
 
     def test_tomorrow_forecast_is_labelled(self, client):
         from database import get_db

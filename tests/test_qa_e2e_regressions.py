@@ -30,7 +30,7 @@ def sent(monkeypatch):
     """Capture les envois WhatsApp (aucun appel réseau)."""
     calls = []
 
-    def fake_tpl(phone, name, components=None):
+    def fake_tpl(phone, name, components=None, kind="broadcast"):
         calls.append((phone, name, components))
         return ("SIM_TEST", "simulated")
 
@@ -289,7 +289,7 @@ def test_change_alert_to_rouge_respects_calibrated_rule(monkeypatch):
     sent = []
     monkeypatch.setattr(alerts, "_is_red_season", lambda: True)
     monkeypatch.setattr(alerts, "send_whatsapp_template",
-                        lambda phone, name, comps=None: (sent.append(phone) or ("SIM", "simulated")))
+                        lambda phone, name, comps=None, kind="broadcast": (sent.append(phone) or ("SIM", "simulated")))
     low = {"couleur_predite": "ROUGE", "probabilite_rouge": 0.30,
            "probabilite_blanc": 0.35, "probabilite_bleu": 0.35}
     monkeypatch.setattr(alerts, "rouge_alert_due", lambda seuil, pred, delta=None: False)

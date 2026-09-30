@@ -526,17 +526,10 @@ nav .nav-cta:hover {
 }
 
 .week-summary-dots {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 6px;
-    margin-top: 10px;
-}
-
-.week-dots-separator {
-    grid-column: 1 / -1;
-    height: 1px;
-    background: var(--border);
-    margin: 6px 0;
+    display: flex;
+    align-items: center;
+    gap: 12px 24px;
+    margin-top: 4px;
 }
 
 .btn-cta-summary {
@@ -2107,9 +2100,8 @@ footer a {
     .week-summary-card { padding: 12px 16px; }
     .week-summary-title { font-size: 1rem; margin: 0 0 6px; padding-bottom: 6px; }
     .week-summary-text { font-size: 0.85rem; }
-    .week-summary-dots { gap: 4px; grid-template-columns: repeat(5, 1fr); }
     .week-dot { min-width: auto; }
-    .week-dot-circle { width: 34px; height: 34px; font-size: 0.75rem; }
+    .week-dots-next .week-dot-circle { width: 34px; height: 34px; font-size: 0.75rem; }
 }
 
 @media (max-width: 480px) {
@@ -2164,6 +2156,10 @@ select:focus-visible {
 .breadcrumb a {
     color: var(--bleu);
     text-decoration: none;
+    /* annule le « nav a » du header : texte aligné sur le bord gauche du contenu */
+    padding: 10px 0;
+    border-radius: 0;
+    font-size: inherit;
 }
 .breadcrumb a:hover { text-decoration: underline; }
 .breadcrumb span[aria-hidden] {
@@ -2620,8 +2616,6 @@ select:focus-visible {
     .subscribe-modal .sms-bubble { max-width: 100%; font-size: 0.85rem; padding: 10px 14px; }
     .subscribe-modal h2 { font-size: 1.1rem; }
 
-    /* Week summary 5-col on mobile */
-    .week-summary-dots { grid-template-columns: repeat(5, 1fr); }
 }
 
 @media (max-width: 480px) {
@@ -2675,6 +2669,12 @@ select:focus-visible {
 .history-seasons a { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 16px; border: 1px solid var(--border); border-radius: 50px; background: var(--surface); color: var(--text); font-size: 0.9rem; font-weight: 600; text-decoration: none; }
 .history-seasons a:hover { border-color: var(--bleu); color: var(--bleu); }
 .history-seasons a.active { background: var(--bleu); border-color: var(--bleu); color: #fff; }
+@media (max-width: 600px) {
+    /* Une seule ligne : pastilles compactes, défilement horizontal si une saison de plus s'ajoute */
+    .history-seasons { flex-wrap: nowrap; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 2px 0; }
+    .history-seasons::-webkit-scrollbar { display: none; }
+    .history-seasons a { flex: none; padding: 6px 10px; font-size: 0.82rem; white-space: nowrap; }
+}
 .history-empty { margin: 20px 0; padding: 16px 20px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); line-height: 1.6; }
 .history-note { margin: 4px 0 0; font-size: 0.85rem; color: var(--text-secondary); }
 .history-muted { color: var(--text-secondary); }
@@ -2752,7 +2752,7 @@ main.page-content { padding-top: 8px; padding-bottom: 24px; }
 .data-table .muted { color: var(--text-secondary); font-style: italic; }
 .data-table tr.rouge th { color: var(--rouge); }
 .data-table tr.officielle td { font-weight: 600; }
-.data-table code { overflow-wrap: anywhere; }
+.data-table code { white-space: nowrap; }
 .data-table th a { font-weight: 400; }
 .data-table .color-tag { font-weight: 700; }
 @media (max-width: 480px) { .data-table th, .data-table td { padding: 8px 10px; font-size: 0.9rem; } }
@@ -2791,6 +2791,24 @@ main pre code { background: none; padding: 0; }
 .page-content .page-toc ul { margin: 0; }
 .page-toc a { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 14px; border: 1px solid var(--border); border-radius: 50px; background: var(--surface); color: var(--text); font-size: 0.85rem; font-weight: 600; text-decoration: none; }
 .page-toc a:hover { border-color: var(--bleu); color: var(--bleu); }
+/* Sommaire compact (mentions légales) : « Se désinscrire » visible, le reste repliable */
+.page-toc--compact { position: relative; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px; }
+.page-toc a.page-toc-primary { border-color: var(--accent); color: var(--accent); }
+.page-toc-more { flex: 1 1 200px; min-width: 0; }
+.page-toc-more > summary { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 16px; border: 1px solid var(--border); border-radius: 50px; background: var(--surface); color: var(--text); font-size: 0.85rem; font-weight: 600; cursor: pointer; list-style: none; }
+.page-toc-more > summary::-webkit-details-marker { display: none; }
+.page-toc-more > summary::after { content: "+"; font-size: 1.1rem; line-height: 1; color: var(--text-secondary); }
+.page-toc-more[open] > summary::after { content: "\2212"; }
+.page-toc-more > summary:focus-visible { outline: 3px solid var(--bleu); outline-offset: 2px; }
+/* Liste dépliée : panneau sous la ligne, sur toute la largeur du contenu */
+.page-toc-more ul { position: absolute; left: 0; right: 0; top: calc(100% + 6px); z-index: 20; padding: 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-lg); }
+/* Replis (« Le détail de la méthode », « Les endpoints en bref »…) : même langage que la FAQ de l'accueil */
+.history-details { margin: 12px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.history-details > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 12px 4px; cursor: pointer; list-style: none; font-weight: 600; font-size: 0.95rem; color: var(--text); }
+.history-details > summary::-webkit-details-marker { display: none; }
+.history-details > summary::after { content: "+"; flex-shrink: 0; font-size: 1.2rem; line-height: 1; color: var(--text-secondary); }
+.history-details[open] > summary::after { content: "\2212"; }
+.history-details[open] > summary { border-bottom: 1px solid var(--border); margin-bottom: 8px; }
 
 /* Bloc CTA de fin de page (réutilise .blog-cta) : marge homogène */
 .page-cta { margin: 32px 0; }
@@ -2806,11 +2824,38 @@ main pre code { background: none; padding: 0; }
 .week-summary-answer strong { color: var(--text); }
 .week-summary-answer strong.color-tag, .today-answer strong.color-tag, main strong.color-tag { color: #fff; }
 .week-summary-answer .color-tag { font-weight: 700; font-size: 0.8rem; }
-.week-summary-card .week-summary-text { margin-top: 10px; font-size: 0.9rem; }
+.week-summary-card .week-summary-text { margin: 6px 0 0; font-size: 0.9rem; }
 .week-summary-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 20px; margin-top: 12px; }
 .week-summary-actions .btn-cta-summary { margin-top: 0; }
-.week-summary-links { display: flex; flex-wrap: wrap; gap: 0 16px; font-size: 0.9rem; }
-.week-summary-links a { display: inline-flex; align-items: center; min-height: 44px; }
+/* Pastilles : aujourd'hui et demain en grand (nom de la couleur écrit), puis les 8 jours suivants */
+.week-dots-hero { display: flex; gap: 12px; flex: none; padding-right: 24px; border-right: 1px solid var(--border); }
+.week-dots-next { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 6px; flex: 1 1 auto; min-width: 0; }
+.week-dot-text { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.week-dot.week-dot-hero { flex-direction: row; align-items: center; gap: 14px; min-width: 0; padding: 10px 16px 10px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.week-dot-hero .week-dot-circle { width: 60px; height: 60px; flex: none; font-size: 1.3rem; }
+.week-dot-hero .week-dot-text { align-items: flex-start; gap: 2px; }
+.week-dot-hero .week-dot-label { font-size: 0.85rem; }
+.week-dot-color { font-size: 1.25rem; font-weight: 800; line-height: 1.2; color: var(--text); letter-spacing: -0.2px; }
+.week-dot-hero .week-dot-info { max-width: none; text-align: left; }
+.week-dot-hero .week-dot-proba { font-weight: 600; }
+/* Liens secondaires : pastilles (même langage que .history-seasons a) */
+.week-summary-links { display: flex; flex-wrap: wrap; gap: 8px; font-size: 0.9rem; }
+.week-summary-links a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 8px 16px; border: 1px solid var(--border); border-radius: 50px; background: var(--surface); color: var(--accent); font-weight: 600; text-decoration: none; text-align: center; line-height: 1.3; }
+.week-summary-links a:hover { border-color: var(--accent); color: var(--accent-hover); }
+@media (max-width: 900px) {
+    .week-summary-dots { flex-direction: column; align-items: stretch; }
+    .week-dots-hero { display: grid; grid-template-columns: 1fr 1fr; padding: 0 0 12px; border-right: 0; border-bottom: 1px solid var(--border); }
+}
+@media (max-width: 560px) {
+    .week-dots-next { grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 10px; }
+    .week-dots-hero { gap: 8px; }
+    .week-dot.week-dot-hero { gap: 10px; padding: 8px 10px; }
+    .week-dot-hero .week-dot-circle { width: 48px; height: 48px; font-size: 1.1rem; }
+    .week-dot-color { font-size: 1.1rem; }
+    .week-dot-hero .week-dot-label { font-size: 0.8rem; }
+    .week-summary-links { display: grid; grid-template-columns: 1fr 1fr; }
+    .week-summary-links a { border-radius: var(--radius-sm); padding: 6px 10px; font-size: 0.85rem; }
+}
 .counter-card .count.count-pending { color: var(--text-secondary); }
 .step-card { display: flex; flex-direction: column; }
 @media (max-width: 600px) {
@@ -2838,7 +2883,9 @@ main pre code { background: none; padding: 0; }
 .season-dates li { break-inside: avoid; padding: 6px 0; border-bottom: 1px solid var(--border); }
 .season-dates li::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 10px; background: var(--rouge); }
 .season-dates--blanc li::before { background: var(--blanc); }
-.season-upcoming { margin: 8px 0 0; font-size: 0.9rem; color: var(--text-secondary); }
+.season-upcoming { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 10px 0 0; font-size: 0.8rem; color: var(--text-secondary); }
+.season-upcoming a { display: inline-flex; align-items: center; min-height: 28px; padding: 2px 10px; border: 1px solid var(--border); border-radius: 50px; background: var(--surface); color: var(--text-secondary); font-size: 0.8rem; font-weight: 500; text-decoration: none; }
+.season-upcoming a:hover { border-color: var(--accent); color: var(--accent); }
 @media (max-width: 600px) { .season-dates { columns: 1; } }
 
 /* 404 (404-02) */
@@ -2890,10 +2937,9 @@ main pre code { background: none; padding: 0; }
 .history-bref-value { font-variant-numeric: tabular-nums; text-align: right; }
 .history-bref-repere { color: var(--text-secondary); }
 .history-note--info { margin-top: 8px; padding: 8px 12px; background: var(--bleu-bg); border-radius: var(--radius-sm); color: var(--text); }
-.history-details { margin: 8px 0; }
-.history-details > summary { display: inline-flex; align-items: center; min-height: 44px; cursor: pointer; font-weight: 600; color: var(--accent-hover); }
 .history-details > summary:focus-visible { outline: 3px solid var(--bleu); outline-offset: 2px; border-radius: var(--radius-sm); }
 .history-legend-more { margin: 0; font-size: 0.85rem; }
+.history-legend-more > summary { font-size: 0.85rem; padding: 8px 4px; }
 .history-grid-table .hg-more { display: none; }
 .hg-expanded .history-grid-table .hg-more { display: table-row; }
 .history-more { margin: 4px 0 8px; text-align: center; }
@@ -2931,7 +2977,11 @@ main pre code { background: none; padding: 0; }
     .blog-pillar-grid, .blog-group .blog-list { grid-template-columns: 1fr; }
 }
 .blog-toc { margin: 16px 0 8px; padding: 12px 16px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); }
-.blog-toc summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 700; }
+.blog-toc summary { min-height: 44px; display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 700; list-style: none; }
+.blog-toc summary::-webkit-details-marker { display: none; }
+.blog-toc summary::after { content: "+"; margin-left: auto; font-size: 1.2rem; line-height: 1; color: var(--text-secondary); }
+.blog-toc[open] summary::after { content: "\2212"; }
+.blog-toc-count { font-weight: 400; color: var(--text-secondary); font-size: 0.9rem; }
 .blog-toc summary:focus-visible { outline: 3px solid var(--bleu); outline-offset: 2px; border-radius: var(--radius-sm); }
 .blog-toc ol { margin: 4px 0 8px 20px; line-height: 1.6; }
 .blog-toc li { padding: 3px 0; }

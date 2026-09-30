@@ -370,99 +370,121 @@ async function loadBadge() {
 // RÉSUMÉ DE LA SEMAINE
 // ================================================================
 
+const COULEUR_NOM = { BLEU: 'Bleu', BLANC: 'Blanc', ROUGE: 'Rouge' };
+
+// "jeudi 1er octobre" / "lundi 5" (miroir de site_facts.fr_date et _jour_court)
+function frJour(d, withMonth) {
+    const num = d.getDate() === 1 ? '1er' : String(d.getDate());
+    const txt = `${JOURS_FULL[d.getDay()].toLowerCase()} ${num}`;
+    return withMonth ? `${txt} ${MOIS_FULL[d.getMonth()]}` : txt;
+}
+
+/**
+ * Phrase « la suite » sous les pastilles (après aujourd'hui et demain).
+ * Miroir exact de site_facts.week_outlook_html : modifier les deux ensemble.
+ */
+function weekOutlookHtml(days) {
+    if (days.length === 0) return '';
+    const rest = days.filter(x => !x.isHero);
+    if (rest.length === 0) return '';
+    const fin = `d'ici le ${frJour(days[days.length - 1].d, true)}`;
+    const parts = [];
+    [['ROUGE', 'rouge'], ['BLANC', 'blanc']].forEach(([couleur, nom]) => {
+        const jours = rest.filter(x => x.couleur === couleur).map(x => frJour(x.d, false));
+        if (jours.length > 0) {
+            const s = jours.length > 1 ? 's' : '';
+            parts.push(`<strong>${jours.length} jour${s} ${nom}${s}</strong> (${jours.join(', ')})`);
+        }
+    });
+    let txt;
+    if (parts.length > 0) {
+        const total = rest.filter(x => x.couleur === 'ROUGE' || x.couleur === 'BLANC').length;
+        txt = `${parts.join(' et ')} prévu${total > 1 ? 's' : ''} ${fin}. `
+            + '<strong>Planifiez vos machines les jours bleus.</strong>';
+    } else {
+        txt = `Aucun jour rouge ni blanc prévu ${fin}.`;
+    }
+    if (days.some(x => x.isHero && (x.couleur === 'ROUGE' || x.couleur === 'BLANC'))) {
+        txt = 'Ensuite, ' + txt[0].toLowerCase() + txt.slice(1);
+    }
+    // Règle EDF R1 : rouge seulement du 1er novembre au 31 mars (getMonth() : 3 = avril, 9 = octobre)
+    if (days.every(x => x.d.getMonth() >= 3 && x.d.getMonth() <= 9)) {
+        txt += days[0].d.getMonth() >= 8
+            ? ' Aucun jour rouge possible avant le 1er novembre (règle EDF).'
+            : ' Plus de jour rouge depuis le 31 mars : aucun avant le 1er novembre (règle EDF).';
+    }
+    return txt;
+}
+
+// Une pastille : même HTML que la macro week_dot de templates/dashboard.html
+function weekDotHtml(x, hero) {
+    const shapeClass = x.couleur === 'BLANC' ? ' dot-blanc' : x.couleur === 'ROUGE' ? ' dot-rouge' : '';
+    const confirmedClass = x.confirmed ? ' confirmed-dot' : '';
+    const prefix = x.isToday ? 'Aujourd\'hui, ' : x.isTomorrow ? 'Demain, ' : '';
+    const label = x.isToday ? '<strong>Aujourd\'hui</strong>'
+        : x.isTomorrow ? '<strong>Demain</strong>'
+        : `${JOURS[x.d.getDay()]} ${x.d.getDate()}`;
+    let info = '';
+    if (x.confirmed) {
+        info = '<span class="week-dot-confirmed">Confirmé</span>';
+    } else if (hero) {
+        info = `<span class="week-dot-proba">Prévision ${x.confidence}&nbsp;%</span>`;
+    } else if (x.couleur !== 'BLEU' || x.confidence < 90) {
+        info = `<span class="week-dot-proba">${x.confidence}&nbsp;%</span>`;
+    }
+    return `<div class="week-dot${hero ? ' week-dot-highlight week-dot-hero' : ''}">`
+        + `<div class="week-dot-circle${shapeClass}${confirmedClass}" style="background:var(--${x.couleur.toLowerCase()})" aria-hidden="true">${x.couleur[0]}</div>`
+        + `<span class="sr-only">${prefix}${frJour(x.d, true)} : ${COULEUR_NOM[x.couleur]}${x.confirmed ? ', couleur officielle' : `, prévision ${x.confidence}&nbsp;%`}</span>`
+        + '<div class="week-dot-text" aria-hidden="true">'
+        + `<span class="week-dot-label">${label}</span>`
+        + (hero ? `<span class="week-dot-color">${COULEUR_NOM[x.couleur]}</span>` : '')
+        + `<div class="week-dot-info">${info}</div>`
+        + '</div></div>';
+}
+
 function renderWeekSummary(preds) {
     const container = document.getElementById('week-summary');
     if (!container) return;
 
-    // Prendre les 10 premiers jours (2 lignes de 5)
-    const weekPreds = preds.slice(0, 10);
-    if (weekPreds.length === 0) return;
-
-    const rougeCount = weekPreds.filter(p => p.couleur_predite === 'ROUGE').length;
-    const blancCount = weekPreds.filter(p => p.couleur_predite === 'BLANC').length;
-
-    // Construire le texte du résumé
-    let summaryText = '';
-    if (rougeCount === 0 && blancCount === 0) {
-        summaryText = 'Bonne nouvelle : <strong>aucun jour rouge ni blanc</strong> en vue cette semaine. Consommez normalement !';
-    } else {
-        const parts = [];
-        if (rougeCount > 0) {
-            const rougeDays = weekPreds
-                .filter(p => p.couleur_predite === 'ROUGE')
-                .map(p => { const d = parseLocalDate(p.date); return JOURS_FULL[d.getDay()]; });
-            parts.push(`<strong style="color:var(--rouge)">${rougeCount} jour${rougeCount > 1 ? 's' : ''} rouge${rougeCount > 1 ? 's' : ''}</strong> (${rougeDays.join(', ')})`);
-        }
-        if (blancCount > 0) {
-            const blancDays = weekPreds
-                .filter(p => p.couleur_predite === 'BLANC')
-                .map(p => { const d = parseLocalDate(p.date); return JOURS_FULL[d.getDay()]; });
-            parts.push(`<strong>${blancCount} jour${blancCount > 1 ? 's' : ''} blanc${blancCount > 1 ? 's' : ''}</strong> (${blancDays.join(', ')})`);
-        }
-        summaryText = parts.join(' et ') + ' en vue. <strong>Planifiez vos machines les jours bleus.</strong>';
-    }
-
-    // Dots visuels avec info Confirmé / probabilité
-    // Les 2 premiers dots sont labellisés "Auj." et "Dem." pour éviter la redondance
+    // Les 10 premiers jours : aujourd'hui et demain en grand, puis les 8 suivants
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
+    const days = preds.slice(0, 10)
+        .filter(p => COULEUR_NOM[p.couleur_predite])
+        .map(p => {
+            const d = parseLocalDate(p.date);
+            const isToday = d.getTime() === today.getTime();
+            const isTomorrow = d.getTime() === tomorrow.getTime();
+            const prob = p[`probabilite_${p.couleur_predite.toLowerCase()}`] || 0;
+            return {
+                d, couleur: p.couleur_predite, confirmed: !!p.confirmed,
+                confidence: Math.round(prob * 100),
+                isToday, isTomorrow, isHero: isToday || isTomorrow,
+            };
+        });
+    if (days.length === 0) return;
 
-    let dotsHtml = '<div class="week-summary-dots">';
-    weekPreds.forEach((p, idx) => {
-        // Séparateur entre les 2 lignes de 5 jours
-        if (idx === 5) {
-            dotsHtml += '<div class="week-dots-separator" aria-hidden="true"></div>';
-        }
+    const heroes = days.filter(x => x.isHero);
+    let html = '<div class="week-summary-dots">';
+    if (heroes.length > 0) {
+        html += `<div class="week-dots-hero">${heroes.map(x => weekDotHtml(x, true)).join('')}</div>`;
+    }
+    html += `<div class="week-dots-next">${days.filter(x => !x.isHero).map(x => weekDotHtml(x, false)).join('')}</div>`;
+    html += '</div>';
 
-        const d = parseLocalDate(p.date);
-        const dayLabel = JOURS[d.getDay()];
-        const dayNum = d.getDate();
-        const couleur = p.couleur_predite;
-        const bg = couleur === 'ROUGE' ? 'var(--rouge)' : couleur === 'BLANC' ? 'var(--blanc)' : 'var(--bleu)';
-
-        // Contextual label: "Aujourd'hui" for today, "Demain" for tomorrow, day name + num otherwise
-        const dTime = d.getTime();
-        let displayLabel;
-        if (dTime === today.getTime()) {
-            displayLabel = `<strong>Aujourd'hui</strong>`;
-        } else if (dTime === tomorrow.getTime()) {
-            displayLabel = `<strong>Demain</strong>`;
-        } else {
-            displayLabel = `${escapeHtml(dayLabel)} ${dayNum}`;
-        }
-
-        // Info sous le dot : Confirmé ou probabilité
-        let infoHtml = '';
-        if (p.confirmed) {
-            infoHtml = '<span class="week-dot-confirmed">Confirm\u00e9</span>';
-        } else {
-            const probKey = `probabilite_${couleur.toLowerCase()}`;
-            const confidence = Math.round((p[probKey] || 0) * 100);
-            if (couleur !== 'BLEU' || confidence < 90) {
-                infoHtml = `<span class="week-dot-proba">${confidence}%</span>`;
-            }
-        }
-
-        // UX audit #25: shape classes for colorblind users + #16: confirmed border
-        const shapeClass = couleur === 'BLANC' ? ' dot-blanc' : couleur === 'ROUGE' ? ' dot-rouge' : '';
-        const confirmedClass = p.confirmed ? ' confirmed-dot' : '';
-
-        dotsHtml += `
-            <div class="week-dot${dTime === today.getTime() || dTime === tomorrow.getTime() ? ' week-dot-highlight' : ''}">
-                <div class="week-dot-circle${shapeClass}${confirmedClass}" style="background:${bg}" aria-hidden="true">${couleur[0]}</div><span class="sr-only">${JOURS_FULL[d.getDay()]} ${dayNum} : ${couleur === 'ROUGE' ? 'Rouge' : couleur === 'BLANC' ? 'Blanc' : 'Bleu'}${p.confirmed ? ', couleur officielle' : ', pr\u00e9vision'}</span>
-                <span class="week-dot-label" aria-hidden="true">${displayLabel}</span>
-                <div class="week-dot-info" aria-hidden="true">${infoHtml}</div>
-            </div>`;
-    });
-    dotsHtml += '</div>';
-
-    // Accueil : #week-summary ne contient que les pastilles ; le titre, la phrase
-    // SSR (couleur du jour et de demain) et les liens restent dans la carte.
+    // La phrase SSR (couleur du jour et de demain) et les liens restent dans la carte ;
+    // #week-outlook (la suite) est placé sous cette phrase.
     const card = document.getElementById('week-summary-card');
-    if (card) card.classList.toggle('has-rouge', rougeCount > 0);
-    container.innerHTML = `${dotsHtml}<p class="week-summary-text">${summaryText}</p>`;
+    if (card) card.classList.toggle('has-rouge', days.some(x => x.couleur === 'ROUGE'));
+    container.innerHTML = html;
+    const outlookEl = document.getElementById('week-outlook');
+    if (outlookEl) {
+        const outlook = weekOutlookHtml(days);
+        outlookEl.innerHTML = outlook;
+        outlookEl.hidden = !outlook;
+    }
 }
 
 // ================================================================
