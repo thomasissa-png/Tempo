@@ -160,4 +160,73 @@ Acquis : cartes numérotées, tableau des poids propre (à droite, 38 % etc.), s
 - **P2 M2.** Sommaire : espacement chapeau / pastilles / 1re carte 16 / 20 px : passer à 20 / 24 (`.page-toc { margin: 16px 0 24px; }`). « Voir aussi » en fin : le poser en `<nav class="history-seasons">` (pastilles existantes) au lieu d'une ligne de liens.
 - Mobile 8,5 : longueur et carte 5 dense ; chiffres clés en cartes (M1) résolvent l'essentiel.
 
-<!-- FIN-3 -->
+### 5.8 API Tempo (8,5 / 7)
+
+- **P0 Ap1. Mobile : « Copier » recouvre le code** : sur les deux blocs `<pre>`, le bouton flottant est posé sur la 1re ligne (`$ curl https://www.calendrier-tempo.fr/ap…` coupée sous le bouton). Dans le `<style>` d'`api_tempo.html` (`.api-doc pre` et le bouton de copie) : `.api-doc pre { padding: 44px 16px 14px; }` et bouton `position: absolute; top: 8px; right: 8px; min-height: 32px;` (une bande d'outils au-dessus du code, à toutes les largeurs). Le code garde son défilement horizontal, `tabindex="0"` conservé.
+- **P1 Ap2. Bruit des chips `code`** : jusqu'à 10 fragments à fond gris par paragraphe (`status`, `ok`, `unavailable`, `date`, `couleur`...). `style.css` : `main p code, main li code { background: none; padding: 0; font-weight: 600; }` (police mono conservée), chips gardés dans le tableau et dans `.api-doc pre`.
+- **P2 Ap3.** Tableau : 1re colonne = lien bleu + chip gris (double traitement). `.data-table td:first-child code { background: none; padding: 0; }` (le lien souligné suffit).
+- Mobile : le tableau devient une liste de lignes avec « Cache : 2 min » en sous-ligne : bon choix, à conserver.
+
+### 5.9 Blog, index (8 / 8)
+
+- **P1 B1. Cellule vide** : grille à 2 colonnes, groupes de 3 cartes (Comprendre, Calendrier, Préparer) : une case vide à droite sur 3 groupes sur 5. `style.css` : avec `page-wide` (T2), `.blog-group .blog-list { grid-template-columns: repeat(3, 1fr); }` à partir de 1024 px (3, 3, 3, 6 cartes remplissent ; le groupe de 4 garde une dernière carte : `.blog-group .blog-list > :last-child:nth-child(3n+1) { grid-column: 1 / -1; }`) ; entre 601 et 1023 px, 2 colonnes et `.blog-group .blog-list > :last-child:nth-child(odd) { grid-column: 1 / -1; }`.
+- **P1 B2. Hiérarchie inversée** : `.blog-card--pillar h3 { font-size: 1.1rem }` est plus petit que `.blog-card h3 { 1.25rem }` : les « guides essentiels » ont les titres les plus petits. Passer `.blog-card--pillar h3` à 1,3 rem (et laisser le titre sur 3 lignes, sans troncature).
+- **P1 B3. Même date 22 fois** : « Mis à jour le 29/09/2026 » sur 19 cartes, « Publié le 29/09/2026 » sur 3. Bruit, pas information. Retirer la date des cartes d'index (garder durée de lecture), la conserver dans l'en-tête d'article, le flux et le JSON-LD. **[À arbitrer @ux / @seo : fraîcheur affichée]**. Si la date reste : style atténué `.blog-card-meta time { color: var(--text-secondary); font-size: 0.8rem; }`.
+- **P2 B4.** Les 2 lignes de résumé sont tronquées (`line-clamp: 2`) avec points de suspension au milieu d'un mot ou d'un chiffre (« budget de 22… ») : acceptable, mais privilégier une phrase d'accroche de 110 caractères fournie par le frontmatter (`description`).
+
+### 5.10 Article de blog (8 prov. / 8 prov.)
+
+Captures trop réduites pour un jugement fin. Constats certains : carte unique propre, H2 à filet, sommaire replié, carte CTA, « À lire aussi ».
+- **P1 Ar1. Longueur de ligne à confirmer** : carte de 860 px, padding 32 px, corps 1,05 rem / 1,8 : environ 90 caractères par ligne, au-dessus des 75 conseillés pour un texte long. À mesurer sur capture 1:1 ; si confirmé : `@media (min-width: 769px) { .blog-article { padding: 40px 56px; } }` (environ 75 caractères).
+- **P1 Ar2.** Tableaux du corps (comparatif à 4 colonnes) : vérifier à 390 px la présence de `.table-scroll` et de l'ombre de défilement ; appliquer `.blog-article-body th, .blog-article-body td { padding: 10px 12px; }` seulement dans la carte, avec `.num` pour les montants (`Ar4` de l'audit précédent).
+- **P2 Ar3.** T3 : H1 d'article en 1,8 rem = exception documentée.
+
+### 5.11 Alertes (7,5 / 8)
+
+- **P0 Al1. Trois bords gauches** : fil d'Ariane à 303 px (container 800), « Comment ça marche ? » à 383 px (`.alertes-how` 600 px), bulle WhatsApp à 483 px (400 px centrée), plus un H1 et des boutons centrés. T2 : `<main class="container page-content">` (860 px, fil d'Ariane à 273 px comme les autres pages de lecture).
+- **P1 Al2. Section « Comment ça marche ? » sans cadre** : H2 de 24 px non stylé, liste numérotée du navigateur, sur fond de page, alors que À propos / Méthodologie utilisent des cartes. `alertes.html` `<style>` : `.alertes-how { max-width: 600px; margin: 0 auto 32px; background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px; }`, `.alertes-how h2 { font-size: var(--fs-h2-card); margin: 0 0 12px; }`, `.alertes-how ol { padding-left: 20px; }`, `.alertes-how-cta { margin-top: 20px; }`. Le 2e bouton reste pleine largeur de la carte sur mobile.
+- **P1 Al3. H1** : `.alertes-hero h1 { font-size: 1.8rem }` (inline) contredit `main h1` (2 rem) : supprimer (T3) ; `.alertes-hero { padding: 8px 0 24px; }` (aujourd'hui 32 px en haut + fil d'Ariane : 100 px de blanc avant le H1).
+- **P2 Al4.** Emojis de la bulle rendus par le système (Noto sur Linux, Apple sur iOS) : attendu, c'est l'aperçu d'un vrai message WhatsApp ; ne pas les remplacer. La puce « 100 % gratuit · Sans application… » (0,9 rem gris) : bon contraste (7,6:1).
+- Mobile 8 : propre, bulle pleine largeur, CTA pleine largeur ; gagne 0,5 avec Al2.
+
+### 5.12 À propos (9 / 9)
+
+- **P1 Ap-A1. Hiérarchie des boutons de fin** : « Voir la couleur du jour » est plein, « S'inscrire aux alertes » est en contour. L'action de conversion (inscription) doit être la dominante : inverser (`btn-outline` sur « Voir la couleur du jour », plein sur « S'inscrire aux alertes »). Le même choix vaut pour la 404 si elle existe avec les mêmes boutons.
+- **P2 Ap-A2.** Marge basse des cartes (T6), police de repli (T1).
+- Mobile : pastilles « Méthodologie détaillée » / « Historique de nos prévisions » pleine largeur, accordéons à 44 px : très bon.
+
+### 5.13 Mentions légales (8 / 7,5 prov.)
+
+Acquis : sommaire compact (« Se désinscrire » visible + « Sommaire » replié), cartes numérotées, hébergeur à jour (Cloudflare, Neon), hiérarchie 4.1 à 4.8 visible.
+- **P1 L1. Confort de lecture sur 6 000 px** : `.legal-text` 0,9 rem (14,4 px) gris secondaire. Passer à 0,95 rem (`.legal-text, .legal-section li { font-size: 0.95rem; }`), garder la couleur (7,6:1).
+- **P2 L2. Séparer les blocs 4.x** : `.legal-section h3:not(:first-child) { border-top: 1px solid var(--border); padding-top: 16px; }` (les 8 sous-parties de la section 4 s'enchaînent sans filet).
+- **P2 L3.** Mobile à contrôler à l'échelle 1 (10 753 px de haut) : dépliage du sommaire compact (`.page-toc-more ul { position: absolute }` : vérifier qu'il ne déborde pas à 390 px).
+
+## 6. Les 5 corrections qui font gagner le plus de points
+
+| # | Correction | Pages touchées | Gain estimé |
+|---|---|---|---|
+| 1 | **Tableaux de données lisibles en mobile** : demain (D1), Bilan de l'historique (H2), bloc `pre` de l'API (Ap1) | 3 pages mobile | +1 à +1,5 sur chacune (ce sont les 3 notes mobile à 7, les plus basses avec /calendrier) |
+| 2 | **Police : vérifier le repli Arial, ajouter `Inter Fallback`** (T1) | tarif, calendrier, saison, à propos (x 2 formats) | +0,5 à +1 sur 8 notes si confirmé en réel ; sinon correction de la procédure de capture |
+| 3 | **Une seule grille de pages + une seule échelle de titres** (T2, T3) : 2 gabarits (860 / 1100), H2 en 3 niveaux, chapeau au-dessus du corps | calendrier, blog, alertes, tarif, saison, API, historique | +0,5 sur 8 pages ; soulève /calendrier (C2) et /alertes (Al1) de 0,5 à 1 |
+| 4 | **Historique : supprimer les cadres imbriqués et l'anneau sur les cellules justes** (H1, H4) | historique x 2 | +1 ordinateur, +0,5 mobile |
+| 5 | **Calendrier : vérifier la zone prévisions chargée, ranger le bloc « Jours rouges officiels » sous la grille, loader pleine hauteur** (C1, C3, C4) | calendrier x 2 | +1 à +1,5 (la note la plus basse du site) |
+
+Suivent, par ordre de gain : grille du blog en 3 colonnes (B1, B2), compteurs chiffrés tarif et méthodologie (T1 tarif, M1), carte « Comment ça marche ? » des alertes (Al2), chips `code` de l'API (Ap2), plancher de 12 px (T4).
+
+Ordre d'exécution pour @fullstack : (1) `style.css` : T1, T3, T4, T5, T6, T7, H1, H2/H3, H4, B1, B2, Al2, Ap2, Ap3, L1, L2, D2 en une seule passe, régénérer `style.min.css`, incrémenter `facts.ASSET_V` ; (2) gabarits : T2 (`alertes.html`, `blog_index.html`, `calendrier.html`), D1 (`couleur_demain.html`), Ap1 (`api_tempo.html`), C3, C4, T1/T2 tarif, M1, Ap-A1 ; (3) nouvelles captures (section 7) ; (4) procédure de test du repo avant tout push (les gabarits changent : classes `d-long`, `d-short`, `.counters`).
+
+## 7. Captures à fournir pour le tour 2 (sans elles, pas de validation)
+
+1. Toutes les pages après `document.fonts.ready` ET, pour `/calendrier`, après l'apparition de `.forecast-card` (vérifier la spécification météo 15 jours : températures, pastilles pointillées, 3/4/5 colonnes, tuile compacte mobile 3 x 3).
+2. En tranches de 1 400 px de haut à l'échelle 1 (pas de pleine page réduite) : article de blog (ordinateur et mobile), mentions légales mobile, historique mobile (grille, En bref, Bilan), API mobile (blocs `pre`).
+3. Historique saison 2025-2026 : bilan à 7 colonnes (défilement, ombre, colonne collante) en ordinateur et en mobile.
+4. `/couleur-tempo-demain` à 390 px après D1 ; `/historique-previsions` à 390 px après H2 (aucun défilement horizontal sur le cas à 3 colonnes).
+5. Modale d'inscription à 390 px (bottom sheet G9) et à 1366 px ; 404 ordinateur et mobile ; 768 px sur accueil, calendrier, historique, blog.
+
+## Handoff
+
+- Destinataire : @orchestrator, puis @fullstack. Fichier produit : `/home/user/Tempo/docs/audits/2026-09-30-revue-tour1-design.md`.
+- Décisions : aucun nouveau composant ; 2 gabarits de page (860 / 1100) ; 3 niveaux de H2 ; un seul style de chapeau ; le composant `.data-table` doit aussi tenir à 390 px sans défilement caché ; décisions fondateur intactes (Selectra, « 2 500 foyers », menu Historique, badge « En test » non touchés).
+- Points d'attention : notes mobile plafonnées par des captures trop réduites (article, mentions, historique mobile) ; spécification météo 15 jours non vérifiée en ligne ; police de repli à confirmer avant correction ; contrastes calculés à la main (marge mince sur `--blanc` sur `--bg`, `--success` sur `--success-bg`) ; aucune mention de concurrent, aucun tiret cadratin repéré sur les captures.
+
