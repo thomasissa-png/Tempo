@@ -12,8 +12,11 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Les sessions de migration portent les vrais secrets de prod dans l'environnement
 # (cloudflare/README.md). Les tests ne doivent jamais toucher une vraie base ni
 # envoyer un message : on retire ces variables AVANT tout import de config.py.
+# Les clés de chiffrement aussi : les tests chiffrent avec une clé dérivée de test.
 for _var in ("DATABASE_URL", "REPLIT_DATABASE_URL", "NEON_DATABASE_URL",
-             "WHATSAPP_TOKEN", "ANTHROPIC_API_KEY", "CLOUDFLARE_API_TOKEN"):
+             "WHATSAPP_TOKEN", "ANTHROPIC_API_KEY", "TEMPO_ANTHROPIC_API_KEY",
+             "CLOUDFLARE_API_TOKEN", "CLOUDFLARE_Token_Value",
+             "PHONE_ENCRYPTION_KEY", "ADMIN_PASSWORD", "SESSION_SECRET"):
     os.environ.pop(_var, None)
 
 

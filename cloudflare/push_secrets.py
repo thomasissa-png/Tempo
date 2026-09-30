@@ -18,6 +18,8 @@ import sys
 
 import httpx
 
+from neon_http import cloudflare_token, env, phone_key
+
 API = os.getenv("CLOUDFLARE_API_BASE", "https://api.cloudflare.com/client/v4")
 SCRIPT_NAME = "calendrier-tempo"  # = "name" de cloudflare/wrangler.jsonc
 
@@ -47,10 +49,11 @@ KEY_SOURCES = ("PHONE_ENCRYPTION_KEY", "ADMIN_PASSWORD", "SESSION_SECRET")
 
 def main() -> None:
     prod = "--prod" in sys.argv[1:]
-    token = os.getenv("CLOUDFLARE_API_TOKEN", "")
+    token = cloudflare_token()
     account = os.getenv("CLOUDFLARE_ACCOUNT_ID", "")
     neon = os.getenv("NEON_DATABASE_URL", "")
-    missing = [n for n, v in (("CLOUDFLARE_API_TOKEN", token), ("CLOUDFLARE_ACCOUNT_ID", account),
+    missing = [n for n, v in (("CLOUDFLARE_API_TOKEN (ou CLOUDFLARE_Token_Value)", token),
+                              ("CLOUDFLARE_ACCOUNT_ID", account),
                               ("NEON_DATABASE_URL", neon)) if not v]
     if not any(os.getenv(k) for k in KEY_SOURCES):
         missing.append(" ou ".join(KEY_SOURCES))
@@ -64,7 +67,12 @@ def main() -> None:
             continue
         # Certains noms sont refusés dans l'environnement de la session Claude (ex. ANTHROPIC_API_KEY,
         # que Claude Code prendrait pour lui) : le fondateur les range sous TEMPO_<NOM>.
-        value = neon if key == "DATABASE_URL" else (os.getenv(key) or os.getenv(f"TEMPO_{key}", ""))
+        if key == "DATABASE_URL":
+            value = neon
+        elif key == "PHONE_ENCRYPTION_KEY":
+            value = phone_key()  # « = » final restauré, prouvé par check_access.py
+        else:
+            value = env(key)
         if value:
             values[key] = value
 
