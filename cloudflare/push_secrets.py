@@ -62,7 +62,9 @@ def main() -> None:
     for key in APP_ENV_KEYS:
         if key in PROD_ONLY and not prod:
             continue
-        value = neon if key == "DATABASE_URL" else os.getenv(key, "")
+        # Certains noms sont refusés dans l'environnement de la session Claude (ex. ANTHROPIC_API_KEY,
+        # que Claude Code prendrait pour lui) : le fondateur les range sous TEMPO_<NOM>.
+        value = neon if key == "DATABASE_URL" else (os.getenv(key) or os.getenv(f"TEMPO_{key}", ""))
         if value:
             values[key] = value
 

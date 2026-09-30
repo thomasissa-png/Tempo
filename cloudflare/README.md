@@ -45,6 +45,20 @@ Prérequis (réglages de l'environnement Claude, posés par le fondateur) :
 - Réseau autorisé : `api.cloudflare.com`, `registry.cloudflare.com`, `*.workers.dev`, `*.neon.tech`,
   `calendrier-tempo.fr`, `www.calendrier-tempo.fr`, et l'hôte de `REPLIT_DATABASE_URL` s'il n'est pas en neon.tech.
 
+Constats du 2026-09-30 (session avec les secrets du fondateur) :
+- **Le port PostgreSQL 5432 est bloqué** depuis les sessions (seul le HTTPS sort). Les deux bases
+  sont chez Neon (Replit = `ep-…us-east-1.aws.neon.tech`) : passer par l'API SQL HTTPS de Neon
+  (`POST https://<hôte>/sql`, en-tête `Neon-Connection-String`), testée en lecture sur Replit.
+  Les scripts (check, copie, fusion) doivent utiliser ce transport. Le schéma de la cible est créé
+  par l'app elle-même au premier démarrage du conteneur (init_db), pas depuis la session.
+- Base Replit en **schéma v23** : copie compatible (migrations v24-v25 additives).
+- Noms refusés par l'environnement de la session (ex. `ANTHROPIC_API_KEY`, que Claude Code prendrait
+  pour lui) : le fondateur les range sous `TEMPO_<NOM>` ; `push_secrets.py` les renvoie au Worker
+  sous leur vrai nom.
+- Jeton du 2026-09-30 : lecture Workers OK, **conteneurs 403** (droit Containers manquant ou
+  forfait Workers Paid inactif), sous-domaine workers.dev 403.
+- Domaine : registrar IONOS ; le fondateur veut que le domaine soit traité **à la fin**, par Claude.
+
 Toujours commencer par `python3 cloudflare/check_access.py` (dépendances : `pip install -r requirements.txt`).
 
 ```bash
