@@ -404,6 +404,7 @@ git push -u origin <branch-name>
 ## Décisions fondateur (NE PAS remettre en cause, NE PAS « corriger »)
 - **Lien Selectra** (`templates/dashboard.html`, FAQ « Combien coûte réellement un jour rouge ? ») : conservé TEL QUEL, en dofollow, sans `rel="nofollow"`/`sponsored`. C'est l'accord passé avec Selectra (décision Thomas, 2026-09-29). Ne pas le modifier, le déplacer ni le signaler comme risque dans les audits.
 - **« Plus de 2 500 foyers alertés »** : chiffre conservé (décision Thomas, 2026-09-29). Ne pas le retirer ; seule sa centralisation en constante est permise.
+- **Menu « Historique » et badge « En test »** (fenêtre d'inscription) : demandés par Thomas, à conserver (2026-09-30). Pas de mention « édité par ISSA Capital » sur /a-propos ; contact jean-pierre@calendrier-tempo.fr validé.
 - **Hébergement** : migration Replit → Cloudflare DEMANDÉE (décision Thomas, 2026-09-29, « j'en peux plus de Replit ») et pilotée de bout en bout par Claude depuis les sessions (runbook `cloudflare/README.md`). Aucun mode fantôme, ne rien casser, **site jamais hors ligne** (bascule DNS avec Replit encore en ligne, puis Stop Replit avant 17h30, puis `merge_users.py`). Bascule seulement après `check_access.py` tout OK (numéros abonnés relus). Base : Neon (Cloudflare n'a pas de PostgreSQL ; D1 = réécriture de la couche base, refusée pour ne rien casser).
 
 ## Common Pitfalls
