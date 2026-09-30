@@ -299,7 +299,7 @@ def breadcrumb_jsonld(items: list[tuple[str, str]]) -> dict:
 
 # Version des assets (style.min.css, app.min.js, fonts.css) : à incrémenter à chaque
 # régénération des fichiers minifiés. Un seul endroit, lu par tous les templates.
-ASSET_VERSION = "20260930d"
+ASSET_VERSION = "20260930e"
 
 
 def template_globals() -> dict:
@@ -400,6 +400,19 @@ FAQ_HOME: list[dict] = [
         ),
     },
     {
+        "id": "faq-fiabilite",
+        "question": "Vos prévisions sont-elles fiables ?",
+        "answer_html": (
+            f"<p>Les prévisions les plus utiles sont celles faites {HORIZON_FIABLE_LISIBLE}. Au-delà de 5 jours, les "
+            "prévisions météo deviennent moins précises, donc les nôtres aussi : de "
+            f"{HORIZON_INDICATIF_LISIBLE}, c'est une <strong>tendance</strong>, pas une certitude. Pour une "
+            "décision importante (grosse lessive, recharge d'un véhicule), fiez-vous plutôt aux "
+            "prévisions à 2 ou 3 jours. Chaque prévision passée est comparée à la couleur officielle sur notre "
+            "<a href=\"/historique-previsions\">historique des prévisions</a> ; la mesure détaillée est sur la page "
+            "<a href=\"/methodologie\">méthodologie</a>.</p>"
+        ),
+    },
+    {
         "question": "Quand connaît-on la couleur EDF Tempo du lendemain ?",
         "answer_html": (
             f"<p>{ANNONCE_J1}, sur son site et son application : à 12 h, la couleur du lendemain "
@@ -487,19 +500,6 @@ FAQ_HOME: list[dict] = [
             f"ni à RTE. Les couleurs officielles affichées sont les {SOURCE_COULEURS_PHRASE}. Seule la "
             "couleur annoncée par EDF fait foi : nos prévisions sont des estimations pour vous aider à "
             "<strong>anticiper</strong>, pas des informations officielles.</p>"
-        ),
-    },
-    {
-        "id": "faq-fiabilite",
-        "question": "Vos prévisions sont-elles fiables ?",
-        "answer_html": (
-            f"<p>Les prévisions les plus utiles sont celles faites {HORIZON_FIABLE_LISIBLE}. Au-delà de 5 jours, les "
-            "prévisions météo deviennent moins précises, donc les nôtres aussi : de "
-            f"{HORIZON_INDICATIF_LISIBLE}, c'est une <strong>tendance</strong>, pas une certitude. Pour une "
-            "décision importante (grosse lessive, recharge d'un véhicule), fiez-vous plutôt aux "
-            "prévisions à 2 ou 3 jours. Chaque prévision passée est comparée à la couleur officielle sur notre "
-            "<a href=\"/historique-previsions\">historique des prévisions</a> ; la mesure détaillée est sur la page "
-            "<a href=\"/methodologie\">méthodologie</a>.</p>"
         ),
     },
 ]

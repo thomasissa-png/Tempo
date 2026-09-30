@@ -118,7 +118,9 @@ class TestHomepage:
         import site_facts
         page = client.get("/").text
         hp = "{:.4f}".format(site_facts.TARIFS["ROUGE"]["hp"]).replace(".", ",")
-        assert f"{hp}&nbsp;&euro;/kWh en heures pleines" in page
+        # Tour 1 (ACC-T3) : « en heures pleines » masqué sous 600 px, prix toujours visible
+        assert f'{hp}&nbsp;&euro;/kWh<span class="hide-sm"> en heures pleines' in page
+        assert "Prix du kWh en heures pleines, TTC." in page
         assert "HP 0,73&nbsp;" not in page and "HP " + hp not in page  # « HP » : jargon retiré
 
     def test_counters_placeholder_is_a_dash_not_a_question_mark(self):
@@ -144,7 +146,7 @@ class TestSharedParts:
 
     def test_legal_host_is_cloudflare(self, client):
         page = html.unescape(client.get("/mentions-legales").text)
-        host = page[page.index("2. Hébergeur"):page.index("3. Nature du service")]
+        host = page[page.index('id="hebergeur"'):page.index('id="nature-du-service"')]
         assert "Cloudflare, Inc." in host and "Replit" not in host
 
     def test_asset_version_is_single_and_used(self, client):
@@ -169,8 +171,8 @@ class TestSharedParts:
 
     def test_blog_index_pillars_then_clusters(self, client):
         page = html.unescape(client.get("/blog/").text)
-        assert page.index("Les guides essentiels") < page.index("Comprendre Tempo")
-        pillars = page[page.index("Les guides essentiels"):page.index("Comprendre Tempo")]
+        assert page.index('id="guides-essentiels"') < page.index('id="cluster-1"')
+        pillars = page[page.index('id="guides-essentiels"'):page.index('id="cluster-1"')]
         assert pillars.count("blog-card--pillar") == 3
         assert page.count("<h1") == 1
 

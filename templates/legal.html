@@ -68,23 +68,19 @@
 
     <h1>Mentions l&eacute;gales et RGPD</h1>
     <p class="legal-text"><em>Derni&egrave;re mise &agrave; jour&nbsp;: <time datetime="2026-09-30">30 septembre 2026</time></em></p>
-    <nav class="page-toc page-toc--compact" aria-label="Sommaire">
-        <a href="#desinscription" class="page-toc-primary">Se désinscrire</a>
-        <details class="page-toc-more">
-        <summary>Sommaire</summary>
+    <nav class="page-toc legal-toc" id="sommaire" aria-label="Sommaire">
         <ul>
-            <li><a href="#editeur">Éditeur</a></li>
-            <li><a href="#hebergeur">Hébergeur</a></li>
-            <li><a href="#nature-du-service">Nature du service</a></li>
-            <li><a href="#donnees-personnelles">Données personnelles</a></li>
-            <li><a href="#cookies">Cookies</a></li>
-            <li><a href="#messagerie">Messagerie</a></li>
-            <li><a href="#sources">Sources</a></li>
-            <li><a href="#responsabilite">Responsabilité</a></li>
+            <li><a href="#desinscription" class="page-toc-primary">Se désinscrire</a></li>
+            <li><a href="#editeur">1. Éditeur</a></li>
+            <li><a href="#hebergeur">2. Hébergeur</a></li>
+            <li><a href="#nature-du-service">3. Nature du service</a></li>
+            <li><a href="#donnees-personnelles">4. Données personnelles</a></li>
+            <li><a href="#cookies">5. Cookies</a></li>
+            <li><a href="#messagerie">6. Messagerie</a></li>
+            <li><a href="#sources">7. Sources</a></li>
+            <li><a href="#responsabilite">8. Responsabilité</a></li>
         </ul>
-        </details>
     </nav>
-    <script>document.querySelectorAll('.page-toc-more a').forEach(function (a) { a.addEventListener('click', function () { a.closest('details').open = false; }); });</script>
 
     <!-- Fix #9 : classes CSS au lieu de styles inline -->
     <div class="legal-section">
@@ -100,6 +96,7 @@
             <li>Contact du service Calendrier Tempo EDF&nbsp;: <a href="mailto:contact@calendrier-tempo.fr">contact@calendrier-tempo.fr</a> ou <a href="mailto:jean-pierre@calendrier-tempo.fr">jean-pierre@calendrier-tempo.fr</a></li>
         </ul>
     </div>
+    <p class="to-toc"><a href="#sommaire">Retour au sommaire</a></p>
 
     <div class="legal-section">
         <h2 id="hebergeur">2. Hébergeur</h2>
@@ -115,6 +112,7 @@
             Site&nbsp;: <a href="https://neon.com" target="_blank" rel="noopener">neon.com</a>
         </p>
     </div>
+    <p class="to-toc"><a href="#sommaire">Retour au sommaire</a></p>
 
     <div class="legal-section">
         <h2 id="nature-du-service">3. Nature du service</h2>
@@ -125,6 +123,7 @@
             une information officielle. Seul EDF détermine la couleur des jours Tempo.
         </p>
     </div>
+    <p class="to-toc"><a href="#sommaire">Retour au sommaire</a></p>
 
     <div class="legal-section" id="donnees-personnelles">
         <h2>4. Données personnelles et RGPD</h2>
@@ -140,7 +139,7 @@
         </p>
 
         <h3>4.2 Données traitées, finalités et bases légales</h3>
-        <p class="legal-text"><strong>a) Alertes WhatsApp (inscription, envoi, gestion des préférences)</strong></p>
+        <h4>a) Alertes WhatsApp (inscription, envoi, gestion des préférences)</h4>
         <ul>
             <li><strong>Données&nbsp;:</strong> numéro de téléphone mobile, préférences choisies (alertes rouge et blanc, niveau de probabilité,
                 délai d'anticipation, moment d'envoi, récapitulatif hebdomadaire), statut de l'abonnement (actif ou non),
@@ -156,7 +155,7 @@
                 l'inscription est impossible.</li>
         </ul>
 
-        <p class="legal-text"><strong>b) Historique des envois</strong></p>
+        <h4>b) Historique des envois</h4>
         <ul>
             <li><strong>Données&nbsp;:</strong> type de message, date d'envoi, jour Tempo concerné, couleur, texte du message
                 (lien de gestion masqué), statut de livraison, identifiant du message côté WhatsApp, code d'erreur éventuel.</li>
@@ -166,14 +165,14 @@
             <li><strong>Base légale&nbsp;:</strong> exécution du service (article 6.1.b) et intérêt légitime à assurer un service fiable (article 6.1.f).</li>
         </ul>
 
-        <p class="legal-text"><strong>c) Réponses par WhatsApp (STOP, START, RECAP)</strong></p>
+        <h4>c) Réponses par WhatsApp (STOP, START, RECAP)</h4>
         <ul>
             <li>Lorsque vous écrivez au numéro du service, WhatsApp nous transmet votre numéro et votre message. Ils servent uniquement
                 à exécuter la commande demandée et à vous répondre. Le contenu de vos messages n'est pas enregistré en base de données.</li>
             <li><strong>Base légale&nbsp;:</strong> exécution du service (article 6.1.b).</li>
         </ul>
 
-        <p class="legal-text"><strong>d) Sécurité et lutte contre les abus</strong></p>
+        <h4>d) Sécurité et lutte contre les abus</h4>
         <ul>
             <li><strong>Données&nbsp;:</strong> adresse IP, utilisée pour limiter le nombre de tentatives d'inscription et de désinscription
                 (compteurs conservés en mémoire, non enregistrés en base de données). Un champ invisible et un délai minimal de saisie
@@ -181,14 +180,14 @@
             <li><strong>Base légale&nbsp;:</strong> intérêt légitime à protéger le service contre les robots et les abus (article 6.1.f).</li>
         </ul>
 
-        <p class="legal-text"><strong>e) Consultation du site et de l'API publique</strong></p>
+        <h4>e) Consultation du site et de l'API publique</h4>
         <ul>
             <li>Aucun compte ni identifiant n'est demandé pour consulter le site ou l'API. Comme tout serveur web, l'hébergeur traite
                 techniquement l'adresse IP pour délivrer les pages. La mesure d'audience est décrite à la section 5.</li>
             <li><strong>Base légale&nbsp;:</strong> intérêt légitime à faire fonctionner et sécuriser le site (article 6.1.f).</li>
         </ul>
 
-        <p class="legal-text"><strong>f) Courriels que vous nous adressez</strong></p>
+        <h4>f) Courriels que vous nous adressez</h4>
         <ul>
             <li>Votre adresse de courriel et le contenu de votre message, utilisés pour répondre à votre demande
                 (question, exercice de droits, signalement).</li>
@@ -275,6 +274,7 @@
             <a href="https://www.cnil.fr/fr/plaintes" target="_blank" rel="noopener">cnil.fr/fr/plaintes</a>.
         </p>
     </div>
+    <p class="to-toc"><a href="#sommaire">Retour au sommaire</a></p>
 
     <div class="legal-section" id="cookies">
         <h2>5. Cookies et mesure d'audience</h2>
@@ -293,7 +293,7 @@
             dans votre navigateur.
         </p>
     </div>
-
+    <p class="to-toc"><a href="#sommaire">Retour au sommaire</a></p>
 
     <div class="legal-section">
         <h2 id="messagerie">6. Politique de messagerie</h2>
@@ -308,6 +308,7 @@
             <strong>Coût&nbsp;:</strong> le service est entièrement gratuit.
         </p>
     </div>
+    <p class="to-toc"><a href="#sommaire">Retour au sommaire</a></p>
 
     <div class="legal-section">
         <h2 id="sources">7. Sources de données</h2>
@@ -323,6 +324,7 @@
             qu'après validation manuelle (voir la <a href="/methodologie">méthodologie</a>).
         </p>
     </div>
+    <p class="to-toc"><a href="#sommaire">Retour au sommaire</a></p>
 
     <div class="legal-section">
         <h2 id="responsabilite">8. Limitation de responsabilité</h2>
@@ -333,6 +335,7 @@
             sur la base de ces prévisions, ni des éventuels surcoûts de consommation électrique.
         </p>
     </div>
+    <p class="to-toc"><a href="#sommaire">Retour au sommaire</a></p>
 
     <div class="legal-section" id="desinscription">
         <h2>9. Désinscription</h2>
@@ -395,11 +398,15 @@ document.getElementById('unsubscribe-form').addEventListener('submit', async (e)
 });
 </script>
 
+    <p class="to-toc"><a href="#sommaire">Retour au sommaire</a></p>
+
 </main>
 
 {% include '_subscribe_modal.html' %}
 
 {% include '_footer.html' %}
+
+{% include '_to_top.html' %}
 
 <button class="back-to-top" id="back-to-top" aria-label="Retour en haut de page">&#8593;</button>
 <script>

@@ -76,16 +76,22 @@
         <article class="blog-card{% if big %} blog-card--pillar{% endif %}">
             <a href="/blog/{{ article.slug }}" class="blog-card-link">
                 <div class="blog-card-meta">
-                    {% if article.updated_date and article.updated_date != article.publish_date %}<span>Mis &agrave; jour le <time datetime="{{ article.updated_date.isoformat() }}">{{ article.updated_date.strftime('%d/%m/%Y') }}</time></span>{% else %}<span>Publi&eacute; le <time datetime="{{ article.publish_date.isoformat() }}">{{ article.publish_date.strftime('%d/%m/%Y') }}</time></span>{% endif %}
+                    {# BLG-T1 : date identique sur toutes les cartes = bruit ; gardée pour les lecteurs d'écran et dans l'article #}
+                    {% if article.updated_date and article.updated_date != article.publish_date %}<span class="sr-only">Mis &agrave; jour le <time datetime="{{ article.updated_date.isoformat() }}">{{ article.updated_date.strftime('%d/%m/%Y') }}</time></span>{% else %}<span class="sr-only">Publi&eacute; le <time datetime="{{ article.publish_date.isoformat() }}">{{ article.publish_date.strftime('%d/%m/%Y') }}</time></span>{% endif %}
                     <span class="blog-reading-time">{{ article.reading_time }} min de lecture</span>
                 </div>
                 <h3>{{ article.title }}</h3>
                 <p>{{ article.description }}</p>
-                <span class="blog-read-more">Lire l'article &rarr;</span>
             </a>
         </article>
 {% endmacro %}
     {% if articles %}
+    <nav aria-label="Rubriques du blog">
+        <ul class="blog-rubriques">
+            {% if pillars %}<li><a href="#guides-essentiels">Guides essentiels</a></li>{% endif %}
+            {% for label, arts in groups %}<li><a href="#cluster-{{ loop.index }}">{{ label }}</a></li>{% endfor %}
+        </ul>
+    </nav>
     {% if pillars %}
     <section class="blog-pillars" aria-labelledby="guides-essentiels">
         <h2 id="guides-essentiels">Les guides essentiels</h2>
@@ -118,6 +124,8 @@
 {% include '_subscribe_modal.html' %}
 
 {% include '_footer.html' %}
+
+{% include '_to_top.html' %}
 
 
 </body>

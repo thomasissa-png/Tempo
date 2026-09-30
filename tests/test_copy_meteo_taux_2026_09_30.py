@@ -134,9 +134,10 @@ class TestPourcentageSaisonEnCours:
         monkeypatch.setattr(app_module, "_history_data", _data)
         monkeypatch.setattr(ph, "today_paris", lambda: date(2026, 9, 30))
         page = html.unescape(client.get("/historique-previsions").text).replace("\xa0", " ")
-        assert "Pourcentages affichés à partir du 1er novembre" in page.replace("<sup>", "").replace("</sup>", "")
-        bref = re.sub(r"<[^>]+>", "", page[page.index('id="en-bref"'):page.index('id="jour-par-jour"')])
-        assert "Saison 2025-2026 (dernière saison complète) : 90 %" in bref
+        assert "Pourcentages à partir du 1er novembre" in page.replace("<sup>", "").replace("</sup>", "")
+        bref = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", page[page.index('id="en-bref"'):page.index('id="jour-par-jour"')]))
+        # Tour 1 (HIS-T3) : chiffre de la dernière saison complète en tête, en tuile
+        assert "90 % de prévisions justes en 2025-2026, dernière saison complète" in bref
         assert "(100 %)" not in bref
 
 

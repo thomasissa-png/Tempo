@@ -691,6 +691,14 @@ def page_context(data: dict, label: str, current_label: str, today: date | None 
         if not show_pct:
             hz = _mask_pcts(hz)
         sans_calcul = s.get("jours_sans_calcul", [])
+        # HIS-T2 : cause des cases sans prévision de la zone 2 à 5 jours avant (mêmes
+        # effectifs que « sans prévision » du bloc En bref). « autre » = cause non enregistrée.
+        causes_fiables = {"interruption": 0, "autre": 0}
+        for d in s["days"]:
+            for n in RELIABLE:
+                if d["cells"].get(n) is None:
+                    c = (d.get("causes", {}).get(n) or ("autre",))[0]
+                    causes_fiables["interruption" if c == "interruption" else "autre"] += 1
         view = {
             "label": label,
             "first_date": short(s["first_date"]),
@@ -710,6 +718,7 @@ def page_context(data: dict, label: str, current_label: str, today: date | None 
             "absentes": any(c["state"] == "absente" for r in rows for c in r["cells"]),
             "jours_sans_calcul": sans_calcul,
             "jours_sans_calcul_txt": _fr_liste_dates(sans_calcul),
+            "causes_fiables": causes_fiables,
             "veille_publiee": any(c.get("source") == "edf" for r in rows for c in r["cells"]),
         }
     y = parse_season_label(label) or 0

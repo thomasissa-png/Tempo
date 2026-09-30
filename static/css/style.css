@@ -48,7 +48,7 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Inter', 'Inter Fallback', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: var(--bg);
     color: var(--text);
     line-height: 1.7;
@@ -3068,3 +3068,240 @@ button.btn { font-family: inherit; }
 .history-bref-ref { margin: 0 0 12px; padding: 10px 12px; border-left: 3px solid var(--info); background: var(--info-bg); border-radius: var(--radius-sm); }
 .history-bref-sub { font-size: 1rem; margin: 12px 0 4px; }
 .history-gaps summary { min-height: 44px; display: flex; align-items: center; }
+
+/* ============================================================
+   Revue notée, tour 1 (2026-09-30) : @ux + @design
+   Une grille (860 lecture / 1100 données), une échelle de titres, plancher 12 px.
+   ============================================================ */
+
+/* T3 : échelle typographique unique */
+:root {
+    --fs-h1: 2rem; --fs-h2: 1.4rem; --fs-h2-card: 1.25rem; --fs-h3: 1.1rem;
+    --fs-lead: 1.1rem; --fs-body: 1rem; --fs-small: 0.875rem; --fs-min: 0.75rem;
+}
+main h2 { font-size: var(--fs-h2); line-height: 1.3; }
+main h3 { font-size: var(--fs-h3); }
+.section-title { font-size: var(--fs-h2-card); }
+.legal-section h2, .page-content .history-bref h2, .blog-pillars h2, .blog-group h2 { font-size: var(--fs-h2-card); }
+/* Chapeau : au-dessus du corps (jamais plus petit ni plus pâle que le paragraphe suivant) */
+main h1 + .section-desc, main h1 + p:not(.legal-text) { font-size: var(--fs-lead); line-height: 1.6; color: var(--text-secondary); margin-bottom: 20px; }
+main h1 + .section-desc ~ p:not([class]) { color: var(--text); }
+@media (max-width: 600px) {
+    main h2 { font-size: 1.3rem; }
+    main h1 + .section-desc, main h1 + p:not(.legal-text) { font-size: 1.05rem; }
+}
+
+/* T4 : aucun texte porteur de sens sous 12 px */
+.hg-temp { font-size: var(--fs-min); }
+.counter-help { font-size: var(--fs-min); line-height: 1.35; }
+.week-dot-info, .week-dot-proba, .fc-proba-labels .proba-label, .hesi-separator { font-size: var(--fs-min); }
+.week-dots-next .week-dot-circle { font-size: var(--fs-min); }
+.data-table thead th small { font-size: var(--fs-min); }
+.breadcrumb span[aria-hidden] { font-size: 0.8rem; }
+@media (max-width: 560px) { .week-dot-hero .week-dot-confirmed { font-size: var(--fs-min); } }
+@media (max-width: 480px) {
+    .counter-help { font-size: var(--fs-min); }
+    .counter-card { padding: 12px 6px; }
+    .fc-compact .fc-uncertain-badge { font-size: var(--fs-min); }
+}
+
+/* T5 : pied de page moins haut à l'ordinateur (cible 44 px gardée au doigt) */
+@media (min-width: 769px) { .footer-links a { min-height: 0; padding: 6px 0; } }
+
+/* T6 : cartes de contenu sans marge basse parasite */
+.legal-section > :last-child, .legal-section li:last-child, .legal-section .history-details:last-child { margin-bottom: 0; }
+
+/* T7 : pastilles « À venir » à 36 px (exception documentée à la cible 44 px, WCAG 2.5.8 = 24 px) */
+.season-upcoming a { min-height: 36px; padding: 6px 12px; }
+
+/* Utilitaires d'affichage selon la largeur */
+.show-sm { display: none; }
+@media (max-width: 600px) {
+    .hide-sm { display: none; }
+    .show-sm { display: inline; }
+}
+
+/* Lien « Haut de page » : discret, mobile seulement, pages longues */
+.to-top-link { position: fixed; right: 12px; bottom: 16px; z-index: 80; display: none; align-items: center; gap: 4px; min-height: 44px; padding: 8px 14px; border: 1px solid var(--border); border-radius: 50px; background: rgba(255,255,255,.96); box-shadow: var(--shadow-lg); color: var(--text); font-size: 0.85rem; font-weight: 600; text-decoration: none; opacity: 0; visibility: hidden; transition: opacity .2s, visibility .2s; }
+.to-top-link.visible { opacity: 1; visibility: visible; }
+.to-top-link:focus-visible { outline: 3px solid var(--bleu); outline-offset: 2px; }
+@media (max-width: 768px) { .to-top-link { display: inline-flex; } }
+.to-toc { margin: 8px 0 0; text-align: right; font-size: 0.85rem; }
+.to-toc a { display: inline-flex; align-items: center; min-height: 44px; }
+
+/* Accueil (A1, A2, ACC-T1 à T3) */
+.step-card { text-align: left; align-items: flex-start; }
+.step-card .step-number { margin: 0 0 12px; }
+.step-card h3 { font-size: 1.05rem; }
+.step-card p { font-size: 0.95rem; }
+.counter-card .label { line-height: 1.3; }
+
+/* Calendrier (C2 à C5, CAL-T2 à T6) */
+.cal-forecast-title { margin-top: 32px; }
+.cal-forecast-intro { margin: 0 0 12px; font-size: 0.95rem; color: var(--text-secondary); }
+#forecast-container .loading-state { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: inherit; margin: 0; }
+.cal-month-summary.is-visible { max-width: 700px; margin: 0 auto 24px; padding: 14px 18px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.cal-month-summary.is-visible p { margin: 0; font-size: 0.9rem; line-height: 1.7; color: var(--text-secondary); }
+.cal-seo-more { margin: 0 0 8px; border-top: 1px solid var(--border); }
+.cal-seo-more > summary { padding: 14px 0; }
+.cal-seo-more > summary h2 { display: inline; font-size: var(--fs-h2); margin: 0; color: var(--text); }
+.cal-seo-content h2.section-title { font-size: var(--fs-h2); }
+@media (max-width: 600px) { .cal-seo-more > summary h2, .cal-seo-content h2.section-title { font-size: 1.3rem; } }
+.cal-seo-more .faq-content h2 { font-size: var(--fs-h3); margin: 20px 0 8px; }
+.cal-seo-more .faq-content p { padding: 0; font-size: 1rem; }
+.cal-seo-content.cal-seo-content--more { padding-top: 8px; }
+.data-table .source-label { margin-right: 0; white-space: nowrap; }
+@media (max-width: 600px) {
+    .cal-legend-item { font-size: var(--fs-min); }
+    .cal-today-label { font-size: var(--fs-min); }
+}
+@media (max-width: 400px) {
+    .cal-nav a, .cal-nav span, .cal-nav .cal-current { padding: 8px 6px; font-size: 0.8rem; }
+    .cal-nav { gap: 4px; }
+    .cal-legend { flex-wrap: wrap; justify-content: center; row-gap: 4px; }
+}
+
+/* Historique : « En bref » sans cadre dans le cadre (H1, HIS-T3) */
+.history-bref-ref { background: none; border-left: 0; padding: 0; border-radius: 0; margin: 0 0 12px; }
+.history-note--info { background: none; padding: 0; margin-top: 8px; border-radius: 0; color: var(--text-secondary); }
+.hb-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 24px; margin: 12px 0 8px; }
+.hb-kpi { display: flex; flex-direction: column; gap: 2px; margin: 0; }
+.hb-kpi + .hb-kpi { border-left: 1px solid var(--border); padding-left: 24px; }
+.hb-kpi--ref .hb-kpi-value { color: var(--accent-hover); }
+.history-legend .hg-dot { margin-right: 4px; }
+.hb-kpi-value { font-size: 1.6rem; font-weight: 800; line-height: 1.2; color: var(--text); font-variant-numeric: tabular-nums; }
+.hb-kpi-label { font-size: 0.9rem; line-height: 1.45; color: var(--text-secondary); }
+.hb-kpi-label a { white-space: nowrap; }
+.history-bref-more { margin: 12px 0 4px; }
+.history-bref-more .history-bref-list { margin-top: 4px; }
+.history-bref-causes { margin: 4px 0 0; font-size: 0.85rem; color: var(--text-secondary); }
+@media (max-width: 700px) {
+    .hb-kpis { grid-template-columns: 1fr; gap: 12px; }
+    .hb-kpi-value { font-size: 1.4rem; }
+    .hb-kpi + .hb-kpi { border-left: 0; padding-left: 0; border-top: 1px solid var(--border); padding-top: 12px; }
+}
+
+/* Historique : bilan lisible en mobile, resserré à l'ordinateur (H2, H3, HIS-T4, HIS-T5) */
+.history-bilan-scroll.is-compact { max-width: 720px; }
+.history-bilan-scroll.is-compact .history-table { table-layout: fixed; }
+.history-bilan-scroll.is-compact thead th:first-child { width: 32%; }
+.history-bilan-scroll.is-compact thead th.num { width: 34%; white-space: normal; }
+.history-bilan-scroll.is-compact .hb-sub { white-space: normal; }
+.history-table .hb-group th { white-space: normal; }
+@media (max-width: 600px) {
+    .history-bilan-scroll.is-compact .history-table th, .history-bilan-scroll.is-compact .history-table td { padding: 8px 6px; font-size: 0.8rem; }
+    .history-bilan-scroll.is-compact thead th:first-child { width: 30%; }
+    .history-bilan-scroll.is-compact tbody tr:not(.hb-group) th { white-space: normal; }
+    .history-bilan-scroll.is-compact .hb-sub { font-size: var(--fs-min); }
+}
+.history-seasons + .history-bref { margin-top: 16px; }
+
+/* Couleur de demain : tableau à 3 colonnes en mobile (D1, D2, DEM-T1 à T3) */
+.d-short { display: none; }
+.data-table tr.officielle td { font-weight: 400; }
+.data-table tr.officielle .col-statut { font-weight: 600; }
+.data-table .source-label { text-transform: none; letter-spacing: 0; font-size: 0.8rem; }
+.days-table .d-mobile-only { display: none; }
+.history-note + p { margin-top: 12px; }
+@media (max-width: 600px) {
+    .days-table .d-long { display: none; }
+    .days-table .d-short { display: inline; white-space: nowrap; }
+    .days-table .col-statut { display: none; }
+    .days-table .d-mobile-only { display: block; margin-top: 4px; }
+    .days-table th, .days-table td { padding: 8px 8px; }
+    .days-table .num { white-space: nowrap; }
+}
+
+/* API : barre d'outils au-dessus du code (Ap1, API-T1), chips allégés (Ap2, Ap3) */
+main p code, main li code { background: none; padding: 0; font-weight: 600; }
+.data-table td:first-child code, .data-table th a code { background: none; padding: 0; }
+@media (max-width: 480px) { .api-code--wrap pre { white-space: pre-wrap; overflow-wrap: anywhere; } }
+
+/* Blog, index : grille 3 colonnes sans case orpheline, titres des guides au moins aussi forts (B1 à B3, BLG-T1 à T4) */
+.blog-index-main { max-width: 1100px; }
+.blog-card--pillar h3 { font-size: 1.3rem; }
+.blog-card-meta time { color: var(--text-secondary); }
+.blog-rubriques { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 8px; list-style: none; padding: 0; }
+.blog-rubriques a { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 14px; border: 1px solid var(--border); border-radius: 50px; background: var(--surface); color: var(--text); font-size: 0.85rem; font-weight: 600; text-decoration: none; }
+.blog-rubriques a:hover { border-color: var(--bleu); color: var(--bleu); }
+.blog-group, .blog-pillars { scroll-margin-top: 88px; }
+@media (min-width: 1024px) {
+    .blog-group .blog-list { grid-template-columns: repeat(3, 1fr); }
+    .blog-group .blog-list > :last-child:nth-child(3n+1) { grid-column: 1 / -1; }
+    .blog-group .blog-list > :last-child:nth-child(3n+2) { grid-column: span 2; }
+}
+@media (min-width: 769px) and (max-width: 1023px) {
+    .blog-group .blog-list > :last-child:nth-child(odd) { grid-column: 1 / -1; }
+}
+@media (max-width: 600px) {
+    .blog-group .blog-card p { display: none; }
+    .blog-group .blog-card h3 { margin-bottom: 4px; }
+}
+
+/* Article : sommaire en colonne sur grand écran, longueur de ligne, CTA contextuel (Ar1, ART-T1 à T5) */
+@media (min-width: 769px) { .blog-article { padding: 40px 56px; } }
+/* Ar1 : environ 75 caractères par ligne sur grand écran */
+@media (min-width: 1024px) { .blog-article { padding: 48px 88px; } }
+.blog-article-body h2 { margin-top: 48px; }
+.blog-article-body h3 { font-size: var(--fs-h3); margin-top: 28px; color: var(--text); }
+.blog-cta-mid { margin: 28px 0; padding: 18px 20px; background: var(--bleu-bg); border-radius: var(--radius-sm); }
+.blog-cta-mid p { margin: 0 0 12px; }
+.blog-cta-mid .btn { margin-top: 0; }
+
+/* Alertes : un seul bord gauche, carte « Comment ça marche ? » (Al1 à Al3, ALE-T2, ALE-T3) */
+.alertes-how { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 24px; margin: 0 0 32px; }
+.alertes-how h2 { font-size: var(--fs-h2-card); margin: 0 0 12px; }
+
+/* Mentions légales : sommaire ouvert, sous-blocs hiérarchisés (L1, L2, LEG-T1 à T3) */
+.legal-text, .legal-section li { font-size: 0.95rem; }
+.legal-section h3:not(:first-child) { border-top: 1px solid var(--border); padding-top: 16px; }
+.legal-section h4 { font-size: 1rem; margin: 24px 0 6px; }
+.legal-section h3 + h4, .legal-section h3 + p + h4 { margin-top: 12px; }
+.page-toc .page-toc-primary { border-color: var(--accent); color: var(--accent); }
+.counter-note { display: none; margin: 8px 0 0; text-align: center; font-size: var(--fs-min); color: var(--text-secondary); }
+@media (max-width: 600px) { .counter-note { display: block; } }
+.blog-article-main { max-width: 860px; }
+main [id] { scroll-margin-top: 84px; }
+/* Tarif (T1 à T4, TAR-T1, TAR-T2) */
+.tarif-notes { margin: 8px 0 0; }
+.tarif-notes p.form-hint { margin: 0; }
+.tarif-notes p.form-hint + p.form-hint { margin-top: 6px; }
+.tarif-counters { margin: 12px 0 16px; }
+.tarif-counters .count { font-size: 1.6rem; white-space: nowrap; }
+.tarif-counters .label { line-height: 1.35; }
+.page-content .today-answer-links { margin: 0 0 8px; }
+@media (max-width: 600px) {
+    .tarif-counters .count { font-size: 1.1rem; }
+    .tarif-counters .label { font-size: var(--fs-min); }
+}
+/* Méthodologie (M1, M2, MET-T1) */
+.method-counters { margin: 12px 0 16px; }
+.method-counters .count { font-size: 1.6rem; white-space: nowrap; }
+.page-toc { margin: 16px 0 24px; }
+@media (max-width: 600px) {
+    .method-counters .count { font-size: 1.15rem; }
+    .method-counters .label { font-size: var(--fs-min); line-height: 1.3; }
+}
+.method-see-also { margin: 24px 0 8px; }
+@media (max-width: 600px) { .method-see-also { flex-wrap: wrap; overflow-x: visible; } }
+.season-counters { margin: 8px 0 16px; }
+.season-counters .count { white-space: nowrap; }
+@media (max-width: 600px) { .season-counters .count { font-size: 1.3rem; } .season-counters .label { font-size: var(--fs-min); } }
+/* Bilan d'hiver (7 colonnes, défilement) : cellules sur une ligne, hauteur de rangée compacte */
+.history-bilan-scroll:not(.is-compact) td.num, .history-bilan-scroll:not(.is-compact) .hb-sub { white-space: nowrap; }
+/* Ar2 : tableaux d'article lisibles en mobile (défilement horizontal assumé, colonnes jamais écrasées) */
+.blog-article-body .table-scroll th, .blog-article-body .table-scroll td { padding: 10px 12px; }
+@media (max-width: 600px) {
+    .blog-article-body .table-scroll table { min-width: 560px; }
+    .blog-cta-mid .btn { width: 100%; justify-content: center; }
+}
+.legal-section + .to-toc { margin: -8px 0 16px; }
+.legal-section h2 + h3 { border-top: 0; padding-top: 0; margin-top: 16px; }
+.hb-sub--strong { color: var(--rouge); font-weight: 600; }
+/* G2 : tableaux de données sans défilement caché jusqu'à 360 px */
+@media (max-width: 400px) {
+    .data-table th, .data-table td { padding: 8px 5px; font-size: 0.82rem; }
+    .data-table .color-tag { padding-left: 8px; padding-right: 8px; }
+}
+@media (max-width: 400px) { .data-table code { font-size: 0.95em; } }
+.history-note sup, .hb-kpi-label sup { font-size: 0.9em; line-height: 0; }

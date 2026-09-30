@@ -58,6 +58,8 @@
 
 {% include '_footer.html' %}
 
+{% if long_page is defined and long_page %}{% include '_to_top.html' %}{% endif %}
+
 {% block scripts %}{% endblock %}
 </body>
 </html>

@@ -225,23 +225,20 @@
         <div class="counter-card rouge" aria-label="Jours rouges restants">
             <div class="count{% if not ssr.remaining %} count-pending{% endif %}" id="count-rouge" aria-live="polite"{% if not ssr.remaining %} aria-label="en cours de chargement"{% endif %}>{% if ssr.remaining %}{{ ssr.remaining.ROUGE }}{% else %}-{% endif %}</div>
             <div class="label">Jours rouges restants</div>
-            <!-- P-21 : barre de progression visuelle -->
-            <div class="counter-progress" id="progress-rouge"><div class="counter-progress-fill rouge-fill"></div></div>
-            <div class="counter-help">{{ prix(facts.TARIFS.ROUGE.hp) }}&nbsp;&euro;/kWh en heures pleines, le plus cher</div>
+            <div class="counter-help">{{ prix(facts.TARIFS.ROUGE.hp) }}&nbsp;&euro;/kWh<span class="hide-sm"> en heures pleines, le plus cher</span></div>
         </div>
         <div class="counter-card blanc" aria-label="Jours blancs restants">
             <div class="count{% if not ssr.remaining %} count-pending{% endif %}" id="count-blanc" aria-live="polite"{% if not ssr.remaining %} aria-label="en cours de chargement"{% endif %}>{% if ssr.remaining %}{{ ssr.remaining.BLANC }}{% else %}-{% endif %}</div>
             <div class="label">Jours blancs restants</div>
-            <div class="counter-progress" id="progress-blanc"><div class="counter-progress-fill blanc-fill"></div></div>
-            <div class="counter-help">{{ prix(facts.TARIFS.BLANC.hp) }}&nbsp;&euro;/kWh en heures pleines, tarif interm&eacute;diaire</div>
+            <div class="counter-help">{{ prix(facts.TARIFS.BLANC.hp) }}&nbsp;&euro;/kWh<span class="hide-sm"> en heures pleines, tarif interm&eacute;diaire</span></div>
         </div>
         <div class="counter-card bleu" aria-label="Jours bleus restants">
             <div class="count{% if not ssr.remaining %} count-pending{% endif %}" id="count-bleu" aria-live="polite"{% if not ssr.remaining %} aria-label="en cours de chargement"{% endif %}>{% if ssr.remaining %}{{ ssr.remaining.BLEU }}{% else %}-{% endif %}</div>
             <div class="label">Jours bleus restants</div>
-            <div class="counter-progress" id="progress-bleu"><div class="counter-progress-fill bleu-fill"></div></div>
-            <div class="counter-help">{{ prix(facts.TARIFS.BLEU.hp) }}&nbsp;&euro;/kWh en heures pleines, le moins cher</div>
+            <div class="counter-help">{{ prix(facts.TARIFS.BLEU.hp) }}&nbsp;&euro;/kWh<span class="hide-sm"> en heures pleines, le moins cher</span></div>
         </div>
     </div>
+    <p class="counter-note">Prix du kWh en heures pleines, TTC.</p>
     <p class="days-left-text" id="days-left"></p>
     <!-- P-06 : contexte humain des compteurs -->
     <p class="counter-context" id="counter-context"></p>
@@ -271,7 +268,7 @@
             <div class="step-card">
                 <div class="step-number">1</div>
                 <h3>Consultez la pr&eacute;vision</h3>
-                <p>Nous croisons la m&eacute;t&eacute;o de 9 villes, le nombre de jours rouges et blancs qu'il reste &agrave; placer et la consommation nationale pr&eacute;vue pour pr&eacute;voir les <strong>15 prochains jours</strong>. Les pr&eacute;visions sont recalcul&eacute;es {{ facts.CALCUL_PREVISIONS }}.</p>
+                <p>M&eacute;t&eacute;o de 9 villes, jours rouges et blancs restant &agrave; placer, consommation nationale pr&eacute;vue&nbsp;: nous pr&eacute;voyons les <strong>15 prochains jours</strong>, recalcul&eacute;s {{ facts.CALCUL_PREVISIONS }}.</p>
             </div>
             <div class="step-card">
                 <div class="step-number">2</div>
@@ -281,7 +278,7 @@
             <div class="step-card">
                 <div class="step-number">3</div>
                 <h3>&Eacute;conomisez concr&egrave;tement</h3>
-                <p>Chaque kWh d&eacute;plac&eacute; des heures pleines d'un jour rouge vers un jour bleu &eacute;conomise {{ facts.SURCOUT_KWH }}&nbsp;&euro;. Exemple&nbsp;: en d&eacute;calant {{ facts.KWH_BAS }}&nbsp;kWh (lessive, s&egrave;che-linge, four, recharge de voiture &eacute;lectrique), vous &eacute;conomisez <strong>environ {{ facts.SURCOUT_JOUR_BAS }}&nbsp;&euro; par jour rouge</strong>, soit environ {{ facts.SURCOUT_SAISON_BAS }}&nbsp;&euro; si vous le faites lors des {{ facts.JOURS_ROUGES }} jours rouges d'une saison. <a href="/tarif-tempo-edf">Voir le tarif Tempo EDF</a>.</p>
+                <p>Chaque kWh d&eacute;plac&eacute; des heures pleines d'un jour rouge vers un jour bleu &eacute;conomise {{ facts.SURCOUT_KWH }}&nbsp;&euro;. Exemple&nbsp;: en d&eacute;calant {{ facts.KWH_BAS }}&nbsp;kWh (lessive, s&egrave;che-linge, four, recharge de voiture &eacute;lectrique), vous &eacute;conomisez <strong>environ {{ facts.SURCOUT_JOUR_BAS }}&nbsp;&euro; par jour rouge</strong>, environ {{ facts.SURCOUT_SAISON_BAS }}&nbsp;&euro; sur les {{ facts.JOURS_ROUGES }} jours rouges d'une saison. <a href="/tarif-tempo-edf">Voir le tarif Tempo EDF</a>.</p>
             </div>
         </div>
     </section>

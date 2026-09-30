@@ -1,0 +1,12 @@
+{# Lien « Haut de page » des pages longues : discret, mobile seulement (CSS), visible après le premier écran.
+   « #top » remonte en haut du document même sans JavaScript. #}
+<a href="#top" class="to-top-link" id="to-top-link"><span aria-hidden="true">&uarr;</span> Haut de page</a>
+<script>
+(function () {
+    var a = document.getElementById('to-top-link');
+    if (!a) return;
+    function f() { a.classList.toggle('visible', window.scrollY > 900); }
+    window.addEventListener('scroll', f, { passive: true });
+    f();
+})();
+</script>

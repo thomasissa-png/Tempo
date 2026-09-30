@@ -63,7 +63,7 @@
 {% set nav_active = 'blog' %}{% set nav_current = false %}
 {% include '_header.html' %}
 
-<main id="main-content" class="container" role="main" style="max-width:800px">
+<main id="main-content" class="container blog-article-main" role="main">
 
     <!-- Breadcrumb -->
     <nav class="breadcrumb" aria-label="Fil d'Ariane">
@@ -91,11 +91,21 @@
                     {% for id, name in article.toc %}<li><a href="#{{ id }}">{{ name|safe }}</a></li>{% endfor %}
                 </ol>
             </details>
+            <script>(function () { var t = document.getElementById('blog-toc'); if (t && window.matchMedia && window.matchMedia('(min-width: 1024px)').matches) { t.setAttribute('open', ''); } })();</script>
             {% endif %}
         </header>
 
         <div class="blog-article-body">
+            {% if article.cta_at %}
+            {{ article.content_html[:article.cta_at] | safe }}
+            <aside class="blog-cta-mid" aria-label="Alertes gratuites">
+                <p><strong>Soyez pr&eacute;venu avant un jour rouge.</strong> {{ facts.ALERTES_DESCRIPTION_COURT }}. Gratuit, sans engagement.</p>
+                <button type="button" class="btn btn-primary" onclick="openSubscribeModal()">{{ icons.whatsapp(18, '#fff', 'icon-inline') }}S'inscrire aux alertes gratuites</button>
+            </aside>
+            {{ article.content_html[article.cta_at:] | safe }}
+            {% else %}
             {{ article.content_html | safe }}
+            {% endif %}
         </div>
 
         <!-- CTA de fin d'article (conviction avant conversion) -->
@@ -129,6 +139,8 @@
 {% include '_subscribe_modal.html' %}
 
 {% include '_footer.html' %}
+
+{% include '_to_top.html' %}
 
 
 </body>

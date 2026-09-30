@@ -30,7 +30,7 @@
         un jour blanc et <strong>{{ prix(T.ROUGE.hp) }}&nbsp;&euro;/kWh</strong> un jour rouge (TTC). Le prix du kWh est le m&ecirc;me
         quelle que soit la puissance souscrite&nbsp;; seul l'abonnement varie.
     </p>
-    <p><a href="/">Voir la couleur Tempo d'aujourd'hui et de demain</a></p>
+    <div class="today-answer-links"><a href="/">Voir la couleur Tempo d'aujourd'hui et de demain</a></div>
 
     <h2>Grille tarifaire Tempo EDF (TTC)</h2>
     <div class="table-scroll">
@@ -42,14 +42,16 @@
         <tbody>
             <tr><th scope="row"><span class="color-tag bleu">Jour bleu</span> <span class="hb-sub">({{ facts.JOURS_BLEUS }} jours/saison)</span></th><td class="num">{{ prix(T.BLEU.hp) }}&nbsp;&euro;/kWh</td><td class="num">{{ prix(T.BLEU.hc) }}&nbsp;&euro;/kWh</td></tr>
             <tr><th scope="row"><span class="color-tag blanc">Jour blanc</span> <span class="hb-sub">({{ facts.JOURS_BLANCS }} jours/saison)</span></th><td class="num">{{ prix(T.BLANC.hp) }}&nbsp;&euro;/kWh</td><td class="num">{{ prix(T.BLANC.hc) }}&nbsp;&euro;/kWh</td></tr>
-            <tr class="rouge"><th scope="row"><span class="color-tag rouge">Jour rouge</span> <span class="hb-sub">({{ facts.JOURS_ROUGES }} jours/saison)</span></th><td class="num">{{ prix(T.ROUGE.hp) }}&nbsp;&euro;/kWh</td><td class="num">{{ prix(T.ROUGE.hc) }}&nbsp;&euro;/kWh</td></tr>
+            <tr class="rouge"><th scope="row"><span class="color-tag rouge">Jour rouge</span> <span class="hb-sub">({{ facts.JOURS_ROUGES }} jours/saison)</span><span class="hb-sub hb-sub--strong">{{ facts.RATIO }}&nbsp;fois le bleu</span></th><td class="num"><strong>{{ prix(T.ROUGE.hp) }}&nbsp;&euro;/kWh</strong></td><td class="num">{{ prix(T.ROUGE.hc) }}&nbsp;&euro;/kWh</td></tr>
         </tbody>
     </table>
     </div>
+    <div class="tarif-notes">
     <p class="form-hint">Source&nbsp;: {{ facts.TARIFS_SOURCE }}. V&eacute;rifiez toujours les prix sur votre contrat EDF.
         Les tarifs r&eacute;glement&eacute;s &eacute;voluent en g&eacute;n&eacute;ral en f&eacute;vrier et en ao&ucirc;t.</p>
     <p class="form-hint">Et l'abonnement&nbsp;? Son prix d&eacute;pend de la puissance souscrite (en kVA). Nous ne le reproduisons pas ici tant qu'il
         n'est pas confirm&eacute; par une source officielle&nbsp;: reportez-vous &agrave; votre contrat ou &agrave; la grille tarifaire d'EDF.</p>
+    </div>
 
     <h2>Heures pleines, heures creuses et journ&eacute;e Tempo</h2>
     <p>
@@ -59,6 +61,11 @@
     </p>
 
     <h2>Combien co&ucirc;te un jour rouge Tempo&nbsp;?</h2>
+    <div class="counters tarif-counters" role="list" aria-label="Le jour rouge en trois chiffres">
+        <div class="counter-card rouge" role="listitem"><div class="count">{{ facts.RATIO }}&nbsp;fois</div><div class="label">le prix du kWh bleu en heures pleines</div></div>
+        <div class="counter-card rouge" role="listitem"><div class="count">{{ facts.SURCOUT_JOUR_BAS }} &agrave; {{ facts.SURCOUT_JOUR_HAUT }}&nbsp;&euro;</div><div class="label">de plus par jour rouge ({{ facts.KWH_BAS }} &agrave; {{ facts.KWH_HAUT }}&nbsp;kWh)</div></div>
+        <div class="counter-card bleu" role="listitem"><div class="count">{{ facts.SURCOUT_SAISON_BAS }}&nbsp;&euro;</div><div class="label">d'&eacute;conomie par saison en d&eacute;pla&ccedil;ant {{ facts.KWH_BAS }}&nbsp;kWh</div></div>
+    </div>
     <p>
         En heures pleines, le kWh rouge co&ucirc;te <strong>{{ facts.RATIO }} fois</strong> le kWh bleu
         ({{ prix(T.ROUGE.hp) }}&nbsp;&euro; contre {{ prix(T.BLEU.hp) }}&nbsp;&euro;), soit <strong>{{ facts.SURCOUT_KWH }}&nbsp;&euro; de plus par kWh</strong>.
@@ -69,16 +76,17 @@
         Votre consommation r&eacute;elle d&eacute;pend de votre logement et de vos &eacute;quipements&nbsp;: refaites le calcul avec vos propres kWh.
     </p>
 
+    <section class="blog-cta page-cta">
+        <h2>Anticipez les {{ facts.ALERTES_HORIZON_JOURS }} prochains jours Tempo</h2>
+        <p>{{ facts.ALERTES_DESCRIPTION_COURT }}. Gratuit, sans engagement.</p>
+        <button type="button" class="btn" onclick="openSubscribeModal()">S'inscrire aux alertes gratuites</button>
+    </section>
+
     <h2>Anticiper les jours rouges</h2>
     <p>
         Consultez le <a href="/calendrier">calendrier Tempo EDF</a> et la <a href="/couleur-tempo-demain">couleur Tempo de demain</a>,
         ou recevez gratuitement nos <a href="/alertes">alertes WhatsApp</a>. Conseils pratiques sur le <a href="/blog/">blog</a>.
     </p>
 
-    <section class="blog-cta page-cta">
-        <h2>Anticipez les {{ facts.ALERTES_HORIZON_JOURS }} prochains jours Tempo</h2>
-        <p>{{ facts.ALERTES_DESCRIPTION_COURT }}. Gratuit, sans engagement.</p>
-        <button type="button" class="btn" onclick="openSubscribeModal()">S'inscrire aux alertes gratuites</button>
-    </section>
 </article>
 {% endblock %}

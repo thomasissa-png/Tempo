@@ -53,8 +53,10 @@ class TestCalendrier:
         assert len(txt) < 170 and "italique" not in txt
         note = _text(re.search(r'<p class="cal-source-note">(.*?)</p>', page, re.S).group(1))
         assert page.index('class="cal-grid"') < page.index('class="cal-source-note"')
-        assert "nous n'affichons jamais de couleur par défaut" in note
-        assert "Seule la couleur publiée par EDF fait foi" in note
+        # Tour 1 (CAL-T3) : une phrase, source + « fait foi » ; le gris est porté par la légende
+        assert "api-couleur-tempo.fr" in note and "Seule la couleur publiée par EDF fait foi" in note
+        assert "Saison" not in note and len(note) < 200
+        assert "Non publié" in page[page.index('class="cal-legend"'):page.index('class="cal-grid"')]
         assert page.count("<h1") == 1
 
     def test_today_cell_is_labelled(self, client):
@@ -137,13 +139,17 @@ class TestApiTempo:
         assert "relayées par api-couleur-tempo.fr" in page
 
 
-def test_legal_unsubscribe_first_then_collapsible_toc(client):
+def test_legal_unsubscribe_first_then_open_toc(client):
+    """Tour 1 (LEG-T1, LEG-T2) : sommaire ouvert, « Se désinscrire » en tête, retour au sommaire."""
     page = client.get("/mentions-legales").text
-    toc = page[page.index('class="page-toc page-toc--compact"'):page.index("</nav>", page.index("page-toc--compact"))]
-    assert toc.index("Se désinscrire") < toc.index('<details class="page-toc-more">')
-    assert "<summary>Sommaire</summary>" in toc
+    start = page.index('id="sommaire"')
+    toc = page[start:page.index("</nav>", start)]
+    assert "<details" not in toc
+    assert toc.index("Se désinscrire") < toc.index("#editeur")
     for anchor in ("#editeur", "#hebergeur", "#donnees-personnelles", "#cookies", "#responsabilite"):
         assert anchor in toc
+    assert page.count('<a href="#sommaire">Retour au sommaire</a>') >= 9
+    assert page.count("<h4>") >= 6  # sous-blocs 4.2 a) à f) en vrais intertitres
 
 
 def test_details_look_like_disclosures():
@@ -152,12 +158,13 @@ def test_details_look_like_disclosures():
     assert 'content: "+"' in _rule(".blog-toc summary::after")
 
 
-def test_blog_toc_closed_by_default(client):
+def test_blog_toc_closed_on_mobile_open_on_desktop(client):
+    """Tour 1 (ART-T1) : fermé dans le HTML (mobile), ouvert à partir de 1024 px par script."""
     from blog import get_published_articles
     art = next(a for a in get_published_articles() if a.toc)
     page = client.get(f"/blog/{art.slug}").text
     assert '<details class="blog-toc" id="blog-toc">' in page
-    assert "t.open = true" not in page
+    assert "matchMedia('(min-width: 1024px)')" in page
 
 
 def test_history_seasons_single_line_on_mobile():

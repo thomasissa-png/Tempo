@@ -40,12 +40,13 @@
     {% if ssr.week_summary %}
     <h2>Les prochains jours</h2>
     <div class="table-scroll">
-    <table class="data-table">
+    <table class="data-table days-table">
         <caption class="sr-only">Couleur Tempo des prochains jours</caption>
-        <thead><tr><th scope="col">Jour</th><th scope="col">Couleur</th><th scope="col">Statut</th><th scope="col" class="num">Temp&eacute;rature pr&eacute;vue</th></tr></thead>
+        <thead><tr><th scope="col">Jour</th><th scope="col">Couleur</th><th scope="col" class="col-statut">Statut</th><th scope="col" class="num"><span class="hide-sm">Temp&eacute;rature pr&eacute;vue</span><abbr class="show-sm" title="Temp&eacute;rature pr&eacute;vue">Temp. pr&eacute;vue</abbr></th></tr></thead>
         <tbody>
         {% for d in ssr.week_summary %}
-            <tr{% if d.confirmed %} class="officielle"{% endif %}><th scope="row">{{ d.date_label }}</th><td><span class="color-tag {{ d.couleur|lower }}">{{ d.couleur_label }}</span></td><td>{% if d.confirmed %}Confirm&eacute; par EDF{% else %}Pr&eacute;vu &agrave; {{ d.confidence }}&nbsp;%{% endif %}</td><td class="num">{% if d.temp_label %}{{ d.temp_label }}{% else %}<span class="history-muted">M&eacute;t&eacute;o indisponible</span>{% endif %}</td></tr>
+            {% set statut %}{% if d.confirmed %}<span class="source-label label-officiel">Confirm&eacute; par EDF</span>{% else %}<span class="source-label label-prediction">Pr&eacute;vu &agrave; {{ d.confidence }}&nbsp;%</span>{% endif %}{% endset %}
+            <tr{% if d.confirmed %} class="officielle"{% endif %}><th scope="row"><span class="d-long">{{ d.date_label }}</span><span class="d-short">{{ d.date_label_court or d.date_label }}</span></th><td><span class="color-tag {{ d.couleur|lower }}">{{ d.couleur_label }}</span><span class="d-mobile-only">{{ statut }}</span></td><td class="col-statut">{{ statut }}</td><td class="num">{% if d.temp_label %}{{ d.temp_label }}{% else %}<span class="history-muted">M&eacute;t&eacute;o indisponible</span>{% endif %}</td></tr>
         {% endfor %}
         </tbody>
     </table>

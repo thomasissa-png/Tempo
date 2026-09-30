@@ -55,22 +55,27 @@
     <link rel="stylesheet" href="/static/css/style.min.css?v={{ facts.ASSET_V }}">
     <script defer src="https://cloud.umami.is/script.js" data-website-id="1d187359-b4a6-4ba8-ba41-c449b356832f"></script>
     <style>
-        .alertes-hero { text-align: center; padding: 32px 0 24px; }
-        .alertes-hero h1 { font-size: 1.8rem; line-height: 1.25; margin-bottom: 12px; }
+        /* Tour 1 (Al1 à Al3) : un seul bord gauche, H1 de l'échelle commune (main h1) */
+        .alertes-hero { padding: 8px 0 24px; }
         .alertes-reassure { margin-top: 12px; font-size: 0.9rem; color: var(--text-secondary); }
         .alertes-proof { margin-top: 4px; font-size: 0.9rem; color: var(--text-secondary); }
-        .alertes-hero .hero-desc { font-size: 1.1rem; color: var(--text-secondary); max-width: 600px; margin: 0 auto 24px; line-height: 1.6; }
+        .alertes-hero .hero-desc { font-size: 1.1rem; color: var(--text-secondary); max-width: 640px; margin: 0 0 20px; line-height: 1.6; }
         .alertes-btn { font-size: 1.1rem; padding: 14px 32px; }
-        .alertes-sms-demo { max-width: 400px; margin: 8px auto 32px; }
-        .alertes-how { max-width: 600px; margin: 0 auto 32px; }
+        .alertes-sms-demo { max-width: 420px; margin: 8px 0 32px; }
         .alertes-how ol { padding-left: 24px; }
         .alertes-how li { margin-bottom: 12px; line-height: 1.6; color: var(--text-secondary); }
         .alertes-how li strong { color: var(--text); }
-        .alertes-how-cta { text-align: center; margin-top: 20px; }
-        .alertes-unsub { text-align: center; margin: 24px 0 32px; }
+        .alertes-how-cta { margin-top: 20px; }
+        @media (min-width: 900px) {
+            .alertes-duo { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: 24px; align-items: start; }
+            .alertes-duo .alertes-sms-demo, .alertes-duo .alertes-how { margin: 0 0 24px; }
+        }
+        .alertes-unsub { margin: 24px 0 32px; }
+        .alertes-unsub .unsub-form { max-width: 400px; margin: 16px 0 0; }
         .alertes-unsub p { color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 8px; }
         @media (max-width: 600px) {
-            .alertes-hero h1 { font-size: 1.5rem; }
+            .alertes-btn, .alertes-how-cta .btn { width: 100%; justify-content: center; }
+            .alertes-sms-demo { max-width: none; }
         }
     </style>
 </head>
@@ -81,7 +86,7 @@
 {% set nav_active = 'alertes' %}
 {% include '_header.html' %}
 
-<main id="main-content" class="container" role="main" style="max-width:800px">
+<main id="main-content" class="container page-content" role="main">
 
     <!-- Breadcrumb -->
     <nav class="breadcrumb" aria-label="Fil d'Ariane">
@@ -102,10 +107,11 @@
         </p>
     </section>
 
+    <div class="alertes-duo">
     <!-- Aperçu SMS -->
     <div class="alertes-sms-demo">
         <div class="sms-preview">
-            <div class="sms-preview-label">&#128172; Exemple du r&eacute;cap du dimanche (couleurs fictives)&nbsp;:</div>
+            <div class="sms-preview-label">Exemple du r&eacute;cap du dimanche (couleurs fictives)&nbsp;:</div>
             <!-- Même contenu que la fenêtre d'inscription : rempli par updateSmsBubble() (_subscribe_modal.html) -->
             <div class="sms-bubble js-recap-preview">
                 &#128202; <strong>Calendrier Tempo EDF : Semaine &agrave; venir</strong><br><br>
@@ -140,11 +146,13 @@
         </div>
     </section>
 
+    </div>
+
     <!-- Désinscription -->
     <section class="alertes-unsub">
         <p>D&eacute;j&agrave; inscrit ?</p>
         <button type="button" class="link-btn" id="show-unsubscribe">Se d&eacute;sinscrire</button>
-        <form id="unsubscribe-form" class="unsub-form hidden" style="max-width:400px;margin:16px auto 0">
+        <form id="unsubscribe-form" class="unsub-form hidden">
             <div class="form-group">
                 <label for="unsub-phone">Num&eacute;ro de mobile inscrit</label>
                 <input type="tel" id="unsub-phone" name="phone" placeholder="06 12 34 56 78" required autocomplete="tel" inputmode="tel">

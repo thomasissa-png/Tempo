@@ -88,7 +88,7 @@
         .cal-day.bleu.future { border: 1px dashed var(--bleu); }
         .cal-day.rouge.future { background: var(--rouge-bg); color: #B91C1C; border: 1px dashed var(--rouge); }
         .cal-day.today { position: relative; box-shadow: 0 0 0 2px var(--surface), 0 0 0 5px var(--text); font-weight: 800; }
-        .cal-today-label { position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); z-index: 1; padding: 1px 6px; border-radius: 6px; background: var(--text); color: #fff; font-size: 0.65rem; font-style: normal; font-weight: 700; line-height: 1.4; white-space: nowrap; }
+        .cal-today-label { position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); z-index: 1; padding: 0 6px; border-radius: 6px; background: var(--text); color: #fff; font-size: 0.75rem; font-style: normal; font-weight: 700; line-height: 1.4; white-space: nowrap; }
         .cal-intro { margin-bottom: 16px; }
         .cal-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; max-width: 500px; margin: 0 auto 32px; }
         .cal-stat { text-align: center; padding: 16px; border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
@@ -97,18 +97,19 @@
         .cal-stat.rouge .stat-count { color: var(--rouge); }
         .cal-stat.blanc .stat-count { color: var(--text); }
         .cal-stat.bleu .stat-count { color: var(--bleu); }
-        .cal-seo-content { max-width: 800px; margin: 0 auto; padding: 32px 0; }
-        .cal-seo-content h2 { font-size: 1.4rem; margin: 24px 0 12px; color: var(--text); }
-        .cal-seo-content p, .cal-month-summary p { line-height: 1.8; color: var(--text-secondary); margin-bottom: 16px; }
+        .cal-seo-content { max-width: 860px; margin: 0; padding: 24px 0; }
+        .cal-seo-content h2 { margin: 24px 0 12px; color: var(--text); }
+        .cal-seo-content p { line-height: 1.8; color: var(--text-secondary); margin-bottom: 16px; }
         .cal-seo-content strong { color: var(--text); }
-        .cal-month-summary { max-width: 700px; margin: 0 auto 24px; }
         .cal-legend { display: flex; justify-content: center; gap: 24px; margin: 16px 0 24px; flex-wrap: wrap; }
         .cal-legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; }
         .cal-legend-dot { width: 16px; height: 16px; border-radius: 4px; }
-        .cal-month-summary p { font-size: 0.9rem; }
+        .cal-legend-dot.is-rouge { background: var(--rouge); }
+        .cal-legend-dot.is-blanc { background: var(--blanc); border: 1px solid var(--incertain); }
+        .cal-legend-dot.is-bleu { background: var(--bleu); }
+        .cal-legend-dot.is-vide { border: 1px dashed var(--incertain); }
+        .cal-update-bar { text-align: left; margin: -4px 0 4px; }
         .cal-source-note { text-align: center; font-size: 0.8rem; line-height: 1.6; color: var(--text-secondary); margin: 0 auto 24px; max-width: 700px; }
-        .cal-forecast-intro { margin: 0 0 12px; font-size: 0.95rem; color: var(--text-secondary); }
-        .cal-forecast-intro .update-freq { display: block; font-size: 0.85rem; }
         .legend.legend-inline { flex-direction: row; flex-wrap: wrap; gap: 8px 20px; align-items: center; padding: 12px 16px; }
         .legend-inline .legend-item { align-items: center; }
         .legend-inline .legend-note { flex-basis: 100%; margin: 0; }
@@ -125,11 +126,16 @@
             .cal-nav { margin: 16px 0; gap: 6px; flex-wrap: nowrap; }
             .cal-nav a, .cal-nav span, .cal-nav .cal-current { padding: 8px 10px; font-size: 0.85rem; white-space: nowrap; }
             .cal-legend { gap: 4px 8px; margin: 8px 0 12px; flex-wrap: nowrap; }
-            .cal-legend-item { gap: 4px; font-size: 0.74rem; white-space: nowrap; }
+            .cal-legend-item { gap: 4px; font-size: 0.75rem; white-space: nowrap; }
             .cal-legend-dot { width: 11px; height: 11px; flex: none; }
             .cal-legend-long { display: none; }
             .cal-grid { row-gap: 6px; }
-            .cal-today-label { font-size: 0.6rem; padding: 0 5px; bottom: -8px; }
+            .cal-today-label { font-size: 0.75rem; line-height: 1.3; padding: 0 5px; bottom: -10px; }
+        }
+        @media (max-width: 400px) {
+            .cal-nav { gap: 4px; }
+            .cal-nav a, .cal-nav span, .cal-nav .cal-current { padding: 8px 5px; font-size: 0.78rem; }
+            .cal-legend { flex-wrap: wrap; justify-content: center; }
         }
     </style>
 </head>
@@ -196,10 +202,10 @@
 
     <!-- Légende -->
     <div class="cal-legend" aria-hidden="true">
-        <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--rouge)"></div> Rouge</div>
-        <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--blanc);border:1px solid var(--incertain)"></div> Blanc</div>
-        <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--bleu)"></div> Bleu</div>
-        <div class="cal-legend-item"><div class="cal-legend-dot" style="border:1px dashed var(--incertain)"></div> <span>Non publié<span class="cal-legend-long"> ou pas encore prévu</span></span></div>
+        <div class="cal-legend-item"><div class="cal-legend-dot is-rouge"></div> Rouge</div>
+        <div class="cal-legend-item"><div class="cal-legend-dot is-blanc"></div> Blanc</div>
+        <div class="cal-legend-item"><div class="cal-legend-dot is-bleu"></div> Bleu</div>
+        <div class="cal-legend-item"><div class="cal-legend-dot is-vide"></div> <span>Non publié<span class="cal-legend-long"> ou pas encore prévu</span></span></div>
         <div class="cal-legend-item"><em>Italique</em>&nbsp;= pr&eacute;vision</div>
     </div>
 
@@ -223,20 +229,30 @@
         {% endfor %}
     </div>
     <p class="cal-source-note">
-        {% if is_current_month %}Saison {{ season_label }}&nbsp;: du 1<sup>er</sup> septembre au 31 août. {% endif %}Un jour sans donnée reste grisé&nbsp;: nous n'affichons jamais de couleur par défaut. Les couleurs officielles sont les {{ facts.SOURCE_COULEURS_PHRASE }}. Seule la couleur publiée par EDF fait foi.
+        Source&nbsp;: {{ facts.SOURCE_COULEURS_PHRASE }}. Seule la couleur publiée par EDF fait foi.
     </p>
+    <!-- Résumé texte du mois (données réelles uniquement) -->
+    {% set month_has_days = red_days or white_days or predicted_red or predicted_white %}
+    <section class="cal-month-summary {{ 'is-visible' if month_has_days else 'sr-only' }}" aria-label="Résumé de {{ current_month_label }}">
+        <p>
+            <strong>Jours rouges officiels en {{ current_month_label|lower }}&nbsp;:</strong>
+            {% if red_days %}{{ red_days|join(', ') }} ({{ red_days|length }}).{% else %}aucun{% if official_count < num_days %} &agrave; ce jour{% endif %}.{% endif %}
+            <br><strong>Jours blancs officiels&nbsp;:</strong>
+            {% if white_days %}{{ white_days|join(', ') }} ({{ white_days|length }}).{% else %}aucun{% if official_count < num_days %} &agrave; ce jour{% endif %}.{% endif %}
+            {% if predicted_red or predicted_white %}
+            <br><strong>Pr&eacute;visions (non officielles)&nbsp;:</strong>
+            {% if predicted_red %}rouge le {{ predicted_red|join(', ') }}{% endif %}{% if predicted_red and predicted_white %} ; {% endif %}{% if predicted_white %}blanc le {{ predicted_white|join(', ') }}{% endif %}.
+            {% endif %}
+        </p>
+    </section>
 
     {% if is_current_month %}
     <!-- Prévisions détaillées des 15 prochains jours (cartes, chargées par app.min.js) -->
-    <div class="last-update-bar" id="last-update-bar" role="status" aria-live="polite" style="display:none;margin-top:40px">
+    <h2 class="section-title cal-forecast-title">Pr&eacute;visions d&eacute;taill&eacute;es des 15 prochains jours</h2>
+    <div class="last-update-bar cal-update-bar" id="last-update-bar" role="status" aria-live="polite" style="display:none">
         <span id="last-update-text"></span>
     </div>
-    <h2 class="section-title" style="margin-top:16px">Pr&eacute;visions d&eacute;taill&eacute;es des 15 prochains jours</h2>
-    <p class="cal-forecast-intro">
-        <span class="source-label label-prediction">Nos pr&eacute;visions</span>
-        Plus le jour est proche, plus la pr&eacute;vision est fiable.
-        <em class="update-freq">Recalcul&eacute;es {{ facts.CALCUL_PREVISIONS }}.</em>
-    </p>
+    <p class="cal-forecast-intro">Plus le jour est proche, plus la pr&eacute;vision est fiable. Recalcul&eacute;es {{ facts.CALCUL_PREVISIONS }}.</p>
 
     <div class="legend legend-inline">
         <div class="legend-item"><span class="legend-dot" style="background:var(--bleu)" aria-hidden="true"></span><div><strong>Bleu</strong> <span class="legend-price">({{ facts.TARIFS.BLEU.hp|string|replace('.', ',') }}&nbsp;&euro;/kWh)</span></div></div>
@@ -258,19 +274,6 @@
         <button type="button" class="btn btn-primary" onclick="openSubscribeModal()">{{ icons.whatsapp(18, '#fff', 'icon-inline') }}S'inscrire aux alertes gratuites</button>
     </section>
 
-    <!-- Résumé texte du mois (données réelles uniquement) -->
-    <section class="cal-month-summary" aria-label="Résumé de {{ current_month_label }}">
-        <p>
-            <strong>Jours rouges officiels en {{ current_month_label|lower }}&nbsp;:</strong>
-            {% if red_days %}{{ red_days|join(', ') }} ({{ red_days|length }}).{% else %}aucun{% if official_count < num_days %} &agrave; ce jour{% endif %}.{% endif %}
-            <br><strong>Jours blancs officiels&nbsp;:</strong>
-            {% if white_days %}{{ white_days|join(', ') }} ({{ white_days|length }}).{% else %}aucun{% if official_count < num_days %} &agrave; ce jour{% endif %}.{% endif %}
-            {% if predicted_red or predicted_white %}
-            <br><strong>Pr&eacute;visions (non officielles)&nbsp;:</strong>
-            {% if predicted_red %}rouge le {{ predicted_red|join(', ') }}{% endif %}{% if predicted_red and predicted_white %} ; {% endif %}{% if predicted_white %}blanc le {{ predicted_white|join(', ') }}{% endif %}.
-            {% endif %}
-        </p>
-    </section>
 
 
     <!-- FAQ visible (même source que le JSON-LD FAQPage) -->
@@ -299,9 +302,11 @@
     </section>
 
 
-    <!-- Contenu SEO -->
-    <section class="cal-seo-content">
-        <h2>Comprendre le calendrier Tempo EDF</h2>
+    <!-- Contenu SEO : replié sous 768 px, ouvert au-dessus (texte toujours dans le DOM) -->
+    <section class="cal-seo-content cal-seo-content--more" aria-labelledby="comprendre-title">
+        <details class="faq-item cal-seo-more" id="cal-seo-more" open>
+        <summary><h2 id="comprendre-title">Comprendre le calendrier Tempo EDF</h2></summary>
+        <div class="faq-content">
         <p>
             Le <strong>calendrier Tempo EDF</strong> d&eacute;coupe chaque saison (du 1<sup>er</sup> septembre au 31 ao&ucirc;t)
             en trois types de jours : <strong>{{ facts.JOURS_ROUGES }} jours rouges</strong>, <strong>{{ facts.JOURS_BLANCS }} jours blancs</strong> et
@@ -327,6 +332,9 @@
             Consultez aussi la <a href="/couleur-tempo-demain">couleur Tempo de demain</a>, notre <a href="/">page d'accueil</a>
             pour la couleur du jour, ou notre <a href="/blog/">blog</a> pour des conseils d'&eacute;conomies les jours rouges.
         </p>
+        </div>
+        </details>
+        <script>(function () { var d = document.getElementById('cal-seo-more'); if (d && window.matchMedia && window.matchMedia('(max-width: 768px)').matches) { d.open = false; } })();</script>
     </section>
 
 </main>
@@ -334,6 +342,8 @@
 {% include '_subscribe_modal.html' %}
 
 {% include '_footer.html' %}
+
+{% include '_to_top.html' %}
 
 <script src="/static/js/app.min.js?v={{ facts.ASSET_V }}"></script>
 

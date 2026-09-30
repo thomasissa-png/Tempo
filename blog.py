@@ -61,6 +61,7 @@ class Article:
     toc: list | None = None  # [(id, titre), ...] des H2, seulement pour les articles longs
     faq_items: list | None = None  # [(question, answer), ...] extracted from FAQ section
     body_md: str = ""  # Markdown source (sans frontmatter), servi tel quel dans llms-full.txt
+    cta_at: int | None = None  # position (dans content_html) du CTA contextuel des articles longs
 
     @property
     def last_modified(self) -> date:
@@ -137,6 +138,27 @@ def _load_article(filepath: Path) -> Article | None:
     return art
 
 
+def _mid_cta_index(content_html: str) -> int | None:
+    """ART-T2 : position d'un CTA contextuel dans un article long (au moins 4 H2).
+
+    Toujours juste avant un H2 (jamais dans un paragraphe ni avant le 3e H2, jamais avant la FAQ).
+    Si une section parle d'inscription, le CTA se place à la fin de cette section ; sinon avant
+    le H2 le plus proche du milieu du texte.
+    """
+    starts = [m.start() for m in re.finditer(r"<h2[ >]", content_html)]
+    if len(starts) < 4:
+        return None
+    titles = [re.sub(r"<[^>]+>", "", content_html[i:content_html.find("</h2>", i)]) for i in starts]
+    ok = [k for k in range(2, len(starts)) if not re.search(r"faq|questions", titles[k], re.I)]
+    if not ok:
+        return None
+    for k in range(len(starts) - 1):
+        if re.search(r"inscri", titles[k], re.I) and (k + 1) in ok:
+            return starts[k + 1]
+    middle = len(content_html) / 2
+    return starts[min(ok, key=lambda k: abs(starts[k] - middle))]
+
+
 def _toc_level(tokens: list, level: int) -> list:
     """Entrées de sommaire d'un niveau donné (les jetons ``toc`` sont imbriqués)."""
     found = []
@@ -192,6 +214,7 @@ def _parse_article_file(filepath: Path) -> Article | None:
         toc=toc,
         faq_items=faq_items,
         body_md=body.strip(),
+        cta_at=_mid_cta_index(content_html),
     )
 
 

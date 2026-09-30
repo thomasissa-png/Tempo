@@ -1,4 +1,5 @@
 {% extends "_base.html" %}
+{% set long_page = true %}
 {# Rendu : SSR (poids par défaut lus dans config.py, mesure en direct lue en base), cache 1 h #}
 {% block title %}Méthodologie : comment nous prévoyons les jours Tempo EDF{% endblock %}
 {% block description %}Comment nous prévoyons les jours Tempo EDF rouges, blancs et bleus : météo, consommation RTE, scoring pondéré, machine learning, règles EDF et performance.{% endblock %}
@@ -22,23 +23,22 @@
 <article class="legal-content">
     <h1>M&eacute;thodologie&nbsp;: comment nous pr&eacute;voyons les jours Tempo EDF</h1>
     <p class="section-desc">
-        Nos pr&eacute;visions Tempo combinent la m&eacute;t&eacute;o de {{ cities|length }} villes, la consommation d'&eacute;lectricit&eacute; pr&eacute;vue par RTE,
-        le nombre de jours rouges et blancs restant &agrave; placer, un <strong>scoring pond&eacute;r&eacute; sur 7 crit&egrave;res</strong> et deux
-        <strong>mod&egrave;les d'apprentissage automatique</strong>, puis appliquent les r&egrave;gles officielles d'EDF. Nous pr&eacute;voyons chaque jour jusqu'&agrave; {{ facts.HORIZON_MAX_JOURS }} jours &agrave; l'avance&nbsp;: les pr&eacute;visions faites {{ facts.HORIZON_FIABLE_LISIBLE }} sont les plus utiles, celles faites {{ facts.HORIZON_INDICATIF_LISIBLE }} donnent une tendance.
+        Nous croisons la m&eacute;t&eacute;o de {{ cities|length }} villes, la consommation d'&eacute;lectricit&eacute; pr&eacute;vue par RTE et les r&egrave;gles officielles d'EDF pour estimer la couleur Tempo des {{ facts.HORIZON_MAX_JOURS }} prochains jours. Les pr&eacute;visions faites {{ facts.HORIZON_FIABLE_LISIBLE }} sont les plus utiles, celles faites {{ facts.HORIZON_INDICATIF_LISIBLE }} donnent une tendance.
     </p>
     <nav class="page-toc" aria-label="Sommaire">
         <ul>
+            <li><a href="#performance" class="page-toc-primary">Ce que valent nos pr&eacute;visions</a></li>
             <li><a href="#donnees">Donn&eacute;es</a></li>
             <li><a href="#score">Score</a></li>
             <li><a href="#apprentissage">Apprentissage</a></li>
             <li><a href="#regles">R&egrave;gles EDF</a></li>
-            <li><a href="#performance">Performance</a></li>
             <li><a href="#limites">Limites</a></li>
         </ul>
     </nav>
 
     <section class="legal-section" aria-labelledby="donnees">
         <h2 id="donnees">1. Les donn&eacute;es</h2>
+    <p>En d&eacute;tail&nbsp;: la m&eacute;t&eacute;o, la consommation pr&eacute;vue par RTE et le nombre de jours rouges et blancs restant &agrave; placer alimentent un <strong>scoring pond&eacute;r&eacute; sur 7 crit&egrave;res</strong> et deux <strong>mod&egrave;les d'apprentissage automatique</strong>, puis les r&egrave;gles officielles d'EDF s'appliquent.</p>
     <ul>
         <li><strong>M&eacute;t&eacute;o</strong>&nbsp;: M&eacute;t&eacute;o France (mod&egrave;les AROME et ARPEGE), moyenne pond&eacute;r&eacute;e de {{ cities|length }} villes
             ({{ cities|join(', ') }})&nbsp;; Open-Meteo pour les jours au-del&agrave; de la port&eacute;e de M&eacute;t&eacute;o France, et en secours. Sans m&eacute;t&eacute;o, aucune pr&eacute;vision n'est publi&eacute;e.</li>
@@ -60,10 +60,13 @@
         </tbody>
     </table>
     </div>
-    <p>Depuis le 29 septembre 2026, ces poids ne sont plus recalcul&eacute;s automatiquement&nbsp;: une mise &agrave; jour n'est faite qu'apr&egrave;s validation
+    <details class="history-details">
+        <summary>Détail du recalcul des poids et des seuils</summary>
+        <p>Depuis le 29 septembre 2026, ces poids ne sont plus recalcul&eacute;s automatiquement&nbsp;: une mise &agrave; jour n'est faite qu'apr&egrave;s validation
         manuelle (r&eacute;gression logistique sur nos pr&eacute;visions pass&eacute;es), avec des garde-fous&nbsp;: un nouveau jeu de poids n'est adopt&eacute; que s'il atteint
         des seuils minimaux de qualit&eacute; sur les donn&eacute;es les plus r&eacute;centes, et il est annul&eacute; automatiquement si la pr&eacute;cision baisse ensuite. En novembre et d&eacute;cembre, la temp&eacute;rature p&egrave;se davantage. Les seuils de d&eacute;cision (rouge, blanc) varient
         avec la temp&eacute;rature et s'abaissent quand il reste beaucoup de jours rouges &agrave; placer avant le 31 mars.</p>
+    </details>
     </section>
 
     <section class="legal-section" aria-labelledby="apprentissage">
@@ -89,6 +92,11 @@
         <h2 id="performance">5. Performance&nbsp;: ce que disent nos chiffres</h2>
     <h3>En conditions r&eacute;elles</h3>
     {% if ref %}
+    <div class="counters method-counters" role="list" aria-label="Saison {{ ref.label }} en chiffres">
+        <div class="counter-card bleu" role="listitem"><div class="count">{% if ref.justes_pct is not none %}{{ ref.justes_pct }}&nbsp;%{% else %}{{ ref.justes }} sur {{ ref.emises }}{% endif %}</div><div class="label">de pr&eacute;visions justes en {{ ref.label }}</div></div>
+        {% if ref.ROUGE.reels_emis %}<div class="counter-card rouge" role="listitem"><div class="count">{{ ref.ROUGE.annonces }} sur {{ ref.ROUGE.reels_emis }}</div><div class="label">jours rouges annonc&eacute;s &agrave; l'avance</div></div>{% endif %}
+        {% if ref.BLANC.reels_emis %}<div class="counter-card blanc" role="listitem"><div class="count">{{ ref.BLANC.annonces }} sur {{ ref.BLANC.reels_emis }}</div><div class="label">jours blancs annonc&eacute;s &agrave; l'avance</div></div>{% endif %}
+    </div>
     <p><strong>Saison {{ ref.label }}&nbsp;: {{ ref.justes_pct }}&nbsp;%</strong> de couleurs exactes, toutes couleurs confondues, soit {{ ref.justes }} pr&eacute;visions justes sur les {{ ref.emises }} pr&eacute;visions faites {{ facts.HORIZON_FIABLE_LISIBLE }} et r&eacute;ellement &eacute;mises ({{ ref.erronees }} erron&eacute;e{{ 's' if ref.erronees > 1 }}), compar&eacute;es aux couleurs publi&eacute;es par EDF. C'est la derni&egrave;re saison compl&egrave;te.</p>
     <ul class="method-bref">
         <li>Couverture&nbsp;: {{ ref.emises }} pr&eacute;visions &eacute;mises sur {{ ref.jours }} attendues ({{ ref.sans_prevision }} sans pr&eacute;vision{% if ref.jours_sans_calcul %}, {{ ref.jours_sans_calcul }} jour{{ 's' if ref.jours_sans_calcul > 1 }} sans calcul{% endif %})&nbsp;: une pr&eacute;vision absente n'est ni juste ni erron&eacute;e, elle est compt&eacute;e &agrave; part.</li>
@@ -116,8 +124,9 @@
     </ul>
     </section>
 
-    <p>Voir aussi&nbsp;: <a href="/calendrier">calendrier Tempo EDF</a>, <a href="/couleur-tempo-demain">couleur de demain</a>,
-        <a href="/api-tempo">API Tempo</a>, <a href="/a-propos">&agrave; propos</a>.</p>
+    <nav class="history-seasons method-see-also" aria-label="Voir aussi">
+        <a href="/calendrier">Calendrier Tempo EDF</a><a href="/couleur-tempo-demain">Couleur de demain</a><a href="/api-tempo">API Tempo</a><a href="/a-propos">&Agrave; propos</a>
+    </nav>
 
     <section class="blog-cta page-cta">
         <h2>Anticipez les {{ facts.ALERTES_HORIZON_JOURS }} prochains jours Tempo</h2>

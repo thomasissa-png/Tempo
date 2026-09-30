@@ -1,4 +1,5 @@
 {% extends "_base.html" %}
+{% set long_page = true %}
 {% set nav_active = 'historique' %}
 {# Rendu : SSR à chaque requête depuis predictions/performance/actuals (prédictions réelles uniquement, figées à leur émission), cache mémoire 5 min + HTTP 10 min #}
 {% set noms = {'BLEU': 'Bleu', 'BLANC': 'Blanc', 'ROUGE': 'Rouge'} %}
@@ -11,7 +12,7 @@
                 <td class="num">{{ ratio(hz.ROUGE.alertes_justes, hz.ROUGE.alertes, hz.ROUGE.precision_pct, 'aucune') }}</td>
                 <td class="num">{{ ratio(hz.BLANC.annonces, hz.BLANC.reels_emis, hz.BLANC.rappel_pct, 'aucun') }}</td>
                 <td class="num">{{ ratio(hz.BLANC.alertes_justes, hz.BLANC.alertes, hz.BLANC.precision_pct, 'aucune') }}</td>
-                {% endif %}<td class="num">{{ ratio(hz.justes, hz.emises, hz.justes_pct, 'aucune prévision') }}{% if hz.sans_prevision %}<span class="hb-sub">+ {{ hz.sans_prevision }} jour{{ 's' if hz.sans_prevision > 1 }} sans prévision</span>{% endif %}</td>
+                {% endif %}<td class="num">{{ ratio(hz.justes, hz.emises, hz.justes_pct, 'aucune prévision') }}{% if hz.sans_prevision %}<span class="hb-sub">+ {{ hz.sans_prevision }}<span class="hide-sm"> jour{{ 's' if hz.sans_prevision > 1 }}</span> sans prévision</span>{% endif %}</td>
                 <td class="num">{{ ratio(hz.toujours_bleu, hz.emises, hz.toujours_bleu_pct, 'aucun jour') }}</td>
             </tr>
 {% endmacro %}
@@ -104,6 +105,9 @@
     end();
     edges();
     window.addEventListener('load', function () { end(); edges(); });
+    /* HIS-T3 : détail « En bref » ouvert à l'ordinateur, replié sur mobile (contenu toujours dans le DOM) */
+    var bd = document.getElementById('bref-detail');
+    if (bd && window.matchMedia && window.matchMedia('(min-width: 769px)').matches) { bd.open = true; }
     /* HIS-02 : 14 jours visibles, le reste de la saison à la demande (toutes les lignes sont dans le HTML) */
     var more = document.getElementById('hg-show-all');
     var wrap = document.querySelector('.history-grid-scroll');

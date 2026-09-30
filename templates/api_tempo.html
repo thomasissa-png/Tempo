@@ -33,10 +33,14 @@
 {% block extra_head %}
     <style>
         .api-doc pre { background: var(--cta-dark); color: #E2E8F0; padding: 14px 16px; border-radius: var(--radius-sm); overflow-x: auto; font-size: 0.85rem; line-height: 1.5; margin: 0; }
+        /* Ap1 / API-T1 : barre d'outils au-dessus du code (le bouton ne recouvre jamais la 1re ligne) */
+        .api-code { background: var(--cta-dark); border-radius: var(--radius-sm); }
+        .api-code-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 4px 6px 0 16px; color: #CBD5E1; font-size: 0.8rem; }
+        .api-code-bar + pre { padding-top: 6px; border-radius: 0 0 var(--radius-sm) var(--radius-sm); }
         .api-doc pre:focus-visible { outline: 3px solid var(--bleu); outline-offset: 2px; }
         .api-doc pre code { color: inherit; }
-        .api-code { position: relative; margin: 8px 0 20px; }
-        .api-copy { position: absolute; top: 8px; right: 8px; min-height: 36px; padding: 4px 12px; border: 1px solid rgba(255,255,255,.35); border-radius: 50px; background: var(--cta-dark-lighter); color: #fff; font: inherit; font-size: 0.8rem; cursor: pointer; }
+        .api-code { margin: 8px 0 20px; }
+        .api-copy { flex: none; min-height: 44px; min-width: 44px; padding: 4px 14px; border: 1px solid rgba(255,255,255,.35); border-radius: 50px; background: var(--cta-dark-lighter); color: #fff; font: inherit; font-size: 0.8rem; cursor: pointer; }
         .api-copy:hover { background: #334155; }
         .api-copy:focus-visible { outline: 3px solid var(--bleu); outline-offset: 2px; }
         .api-endpoints code { white-space: nowrap; }
@@ -51,6 +55,12 @@
             .api-endpoints td { margin-top: 4px; }
             .api-endpoints td.api-cache { font-size: 0.85rem; color: var(--text-secondary); }
             .api-endpoints td.api-cache::before { content: "Cache : "; }
+            .api-fields thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+            .api-fields, .api-fields tbody, .api-fields tr, .api-fields th, .api-fields td { display: block; }
+            .api-fields tr { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+            .api-fields tbody tr:last-child { border-bottom: 0; }
+            .api-fields th, .api-fields td { padding: 0; border: 0; }
+            .api-fields td { margin-top: 2px; }
         }
     </style>
 {% endblock %}
@@ -89,7 +99,7 @@
         (<code>BLEU</code>, <code>BLANC</code> ou <code>ROUGE</code>), <code>code</code> (1 = bleu, 2 = blanc, 3 = rouge).
         Tant qu'EDF n'a pas publi&eacute; la couleur de demain, <code>/api/tomorrow</code> renvoie <code>status: "unavailable"</code>
         et un <code>message</code>. {{ facts.ANNONCE_J1 }}.</p>
-    <div class="api-code"><pre tabindex="0"><code>$ curl https://www.calendrier-tempo.fr/api/today
+    <div class="api-code api-code--wrap" data-label="Exemple (forme de la réponse)"><pre tabindex="0"><code>$ curl https://www.calendrier-tempo.fr/api/today
 {"status": "ok", "date": "AAAA-MM-JJ", "couleur": "BLEU", "code": 1}</code></pre></div>
 
     <h2>/api/remaining</h2>
@@ -98,13 +108,24 @@
         et, quand ils sont disponibles, les compteurs relay&eacute;s dans <code>edf_official</code>.</p>
 
     <h2>/api/predictions</h2>
-    <p>Champs&nbsp;: <code>predictions</code> (liste), <code>generated_at</code>, <code>cycle_id</code>, <code>accuracy</code>.
-        Chaque pr&eacute;vision contient <code>date</code>, <code>couleur_predite</code>, <code>probabilite_bleu</code>,
-        <code>probabilite_blanc</code>, <code>probabilite_rouge</code> (entre 0 et 1), <code>score_risque</code>,
-        <code>temp_min_prevue</code>, <code>temp_max_prevue</code>, <code>temp_moy_prevue</code> (temp&eacute;rature moyenne pr&eacute;vue en &deg;C,
-        pond&eacute;r&eacute;e sur 9 villes, 1 d&eacute;cimale, <code>null</code> si absente&nbsp;: c'est la valeur affich&eacute;e sous chaque jour du calendrier),
-        <code>raison</code>, <code>horizon</code> et
-        <code>confirmed</code> (<code>true</code> quand la couleur officielle EDF est connue&nbsp;: elle remplace alors la pr&eacute;vision).</p>
+    <p>R&eacute;ponse&nbsp;: <code>predictions</code> (liste), <code>generated_at</code>, <code>cycle_id</code>, <code>accuracy</code>. Chaque pr&eacute;vision de la liste contient les champs suivants.</p>
+    <div class="table-scroll">
+    <table class="data-table api-fields">
+        <caption class="sr-only">Champs de la r&eacute;ponse de /api/predictions</caption>
+        <thead><tr><th scope="col">Champ</th><th scope="col">Contenu</th></tr></thead>
+        <tbody>
+            <tr><th scope="row"><code>date</code></th><td>jour concern&eacute; (AAAA-MM-JJ)</td></tr>
+            <tr><th scope="row"><code>couleur_predite</code></th><td><code>BLEU</code>, <code>BLANC</code> ou <code>ROUGE</code></td></tr>
+            <tr><th scope="row"><code>probabilite_bleu</code>, <code>probabilite_blanc</code>, <code>probabilite_rouge</code></th><td>probabilit&eacute; de chaque couleur, entre 0 et 1</td></tr>
+            <tr><th scope="row"><code>score_risque</code></th><td>score de risque calcul&eacute; par notre mod&egrave;le (100 au maximum)&nbsp;: plus il est &eacute;lev&eacute;, plus le jour risque d'&ecirc;tre rouge</td></tr>
+            <tr><th scope="row"><code>temp_min_prevue</code>, <code>temp_max_prevue</code></th><td>temp&eacute;ratures minimale et maximale pr&eacute;vues (&deg;C)</td></tr>
+            <tr><th scope="row"><code>temp_moy_prevue</code></th><td>temp&eacute;rature moyenne pr&eacute;vue en &deg;C, pond&eacute;r&eacute;e sur 9 villes, 1 d&eacute;cimale, <code>null</code> si absente&nbsp;: c'est la valeur affich&eacute;e sous chaque jour du calendrier</td></tr>
+            <tr><th scope="row"><code>raison</code></th><td>explication courte de la pr&eacute;vision (&laquo;&nbsp;Couleur officielle EDF&nbsp;&raquo; une fois la couleur publi&eacute;e)</td></tr>
+            <tr><th scope="row"><code>horizon</code></th><td>libell&eacute; du d&eacute;lai de la pr&eacute;vision (par exemple <code>J-3</code>)</td></tr>
+            <tr><th scope="row"><code>confirmed</code></th><td><code>true</code> quand la couleur officielle EDF est connue&nbsp;: elle remplace alors la pr&eacute;vision</td></tr>
+        </tbody>
+    </table>
+    </div>
 
     <h2>/api/history</h2>
     <p>Param&egrave;tre <code>days</code> (1 &agrave; 365, 30 par d&eacute;faut). R&eacute;ponse&nbsp;: <code>history</code>, liste de
@@ -112,7 +133,7 @@
 
     <h2>Exemple Home Assistant</h2>
     <p>Capteur REST qui lit la couleur du jour (&agrave; placer dans <code>configuration.yaml</code>)&nbsp;:</p>
-    <div class="api-code"><pre tabindex="0"><code>{% raw %}sensor:
+    <div class="api-code" data-label="configuration.yaml"><pre tabindex="0"><code>{% raw %}sensor:
   - platform: rest
     name: "Tempo couleur du jour"
     resource: https://www.calendrier-tempo.fr/api/today
@@ -138,6 +159,11 @@
     if (!navigator.clipboard) return;
     Array.prototype.forEach.call(document.querySelectorAll('.api-code'), function (box) {
         var pre = box.querySelector('pre');
+        var bar = document.createElement('div');
+        bar.className = 'api-code-bar';
+        var lab = document.createElement('span');
+        lab.textContent = box.getAttribute('data-label') || '';
+        bar.appendChild(lab);
         var btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'api-copy';
@@ -148,7 +174,9 @@
                 setTimeout(function () { btn.textContent = 'Copier'; }, 2000);
             });
         });
-        box.appendChild(btn);
+        btn.setAttribute('aria-label', 'Copier le code' + (lab.textContent ? ' : ' + lab.textContent : ''));
+        bar.appendChild(btn);
+        box.insertBefore(bar, pre);
     });
 })();
 </script>

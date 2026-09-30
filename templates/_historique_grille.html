@@ -1,9 +1,6 @@
 {# Grille J-15 → J-1 de /historique-previsions (incluse par historique_previsions.html) #}
     <h2 id="jour-par-jour">Jour par jour, de 15 jours avant à la veille</h2>
-    <p>
-        Du {{ h.first_date }} au {{ h.last_date }}, {{ h.nb_days }} jour{{ 's' if h.nb_days > 1 }} dont la couleur officielle est connue, du plus récent au plus ancien.
-        Chaque colonne <strong>J-N</strong> montre la couleur prévue <strong>N jours avant</strong> et, dessous, la température moyenne prévue alors.
-    </p>
+    <p>Du {{ h.first_date }} au {{ h.last_date }} ({{ h.nb_days }} jour{{ 's' if h.nb_days > 1 }} dont la couleur officielle est connue), du plus récent au plus ancien. Colonne <strong>J-N</strong>&nbsp;: couleur prévue <strong>N jours avant</strong> et, dessous, température moyenne prévue alors.</p>
     <ul class="history-legend" aria-label="Légende de la grille">
         <li><span class="hg-dot hg-rouge hg-ok" aria-hidden="true"></span> juste</li>
         <li><span class="hg-dot hg-rouge hg-ko" aria-hidden="true"></span> erronée</li>
@@ -21,13 +18,6 @@
             <li><span class="hg-fiable-sample" aria-hidden="true"></span> zone la plus fiable (2 à 5 jours avant)</li>
         </ul>
     </details>
-    {% if h.jours_sans_calcul %}
-    <details class="history-details history-gaps" data-umami-event="history_gaps_open">
-        <summary>Jours sans calcul de prévision ({{ h.jours_sans_calcul|length }})</summary>
-        <p>{{ h.jours_sans_calcul_txt }}.</p>
-        <p class="history-note">Un jour sans calcul retire une case à chacun des 15 jours suivants&nbsp;: c'est pourquoi les cases vides forment des diagonales.</p>
-    </details>
-    {% endif %}
     {% if h.veille_publiee %}
     <p class="history-note">Colonne J-1 (la veille)&nbsp;: quand EDF avait déjà publié la couleur, vers 11&nbsp;h, avant notre calcul de 18&nbsp;h, il n'y avait plus rien à prévoir&nbsp;: la case affiche la couleur officielle et ne compte dans aucun taux.</p>
     {% endif %}

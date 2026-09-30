@@ -25,12 +25,16 @@
 <article class="legal-content">
     <h1>Jours rouges et blancs Tempo EDF&nbsp;: <span class="nowrap">saison {{ s.season_label }}</span></h1>
     <p class="section-desc">
-        La saison Tempo {{ s.season_label }} court du {{ s.season_start[8:10]|int }}<sup>er</sup> septembre {{ s.season_start[:4] }}
-        au 31 août {{ s.season_end[:4] }}. Voici les couleurs <strong>officielles publiées par EDF</strong>, sans aucune estimation,
-        telles que les relaie api-couleur-tempo.fr, un service tiers qui diffuse les données Tempo EDF/RTE.
+        Couleurs <strong>officielles publiées par EDF</strong> du {{ s.season_start[8:10]|int }}<sup>er</sup> septembre {{ s.season_start[:4] }}
+        au 31 août {{ s.season_end[:4] }}, sans aucune estimation, relayées par api-couleur-tempo.fr.
     </p>
 
     {% if s.days_with_data %}
+    <div class="counters season-counters" role="list" aria-label="Saison {{ s.season_label }} en chiffres">
+        <div class="counter-card rouge" role="listitem"><div class="count">{{ s.counts.ROUGE }}&nbsp;/&nbsp;{{ facts.JOURS_ROUGES }}</div><div class="label">jours rouges publi&eacute;s</div></div>
+        <div class="counter-card blanc" role="listitem"><div class="count">{{ s.counts.BLANC }}&nbsp;/&nbsp;{{ facts.JOURS_BLANCS }}</div><div class="label">jours blancs publi&eacute;s</div></div>
+        <div class="counter-card bleu" role="listitem"><div class="count">{{ s.counts.BLEU }}</div><div class="label">jours bleus publi&eacute;s</div></div>
+    </div>
     <p>
         {% if s.complete %}
         <strong>{{ s.counts.ROUGE }} jours rouges</strong>, <strong>{{ s.counts.BLANC }} jours blancs</strong> et
