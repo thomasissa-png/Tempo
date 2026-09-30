@@ -34,7 +34,9 @@
     <style>
         .api-doc pre { background: #0F172A; color: #E2E8F0; padding: 14px 16px; border-radius: var(--radius-sm); overflow-x: auto; font-size: 0.85rem; line-height: 1.5; }
         .api-doc code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-        .api-table { width: 100%; border-collapse: collapse; margin: 12px 0 24px; }
+        .api-table-wrap { overflow-x: auto; margin: 12px 0 24px; }
+        .api-table { width: 100%; border-collapse: collapse; }
+        .api-table code { overflow-wrap: anywhere; }
         .api-table th, .api-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
     </style>
 {% endblock %}
@@ -54,6 +56,7 @@
     </p>
 
     <h2>Les endpoints</h2>
+    <div class="api-table-wrap">
     <table class="api-table">
         <caption class="sr-only">Endpoints publics de l'API Tempo</caption>
         <thead><tr><th scope="col">Endpoint</th><th scope="col">Contenu</th><th scope="col">Cache</th></tr></thead>
@@ -66,6 +69,7 @@
             <tr><th scope="row"><code>GET /api/performance/badge</code></th><td>Taux de pr&eacute;visions correctes de {{ facts.HORIZON_FIABLE }} sur 30 jours</td><td>5 min</td></tr>
         </tbody>
     </table>
+    </div>
 
     <h2>/api/today et /api/tomorrow</h2>
     <p>Champs&nbsp;: <code>status</code> (<code>ok</code> ou <code>unavailable</code>), <code>date</code> (AAAA-MM-JJ), <code>couleur</code>
