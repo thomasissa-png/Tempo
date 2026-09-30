@@ -216,17 +216,24 @@ def _load_preds(conn, start: str) -> tuple[dict, dict]:
             preds[key]["temp"] = v["temp"]  # couleur figée + température de la ligne
 
     # 3) Température prévue manquante : journal des prévisions météo du jour d'émission.
+    log = None
     if any(v["temp"] is None for v in preds.values()):
-        log = {}
-        for w in conn.execute(
-            "SELECT target_date, forecast_date, temp_moy FROM weather_forecast_log "
-            "WHERE target_date >= ? AND temp_moy IS NOT NULL", (start,),
-        ).fetchall():
-            log[(str(w["target_date"])[:10], str(w["forecast_date"])[:10])] = _num(w["temp_moy"])
+        log = _load_forecast_log(conn, start)
         for (d, _n), v in preds.items():
             if v["temp"] is None:
                 v["temp"] = log.get((d, v["emise_le"][:10]))
-    return preds, {"emissions": emissions, "publiee_avant_calcul": publiee}
+    return preds, {"emissions": emissions, "publiee_avant_calcul": publiee, "forecast_log": log}
+
+
+def _load_forecast_log(conn, start: str) -> dict:
+    """{(date cible, jour d'émission): température moyenne prévue} (weather_forecast_log)."""
+    log = {}
+    for w in conn.execute(
+        "SELECT target_date, forecast_date, temp_moy FROM weather_forecast_log "
+        "WHERE target_date >= ? AND temp_moy IS NOT NULL", (start,),
+    ).fetchall():
+        log[(str(w["target_date"])[:10], str(w["forecast_date"])[:10])] = _num(w["temp_moy"])
+    return log
 
 
 def _load_actuals(conn, start: str) -> tuple[dict, dict, dict]:
@@ -323,6 +330,30 @@ def _bref(fiables: list[dict]) -> dict:
             "toujours_bleu_pct": _pct(tot["toujours_bleu"], tot["emises"]), **col}
 
 
+def _couleurs_voisines(cells: dict) -> dict[int, str]:
+    """Cases sans prévision encadrées par deux prévisions de même couleur (décision
+    fondateur du 2026-09-30, rendu seulement) : {N: couleur}.
+
+    Sur la même ligne (même date cible), on prend la prévision émise la plus proche
+    avant (délai plus grand) et la plus proche après (délai plus petit). Mêmes
+    couleurs : la case reprend cette couleur. Couleurs différentes ou un seul côté :
+    la case reste vide. Ces cases ne sont JAMAIS des prévisions : cells[N] reste None
+    (couverture « sans prévision »), aucun taux ni effectif ne les compte, rien n'est
+    écrit en base.
+    """
+    out = {}
+    for n in HORIZONS:
+        if cells.get(n) is not None:
+            continue
+        avant = next((cells[m] for m in range(n + 1, max(HORIZONS) + 1)
+                      if isinstance(cells.get(m), dict)), None)
+        apres = next((cells[m] for m in range(n - 1, 0, -1)
+                      if isinstance(cells.get(m), dict)), None)
+        if avant and apres and avant["couleur"] == apres["couleur"]:
+            out[n] = avant["couleur"]
+    return out
+
+
 def _jours_sans_calcul(emissions: set, start_d: date | None, today: date) -> list[str]:
     """Jours d'émission sans AUCUN calcul enregistré, de la première émission à hier.
 
@@ -353,6 +384,7 @@ def _build(conn, today: date) -> dict:
     sans_calcul = _jours_sans_calcul(info["emissions"], start_d, today)
     sans_calcul_set = set(sans_calcul)
     publiee = info["publiee_avant_calcul"]
+    forecast_log = info.get("forecast_log")
 
     by_season: dict[int, list] = {}
     for d_iso in sorted(actuals):
@@ -375,8 +407,16 @@ def _build(conn, today: date) -> dict:
                         causes[n] = ("publiee", e_iso)
         if all(c == NA for c in cells.values()):
             continue  # service pas encore lancé pour ce jour, quel que soit l'horizon
+        remplies = {}
+        for n, couleur in _couleurs_voisines(cells).items():
+            if forecast_log is None:
+                forecast_log = _load_forecast_log(conn, start)
+            # Température réelle prévue ce jour-là, sinon aucune (jamais interpolée).
+            e_iso = (d - timedelta(days=n)).isoformat()
+            remplies[n] = {"couleur": couleur, "temp": forecast_log.get((d_iso, e_iso))}
         by_season.setdefault(season_start_year(d), []).append(
             {"date": d_iso, "couleur": actuals[d_iso], "cells": cells, "causes": causes,
+             "remplies": remplies,
              "temp_observee": observed.get(d_iso),
              "confirme_le": confirmed_at.get(d_iso, "")})
 
@@ -480,11 +520,17 @@ CSV_HEADER = (
 )
 
 
+VOISINES_CSV = "non enregistrée (couleur des prévisions voisines)"
+VOISINES_TXT = "couleur des prévisions voisines, calcul non enregistré ce jour-là"
+
+
 def to_csv(data: dict) -> str:
     """Toutes les saisons, mêmes lignes que la grille jour par jour.
 
     Prévision absente : cellules vides. Service pas encore lancé à cet horizon : n/a.
-    Température prévue non conservée : vide.
+    Température prévue non conservée : vide. Case reprise des prévisions voisines
+    (aucun calcul enregistré ce jour-là) : couleur, température réelle si connue,
+    et « emise_le » = VOISINES_CSV à la place d'une date d'émission.
     """
     import csv
     import io
@@ -500,6 +546,9 @@ def to_csv(data: dict) -> str:
                     row += [NA, NA, NA]
                 elif c:
                     row += [c["couleur"], _fr_temp(c["temp"]), c["emise_le"]]
+                elif n in d.get("remplies", {}):
+                    v = d["remplies"][n]
+                    row += [v["couleur"], _fr_temp(v["temp"]), VOISINES_CSV]
                 else:
                     row += ["", "", ""]
             w.writerow(row)
@@ -529,11 +578,22 @@ def _temp_label(t: float | None) -> str:
     return site_facts.fr_temp(t) or "n/d"
 
 
-def _grid_cell(cell, n: int, reel: str, cause: tuple | None = None) -> dict:
+def _grid_cell(cell, n: int, reel: str, cause: tuple | None = None,
+               remplie: dict | None = None) -> dict:
     import site_facts
     avant = "la veille" if n == 1 else f"{n} jours avant"
     if cell == NA:
         return {"state": "na", "title": f"{avant.capitalize()} : service pas encore lancé"}
+    if not cell and remplie:
+        # Rendu identique à une prévision émise (coche ou croix), seule l'infobulle diffère.
+        juste = remplie["couleur"] == reel
+        t = site_facts.fr_temp(remplie["temp"])
+        parts = [f"{avant.capitalize()} : {NOMS[remplie['couleur']]}, {'juste' if juste else 'erroné'}",
+                 VOISINES_TXT[0].upper() + VOISINES_TXT[1:]]
+        if t is not None:
+            parts.append(f"température moyenne prévue {t[:-1]} °C")
+        return {"state": "ok", "voisine": True, "couleur": remplie["couleur"], "juste": juste,
+                "temp": t or "", "has_temp": t is not None, "title": " ; ".join(parts)}
     if not cell:
         if cause and cause[0] == "interruption":
             e = site_facts.fr_date(date.fromisoformat(cause[1]), with_weekday=False)
@@ -612,7 +672,8 @@ def page_context(data: dict, label: str, current_label: str, today: date | None 
                 "label_long": site_facts.fr_date(dd),
                 "couleur": d["couleur"],
                 "temp_observee": _temp_label(d["temp_observee"]),
-                "cells": [_grid_cell(d["cells"][n], n, d["couleur"], causes.get(n)) for n in GRID_HORIZONS],
+                "cells": [_grid_cell(d["cells"][n], n, d["couleur"], causes.get(n),
+                                     d.get("remplies", {}).get(n)) for n in GRID_HORIZONS],
             })
         hz = s["horizons"]
         if not show_pct:
@@ -631,8 +692,9 @@ def page_context(data: dict, label: str, current_label: str, today: date | None 
                     else _mask_pcts(_bref([h for h in hz if h["fiable"]])),
             "indicatifs": [h for h in hz if h["n"] > max(RELIABLE)],
             "rows": rows,
-            "temp_manquante": any(c["state"] == "ok" and not c["has_temp"]
+            "temp_manquante": any(c["state"] == "ok" and not c["has_temp"] and not c.get("voisine")
                                   for r in rows for c in r["cells"]),
+            "voisines": any(c.get("voisine") for r in rows for c in r["cells"]),
             "jours_sans_calcul": sans_calcul,
             "jours_sans_calcul_txt": _fr_liste_dates(sans_calcul),
             "veille_publiee": any(c.get("cause") == "publiee" for r in rows for c in r["cells"]),

@@ -262,7 +262,9 @@ class TestCsvAndSeo:
         got = [by_date["2026-02-02"][f"prevision_J-{n}"] for n in (5, 4, 3, 2)]
         assert got == ["ROUGE", "", "BLANC", "ROUGE"]
         got = [by_date["2026-02-05"][f"prevision_J-{n}"] for n in (5, 4, 3, 2)]
-        assert got == ["BLANC", "", "BLANC", "BLEU"]
+        # J-4 : aucune prévision réelle, encadrée par BLANC et BLANC -> couleur des voisines
+        assert got == ["BLANC", "BLANC", "BLANC", "BLEU"]
+        assert by_date["2026-02-05"]["emise_le_J-4"].startswith("non enregistrée")
         assert by_date["2026-02-02"]["prevision_J-15"] == ""
 
     def test_jsonld_and_meta(self, client, monkeypatch):
@@ -422,3 +424,120 @@ class TestAdminUnchanged:
         _season_view()
         after = get_daily_recap("2025-2026")
         assert before == after and before and before[0]["date"] == "2026-02-10"
+
+
+# ------------------------------------------------------------ Cases reprises des prévisions voisines
+
+def _forecast_log(target: str, emitted: str, temp: float):
+    from database import get_db
+    conn = get_db()
+    conn.execute(
+        "INSERT INTO weather_forecast_log (target_date, forecast_date, horizon_days, temp_moy, "
+        "fetched_at) VALUES (?, ?, ?, ?, ?)",
+        (target, emitted, (date.fromisoformat(target) - date.fromisoformat(emitted)).days,
+         temp, emitted + "T18:00:00"))
+    conn.commit()
+    conn.close()
+
+
+class TestCouleursVoisines:
+    """Décision fondateur du 2026-09-30 : rendu seulement, jamais compté."""
+    D = "2026-02-10"  # officiel BLEU
+    E = "2026-02-11"  # officiel ROUGE
+
+    def _case(self, monkeypatch):
+        monkeypatch.setattr("config.Config.PREDICTION_START_DATE", "2026-01-01")
+        d, e = self.D, self.E
+        _actual(d, "BLEU")
+        _actual(e, "ROUGE")
+        # D : 12 BLEU | 8 BLANC | 6 BLEU | 3 BLEU ; seules 5 et 4 sont encadrées par la même couleur
+        for n, c in {12: "BLEU", 8: "BLANC", 6: "BLEU", 3: "BLEU"}.items():
+            _pred(d, _before(d, n), c, temp=4.0 + n)
+        _forecast_log(d, _before(d, 4), 5.5)  # vraie température prévue le jour d'émission J-4
+        _forecast_log(d, _before(d, 7), 9.9)  # case non remplie : jamais affichée
+        # E : BLEU encadre J-4, officiel ROUGE -> case remplie évaluée « erronée »
+        _pred(e, _before(e, 5), "BLEU", temp=3.0)
+        _pred(e, _before(e, 3), "BLEU", temp=2.0)
+
+    def test_fill_rule(self, monkeypatch):
+        self._case(monkeypatch)
+        days = {d["date"]: d for d in _season_view()["days"]}
+        assert set(days[self.D]["remplies"]) == {4, 5}
+        assert days[self.D]["remplies"][4] == {"couleur": "BLEU", "temp": 5.5}
+        assert days[self.D]["remplies"][5] == {"couleur": "BLEU", "temp": None}  # jamais interpolée
+        assert set(days[self.E]["remplies"]) == {4}
+        # Les cellules restent vides : ce ne sont pas des prévisions
+        assert days[self.D]["cells"][4] is None and days[self.D]["cells"][5] is None
+
+    def test_no_fill_when_colours_differ_or_one_side(self):
+        from prediction_history import _couleurs_voisines, NA
+        cells = {n: None for n in range(1, 16)}
+        cells[8] = {"couleur": "BLANC"}
+        cells[6] = {"couleur": "BLEU"}
+        assert _couleurs_voisines(cells) == {}  # 7 : couleurs différentes ; 1-5, 9-15 : un seul côté
+        cells.update({n: NA for n in range(13, 16)})
+        cells[12] = {"couleur": "BLANC"}
+        assert _couleurs_voisines(cells) == {9: "BLANC", 10: "BLANC", 11: "BLANC"}
+
+    def test_stats_unchanged(self, monkeypatch):
+        self._case(monkeypatch)
+        s = _season_view()
+        for n in (4, 5):
+            h = _hz(s, n)
+            assert h["sans_prevision"] == (2 if n == 4 else 1)
+            assert h["emises"] == (0 if n == 4 else 1) and h["justes"] == 0
+        assert _hz(s, 3)["emises"] == 2 and _hz(s, 3)["justes"] == 1
+        from prediction_history import season_summary
+        b = season_summary(get_history_force(), "2025-2026")
+        assert (b["emises"], b["justes"], b["sans_prevision"]) == (3, 1, 5)
+
+    def test_stats_identical_with_and_without_fill(self, monkeypatch):
+        """Les cases reprises ne modifient aucun effectif ni taux (bilan, bref, badge)."""
+        self._case(monkeypatch)
+        from prediction_history import last_complete_season_summary
+        with_fill = get_history_force()
+        monkeypatch.setattr("prediction_history._couleurs_voisines", lambda cells: {})
+        without = get_history_force()
+        a, b = with_fill["seasons"]["2025-2026"], without["seasons"]["2025-2026"]
+        assert a["horizons"] == b["horizons"]
+        assert sum(len(d["remplies"]) for d in a["days"]) == 3
+        assert sum(len(d["remplies"]) for d in b["days"]) == 0
+        today = date(2026, 9, 30)
+        assert last_complete_season_summary(with_fill, today) == last_complete_season_summary(without, today)
+
+    def test_grid_rendering(self, client, monkeypatch):
+        self._case(monkeypatch)
+        page = client.get(PAGE + "/2025-2026").text
+        grid = re.search(r'<table class="history-grid-table">.*?</table>', page, re.S).group(0)
+        rows = {m.group(1): m.group(0) for m in re.finditer(
+            r'<tr[^>]*>\s*<th scope="row" class="hg-date"><time datetime="([\d-]+)".*?</tr>', grid, re.S)}
+        cells_d = re.findall(r'<td class="hg-cell[^"]*" title="([^"]*)">(.*?)</td>', rows[self.D], re.S)
+        by_n = {15 - i: c for i, c in enumerate(cells_d)}
+        title4, html4 = by_n[4]
+        assert "4 jours avant : Bleu, juste ; Couleur des prévisions voisines, calcul non enregistré ce jour-là" in title4
+        assert "température moyenne prévue 5,5 °C" in title4
+        assert 'class="hg-dot hg-bleu hg-ok"' in html4 and "5,5°" in html4
+        assert "hg-none" not in html4
+        title5, html5 = by_n[5]
+        assert 'class="hg-dot hg-bleu hg-ok"' in html5 and "hg-temp" not in html5 and "°" not in title5
+        assert "9,9°" not in grid and "hg-none" in by_n[7][1]
+        cells_e = re.findall(r'<td class="hg-cell[^"]*" title="([^"]*)">(.*?)</td>', rows[self.E], re.S)
+        assert 'class="hg-dot hg-bleu hg-ko"' in cells_e[15 - 4][1]
+        assert "reprend cette couleur" in page and "sans coche" not in page
+        # Une case reprise sans température n'est pas une température « non conservée »
+        assert "hg-nd" not in grid and "température prévue non conservée" not in page
+
+    def test_csv(self, client, monkeypatch):
+        self._case(monkeypatch)
+        body = client.get(PAGE + ".csv").content.decode("utf-8-sig")
+        rows = list(csv.reader(io.StringIO(body), delimiter=";"))
+        row = dict(zip(rows[0], [r for r in rows if r[1] == self.D][0]))
+        assert (row["prevision_J-4"], row["temp_prevue_J-4"]) == ("BLEU", "5,5")
+        assert row["emise_le_J-4"].startswith("non enregistrée")
+        assert (row["prevision_J-5"], row["temp_prevue_J-5"]) == ("BLEU", "")
+        assert (row["prevision_J-7"], row["prevision_J-2"], row["prevision_J-13"]) == ("", "", "")
+
+
+def get_history_force():
+    from prediction_history import get_history
+    return get_history(force=True)

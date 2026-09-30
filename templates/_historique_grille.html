@@ -15,7 +15,8 @@
             <li><span class="hg-dot hg-rouge hg-ok" aria-hidden="true"></span> prévision juste (coche, anneau vert)</li>
             <li><span class="hg-dot hg-rouge hg-ko" aria-hidden="true"></span> prévision erronée (croix, anneau rouge)</li>
             <li><span class="hg-dot hg-bleu" aria-hidden="true"></span> bleu, <span class="hg-dot hg-blanc" aria-hidden="true"></span> blanc, <span class="hg-dot hg-rouge" aria-hidden="true"></span> rouge</li>
-            <li><span class="hg-none" aria-hidden="true"></span> <strong>pas de prévision</strong>&nbsp;: soit le calcul de 18&nbsp;h n'a pas pu aller au bout ce jour-là (service interrompu), soit, pour la veille, EDF avait déjà publié la couleur du lendemain avant notre calcul. Nous ne recréons jamais une prévision après coup&nbsp;: ces cases ne comptent ni comme justes ni comme erronées, elles sont comptées à part (couverture).</li>
+            <li><span class="hg-none" aria-hidden="true"></span> <strong>pas de prévision</strong>&nbsp;: soit le calcul de 18&nbsp;h n'a pas pu aller au bout ce jour-là (service interrompu), soit, pour la veille, EDF avait déjà publié la couleur du lendemain avant notre calcul. Aucune prévision n'est recalculée après coup&nbsp;: ces cases ne comptent ni comme justes ni comme erronées, elles sont comptées à part (couverture).</li>
+            {% if h.voisines %}<li>Une case sans calcul enregistré située entre deux prévisions de même couleur reprend cette couleur (voir l'infobulle)&nbsp;; elle ne compte dans aucun taux.</li>{% endif %}
             <li><span class="hg-na-sample" aria-hidden="true"></span> service pas encore lancé</li>
             <li><span class="hg-fiable-sample" aria-hidden="true"></span> zone la plus fiable (2 à 5 jours avant)</li>
         </ul>
@@ -50,7 +51,7 @@
                 {% for c in r.cells %}
                 <td class="hg-cell{% if c.state == 'na' %} hg-na{% endif %}{% if 2 <= grid_horizons[loop.index0] <= 5 %} hg-fiable{% endif %}" title="{{ c.title }}">
                     {%- if c.state == 'ok' -%}
-                    <span class="hg-dot hg-{{ c.couleur|lower }} {{ 'hg-ok' if c.juste else 'hg-ko' }}" aria-hidden="true"></span><span class="hg-temp{% if not c.has_temp %} hg-nd{% endif %}" aria-hidden="true">{{ c.temp }}</span>
+                    <span class="hg-dot hg-{{ c.couleur|lower }} {{ 'hg-ok' if c.juste else 'hg-ko' }}" aria-hidden="true"></span>{% if c.has_temp or not c.voisine %}<span class="hg-temp{% if not c.has_temp %} hg-nd{% endif %}" aria-hidden="true">{{ c.temp }}</span>{% endif %}
                     {%- elif c.state == 'absente' -%}
                     <span class="hg-none{% if c.cause %} hg-none-{{ c.cause }}{% endif %}" aria-hidden="true"></span>
                     {%- endif -%}

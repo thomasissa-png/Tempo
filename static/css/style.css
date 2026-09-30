@@ -2691,7 +2691,7 @@ select:focus-visible {
 .hg-cell .hg-dot { display: flex; margin: 4px auto 3px; }
 .hg-temp { display: block; font-size: 0.7rem; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 .hg-temp.hg-nd { color: var(--blanc); }
-/* Pas de prévision : petit point gris clair discret (jamais une case remplie ni déduite) */
+/* Pas de prévision : petit point gris clair discret */
 .hg-none { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #C4C9D2; vertical-align: middle; }
 .hg-cell .hg-none { display: block; margin: 10px auto; }
 .hg-na-sample, .hg-fiable-sample { display: inline-block; width: 18px; height: 14px; border: 1px solid var(--border); border-radius: 3px; background: var(--incertain-bg); }
