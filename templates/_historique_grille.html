@@ -1,20 +1,27 @@
 {# Grille J-15 → J-1 de /historique-previsions (incluse par historique_previsions.html) #}
     <h2 id="jour-par-jour">Jour par jour, de 15 jours avant à la veille</h2>
     <p>
-        Du {{ h.first_date }} au {{ h.last_date }}, {{ h.nb_days }} jour{{ 's' if h.nb_days > 1 }} dont la couleur officielle est connue,
-        du plus récent au plus ancien. Chaque colonne <strong>J-N</strong> montre la couleur que nous prévoyions
-        <strong>N jours avant</strong> et, dessous, la température moyenne prévue à ce moment-là. En lisant une ligne de gauche
-        à droite, on voit la prévision évoluer avec la météo jusqu'à la veille.
+        Du {{ h.first_date }} au {{ h.last_date }}, {{ h.nb_days }} jour{{ 's' if h.nb_days > 1 }} dont la couleur officielle est connue, du plus récent au plus ancien.
+        Chaque colonne <strong>J-N</strong> montre la couleur prévue <strong>N jours avant</strong> et, dessous, la température moyenne prévue alors.
     </p>
     <ul class="history-legend" aria-label="Légende de la grille">
-        <li><span class="hg-dot hg-rouge hg-ok" aria-hidden="true"></span> prévision juste (coche, anneau vert)</li>
-        <li><span class="hg-dot hg-rouge hg-ko" aria-hidden="true"></span> prévision erronée (croix, anneau rouge)</li>
-        <li><span class="hg-dot hg-bleu" aria-hidden="true"></span> bleu, <span class="hg-dot hg-blanc" aria-hidden="true"></span> blanc, <span class="hg-dot hg-rouge" aria-hidden="true"></span> rouge</li>
-        <li><span class="hg-none" aria-hidden="true"></span> aucune prévision émise ce jour-là (comptée comme manquée)</li>
-        <li><span class="hg-na-sample" aria-hidden="true"></span> service pas encore lancé</li>
-        <li><span class="hg-fiable-sample" aria-hidden="true"></span> zone la plus fiable (2 à 5 jours avant)</li>
+        <li><span class="hg-dot hg-rouge hg-ok" aria-hidden="true"></span> juste</li>
+        <li><span class="hg-dot hg-rouge hg-ko" aria-hidden="true"></span> erronée</li>
+        <li><span class="hg-none" aria-hidden="true"></span> pas de prévision</li>
     </ul>
+    <details class="history-details history-legend-more">
+        <summary>Légende complète</summary>
+        <ul class="history-legend" aria-label="Légende complète de la grille">
+            <li><span class="hg-dot hg-rouge hg-ok" aria-hidden="true"></span> prévision juste (coche, anneau vert)</li>
+            <li><span class="hg-dot hg-rouge hg-ko" aria-hidden="true"></span> prévision erronée (croix, anneau rouge)</li>
+            <li><span class="hg-dot hg-bleu" aria-hidden="true"></span> bleu, <span class="hg-dot hg-blanc" aria-hidden="true"></span> blanc, <span class="hg-dot hg-rouge" aria-hidden="true"></span> rouge</li>
+            <li><span class="hg-none" aria-hidden="true"></span> aucune prévision émise ce jour-là (comptée comme manquée)</li>
+            <li><span class="hg-na-sample" aria-hidden="true"></span> service pas encore lancé</li>
+            <li><span class="hg-fiable-sample" aria-hidden="true"></span> zone la plus fiable (2 à 5 jours avant)</li>
+        </ul>
+    </details>
     <p class="table-scroll-hint" aria-hidden="true">Faites défiler la grille horizontalement pour voir toutes les colonnes.</p>
+    <div class="table-scroll-wrap">
     <div class="table-scroll history-grid-scroll" role="region" aria-label="Grille des prévisions de 15 jours avant à la veille" tabindex="0">
     <table class="history-grid-table">
         <caption class="sr-only">Pour chaque jour de la saison {{ season_label }} : couleur prévue et température moyenne prévue de 15 jours avant à la veille, couleur officielle et température observée</caption>
@@ -28,7 +35,7 @@
         </thead>
         <tbody>
         {% for r in h.rows %}
-            <tr>
+            <tr{% if loop.index > 14 %} class="hg-more"{% endif %}>
                 <th scope="row" class="hg-date"><time datetime="{{ r.iso }}" title="{{ r.label_long }}">{{ r.label }}</time></th>
                 {% for c in r.cells %}
                 <td class="hg-cell{% if c.state == 'na' %} hg-na{% endif %}{% if 2 <= grid_horizons[loop.index0] <= 5 %} hg-fiable{% endif %}" title="{{ c.title }}">
@@ -47,6 +54,11 @@
         </tbody>
     </table>
     </div>
+    </div>
+    {% if h.rows|length > 14 %}
+    <noscript><style>.history-grid-table .hg-more { display: table-row !important; }</style></noscript>
+    <p class="history-more"><button type="button" class="btn btn-outline" id="hg-show-all" hidden data-umami-event="history_expand_all">Afficher toute la saison ({{ h.nb_days }} jours)</button></p>
+    {% endif %}
     {% if h.temp_manquante %}
     <p class="history-note">n/d&nbsp;: température prévue non conservée pour cette prévision (données anciennes&nbsp;: seule la couleur émise a été gardée).</p>
     {% endif %}

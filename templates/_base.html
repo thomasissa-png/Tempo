@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>{% block title %}{% endblock %}</title>
     <meta name="description" content="{% block description %}{% endblock %}">
     {% block robots %}{% endblock %}
@@ -17,7 +17,7 @@
     <link rel="apple-touch-icon" href="/static/favicon-180.png">
     <meta name="application-name" content="Calendrier Tempo">
     <meta name="apple-mobile-web-app-title" content="Calendrier Tempo">
-    <meta name="theme-color" content="#1565C0">
+    <meta name="theme-color" content="#2563EB">
     <link rel="manifest" href="/manifest.json">
     {% if canonical_path is defined %}
     <meta property="og:title" content="{{ self.title() }}">
@@ -38,8 +38,8 @@
     {% if breadcrumb_ld is defined %}<script type="application/ld+json">{{ breadcrumb_ld|tojson }}</script>{% endif %}
     {% block jsonld %}{% endblock %}
     <link rel="preload" href="/static/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="/static/css/fonts.css?v=20260929">
-    <link rel="stylesheet" href="/static/css/style.min.css?v=20260929b">
+    <link rel="stylesheet" href="/static/css/fonts.css?v={{ facts.ASSET_V }}">
+    <link rel="stylesheet" href="/static/css/style.min.css?v={{ facts.ASSET_V }}">
     <script defer src="https://cloud.umami.is/script.js" data-website-id="1d187359-b4a6-4ba8-ba41-c449b356832f"></script>
     {% block extra_head %}{% endblock %}
 </head>
@@ -47,30 +47,9 @@
 
 <a href="#main-content" class="skip-link">Aller au contenu principal</a>
 
-<header role="banner">
-    <div class="container header-row">
-        <a href="/" class="header-brand">
-            <svg class="header-logo" viewBox="0 0 100 100" width="32" height="32" aria-hidden="true"><circle cx="50" cy="50" r="45" fill="#fff"/><circle cx="50" cy="50" r="40" fill="#2563EB"/><path d="M50 10A40 40 0 0 1 90 50H10A40 40 0 0 1 50 10z" fill="#DC2626"/><circle cx="50" cy="50" r="16" fill="#fff"/></svg>
-            <span class="header-title">Calendrier Tempo EDF</span>
-        </a>
-        <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu de navigation" aria-expanded="false" aria-controls="main-nav">
-            <span class="bar"></span>
-            <span class="bar"></span>
-            <span class="bar"></span>
-        </button>
-        {% set nav_active = nav_active|default('') %}
-        <nav id="main-nav" aria-label="Navigation principale">
-            <a href="/"{% if nav_active == 'accueil' %} class="active" aria-current="page"{% endif %}>Accueil</a>
-            <a href="/calendrier"{% if nav_active == 'calendrier' %} class="active"{% endif %}>Calendrier</a>
-            <a href="/tarif-tempo-edf"{% if nav_active == 'tarifs' %} class="active" aria-current="page"{% endif %}>Tarifs</a>
-            <a href="/historique-previsions"{% if nav_active == 'historique' %} class="active" aria-current="page"{% endif %}>Historique</a>
-            <a href="/blog/"{% if nav_active == 'blog' %} class="active"{% endif %}>Blog</a>
-            <button type="button" class="nav-cta" onclick="openSubscribeModal()">Alertes gratuites</button>
-        </nav>
-    </div>
-</header>
+{% include '_header.html' %}
 
-<main id="main-content" class="container page-content" role="main">
+<main id="main-content" class="container {% block main_class %}page-content{% endblock %}" role="main">
     {% block breadcrumb %}{% endblock %}
     {% block content %}{% endblock %}
 </main>
@@ -79,17 +58,6 @@
 
 {% include '_footer.html' %}
 
-<script>
-(function() {
-    var btn = document.getElementById('hamburger-btn');
-    var nav = document.getElementById('main-nav');
-    if (!btn || !nav) return;
-    btn.addEventListener('click', function() {
-        var open = nav.classList.toggle('open');
-        btn.setAttribute('aria-expanded', open);
-    });
-})();
-</script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

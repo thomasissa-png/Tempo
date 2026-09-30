@@ -1,8 +1,9 @@
+{% import '_icons.html' as icons -%}
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Alertes EDF Tempo gratuites | Calendrier Tempo EDF</title>
     <meta name="description" content="Alertes Tempo EDF gratuites par WhatsApp : les 7 prochains jours chaque dimanche et une alerte avant chaque jour rouge. Inscription en 30 secondes.">
     {% if bing_verification %}<meta name="msvalidate.01" content="{{ bing_verification }}">{% endif %}
@@ -18,7 +19,7 @@
     <link rel="apple-touch-icon" href="/static/favicon-180.png">
     <meta name="application-name" content="Calendrier Tempo">
     <meta name="apple-mobile-web-app-title" content="Calendrier Tempo">
-    <meta name="theme-color" content="#1565C0">
+    <meta name="theme-color" content="#2563EB">
     <link rel="manifest" href="/manifest.json">
     <!-- Open Graph -->
     <meta property="og:title" content="Alertes EDF Tempo gratuites">
@@ -49,29 +50,26 @@
     </script>
     <link rel="preconnect" href="https://cloud.umami.is" crossorigin>
     <link rel="preload" href="/static/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="/static/css/fonts.css?v=20260929">
-    <link rel="preload" href="/static/css/style.min.css?v=20260929b" as="style">
-    <link rel="stylesheet" href="/static/css/style.min.css?v=20260929b">
+    <link rel="stylesheet" href="/static/css/fonts.css?v={{ facts.ASSET_V }}">
+    <link rel="preload" href="/static/css/style.min.css?v={{ facts.ASSET_V }}" as="style">
+    <link rel="stylesheet" href="/static/css/style.min.css?v={{ facts.ASSET_V }}">
     <script defer src="https://cloud.umami.is/script.js" data-website-id="1d187359-b4a6-4ba8-ba41-c449b356832f"></script>
     <style>
         .alertes-hero { text-align: center; padding: 32px 0 24px; }
-        .alertes-hero h1 { font-size: 1.8rem; margin-bottom: 12px; }
+        .alertes-hero h1 { font-size: 1.8rem; line-height: 1.25; margin-bottom: 12px; }
+        .alertes-reassure { margin-top: 12px; font-size: 0.9rem; color: var(--text-secondary); }
+        .alertes-proof { margin-top: 4px; font-size: 0.9rem; color: var(--text-secondary); }
         .alertes-hero .hero-desc { font-size: 1.1rem; color: var(--text-secondary); max-width: 600px; margin: 0 auto 24px; line-height: 1.6; }
         .alertes-btn { font-size: 1.1rem; padding: 14px 32px; }
-        .alertes-features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin: 32px 0; }
-        .alertes-feature { text-align: center; padding: 24px 16px; background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); }
-        .alertes-feature-icon { font-size: 2rem; margin-bottom: 8px; }
-        .alertes-feature h3 { font-size: 1rem; margin-bottom: 6px; }
-        .alertes-feature p { font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5; }
-        .alertes-sms-demo { max-width: 400px; margin: 32px auto; }
+        .alertes-sms-demo { max-width: 400px; margin: 8px auto 32px; }
         .alertes-how { max-width: 600px; margin: 0 auto 32px; }
         .alertes-how ol { padding-left: 24px; }
         .alertes-how li { margin-bottom: 12px; line-height: 1.6; color: var(--text-secondary); }
         .alertes-how li strong { color: var(--text); }
+        .alertes-how-cta { text-align: center; margin-top: 20px; }
         .alertes-unsub { text-align: center; margin: 24px 0 32px; }
         .alertes-unsub p { color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 8px; }
         @media (max-width: 600px) {
-            .alertes-features { grid-template-columns: 1fr; max-width: 400px; margin: 24px auto; }
             .alertes-hero h1 { font-size: 1.5rem; }
         }
     </style>
@@ -80,27 +78,8 @@
 
 <a href="#main-content" class="skip-link">Aller au contenu principal</a>
 
-<header role="banner">
-    <div class="container header-row">
-        <a href="/" class="header-brand">
-            <svg class="header-logo" viewBox="0 0 100 100" width="32" height="32" aria-hidden="true"><circle cx="50" cy="50" r="45" fill="#fff"/><circle cx="50" cy="50" r="40" fill="#2563EB"/><path d="M50 10A40 40 0 0 1 90 50H10A40 40 0 0 1 50 10z" fill="#DC2626"/><circle cx="50" cy="50" r="16" fill="#fff"/></svg>
-            <span class="header-title">Calendrier Tempo EDF</span>
-        </a>
-        <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu de navigation" aria-expanded="false" aria-controls="main-nav">
-            <span class="bar"></span>
-            <span class="bar"></span>
-            <span class="bar"></span>
-        </button>
-        <nav id="main-nav" aria-label="Navigation principale">
-            <a href="/">Accueil</a>
-            <a href="/calendrier">Calendrier</a>
-            <a href="/tarif-tempo-edf">Tarifs</a>
-            <a href="/historique-previsions">Historique</a>
-            <a href="/blog/">Blog</a>
-            <button type="button" class="nav-cta active" aria-current="page" onclick="openSubscribeModal()">Alertes gratuites</button>
-        </nav>
-    </div>
-</header>
+{% set nav_active = 'alertes' %}
+{% include '_header.html' %}
 
 <main id="main-content" class="container" role="main" style="max-width:800px">
 
@@ -116,33 +95,13 @@
             100% gratuit, sans engagement, d&eacute;sinscription en 1 clic.
         </p>
         <button type="button" class="btn btn-primary alertes-btn" onclick="openSubscribeModal()">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="#fff" style="vertical-align:middle;margin-right:6px" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>S'inscrire gratuitement
+            {{ icons.whatsapp(20, '#fff', 'icon-inline') }}S'inscrire gratuitement
         </button>
-        <p style="margin-top:12px;font-size:0.9rem;color:var(--text-secondary)">
+        <p class="alertes-reassure">Gratuit &middot; Sans application (WhatsApp) &middot; Num&eacute;ro chiffr&eacute;, jamais partag&eacute; &middot; D&eacute;sinscription en 1 clic</p>
+        <p class="alertes-proof">
             D&eacute;j&agrave; <strong>{{ facts.FOYERS_ALERTES_HTML|safe }} foyers Tempo</strong> alert&eacute;s dans toute la France.
         </p>
     </section>
-
-    <!-- 3 avantages -->
-    <div class="alertes-features">
-        <div class="alertes-feature">
-            <div class="alertes-feature-icon" aria-hidden="true">&#9888;&#65039;</div>
-            <h3>Anticiper les 7 prochains jours</h3>
-            <p>Pr&eacute;visions rouge, blanc et bleu pour la semaine : planifiez lessive, four et recharge VE &agrave; l'avance.</p>
-        </div>
-        <div class="alertes-feature">
-            <div class="alertes-feature-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="32" height="32" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-            </div>
-            <h3>Via WhatsApp, sur votre mobile</h3>
-            <p>Pas d'appli suppl&eacute;mentaire. Les alertes arrivent directement sur WhatsApp.</p>
-        </div>
-        <div class="alertes-feature">
-            <div class="alertes-feature-icon" aria-hidden="true">&#128274;</div>
-            <h3>Gratuit et s&eacute;curis&eacute;</h3>
-            <p>Votre num&eacute;ro est chiffr&eacute; et jamais partag&eacute;. D&eacute;sinscription en 1 clic &agrave; tout moment.</p>
-        </div>
-    </div>
 
     <!-- Aperçu SMS -->
     <div class="alertes-sms-demo">
@@ -171,9 +130,10 @@
             <li><strong>Recevez</strong> {{ facts.ALERTES_DESCRIPTION }}.</li>
             <li><strong>Adaptez votre conso</strong> : reportez vos usages gourmands aux jours bleus.</li>
         </ol>
-        <div style="text-align:center;margin-top:20px">
+        <p>D&eacute;tail complet dans notre guide&nbsp;: <a href="/blog/alerte-jour-rouge-tempo">&ecirc;tre pr&eacute;venu d'un jour rouge</a>.</p>
+        <div class="alertes-how-cta">
             <button type="button" class="btn btn-primary alertes-btn" onclick="openSubscribeModal()">
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="#fff" style="vertical-align:middle;margin-right:6px" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>Recevoir mes alertes gratuites
+                {{ icons.whatsapp(20, '#fff', 'icon-inline') }}Recevoir mes alertes gratuites
             </button>
         </div>
     </section>
@@ -200,16 +160,6 @@
 
 <script>
 (function() {
-    // Hamburger menu
-    var btn = document.getElementById('hamburger-btn');
-    var nav = document.getElementById('main-nav');
-    if (btn && nav) {
-        btn.addEventListener('click', function() {
-            var open = nav.classList.toggle('open');
-            btn.setAttribute('aria-expanded', open);
-        });
-    }
-
     // Show/hide unsubscribe form
     var showUnsub = document.getElementById('show-unsubscribe');
     var unsubForm = document.getElementById('unsubscribe-form');

@@ -16,16 +16,6 @@
         "publisher": {"@type": "Organization", "name": "Calendrier Tempo EDF", "url": "https://www.calendrier-tempo.fr/"}
     }|tojson }}</script>
 {% endblock %}
-{% block extra_head %}
-    <style>
-        .tarif-table-wrap { overflow-x: auto; margin: 16px 0 8px; }
-        .tarif-table { width: 100%; max-width: 640px; border-collapse: collapse; }
-        @media (max-width: 480px) { .tarif-table th, .tarif-table td { padding: 8px 6px; font-size: 0.9rem; } }
-        .tarif-table th, .tarif-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: left; }
-        .tarif-table td.num, .tarif-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
-        .tarif-table tr.rouge th { color: var(--rouge); }
-    </style>
-{% endblock %}
 {% block breadcrumb %}
     <nav class="breadcrumb" aria-label="Fil d'Ariane">
         <a href="/">Accueil</a><span aria-hidden="true">&rsaquo;</span><span aria-current="page">Tarif Tempo EDF</span>
@@ -40,23 +30,26 @@
         un jour blanc et <strong>{{ prix(T.ROUGE.hp) }}&nbsp;&euro;/kWh</strong> un jour rouge (TTC). Le prix du kWh est le m&ecirc;me
         quelle que soit la puissance souscrite&nbsp;; seul l'abonnement varie.
     </p>
+    <p><a href="/">Voir la couleur Tempo d'aujourd'hui et de demain</a></p>
 
     <h2>Grille tarifaire Tempo EDF (TTC)</h2>
-    <div class="tarif-table-wrap">
-    <table class="tarif-table">
+    <div class="table-scroll">
+    <table class="data-table">
         <caption class="sr-only">Prix du kWh Tempo EDF par couleur et par plage horaire, TTC, au {{ facts.TARIFS_DATE_EFFET_FR }}</caption>
         <thead>
-            <tr><th scope="col">Couleur du jour</th><th scope="col" class="num">Heures pleines ({{ facts.HEURES_PLEINES }})</th><th scope="col" class="num">Heures creuses ({{ facts.HEURES_CREUSES }})</th></tr>
+            <tr><th scope="col">Couleur du jour</th><th scope="col" class="num">Heures pleines <small>{{ facts.HEURES_PLEINES }}</small></th><th scope="col" class="num">Heures creuses <small>{{ facts.HEURES_CREUSES }}</small></th></tr>
         </thead>
         <tbody>
-            <tr><th scope="row">Jour bleu ({{ facts.JOURS_BLEUS }} jours/saison)</th><td class="num">{{ prix(T.BLEU.hp) }}&nbsp;&euro;/kWh</td><td class="num">{{ prix(T.BLEU.hc) }}&nbsp;&euro;/kWh</td></tr>
-            <tr><th scope="row">Jour blanc ({{ facts.JOURS_BLANCS }} jours/saison)</th><td class="num">{{ prix(T.BLANC.hp) }}&nbsp;&euro;/kWh</td><td class="num">{{ prix(T.BLANC.hc) }}&nbsp;&euro;/kWh</td></tr>
-            <tr class="rouge"><th scope="row">Jour rouge ({{ facts.JOURS_ROUGES }} jours/saison)</th><td class="num">{{ prix(T.ROUGE.hp) }}&nbsp;&euro;/kWh</td><td class="num">{{ prix(T.ROUGE.hc) }}&nbsp;&euro;/kWh</td></tr>
+            <tr><th scope="row"><span class="color-tag bleu">Jour bleu</span> <span class="hb-sub">({{ facts.JOURS_BLEUS }} jours/saison)</span></th><td class="num">{{ prix(T.BLEU.hp) }}&nbsp;&euro;/kWh</td><td class="num">{{ prix(T.BLEU.hc) }}&nbsp;&euro;/kWh</td></tr>
+            <tr><th scope="row"><span class="color-tag blanc">Jour blanc</span> <span class="hb-sub">({{ facts.JOURS_BLANCS }} jours/saison)</span></th><td class="num">{{ prix(T.BLANC.hp) }}&nbsp;&euro;/kWh</td><td class="num">{{ prix(T.BLANC.hc) }}&nbsp;&euro;/kWh</td></tr>
+            <tr class="rouge"><th scope="row"><span class="color-tag rouge">Jour rouge</span> <span class="hb-sub">({{ facts.JOURS_ROUGES }} jours/saison)</span></th><td class="num">{{ prix(T.ROUGE.hp) }}&nbsp;&euro;/kWh</td><td class="num">{{ prix(T.ROUGE.hc) }}&nbsp;&euro;/kWh</td></tr>
         </tbody>
     </table>
     </div>
-    <p><small>Source&nbsp;: {{ facts.TARIFS_SOURCE }}. V&eacute;rifiez toujours les prix sur votre contrat EDF.
-        Les tarifs r&eacute;glement&eacute;s &eacute;voluent en g&eacute;n&eacute;ral en f&eacute;vrier et en ao&ucirc;t.</small></p>
+    <p class="form-hint">Source&nbsp;: {{ facts.TARIFS_SOURCE }}. V&eacute;rifiez toujours les prix sur votre contrat EDF.
+        Les tarifs r&eacute;glement&eacute;s &eacute;voluent en g&eacute;n&eacute;ral en f&eacute;vrier et en ao&ucirc;t.</p>
+    <p class="form-hint">Et l'abonnement&nbsp;? Son prix d&eacute;pend de la puissance souscrite (en kVA). Nous ne le reproduisons pas ici tant qu'il
+        n'est pas confirm&eacute; par une source officielle&nbsp;: reportez-vous &agrave; votre contrat ou &agrave; la grille tarifaire d'EDF.</p>
 
     <h2>Heures pleines, heures creuses et journ&eacute;e Tempo</h2>
     <p>
@@ -76,17 +69,17 @@
         Votre consommation r&eacute;elle d&eacute;pend de votre logement et de vos &eacute;quipements&nbsp;: refaites le calcul avec vos propres kWh.
     </p>
 
-    <h2>Et l'abonnement&nbsp;?</h2>
-    <p>
-        Le prix de l'abonnement Tempo d&eacute;pend de la puissance souscrite (en kVA). Nous ne le reproduisons pas ici tant qu'il
-        n'est pas confirm&eacute; par une source officielle&nbsp;: reportez-vous &agrave; votre contrat ou &agrave; la grille tarifaire d'EDF.
-    </p>
-
     <h2>Anticiper les jours rouges</h2>
     <p>
         Consultez le <a href="/calendrier">calendrier Tempo EDF</a> et la <a href="/couleur-tempo-demain">couleur Tempo de demain</a>,
         ou recevez gratuitement nos <a href="/alertes">alertes WhatsApp</a>&nbsp;: {{ facts.ALERTES_DESCRIPTION }}.
         Conseils pratiques sur le <a href="/blog/">blog</a>.
     </p>
+
+    <section class="blog-cta page-cta">
+        <h2>Anticipez les {{ facts.ALERTES_HORIZON_JOURS }} prochains jours Tempo</h2>
+        <p>Recevez gratuitement par WhatsApp {{ facts.ALERTES_DESCRIPTION }}.</p>
+        <button type="button" class="btn" onclick="openSubscribeModal()">S'inscrire aux alertes gratuites</button>
+    </section>
 </article>
 {% endblock %}

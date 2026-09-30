@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>&Agrave; propos du Calendrier Tempo EDF : m&eacute;thodologie</title>
     <meta name="description" content="Cr&eacute;&eacute; par des clients EDF Tempo pour anticiper les jours rouges. D&eacute;couvrez notre m&eacute;thodologie de pr&eacute;vision et nos sources de donn&eacute;es.">
     {% if bing_verification %}<meta name="msvalidate.01" content="{{ bing_verification }}">{% endif %}
@@ -18,7 +18,7 @@
     <link rel="apple-touch-icon" href="/static/favicon-180.png">
     <meta name="application-name" content="Calendrier Tempo">
     <meta name="apple-mobile-web-app-title" content="Calendrier Tempo">
-    <meta name="theme-color" content="#1565C0">
+    <meta name="theme-color" content="#2563EB">
     <link rel="manifest" href="/manifest.json">
     <meta property="og:title" content="&Agrave; propos du Calendrier Tempo EDF : qui sommes-nous">
     <meta property="og:description" content="Cr&eacute;&eacute; par des clients Tempo EDF pour anticiper les jours rouges et &eacute;conomiser. M&eacute;thodologie, sources et transparence.">
@@ -68,41 +68,21 @@
     }
     </script>
     <link rel="preload" href="/static/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="/static/css/fonts.css?v=20260929">
-    <link rel="preload" href="/static/css/style.min.css?v=20260929b" as="style">
-    <link rel="stylesheet" href="/static/css/style.min.css?v=20260929b">
+    <link rel="stylesheet" href="/static/css/fonts.css?v={{ facts.ASSET_V }}">
+    <link rel="preload" href="/static/css/style.min.css?v={{ facts.ASSET_V }}" as="style">
+    <link rel="stylesheet" href="/static/css/style.min.css?v={{ facts.ASSET_V }}">
     <script defer src="https://cloud.umami.is/script.js" data-website-id="1d187359-b4a6-4ba8-ba41-c449b356832f"></script>
 </head>
 <body>
 
 <a href="#main-content" class="skip-link">Aller au contenu principal</a>
 
-<header role="banner">
-    <div class="container header-row">
-        <a href="/" class="header-brand">
-            <svg class="header-logo" viewBox="0 0 100 100" width="32" height="32" aria-hidden="true"><circle cx="50" cy="50" r="45" fill="#fff"/><circle cx="50" cy="50" r="40" fill="#2563EB"/><path d="M50 10A40 40 0 0 1 90 50H10A40 40 0 0 1 50 10z" fill="#DC2626"/><circle cx="50" cy="50" r="16" fill="#fff"/></svg>
-            <span class="header-title">Calendrier Tempo EDF</span>
-        </a>
-        <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu de navigation" aria-expanded="false" aria-controls="main-nav">
-            <span class="bar"></span>
-            <span class="bar"></span>
-            <span class="bar"></span>
-        </button>
-        <nav id="main-nav" aria-label="Navigation principale">
-            <a href="/">Accueil</a>
-            <a href="/calendrier">Calendrier</a>
-            <a href="/tarif-tempo-edf">Tarifs</a>
-            <a href="/historique-previsions">Historique</a>
-            <a href="/blog/">Blog</a>
-            <button type="button" class="nav-cta" onclick="openSubscribeModal()">Alertes gratuites</button>
-        </nav>
-    </div>
-</header>
+{% include '_header.html' %}
 
-<main id="main-content" class="container" role="main" style="max-width:800px">
+<main id="main-content" class="container page-content" role="main">
 
-    <nav aria-label="Fil d'Ariane" class="breadcrumb" style="margin-bottom:1.5rem">
-        <a href="/">Accueil</a> &rsaquo; <span>&Agrave; propos</span>
+    <nav aria-label="Fil d'Ariane" class="breadcrumb">
+        <a href="/">Accueil</a><span aria-hidden="true">&rsaquo;</span><span aria-current="page">&Agrave; propos</span>
     </nav>
 
     <h1>&Agrave; propos du Calendrier Tempo EDF</h1>
@@ -114,14 +94,14 @@
             au tarif Tempo</strong>, nous cherchions un moyen fiable d'<strong>anticiper les jours
             rouges</strong> pour adapter notre consommation et r&eacute;duire nos factures.
         </p>
-        <p class="legal-text" style="margin-top:0.75rem">
+        <p class="legal-text">
             {{ facts.ANNONCE_J1 }}, souvent trop
             tard pour r&eacute;organiser sa journ&eacute;e. Nous avons donc construit un
             <strong>calendrier Tempo pr&eacute;visionnel sur 15 jours</strong> pour avoir
             le temps de planifier&nbsp;: reporter une machine, baisser le chauffage ou
             d&eacute;caler une recharge de v&eacute;hicule &eacute;lectrique.
         </p>
-        <p class="legal-text" style="margin-top:0.75rem">
+        <p class="legal-text">
             Cet outil, nous le mettons <strong>gratuitement &agrave; disposition de tous les
             abonn&eacute;s Tempo</strong>. Notre objectif est simple&nbsp;: aider chaque foyer &agrave;
             <strong>&eacute;conomiser sur sa facture d'&eacute;lectricit&eacute;</strong> en anticipant
@@ -130,18 +110,31 @@
     </section>
 
     <section class="legal-section">
-        <h2>Notre m&eacute;thodologie de pr&eacute;vision</h2>
+        <h2>Comment nous pr&eacute;voyons</h2>
+        <p class="legal-text">
+            Chaque jour, nous croisons la <strong>m&eacute;t&eacute;o de 9 villes</strong> (M&eacute;t&eacute;o France), la
+            <strong>consommation d'&eacute;lectricit&eacute; pr&eacute;vue par RTE</strong> et les <strong>r&egrave;gles officielles d'EDF</strong>
+            (jours rouges et blancs restant &agrave; placer, week-ends, jours f&eacute;ri&eacute;s). Notre priorit&eacute;&nbsp;:
+            <strong>ne pas manquer les jours rouges</strong>, quitte &agrave; donner parfois une fausse alerte.
+        </p>
+        <p class="apropos-links">
+            <a href="/methodologie" class="btn btn-outline">M&eacute;thodologie d&eacute;taill&eacute;e</a>
+            <a href="/historique-previsions" class="btn btn-outline">Historique de nos pr&eacute;visions</a>
+        </p>
+        <details class="history-details">
+            <summary>Le d&eacute;tail de la m&eacute;thode et des sources</summary>
+        <h3>Notre m&eacute;thodologie de pr&eacute;vision</h3>
         <p class="legal-text">
             Pour pr&eacute;dire la couleur Tempo de chaque jour, notre syst&egrave;me croise
             <strong>plusieurs sources de donn&eacute;es en temps r&eacute;el</strong> au travers
             de deux approches compl&eacute;mentaires&nbsp;:
         </p>
 
-        <h3>Scoring multi-crit&egrave;res</h3>
+        <h4>Scoring multi-crit&egrave;res</h4>
         <p class="legal-text">
             Un algorithme analyse chaque jour futur selon plusieurs facteurs cl&eacute;s&nbsp;:
         </p>
-        <ul style="margin:0.5rem 0 1rem 1.5rem;line-height:1.8">
+        <ul>
             <li><strong>Temp&eacute;ratures</strong>&nbsp;: moyennes pond&eacute;r&eacute;es de 9 grandes villes fran&ccedil;aises, pour d&eacute;tecter les vagues de froid qui d&eacute;clenchent les jours rouges</li>
             <li><strong>Consommation &eacute;lectrique nationale</strong>&nbsp;: donn&eacute;es RTE refl&eacute;tant la tension sur le r&eacute;seau</li>
             <li><strong>Budget saisonnier EDF</strong>&nbsp;: suivi du nombre de jours rouges et blancs restant &agrave; placer dans la saison</li>
@@ -150,7 +143,7 @@
             <li><strong>Profil du jour</strong>&nbsp;: jour de la semaine, week-end, jours f&eacute;ri&eacute;s (les dimanches et f&eacute;ri&eacute;s ne sont jamais rouges)</li>
         </ul>
 
-        <h3>Machine Learning</h3>
+        <h4>Machine Learning</h4>
         <p class="legal-text">
             En parall&egrave;le, un mod&egrave;le de Machine Learning entra&icirc;n&eacute; sur
             plusieurs saisons historiques analyse des dizaines de variables pour d&eacute;tecter des
@@ -159,7 +152,7 @@
             qu'un jour rouge manqu&eacute;.
         </p>
 
-        <h3>Combinaison et r&egrave;gles EDF</h3>
+        <h4>Combinaison et r&egrave;gles EDF</h4>
         <p class="legal-text">
             La pr&eacute;diction finale combine les deux approches pour un consensus robuste. Les
             r&egrave;gles officielles EDF (pas de rouge le week-end ni les jours f&eacute;ri&eacute;s,
@@ -167,27 +160,23 @@
             appliqu&eacute;es syst&eacute;matiquement (d&eacute;tails et chiffres sur la page <a href="/methodologie">m&eacute;thodologie</a>). Le syst&egrave;me s'am&eacute;liore en continu en
             comparant ses pr&eacute;dictions pass&eacute;es avec les couleurs r&eacute;elles annonc&eacute;es par EDF.
         </p>
-    </section>
 
-    <section class="legal-section">
-        <h2>Sources de donn&eacute;es</h2>
+        <h3>Sources de donn&eacute;es</h3>
         <p class="legal-text">La transparence est essentielle. Voici d'o&ugrave; viennent nos donn&eacute;es&nbsp;:</p>
-        <ul style="margin:0.5rem 0 1rem 1.5rem;line-height:1.8">
+        <ul>
             <li><strong>M&eacute;t&eacute;o France</strong>&nbsp;: mod&egrave;les AROME (haute r&eacute;solution, J+0 &agrave; J+2) et ARPEGE (global, J+2 &agrave; J+5) pour 9 villes repr&eacute;sentatives de la consommation nationale</li>
             <li><strong>RTE</strong> (R&eacute;seau de Transport d'&Eacute;lectricit&eacute;)&nbsp;: pr&eacute;visions de consommation nationale</li>
             <li><strong>Couleurs officielles</strong>&nbsp;: {{ facts.SOURCE_COULEURS_PHRASE }}, v&eacute;rifi&eacute;es chaque jour</li>
             <li><strong>Open-Meteo</strong>&nbsp;: source compl&eacute;mentaire pour &eacute;tendre les pr&eacute;visions au-del&agrave; de J+5, et source de secours si M&eacute;t&eacute;o France est indisponible</li>
         </ul>
-    </section>
 
-    <section class="legal-section">
-        <h2>Pr&eacute;cision et fiabilit&eacute;</h2>
+        <h3>Pr&eacute;cision et fiabilit&eacute;</h3>
         <p class="legal-text">
             Nous mesurons la pr&eacute;cision de nos pr&eacute;visions en continu. Le taux de r&eacute;ussite
             r&eacute;el sur les 30 derniers jours (J+2 &agrave; J+5) est publi&eacute; sur la
             <a href="/methodologie">page m&eacute;thodologie</a>, avec nos r&eacute;sultats de backtest et leur nature exacte.
         </p>
-        <ul style="margin:0.5rem 0 1rem 1.5rem;line-height:1.8">
+        <ul>
             <li><strong>J+1</strong>&nbsp;: EDF confirme la couleur chaque matin, notre pr&eacute;diction est g&eacute;n&eacute;ralement align&eacute;e</li>
             <li><strong>J+2 &agrave; J+5</strong>&nbsp;: l'horizon id&eacute;al pour prendre vos d&eacute;cisions, avec une fiabilit&eacute; qui baisse avec la distance</li>
             <li><strong>J+6 &agrave; J+15</strong>&nbsp;: pr&eacute;visions indicatives, utiles pour anticiper une tendance, mais les donn&eacute;es m&eacute;t&eacute;o sont moins fiables au-del&agrave; de 5 jours</li>
@@ -197,6 +186,8 @@
             Un faux positif (pr&eacute;voir rouge alors que c'est bleu) ne co&ucirc;te quasiment rien &agrave; l'utilisateur,
             tandis qu'un jour rouge manqu&eacute; peut co&ucirc;ter cher sur la facture.
         </p>
+
+        </details>
     </section>
 
     <section class="legal-section">
@@ -204,7 +195,7 @@
         <p class="legal-text">
             En toute transparence, voici ce que nous ne pouvons <strong>pas</strong> garantir&nbsp;:
         </p>
-        <ul style="margin:0.5rem 0 1rem 1.5rem;line-height:1.8">
+        <ul>
             <li>Nos pr&eacute;visions sont <strong>indicatives</strong> et ne constituent pas une information officielle EDF</li>
             <li>La couleur d&eacute;finitive est fix&eacute;e par RTE et publi&eacute;e par EDF&nbsp;: elle seule fait foi</li>
             <li>La pr&eacute;cision diminue naturellement au-del&agrave; de J+5 (incertitude m&eacute;t&eacute;o)</li>
@@ -215,21 +206,21 @@
     <section class="legal-section">
         <h2>API publique gratuite</h2>
         <p class="legal-text">
-            Nous mettons &agrave; disposition une <strong>API JSON publique et gratuite</strong> pour les d&eacute;veloppeurs
-            et les projets domotique&nbsp;:
+            Une <strong>API JSON publique et gratuite</strong>, sans cl&eacute;, donne la couleur du jour, de demain, nos pr&eacute;visions
+            et l'historique&nbsp;: id&eacute;al pour <strong>Home Assistant</strong>, <strong>Jeedom</strong> ou tout projet domotique.
+            <a href="/api-tempo">Documentation de l'API Tempo</a>.
         </p>
-        <ul style="margin:0.5rem 0 1rem 1.5rem;line-height:1.8">
+        <details class="history-details">
+            <summary>Les endpoints en bref</summary>
+            <ul>
             <li><code>/api/today</code>&nbsp;: couleur Tempo du jour</li>
             <li><code>/api/tomorrow</code>&nbsp;: couleur Tempo de demain</li>
             <li><code>/api/predictions</code>&nbsp;: pr&eacute;visions J+1 &agrave; J+15 avec niveau de confiance</li>
             <li><code>/api/remaining</code> et <code>/api/history</code>&nbsp;: jours restants et historique</li>
         </ul>
-        <p class="legal-text">Formats de r&eacute;ponse et exemple Home Assistant&nbsp;: <a href="/api-tempo">documentation de l'API Tempo</a>.</p>
-        <p class="legal-text">
-            Pas de cl&eacute; API n&eacute;cessaire. Utilisation raisonnable.
-            Id&eacute;al pour les int&eacute;grations <strong>Home Assistant</strong>, <strong>Jeedom</strong> ou tout projet domotique.
-            Pour un usage intensif ou un partenariat, <a href="mailto:jean-pierre@calendrier-tempo.fr">contactez-nous</a>.
-        </p>
+            <p class="legal-text">Pas de cl&eacute; API n&eacute;cessaire. Utilisation raisonnable.
+                Pour un usage intensif ou un partenariat, <a href="mailto:jean-pierre@calendrier-tempo.fr">contactez-nous</a>.</p>
+        </details>
     </section>
 
     <section class="legal-section">
@@ -242,9 +233,9 @@
         </p>
     </section>
 
-    <div style="margin:2rem 0;text-align:center">
+    <div class="btn-row">
         <a href="/" class="btn">Voir le calendrier Tempo</a>
-        <a href="/alertes" class="btn btn-outline" style="margin-left:0.5rem">S'inscrire aux alertes</a>
+        <a href="/alertes" class="btn btn-outline">S'inscrire aux alertes</a>
     </div>
 
 </main>
@@ -253,9 +244,6 @@
 
 {% include '_footer.html' %}
 
-<script>
-document.addEventListener('DOMContentLoaded',function(){var b=document.getElementById('hamburger-btn'),n=document.getElementById('main-nav');if(b&&n){b.addEventListener('click',function(){var open=n.classList.toggle('open');b.classList.toggle('open');b.setAttribute('aria-expanded',open)})}});
-</script>
 
 </body>
 </html>

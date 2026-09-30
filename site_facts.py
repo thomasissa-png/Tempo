@@ -197,6 +197,11 @@ def breadcrumb_jsonld(items: list[tuple[str, str]]) -> dict:
     }
 
 
+# Version des assets (style.min.css, app.min.js, fonts.css) : à incrémenter à chaque
+# régénération des fichiers minifiés. Un seul endroit, lu par tous les templates.
+ASSET_VERSION = "20260930"
+
+
 def template_globals() -> dict:
     """Variables exposées à tous les templates Jinja (préfixe ``facts``)."""
     return {
@@ -234,6 +239,7 @@ def template_globals() -> dict:
         "HORIZON_FIABLE": HORIZON_FIABLE,
         "HORIZON_INDICATIF": HORIZON_INDICATIF,
         "PERFORMANCE_POLICY": PERFORMANCE_POLICY,
+        "ASSET_V": ASSET_VERSION,
     }
 
 

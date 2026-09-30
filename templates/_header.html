@@ -1,0 +1,43 @@
+{# En-tête commun (GLO-02) : une seule copie pour toutes les pages publiques.
+   Paramètres : nav_active ('accueil', 'calendrier', 'tarifs', 'historique', 'blog', 'alertes'),
+   nav_current (faux sur une sous-page : lien actif sans aria-current). #}
+{% set _na = nav_active|default('') %}
+{% set _cur = ' aria-current="page"'|safe if nav_current|default(true) else '' %}
+<header role="banner">
+    <div class="container header-row">
+        <a href="/" class="header-brand">
+            <svg class="header-logo" viewBox="0 0 100 100" width="32" height="32" aria-hidden="true"><circle cx="50" cy="50" r="45" fill="#fff"/><circle cx="50" cy="50" r="40" fill="#2563EB"/><path d="M50 10A40 40 0 0 1 90 50H10A40 40 0 0 1 50 10z" fill="#DC2626"/><circle cx="50" cy="50" r="16" fill="#fff"/></svg>
+            <span class="header-title">Calendrier Tempo EDF</span>
+        </a>
+        <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu de navigation" aria-expanded="false" aria-controls="main-nav">
+            <span class="bar"></span>
+            <span class="bar"></span>
+            <span class="bar"></span>
+        </button>
+        <nav id="main-nav" aria-label="Navigation principale">
+            <a href="/"{% if _na == 'accueil' %} class="active"{{ _cur }}{% endif %}>Accueil</a>
+            <a href="/calendrier"{% if _na == 'calendrier' %} class="active"{{ _cur }}{% endif %}>Calendrier</a>
+            <a href="/tarif-tempo-edf"{% if _na == 'tarifs' %} class="active"{{ _cur }}{% endif %}>Tarifs</a>
+            <a href="/historique-previsions"{% if _na == 'historique' %} class="active"{{ _cur }}{% endif %}>Historique</a>
+            <a href="/blog/"{% if _na == 'blog' %} class="active"{{ _cur }}{% endif %}>Blog</a>
+            <button type="button" class="nav-cta{% if _na == 'alertes' %} active{% endif %}"{% if _na == 'alertes' %} aria-current="page"{% endif %} onclick="openSubscribeModal()">Alertes gratuites</button>
+        </nav>
+    </div>
+</header>
+<script>
+(function () {
+    var btn = document.getElementById('hamburger-btn');
+    var nav = document.getElementById('main-nav');
+    if (!btn || !nav) return;
+    btn.addEventListener('click', function () {
+        var open = nav.classList.toggle('open');
+        btn.setAttribute('aria-expanded', String(open));
+    });
+    Array.prototype.forEach.call(nav.querySelectorAll('a'), function (link) {
+        link.addEventListener('click', function () {
+            nav.classList.remove('open');
+            btn.setAttribute('aria-expanded', 'false');
+        });
+    });
+})();
+</script>

@@ -1,8 +1,9 @@
+{% import '_icons.html' as icons -%}
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>{{ article.title }}</title>
     <meta name="description" content="{{ article.description }}">
     <meta name="keywords" content="{{ article.keywords }}">
@@ -19,7 +20,7 @@
     <link rel="apple-touch-icon" href="/static/favicon-180.png">
     <meta name="application-name" content="Calendrier Tempo">
     <meta name="apple-mobile-web-app-title" content="Calendrier Tempo">
-    <meta name="theme-color" content="#1565C0">
+    <meta name="theme-color" content="#2563EB">
     <link rel="manifest" href="/manifest.json">
     <!-- Open Graph -->
     <meta property="og:title" content="{{ article.title }}">
@@ -50,36 +51,17 @@
     <script type="application/ld+json">{{ faq_ld|tojson }}</script>
     {% endif %}
     <link rel="preload" href="/static/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="/static/css/fonts.css?v=20260929">
-    <link rel="preload" href="/static/css/style.min.css?v=20260929b" as="style">
-    <link rel="stylesheet" href="/static/css/style.min.css?v=20260929b">
+    <link rel="stylesheet" href="/static/css/fonts.css?v={{ facts.ASSET_V }}">
+    <link rel="preload" href="/static/css/style.min.css?v={{ facts.ASSET_V }}" as="style">
+    <link rel="stylesheet" href="/static/css/style.min.css?v={{ facts.ASSET_V }}">
     <script defer src="https://cloud.umami.is/script.js" data-website-id="1d187359-b4a6-4ba8-ba41-c449b356832f"></script>
 </head>
 <body>
 
 <a href="#main-content" class="skip-link">Aller au contenu principal</a>
 
-<header role="banner">
-    <div class="container header-row">
-        <a href="/" class="header-brand">
-            <svg class="header-logo" viewBox="0 0 100 100" width="32" height="32" aria-hidden="true"><circle cx="50" cy="50" r="45" fill="#fff"/><circle cx="50" cy="50" r="40" fill="#2563EB"/><path d="M50 10A40 40 0 0 1 90 50H10A40 40 0 0 1 50 10z" fill="#DC2626"/><circle cx="50" cy="50" r="16" fill="#fff"/></svg>
-            <span class="header-title">Calendrier Tempo EDF</span>
-        </a>
-        <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu de navigation" aria-expanded="false" aria-controls="main-nav">
-            <span class="bar"></span>
-            <span class="bar"></span>
-            <span class="bar"></span>
-        </button>
-        <nav id="main-nav" aria-label="Navigation principale">
-            <a href="/">Accueil</a>
-            <a href="/calendrier">Calendrier</a>
-            <a href="/tarif-tempo-edf">Tarifs</a>
-            <a href="/historique-previsions">Historique</a>
-            <a href="/blog/" class="active">Blog</a>
-            <button type="button" class="nav-cta" onclick="openSubscribeModal()">Alertes gratuites</button>
-        </nav>
-    </div>
-</header>
+{% set nav_active = 'blog' %}{% set nav_current = false %}
+{% include '_header.html' %}
 
 <main id="main-content" class="container" role="main" style="max-width:800px">
 
@@ -102,17 +84,26 @@
                 {% endif %}
                 <span class="blog-reading-time">{{ article.reading_time }} min de lecture</span>
             </div>
+            {% if article.toc %}
+            <details class="blog-toc" id="blog-toc">
+                <summary>Sommaire</summary>
+                <ol>
+                    {% for id, name in article.toc %}<li><a href="#{{ id }}">{{ name|safe }}</a></li>{% endfor %}
+                </ol>
+            </details>
+            <script>(function () { var t = document.getElementById('blog-toc'); if (t && window.matchMedia('(min-width: 769px)').matches) t.open = true; })();</script>
+            {% endif %}
         </header>
 
         <div class="blog-article-body">
             {{ article.content_html | safe }}
         </div>
 
-        <!-- CTA mid-article -->
+        <!-- CTA de fin d'article (conviction avant conversion) -->
         <aside class="blog-cta-inline">
             <strong>Anticipez les {{ facts.ALERTES_HORIZON_JOURS }} prochains jours Tempo</strong>
             <p>Recevez gratuitement par WhatsApp {{ facts.ALERTES_DESCRIPTION }}. Inscription en 30 secondes.</p>
-            <button type="button" class="btn btn-primary" onclick="openSubscribeModal()"><svg viewBox="0 0 24 24" width="18" height="18" fill="#fff" style="vertical-align:middle;margin-right:6px" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>S'inscrire gratuitement</button>
+            <button type="button" class="btn btn-primary" onclick="openSubscribeModal()">{{ icons.whatsapp(18, '#fff', 'icon-inline') }}S'inscrire gratuitement</button>
         </aside>
     </article>
 
@@ -127,12 +118,11 @@
     {% endif %}
 
     <!-- Navigation articles + liens internes -->
-    <nav class="blog-nav-articles" aria-label="Articles du blog" style="display:flex;flex-wrap:wrap;gap:12px;margin:24px 0">
+    <nav class="blog-nav-articles" aria-label="Articles du blog">
         <a href="/blog/">&larr; Retour au blog</a>
         <a href="/calendrier">Calendrier Tempo EDF</a>
         <a href="/couleur-tempo-demain">Couleur Tempo demain</a>
         <a href="/tarif-tempo-edf">Tarif Tempo EDF</a>
-        <a href="/alertes">Alertes gratuites</a>
     </nav>
 
 </main>
@@ -141,17 +131,6 @@
 
 {% include '_footer.html' %}
 
-<script>
-(function() {
-    const btn = document.getElementById('hamburger-btn');
-    const nav = document.getElementById('main-nav');
-    if (!btn || !nav) return;
-    btn.addEventListener('click', () => {
-        const open = nav.classList.toggle('open');
-        btn.setAttribute('aria-expanded', open);
-    });
-})();
-</script>
 
 </body>
 </html>

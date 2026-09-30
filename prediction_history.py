@@ -280,6 +280,23 @@ def _horizon_stats(days: list[dict], n: int) -> dict:
     }
 
 
+def _bref(fiables: list[dict]) -> dict:
+    """Bloc « En bref » : effectifs J-2 à J-5 cumulés (une prévision par jour et par délai)."""
+    tot = {"jours": 0, "justes": 0, "toujours_bleu": 0}
+    col = {c: {"reels": 0, "annonces": 0, "alertes": 0, "alertes_justes": 0} for c in ("ROUGE", "BLANC")}
+    for h in fiables:
+        for k in tot:
+            tot[k] += h[k]
+        for c, s in col.items():
+            for k in s:
+                s[k] += h[c][k]
+    for s in col.values():
+        s["rappel_pct"] = _pct(s["annonces"], s["reels"])
+        s["precision_pct"] = _pct(s["alertes_justes"], s["alertes"])
+    return {**tot, "justes_pct": _pct(tot["justes"], tot["jours"]),
+            "toujours_bleu_pct": _pct(tot["toujours_bleu"], tot["jours"]), **col}
+
+
 def _build(conn, today: date) -> dict:
     start = _start_date()
     preds = _load_preds(conn, start)
@@ -465,6 +482,7 @@ def page_context(data: dict, label: str, current_label: str) -> dict:
             "nb_days": len(s["days"]),
             "veille": [h for h in hz if h["n"] == 1],
             "fiables": [h for h in hz if h["fiable"]],
+            "bref": _bref([h for h in hz if h["fiable"]]),
             "indicatifs": [h for h in hz if h["n"] > max(RELIABLE)],
             "rows": rows,
             "temp_manquante": any(c["state"] == "ok" and not c["has_temp"]

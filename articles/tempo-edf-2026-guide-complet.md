@@ -4,6 +4,7 @@ description: Tempo EDF 2026-2027 : fonctionnement de l'offre, tarifs au 1er aoû
 keywords: tempo edf, edf tempo, offre tempo edf 2026-2027, tarif tempo edf, calendrier tempo edf, jours rouges tempo
 publish_date: 2026-02-17
 updated_date: 2026-09-29
+pillar: true
 cluster: tempo-guide
 ---
 L'offre **Tempo EDF** est le contrat d'électricité le plus original du marché français. Avec ses 3 couleurs de jours et une heure pleine rouge 4,4 fois plus chère que l'heure pleine bleue (0,7295 contre 0,1654 €/kWh), elle peut vous faire économiser des centaines d'euros par an, ou vous coûter très cher si vous ne l'anticipez pas. Ce guide fait le point complet sur le fonctionnement de Tempo pour la saison 2026-2027, qui a démarré le 1er septembre 2026.

@@ -16,15 +16,6 @@
         "variableMeasured": "Couleur Tempo du jour (BLEU, BLANC, ROUGE)"
     }|tojson }}</script>
 {% endblock %}
-{% block extra_head %}
-    <style>
-        .season-table { width: 100%; border-collapse: collapse; margin: 16px 0 24px; }
-        .season-table th, .season-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; }
-        .season-table td.num, .season-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
-        .season-dates { columns: 2; column-gap: 32px; margin: 8px 0 24px 20px; line-height: 1.8; }
-        @media (max-width: 600px) { .season-dates { columns: 1; } }
-    </style>
-{% endblock %}
 {% block breadcrumb %}
     <nav class="breadcrumb" aria-label="Fil d'Ariane">
         <a href="/">Accueil</a><span aria-hidden="true">&rsaquo;</span><a href="/calendrier">Calendrier Tempo EDF</a><span aria-hidden="true">&rsaquo;</span><span aria-current="page">Saison {{ s.season_label }}</span>
@@ -32,7 +23,7 @@
 {% endblock %}
 {% block content %}
 <article class="legal-content">
-    <h1>Jours rouges et blancs Tempo EDF&nbsp;: saison {{ s.season_label }}</h1>
+    <h1>Jours rouges et blancs Tempo EDF&nbsp;: <span class="nowrap">saison {{ s.season_label }}</span></h1>
     <p class="section-desc">
         La saison Tempo {{ s.season_label }} court du {{ s.season_start[8:10]|int }}<sup>er</sup> septembre {{ s.season_start[:4] }}
         au 31 ao&ucirc;t {{ s.season_end[:4] }}. Voici les couleurs <strong>officielles publi&eacute;es par EDF</strong>
@@ -41,35 +32,51 @@
 
     {% if s.days_with_data %}
     <p>
+        {% if s.complete %}
         <strong>{{ s.counts.ROUGE }} jours rouges</strong>, <strong>{{ s.counts.BLANC }} jours blancs</strong> et
-        <strong>{{ s.counts.BLEU }} jours bleus</strong>
-        {% if s.complete %}sur la saison compl&egrave;te.{% else %}sur les {{ s.days_with_data }} jours disponibles dans notre base
-        (du {{ s.first_date }} au {{ s.last_date }}), sur {{ s.total_days }} jours de saison.{% endif %}
+        <strong>{{ s.counts.BLEU }} jours bleus</strong> sur la saison compl&egrave;te.
         Chaque saison compte au maximum {{ facts.JOURS_ROUGES }} jours rouges et {{ facts.JOURS_BLANCS }} jours blancs.
-        {% if s.is_current %}Saison en cours&nbsp;: la liste s'allonge &agrave; chaque publication d'EDF. Nos pr&eacute;visions sont sur le <a href="/calendrier">calendrier du mois</a>.{% endif %}
+        {% elif s.is_current %}
+        Jusqu'au {{ s.last_date }}&nbsp;: <strong>{{ s.counts.ROUGE }} jour{{ 's' if s.counts.ROUGE > 1 }} rouge{{ 's' if s.counts.ROUGE > 1 }}</strong>
+        et <strong>{{ s.counts.BLANC }} jour{{ 's' if s.counts.BLANC > 1 }} blanc{{ 's' if s.counts.BLANC > 1 }}</strong> publi&eacute;s par EDF,
+        sur {{ facts.JOURS_ROUGES }} et {{ facts.JOURS_BLANCS }} par saison. La liste s'allonge &agrave; chaque publication d'EDF.
+        Nos pr&eacute;visions sont sur le <a href="/calendrier">calendrier du mois</a>.
+        {% else %}
+        <strong>{{ s.counts.ROUGE }} jours rouges</strong>, <strong>{{ s.counts.BLANC }} jours blancs</strong> et
+        <strong>{{ s.counts.BLEU }} jours bleus</strong> sur les {{ s.days_with_data }} jours disponibles dans notre base
+        (du {{ s.first_date }} au {{ s.last_date }}), sur {{ s.total_days }} jours de saison.
+        Chaque saison compte au maximum {{ facts.JOURS_ROUGES }} jours rouges et {{ facts.JOURS_BLANCS }} jours blancs.
+        {% endif %}
     </p>
 
+    {% set upcoming = s.months|rejectattr('counts')|list if s.is_current else [] %}
     <h2>R&eacute;partition par mois</h2>
-    <table class="season-table">
+    <div class="table-scroll">
+    <table class="data-table">
         <caption class="sr-only">Nombre de jours rouges, blancs et bleus par mois, saison {{ s.season_label }}</caption>
         <thead><tr><th scope="col">Mois</th><th scope="col" class="num">Rouges</th><th scope="col" class="num">Blancs</th><th scope="col" class="num">Bleus</th></tr></thead>
         <tbody>
-        {% for m in s.months %}
+        {% for m in s.months if m.counts or not s.is_current %}
             <tr>
                 <th scope="row"><a href="{{ m.path }}">{{ m.label }}</a></th>
                 {% if m.counts %}
                 <td class="num">{{ m.counts.ROUGE }}</td><td class="num">{{ m.counts.BLANC }}</td><td class="num">{{ m.counts.BLEU }}</td>
                 {% else %}
-                <td class="num" colspan="3">donn&eacute;es non disponibles</td>
+                <td class="num muted" colspan="3">donn&eacute;es non disponibles</td>
                 {% endif %}
             </tr>
         {% endfor %}
         </tbody>
     </table>
+    </div>
+    {% if upcoming %}
+    <p class="season-upcoming">&Agrave; venir&nbsp;: {% for m in upcoming %}<a href="{{ m.path }}">{{ m.label }}</a>{{ ', ' if not loop.last else '.' }}{% endfor %}</p>
+    {% endif %}
 
+    {% if s.red_days or s.white_days %}
     <h2>Dates des jours rouges de la saison {{ s.season_label }}</h2>
     {% if s.red_days %}
-    <ol class="season-dates">
+    <ol class="season-dates season-dates--rouge">
         {% for d in s.red_days %}<li><time datetime="{{ d.iso }}">{{ d.label }}</time></li>{% endfor %}
     </ol>
     {% else %}
@@ -78,21 +85,33 @@
 
     <h2>Dates des jours blancs de la saison {{ s.season_label }}</h2>
     {% if s.white_days %}
-    <ol class="season-dates">
+    <ol class="season-dates season-dates--blanc">
         {% for d in s.white_days %}<li><time datetime="{{ d.iso }}">{{ d.label }}</time></li>{% endfor %}
     </ol>
     {% else %}
     <p>Aucun jour blanc publi&eacute; dans notre base pour cette saison{% if s.is_current %} &agrave; ce jour{% endif %}.</p>
     {% endif %}
     {% else %}
+    <h2>Dates des jours rouges et blancs</h2>
+    <p>Aucun jour rouge ni blanc publi&eacute; {% if s.is_current %}pour l'instant{% else %}dans notre base pour cette saison{% endif %}&nbsp;; les jours rouges sont possibles du 1<sup>er</sup> novembre au 31 mars.</p>
+    {% endif %}
+    {% else %}
     <p>Aucune couleur officielle n'est encore enregistr&eacute;e pour cette saison. Consultez le <a href="/calendrier">calendrier du mois en cours</a>.</p>
     {% endif %}
 
     <h2>Autres saisons</h2>
-    <p class="cal-seasons">
-        {% if not s.is_current %}<a href="/calendrier">Saison en cours</a> &middot; {% endif %}
-        {% for label in past_seasons if label != s.season_label %}<a href="/calendrier/{{ label }}">Saison {{ label }}</a>{% if not loop.last %} &middot; {% endif %}{% endfor %}
-    </p>
+    <nav class="cal-seasons" aria-label="Autres saisons Tempo">
+        {% if not s.is_current %}<a href="/calendrier">Saison en cours</a>{% endif %}
+        {% for label in past_seasons if label != s.season_label %}<a href="/calendrier/{{ label }}">Saison {{ label }}</a>{% endfor %}
+    </nav>
     <p>Donn&eacute;es r&eacute;utilisables au format JSON via notre <a href="/api-tempo">API Tempo gratuite</a> (endpoint <code>/api/history</code>).</p>
+
+    {% if s.is_current %}
+    <section class="blog-cta page-cta">
+        <h2>Anticipez les {{ facts.ALERTES_HORIZON_JOURS }} prochains jours Tempo</h2>
+        <p>Recevez gratuitement par WhatsApp {{ facts.ALERTES_DESCRIPTION }}.</p>
+        <button type="button" class="btn" onclick="openSubscribeModal()">S'inscrire aux alertes gratuites</button>
+    </section>
+    {% endif %}
 </article>
 {% endblock %}

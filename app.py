@@ -1122,11 +1122,23 @@ async def page_methodologie(request: Request):
         for k, v in sorted(Config.DEFAULT_WEIGHTS.items(), key=lambda kv: kv[1], reverse=True)
     ]
     cities = [c["name"] for c in Config.WEATHER_CITIES]
+    # MET-01 : mêmes effectifs que le bloc « En bref » de /historique-previsions (saison en cours)
+    bref, bref_season = None, None
+    try:
+        from prediction_history import page_context, season_start_year, today_paris, season_label
+        current = season_label(season_start_year(today_paris()))
+        hctx = page_context(_history_data(), current, current)
+        if hctx.get("h"):
+            bref, bref_season = hctx["h"]["bref"], current
+    except Exception as e:
+        logger.debug(f"[Méthodologie] Historique indisponible : {e}")
     crumbs = [("Accueil", "/"), ("Méthodologie", "/methodologie")]
     return templates.TemplateResponse("methodologie.html", {
         "request": request,
         "canonical_path": "/methodologie",
         "live": live,
+        "bref": bref,
+        "bref_season": bref_season,
         "weights": weights,
         "cities": cities,
         "measured_on": site_facts.fr_date(date.today(), with_weekday=False),
@@ -1199,11 +1211,20 @@ async def page_historique_previsions_saison(request: Request, saison: str):
 
 async def _render_blog_index(request: Request):
     """Render blog index page (shared by /blog and /blog/)."""
-    from blog import get_published_articles
+    from blog import get_published_articles, CLUSTER_LABELS
     articles = get_published_articles()
+    # BLG-02 : piliers en tête, puis le reste groupé par cluster (ordre de CLUSTER_LABELS)
+    pillars = [a for a in articles if a.pillar]
+    rest = [a for a in articles if not a.pillar]
+    groups = [(label, [a for a in rest if a.cluster == key]) for key, label in CLUSTER_LABELS.items()]
+    others = [a for a in rest if a.cluster not in CLUSTER_LABELS]
+    if others:
+        groups.append(("Autres guides", others))
     return templates.TemplateResponse("blog_index.html", {
         "request": request,
         "articles": articles,
+        "pillars": pillars,
+        "groups": [(label, arts) for label, arts in groups if arts],
     })
 
 

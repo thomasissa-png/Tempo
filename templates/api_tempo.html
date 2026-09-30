@@ -32,12 +32,13 @@
 {% endblock %}
 {% block extra_head %}
     <style>
-        .api-doc pre { background: #0F172A; color: #E2E8F0; padding: 14px 16px; border-radius: var(--radius-sm); overflow-x: auto; font-size: 0.85rem; line-height: 1.5; }
-        .api-doc code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-        .api-table-wrap { overflow-x: auto; margin: 12px 0 24px; }
-        .api-table { width: 100%; border-collapse: collapse; }
-        .api-table code { overflow-wrap: anywhere; }
-        .api-table th, .api-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+        .api-doc pre { background: var(--cta-dark); color: #E2E8F0; padding: 14px 16px; border-radius: var(--radius-sm); overflow-x: auto; font-size: 0.85rem; line-height: 1.5; margin: 0; }
+        .api-doc pre:focus-visible { outline: 3px solid var(--bleu); outline-offset: 2px; }
+        .api-doc pre code { color: inherit; }
+        .api-code { position: relative; margin: 8px 0 20px; }
+        .api-copy { position: absolute; top: 8px; right: 8px; min-height: 36px; padding: 4px 12px; border: 1px solid rgba(255,255,255,.35); border-radius: 50px; background: var(--cta-dark-lighter); color: #fff; font: inherit; font-size: 0.8rem; cursor: pointer; }
+        .api-copy:hover { background: #334155; }
+        .api-copy:focus-visible { outline: 3px solid var(--bleu); outline-offset: 2px; }
     </style>
 {% endblock %}
 {% block breadcrumb %}
@@ -56,17 +57,17 @@
     </p>
 
     <h2>Les endpoints</h2>
-    <div class="api-table-wrap">
-    <table class="api-table">
+    <div class="table-scroll">
+    <table class="data-table">
         <caption class="sr-only">Endpoints publics de l'API Tempo</caption>
         <thead><tr><th scope="col">Endpoint</th><th scope="col">Contenu</th><th scope="col">Cache</th></tr></thead>
         <tbody>
-            <tr><th scope="row"><code>GET /api/today</code></th><td>Couleur officielle du jour</td><td>2 min</td></tr>
-            <tr><th scope="row"><code>GET /api/tomorrow</code></th><td>Couleur officielle de demain, d&egrave;s sa publication par EDF</td><td>2 min</td></tr>
-            <tr><th scope="row"><code>GET /api/remaining</code></th><td>Jours restants par couleur dans la saison en cours</td><td>2 min</td></tr>
-            <tr><th scope="row"><code>GET /api/predictions</code></th><td>Nos pr&eacute;visions jour par jour (jusqu'&agrave; J+{{ facts.HORIZON_MAX_JOURS }}), avec probabilit&eacute;s</td><td>2 min</td></tr>
-            <tr><th scope="row"><code>GET /api/history?days=30</code></th><td>Couleurs officielles des N derniers jours (1 &agrave; 365)</td><td>aucun</td></tr>
-            <tr><th scope="row"><code>GET /api/performance/badge</code></th><td>Taux de pr&eacute;visions correctes de {{ facts.HORIZON_FIABLE }} sur 30 jours</td><td>5 min</td></tr>
+            <tr><th scope="row"><a href="/api/today" target="_blank" rel="noopener"><code>GET /api/today</code></a></th><td>Couleur officielle du jour</td><td>2 min</td></tr>
+            <tr><th scope="row"><a href="/api/tomorrow" target="_blank" rel="noopener"><code>GET /api/tomorrow</code></a></th><td>Couleur officielle de demain, d&egrave;s sa publication par EDF</td><td>2 min</td></tr>
+            <tr><th scope="row"><a href="/api/remaining" target="_blank" rel="noopener"><code>GET /api/remaining</code></a></th><td>Jours restants par couleur dans la saison en cours</td><td>2 min</td></tr>
+            <tr><th scope="row"><a href="/api/predictions" target="_blank" rel="noopener"><code>GET /api/predictions</code></a></th><td>Nos pr&eacute;visions jour par jour (jusqu'&agrave; J+{{ facts.HORIZON_MAX_JOURS }}), avec probabilit&eacute;s</td><td>2 min</td></tr>
+            <tr><th scope="row"><a href="/api/history?days=30" target="_blank" rel="noopener"><code>GET /api/history?days=30</code></a></th><td>Couleurs officielles des N derniers jours (1 &agrave; 365)</td><td>aucun</td></tr>
+            <tr><th scope="row"><a href="/api/performance/badge" target="_blank" rel="noopener"><code>GET /api/performance/badge</code></a></th><td>Taux de pr&eacute;visions correctes de {{ facts.HORIZON_FIABLE }} sur 30 jours</td><td>5 min</td></tr>
         </tbody>
     </table>
     </div>
@@ -76,8 +77,8 @@
         (<code>BLEU</code>, <code>BLANC</code> ou <code>ROUGE</code>), <code>code</code> (1 = bleu, 2 = blanc, 3 = rouge).
         Tant qu'EDF n'a pas publi&eacute; la couleur de demain, <code>/api/tomorrow</code> renvoie <code>status: "unavailable"</code>
         et un <code>message</code>. {{ facts.ANNONCE_J1 }}.</p>
-    <pre><code>$ curl https://www.calendrier-tempo.fr/api/today
-{"status": "ok", "date": "AAAA-MM-JJ", "couleur": "BLEU", "code": 1}</code></pre>
+    <div class="api-code"><pre tabindex="0"><code>$ curl https://www.calendrier-tempo.fr/api/today
+{"status": "ok", "date": "AAAA-MM-JJ", "couleur": "BLEU", "code": 1}</code></pre></div>
 
     <h2>/api/remaining</h2>
     <p>Champs&nbsp;: <code>remaining</code> et <code>totals</code> (objets <code>ROUGE</code> / <code>BLANC</code> / <code>BLEU</code>),
@@ -97,12 +98,12 @@
 
     <h2>Exemple Home Assistant</h2>
     <p>Capteur REST qui lit la couleur du jour (&agrave; placer dans <code>configuration.yaml</code>)&nbsp;:</p>
-    <pre><code>{% raw %}sensor:
+    <div class="api-code"><pre tabindex="0"><code>{% raw %}sensor:
   - platform: rest
     name: "Tempo couleur du jour"
     resource: https://www.calendrier-tempo.fr/api/today
     value_template: "{{ value_json.couleur }}"
-    scan_interval: 3600{% endraw %}</code></pre>
+    scan_interval: 3600{% endraw %}</code></pre></div>
 
     <h2>Codes HTTP et bonnes pratiques</h2>
     <ul>
@@ -115,4 +116,26 @@
     <p>M&eacute;thode de pr&eacute;vision et nature des chiffres de performance&nbsp;: <a href="/methodologie">m&eacute;thodologie</a>.
         Donn&eacute;es des saisons pass&eacute;es&nbsp;: <a href="/calendrier">calendrier Tempo EDF</a>.</p>
 </article>
+{% endblock %}
+{% block scripts %}
+<script>
+/* API-01 : bouton « Copier » sur chaque exemple de code */
+(function () {
+    if (!navigator.clipboard) return;
+    Array.prototype.forEach.call(document.querySelectorAll('.api-code'), function (box) {
+        var pre = box.querySelector('pre');
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'api-copy';
+        btn.textContent = 'Copier';
+        btn.addEventListener('click', function () {
+            navigator.clipboard.writeText(pre.innerText).then(function () {
+                btn.textContent = 'Copié';
+                setTimeout(function () { btn.textContent = 'Copier'; }, 2000);
+            });
+        });
+        box.appendChild(btn);
+    });
+})();
+</script>
 {% endblock %}

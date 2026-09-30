@@ -33,6 +33,18 @@ _FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
 # Extensions Markdown pour une meilleure typographie
 _MD_EXTENSIONS = ["extra", "codehilite", "toc", "smarty"]
 
+# Libellés des clusters sur /blog/ (ordre d'affichage). Clé = champ ``cluster`` du front-matter.
+CLUSTER_LABELS = {
+    "tempo-guide": "Comprendre Tempo",
+    "jours-rouges": "Jours rouges",
+    "calendrier": "Calendrier et saisons",
+    "equipements": "Équipements",
+    "preparation": "Préparer la saison",
+}
+
+# Sommaire affiché en tête d'article au-delà de ce nombre de mots (ART-01)
+TOC_MIN_WORDS = 1200
+
 
 @dataclass
 class Article:
@@ -45,6 +57,8 @@ class Article:
     reading_time: int  # minutes
     updated_date: date | None = None  # date de dernière mise à jour (si différente de publish_date)
     cluster: str = ""  # topic cluster (pilier ou satellite)
+    pillar: bool = False  # article pilier (front-matter ``pillar: true``), mis en avant sur /blog/
+    toc: list | None = None  # [(id, titre), ...] des H2, seulement pour les articles longs
     faq_items: list | None = None  # [(question, answer), ...] extracted from FAQ section
     body_md: str = ""  # Markdown source (sans frontmatter), servi tel quel dans llms-full.txt
 
@@ -123,6 +137,17 @@ def _load_article(filepath: Path) -> Article | None:
     return art
 
 
+def _toc_level(tokens: list, level: int) -> list:
+    """Entrées de sommaire d'un niveau donné (les jetons ``toc`` sont imbriqués)."""
+    found = []
+    for t in tokens:
+        if t.get("level") == level:
+            found.append(t)
+        else:
+            found.extend(_toc_level(t.get("children", []), level))
+    return found
+
+
 def _parse_article_file(filepath: Path) -> Article | None:
     """Charge un article depuis un fichier Markdown."""
     try:
@@ -145,6 +170,13 @@ def _parse_article_file(filepath: Path) -> Article | None:
             pass
     md = markdown.Markdown(extensions=_MD_EXTENSIONS)
     content_html = md.convert(body)
+    # ART-02 : tableaux défilables horizontalement sur mobile (jamais de débordement de page)
+    content_html = content_html.replace(
+        "<table>", '<div class="table-scroll" role="region" aria-label="Tableau" tabindex="0">\n<table>'
+    ).replace("</table>", "</table>\n</div>")
+    toc = None
+    if len(body.split()) > TOC_MIN_WORDS:
+        toc = [(t["id"], t["name"]) for t in _toc_level(getattr(md, "toc_tokens", []), 2)] or None
     faq_items = _extract_faq(body)
     return Article(
         slug=filepath.stem,
@@ -156,6 +188,8 @@ def _parse_article_file(filepath: Path) -> Article | None:
         reading_time=_estimate_reading_time(body),
         updated_date=updated,
         cluster=meta.get("cluster", ""),
+        pillar=meta.get("pillar", "").strip().lower() == "true",
+        toc=toc,
         faq_items=faq_items,
         body_md=body.strip(),
     )

@@ -3,6 +3,7 @@ title: Calendrier Tempo 2026-2027 : dates, règles et couleurs
 description: Calendrier Tempo 2026-2027 : règles EDF, budget de 22 rouges et 43 blancs, répartition mensuelle réelle des saisons passées et prévisions J+2 à J+5.
 keywords: calendrier tempo 2026-2027, dates jours rouges tempo 2026-2027, saison tempo 2026-2027, edf tempo calendrier 2026-2027
 publish_date: 2026-09-29
+pillar: true
 cluster: calendrier
 ---
 Le **calendrier Tempo 2026-2027** a démarré le 1er septembre 2026 et court jusqu'au 31 août 2027. Au 29 septembre 2026, aucun jour rouge n'est encore possible : ils ne peuvent tomber qu'entre le **1er novembre 2026 et le 31 mars 2027**, jamais un week-end ni un jour férié. Cette page fait le point sur le cadre de la saison Tempo EDF, sur ce que les saisons passées disent réellement de la répartition des couleurs (chiffres tirés de notre base, saison par saison) et sur la manière de suivre les couleurs jour après jour. Les dates rouges de cet hiver ne sont pas connues à l'avance : elles sont décidées au fil de la météo et de la consommation, et confirmées par EDF la veille.

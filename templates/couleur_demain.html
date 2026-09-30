@@ -12,13 +12,6 @@
         "publisher": {"@type": "Organization", "name": "Calendrier Tempo EDF", "url": "https://www.calendrier-tempo.fr/"}
     }|tojson }}</script>
 {% endblock %}
-{% block extra_head %}
-    <style>
-        .demain-answer { font-size: 1.15rem; line-height: 1.7; padding: 16px 20px; border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); margin: 16px 0 24px; }
-        .days-table { width: 100%; max-width: 640px; border-collapse: collapse; margin: 12px 0 24px; }
-        .days-table th, .days-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; }
-    </style>
-{% endblock %}
 {% block breadcrumb %}
     <nav class="breadcrumb" aria-label="Fil d'Ariane">
         <a href="/">Accueil</a><span aria-hidden="true">&rsaquo;</span><span aria-current="page">Couleur Tempo demain</span>
@@ -27,14 +20,15 @@
 {% block content %}
 <article class="legal-content">
     <h1>Couleur Tempo EDF de demain</h1>
-    <div class="demain-answer" role="status">
+    {% set rouge_proche = (ssr.tomorrow_color == 'ROUGE') or (ssr.tomorrow_forecast_color == 'ROUGE') %}
+    <div class="today-answer today-answer--lead{% if rouge_proche %} has-rouge{% endif %}" role="status">
         {% if ssr.tomorrow_color %}
         <p>Demain, <time datetime="{{ ssr.tomorrow_iso }}">{{ ssr.tomorrow_label }}</time>, est un
-            <strong class="color-word {{ ssr.tomorrow_color|lower }}">jour {{ ssr.tomorrow_color|lower }}</strong>&nbsp;: couleur officielle publi&eacute;e par EDF.</p>
+            <strong class="color-tag {{ ssr.tomorrow_color|lower }}">jour {{ ssr.tomorrow_color|lower }}</strong>&nbsp;: couleur officielle publi&eacute;e par EDF.</p>
         {% elif ssr.tomorrow_forecast_color %}
         <p>Demain, <time datetime="{{ ssr.tomorrow_iso }}">{{ ssr.tomorrow_label }}</time>&nbsp;: notre pr&eacute;vision est
-            <strong class="color-word {{ ssr.tomorrow_forecast_color|lower }}">jour {{ ssr.tomorrow_forecast_color|lower }}</strong>{% if ssr.tomorrow_forecast_confidence is not none %} (probabilit&eacute; {{ ssr.tomorrow_forecast_confidence }}&nbsp;%){% endif %}.
-            EDF n'a pas encore publi&eacute; la couleur officielle.</p>
+            <strong class="color-tag {{ ssr.tomorrow_forecast_color|lower }}">jour {{ ssr.tomorrow_forecast_color|lower }}</strong>{% if ssr.tomorrow_forecast_confidence is not none %} (probabilit&eacute; {{ ssr.tomorrow_forecast_confidence }}&nbsp;%){% endif %}.
+            Pr&eacute;vision&nbsp;: EDF ne l'a pas encore publi&eacute;e ({{ facts.ANNONCE_J1|lower }}).</p>
         {% else %}
         <p>La couleur de demain (<time datetime="{{ ssr.tomorrow_iso }}">{{ ssr.tomorrow_label }}</time>) n'est pas encore disponible sur notre site.</p>
         {% endif %}
@@ -43,6 +37,31 @@
         {% endif %}
     </div>
 
+    {% if ssr.week_summary %}
+    <h2>Les prochains jours</h2>
+    <div class="table-scroll">
+    <table class="data-table">
+        <caption class="sr-only">Couleur Tempo des prochains jours</caption>
+        <thead><tr><th scope="col">Jour</th><th scope="col">Couleur</th><th scope="col">Statut</th></tr></thead>
+        <tbody>
+        {% for d in ssr.week_summary %}
+            <tr{% if d.confirmed %} class="officielle"{% endif %}><th scope="row">{{ d.date_label }}</th><td><span class="color-tag {{ d.couleur|lower }}">{{ d.couleur_label }}</span></td><td>{% if d.confirmed %}Officielle EDF{% else %}Pr&eacute;vision, {{ d.confidence }}&nbsp;%{% endif %}</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% endif %}
+
+    <p>Toute la saison sur le <a href="/calendrier">calendrier Tempo EDF</a>. Pour &ecirc;tre pr&eacute;venu sans y penser&nbsp;:
+        <a href="/alertes">alertes WhatsApp gratuites</a> ({{ facts.ALERTES_DESCRIPTION }}).
+        Donn&eacute;es brutes&nbsp;: <a href="/api-tempo">API Tempo</a>.</p>
+
+    <section class="blog-cta page-cta">
+        <h2>Anticipez les {{ facts.ALERTES_HORIZON_JOURS }} prochains jours Tempo</h2>
+        <p>Recevez gratuitement par WhatsApp {{ facts.ALERTES_DESCRIPTION }}.</p>
+        <button type="button" class="btn" onclick="openSubscribeModal()">S'inscrire aux alertes gratuites</button>
+    </section>
+
     <h2>&Agrave; quelle heure EDF publie-t-il la couleur de demain&nbsp;?</h2>
     <p>{{ facts.ANNONCE_J1 }}&nbsp;: &agrave; 12&nbsp;h, la couleur du lendemain est donc en principe connue.
         {{ facts.VERIFICATION_SITE|capitalize }}. Avant la publication, nous affichons notre pr&eacute;vision, clairement signal&eacute;e comme telle.
@@ -50,27 +69,10 @@
 
     <h2>Quelles couleurs sont possibles demain&nbsp;?</h2>
     <ul>
-        <li><strong>Rouge</strong>&nbsp;: uniquement du 1<sup>er</sup> novembre au 31 mars, du lundi au vendredi hors jours f&eacute;ri&eacute;s ({{ facts.JOURS_ROUGES }} jours par saison).</li>
-        <li><strong>Blanc</strong>&nbsp;: tous les jours sauf le dimanche ({{ facts.JOURS_BLANCS }} jours par saison).</li>
-        <li><strong>Bleu</strong>&nbsp;: tous les autres jours&nbsp;; le dimanche est toujours bleu.</li>
+        <li><strong class="color-tag rouge">Rouge</strong>&nbsp;: uniquement du 1<sup>er</sup> novembre au 31 mars, du lundi au vendredi hors jours f&eacute;ri&eacute;s ({{ facts.JOURS_ROUGES }} jours par saison).</li>
+        <li><strong class="color-tag blanc">Blanc</strong>&nbsp;: tous les jours sauf le dimanche ({{ facts.JOURS_BLANCS }} jours par saison).</li>
+        <li><strong class="color-tag bleu">Bleu</strong>&nbsp;: tous les autres jours&nbsp;; le dimanche est toujours bleu.</li>
     </ul>
     <p>Un jour Tempo va de 6&nbsp;h &agrave; 6&nbsp;h le lendemain. Prix du kWh selon la couleur&nbsp;: voir le <a href="/tarif-tempo-edf">tarif Tempo EDF</a>.</p>
-
-    {% if ssr.week_summary %}
-    <h2>Les prochains jours</h2>
-    <table class="days-table">
-        <caption class="sr-only">Couleur Tempo des prochains jours</caption>
-        <thead><tr><th scope="col">Jour</th><th scope="col">Couleur</th><th scope="col">Statut</th></tr></thead>
-        <tbody>
-        {% for d in ssr.week_summary %}
-            <tr><th scope="row">{{ d.date_label }}</th><td>{{ d.couleur_label }}</td><td>{% if d.confirmed %}officielle (EDF){% else %}pr&eacute;vision, {{ d.confidence }}&nbsp;%{% endif %}</td></tr>
-        {% endfor %}
-        </tbody>
-    </table>
-    {% endif %}
-
-    <p>Toute la saison sur le <a href="/calendrier">calendrier Tempo EDF</a>. Pour &ecirc;tre pr&eacute;venu sans y penser&nbsp;:
-        <a href="/alertes">alertes WhatsApp gratuites</a> ({{ facts.ALERTES_DESCRIPTION }}).
-        Donn&eacute;es brutes&nbsp;: <a href="/api-tempo">API Tempo</a>.</p>
 </article>
 {% endblock %}

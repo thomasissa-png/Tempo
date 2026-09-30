@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Mentions légales et RGPD | Calendrier Tempo EDF</title>
     <!-- Fix #S6 : meta description pour la page légale -->
     <meta name="description" content="Mentions l&eacute;gales, confidentialit&eacute; et RGPD du Calendrier Tempo EDF. Protection des donn&eacute;es et d&eacute;sinscription alertes.">
@@ -19,12 +19,12 @@
     <link rel="apple-touch-icon" href="/static/favicon-180.png">
     <meta name="application-name" content="Calendrier Tempo">
     <meta name="apple-mobile-web-app-title" content="Calendrier Tempo">
-    <meta name="theme-color" content="#1565C0">
+    <meta name="theme-color" content="#2563EB">
     <link rel="manifest" href="/manifest.json">
     <link rel="preload" href="/static/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="/static/css/fonts.css?v=20260929">
-    <link rel="preload" href="/static/css/style.min.css?v=20260929b" as="style">
-    <link rel="stylesheet" href="/static/css/style.min.css?v=20260929b">
+    <link rel="stylesheet" href="/static/css/fonts.css?v={{ facts.ASSET_V }}">
+    <link rel="preload" href="/static/css/style.min.css?v={{ facts.ASSET_V }}" as="style">
+    <link rel="stylesheet" href="/static/css/style.min.css?v={{ facts.ASSET_V }}">
     <!-- Open Graph -->
     <meta property="og:title" content="Mentions l&eacute;gales et RGPD | Calendrier Tempo EDF">
     <meta property="og:description" content="Mentions l&eacute;gales, politique de confidentialit&eacute; et RGPD du Calendrier Tempo EDF.">
@@ -58,40 +58,37 @@
 
 <a href="#main-content" class="skip-link">Aller au contenu principal</a>
 
-<header role="banner">
-    <div class="container header-row">
-        <a href="/" class="header-brand">
-            <svg class="header-logo" viewBox="0 0 100 100" width="32" height="32" aria-hidden="true"><circle cx="50" cy="50" r="45" fill="#fff"/><circle cx="50" cy="50" r="40" fill="#2563EB"/><path d="M50 10A40 40 0 0 1 90 50H10A40 40 0 0 1 50 10z" fill="#DC2626"/><circle cx="50" cy="50" r="16" fill="#fff"/></svg>
-            <span class="header-title">Calendrier Tempo EDF</span>
-        </a>
-        <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu de navigation" aria-expanded="false" aria-controls="main-nav">
-            <span class="bar"></span>
-            <span class="bar"></span>
-            <span class="bar"></span>
-        </button>
-        <nav id="main-nav" aria-label="Navigation principale">
-            <a href="/">Accueil</a>
-            <a href="/calendrier">Calendrier</a>
-            <a href="/tarif-tempo-edf">Tarifs</a>
-            <a href="/historique-previsions">Historique</a>
-            <a href="/blog/">Blog</a>
-            <button type="button" class="nav-cta" onclick="openSubscribeModal()">Alertes gratuites</button>
-        </nav>
-    </div>
-</header>
+{% include '_header.html' %}
 
-<main id="main-content" class="container" role="main" style="max-width:800px">
+<main id="main-content" class="container page-content" role="main">
+
+    <nav class="breadcrumb" aria-label="Fil d'Ariane">
+        <a href="/">Accueil</a><span aria-hidden="true">&rsaquo;</span><span aria-current="page">Mentions l&eacute;gales</span>
+    </nav>
 
     <h1>Mentions l&eacute;gales et RGPD</h1>
     <p class="legal-text"><em>Derni&egrave;re mise &agrave; jour&nbsp;: <time datetime="2026-09-29">29 septembre 2026</time></em></p>
+    <nav class="page-toc" aria-label="Sommaire">
+        <ul>
+            <li><a href="#desinscription">Se désinscrire</a></li>
+            <li><a href="#editeur">Éditeur</a></li>
+            <li><a href="#hebergeur">Hébergeur</a></li>
+            <li><a href="#nature-du-service">Nature du service</a></li>
+            <li><a href="#donnees-personnelles">Données personnelles</a></li>
+            <li><a href="#cookies">Cookies</a></li>
+            <li><a href="#messagerie">Messagerie</a></li>
+            <li><a href="#sources">Sources</a></li>
+            <li><a href="#responsabilite">Responsabilité</a></li>
+        </ul>
+    </nav>
 
     <!-- Fix #9 : classes CSS au lieu de styles inline -->
     <div class="legal-section">
-        <h2>1. Éditeur du site et directeur de la publication</h2>
+        <h2 id="editeur">1. Éditeur du site et directeur de la publication</h2>
         <p class="legal-text">
             Le site calendrier-tempo.fr (&laquo;&nbsp;Calendrier Tempo EDF&nbsp;&raquo;) est édité par&nbsp;:
         </p>
-        <ul style="margin:0.5rem 0 1rem 1.5rem;line-height:1.8">
+        <ul>
             <li><strong>ISSA Capital</strong>, société par actions simplifiée (SAS) au capital de 1&nbsp;047&nbsp;562&nbsp;&euro;</li>
             <li>SIREN 102&nbsp;356&nbsp;094, immatriculée au RCS de Nanterre</li>
             <li>Directeur de la publication&nbsp;: le représentant légal d'ISSA Capital</li>
@@ -101,18 +98,17 @@
     </div>
 
     <div class="legal-section">
-        <h2>2. Hébergeur</h2>
+        <h2 id="hebergeur">2. Hébergeur</h2>
         <p class="legal-text">
-            Le site et sa base de données sont hébergés par&nbsp;:<br>
-            <strong>Replit, Inc.</strong><br>
-            1001 E Hillsdale Blvd, Suite 400, Foster City, CA 94404, États-Unis<br>
-            Courriel&nbsp;: <a href="mailto:contact@replit.com">contact@replit.com</a><br>
-            Site&nbsp;: <a href="https://replit.com" target="_blank" rel="noopener">replit.com</a>
+            Le site est hébergé par&nbsp;:<br>
+            <strong>Cloudflare, Inc.</strong><br>
+            101 Townsend St., San Francisco, CA 94107, États-Unis<br>
+            Site&nbsp;: <a href="https://www.cloudflare.com" target="_blank" rel="noopener">cloudflare.com</a>
         </p>
     </div>
 
     <div class="legal-section">
-        <h2>3. Nature du service</h2>
+        <h2 id="nature-du-service">3. Nature du service</h2>
         <p class="legal-text">
             Le Calendrier Tempo EDF est un service indépendant de prévision des jours Tempo EDF.
             Ce service n'est <strong>pas affilié à EDF</strong> ni à aucune entité du groupe EDF.
@@ -136,7 +132,7 @@
 
         <h3>4.2 Données traitées, finalités et bases légales</h3>
         <p class="legal-text"><strong>a) Alertes WhatsApp (inscription, envoi, gestion des préférences)</strong></p>
-        <ul style="margin:0.5rem 0 1rem 1.5rem;line-height:1.8">
+        <ul>
             <li><strong>Données :</strong> numéro de téléphone mobile, préférences choisies (alertes rouge et blanc, niveau de probabilité,
                 délai d'anticipation, moment d'envoi, récapitulatif hebdomadaire), statut de l'abonnement (actif ou non),
                 dates de création et de dernière modification, lien de gestion personnel (jeton aléatoire).</li>
@@ -152,7 +148,7 @@
         </ul>
 
         <p class="legal-text"><strong>b) Historique des envois</strong></p>
-        <ul style="margin:0.5rem 0 1rem 1.5rem;line-height:1.8">
+        <ul>
             <li><strong>Données :</strong> type de message, date d'envoi, jour Tempo concerné, couleur, texte du message
                 (lien de gestion masqué), statut de livraison, identifiant du message côté WhatsApp, code d'erreur éventuel.</li>
             <li><strong>Finalités :</strong> respecter la limite d'une alerte par jour, éviter les doublons, suivre la bonne
@@ -162,14 +158,14 @@
         </ul>
 
         <p class="legal-text"><strong>c) Réponses par WhatsApp (STOP, START, RECAP)</strong></p>
-        <ul style="margin:0.5rem 0 1rem 1.5rem;line-height:1.8">
+        <ul>
             <li>Lorsque vous écrivez au numéro du service, WhatsApp nous transmet votre numéro et votre message. Ils servent uniquement
                 à exécuter la commande demandée et à vous répondre. Le contenu de vos messages n'est pas enregistré en base de données.</li>
             <li><strong>Base légale :</strong> exécution du service (article 6.1.b).</li>
         </ul>
 
         <p class="legal-text"><strong>d) Sécurité et lutte contre les abus</strong></p>
-        <ul style="margin:0.5rem 0 1rem 1.5rem;line-height:1.8">
+        <ul>
             <li><strong>Données :</strong> adresse IP, utilisée pour limiter le nombre de tentatives d'inscription et de désinscription
                 (compteurs conservés en mémoire, non enregistrés en base de données). Un champ invisible et un délai minimal de saisie
                 écartent les robots. Les journaux techniques d'erreur peuvent mentionner l'adresse IP d'une tentative refusée.</li>
@@ -177,14 +173,14 @@
         </ul>
 
         <p class="legal-text"><strong>e) Consultation du site et de l'API publique</strong></p>
-        <ul style="margin:0.5rem 0 1rem 1.5rem;line-height:1.8">
+        <ul>
             <li>Aucun compte ni identifiant n'est demandé pour consulter le site ou l'API. Comme tout serveur web, l'hébergeur traite
                 techniquement l'adresse IP pour délivrer les pages. La mesure d'audience est décrite à la section 5.</li>
             <li><strong>Base légale :</strong> intérêt légitime à faire fonctionner et sécuriser le site (article 6.1.f).</li>
         </ul>
 
         <p class="legal-text"><strong>f) Courriels que vous nous adressez</strong></p>
-        <ul style="margin:0.5rem 0 1rem 1.5rem;line-height:1.8">
+        <ul>
             <li>Votre adresse de courriel et le contenu de votre message, utilisés pour répondre à votre demande
                 (question, exercice de droits, signalement).</li>
             <li><strong>Base légale :</strong> intérêt légitime à répondre aux demandes reçues (article 6.1.f) et, pour l'exercice de vos droits,
@@ -197,7 +193,7 @@
             Elles ne sont accessibles qu'aux personnes habilitées d'ISSA Capital et aux prestataires techniques suivants,
             dans la mesure nécessaire à leur mission&nbsp;:
         </p>
-        <ul style="margin:0.5rem 0 1rem 1.5rem;line-height:1.8">
+        <ul>
             <li><strong>Replit, Inc.</strong> (États-Unis), hébergement du site et de sa base de données&nbsp;: toutes les données décrites à la section 4.2.</li>
             <li><strong>Meta (WhatsApp Business)</strong>, prestataire d'envoi des messages&nbsp;: votre numéro de téléphone et le contenu des messages
                 envoyés ou reçus. WhatsApp traite par ailleurs des données pour son propre compte dans le cadre de votre usage de l'application,
@@ -221,7 +217,7 @@
         </p>
 
         <h3>4.5 Durées de conservation</h3>
-        <ul style="margin:0.5rem 0 1rem 1.5rem;line-height:1.8">
+        <ul>
             <li><strong>Abonnement actif :</strong> vos données sont conservées tant que l'abonnement est actif.</li>
             <li><strong>Après désinscription :</strong> que vous répondiez STOP, utilisiez le lien de gestion ou le formulaire de la section 9,
                 ou que l'abonnement soit désactivé automatiquement, le compte est désactivé et cesse de recevoir des messages.
@@ -248,7 +244,7 @@
             et d'opposition, du droit à la portabilité de vos données et du droit de définir des directives relatives au sort
             de vos données après votre décès.
         </p>
-        <ul style="margin:0.5rem 0 1rem 1.5rem;line-height:1.8">
+        <ul>
             <li><strong>Arrêter les messages ou modifier vos préférences :</strong> répondez STOP à un message, utilisez le lien de gestion
                 présent dans chaque message, ou le formulaire de la section 9. L'abonnement est alors désactivé (voir les durées en section 4.5).</li>
             <li><strong>Accès, rectification, effacement immédiat, limitation, opposition, portabilité :</strong> écrivez à
@@ -286,7 +282,7 @@
 
 
     <div class="legal-section">
-        <h2>6. Politique de messagerie</h2>
+        <h2 id="messagerie">6. Politique de messagerie</h2>
         <p class="legal-text">
             <strong>Fréquence :</strong> Maximum 1 alerte par jour. Le récapitulatif hebdomadaire
             (optionnel) est envoyé le dimanche soir. Alertes et récapitulatifs sont envoyés
@@ -300,7 +296,7 @@
     </div>
 
     <div class="legal-section">
-        <h2>7. Sources de données</h2>
+        <h2 id="sources">7. Sources de données</h2>
         <p class="legal-text">
             <strong>Couleurs Tempo :</strong> couleurs publiées par EDF, relayées par
             <a href="https://www.api-couleur-tempo.fr/" target="_blank" rel="noopener">api-couleur-tempo.fr</a> (service tiers)<br><br>
@@ -315,7 +311,7 @@
     </div>
 
     <div class="legal-section">
-        <h2>8. Limitation de responsabilité</h2>
+        <h2 id="responsabilite">8. Limitation de responsabilité</h2>
         <p class="legal-text">
             Les prévisions fournies par le Calendrier Tempo EDF sont des estimations statistiques.
             Elles ne garantissent pas la couleur réelle qui sera annoncée par EDF.
@@ -334,7 +330,7 @@
             <input type="tel" id="unsub-phone" name="phone" placeholder="06 12 34 56 78" required
                    title="Format: 06/07 XX XX XX XX ou +33 6/7 XX XX XX XX"
                    aria-label="Numéro de téléphone pour désinscription">
-            <button type="submit" class="task-btn" style="background:var(--rouge)">Se désinscrire</button>
+            <button type="submit" class="btn btn-danger">Se désinscrire</button>
         </form>
         <div id="unsub-result" class="unsub-result" role="status" aria-live="polite"></div>
     </div>
@@ -391,18 +387,16 @@ document.getElementById('unsubscribe-form').addEventListener('submit', async (e)
 
 {% include '_footer.html' %}
 
+<button class="back-to-top" id="back-to-top" aria-label="Retour en haut de page">&#8593;</button>
 <script>
-// Hamburger menu toggle
-(function() {
-    const btn = document.getElementById('hamburger-btn');
-    const nav = document.getElementById('main-nav');
-    if (!btn || !nav) return;
-    btn.addEventListener('click', () => {
-        const open = nav.classList.toggle('open');
-        btn.setAttribute('aria-expanded', open);
-    });
+(function () {
+    var b = document.getElementById('back-to-top');
+    if (!b) return;
+    window.addEventListener('scroll', function () { b.classList.toggle('visible', window.scrollY > 600); }, { passive: true });
+    b.addEventListener('click', function () { window.scrollTo({ top: 0, behavior: 'smooth' }); });
 })();
 </script>
+
 
 </body>
 </html>

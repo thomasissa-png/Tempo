@@ -1,49 +1,47 @@
-<!-- Modal inscription alertes — partial inclus dans toutes les pages -->
-<div id="subscribe"></div>
+<!-- Modal inscription alertes : partial inclus dans toutes les pages (l'ancre #subscribe est la section de l'accueil) -->
 <div class="subscribe-modal-overlay" id="subscribe-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" style="display:none">
     <div class="subscribe-modal">
         <button class="modal-close" id="modal-close" aria-label="Fermer">&times;</button>
         <h2 id="modal-title">Anticipez les 7 prochains jours Tempo <span class="beta-badge">En test</span></h2>
+        <div id="modal-form-area">
         <p class="sub-desc">
             100% gratuit, sans engagement, 1 message par jour maximum.
             <span class="beta-notice">Nouvelle fonctionnalit&eacute;&nbsp;: des perturbations ponctuelles sont possibles.</span>
         </p>
         <div class="sms-preview" id="modal-sms-preview">
-            <div class="sms-preview-label">&#128172; Exemple de message que vous recevrez :</div>
+            <div class="sms-preview-label">&#128172; Exemple de message que vous recevrez (couleurs fictives)&nbsp;:</div>
             <div class="sms-bubble" id="modal-sms-bubble">
                 <!-- Content generated dynamically by updateSmsBubble() -->
             </div>
         </div>
         <form id="modal-subscribe-form">
             <!-- Anti-bot: honeypot field (invisible to humans, filled by bots) -->
-            <div style="position:absolute;left:-9999px" aria-hidden="true">
+            <div class="hp-field" aria-hidden="true">
                 <input type="text" name="website" tabindex="-1" autocomplete="off" id="modal-hp">
             </div>
             <input type="hidden" name="t" id="modal-ts" value="">
             <div class="form-simple">
                 <div class="form-group">
                     <label for="modal-phone">Votre num&eacute;ro de mobile</label>
-                    <input type="tel" id="modal-phone" name="phone" placeholder="06 12 34 56 78" required autocomplete="tel" inputmode="tel">
+                    <input type="tel" id="modal-phone" name="phone" placeholder="06 12 34 56 78" required autocomplete="tel" inputmode="tel" aria-describedby="modal-phone-feedback">
                     <span class="phone-feedback" id="modal-phone-feedback" aria-live="polite"></span>
                 </div>
-                <div class="form-group" style="margin-top:10px">
-                    <label style="font-size:.88rem;font-weight:600;margin-bottom:4px;display:block">Quelles alertes souhaitez-vous&nbsp;?</label>
-                    <div style="display:flex;flex-direction:column;gap:6px">
-                        <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;cursor:pointer">
-                            <input type="checkbox" name="alerte_rouge" id="modal-alerte-rouge" checked>
-                            <span>Alertes jours <strong>rouge</strong></span>
-                        </label>
-                        <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;cursor:pointer">
-                            <input type="checkbox" name="alerte_blanc" id="modal-alerte-blanc">
-                            <span>Alertes jours <strong>blanc</strong></span>
-                        </label>
-                        <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;cursor:pointer">
-                            <input type="checkbox" name="recap_hebdo" id="modal-recap-hebdo" checked>
-                            <span>R&eacute;cap hebdomadaire (chaque dimanche)</span>
-                        </label>
-                    </div>
-                    <span class="form-hint" style="margin-top:6px;display:block">Alertes actives du 1<sup>er</sup> novembre au 31 mars. Modifiables &agrave; tout moment.</span>
-                </div>
+                <fieldset class="form-group form-choices">
+                    <legend>Quelles alertes souhaitez-vous&nbsp;?</legend>
+                    <label class="form-checkbox">
+                        <input type="checkbox" name="alerte_rouge" id="modal-alerte-rouge" checked>
+                        <span>Alertes jours <strong>rouge</strong></span>
+                    </label>
+                    <label class="form-checkbox">
+                        <input type="checkbox" name="alerte_blanc" id="modal-alerte-blanc">
+                        <span>Alertes jours <strong>blanc</strong></span>
+                    </label>
+                    <label class="form-checkbox">
+                        <input type="checkbox" name="recap_hebdo" id="modal-recap-hebdo" checked>
+                        <span>R&eacute;cap hebdomadaire (chaque dimanche)</span>
+                    </label>
+                    <span class="form-hint">Alertes actives du 1<sup>er</sup> novembre au 31 mars. Modifiables &agrave; tout moment.</span>
+                </fieldset>
             </div>
             <button type="submit" class="btn btn-subscribe" id="modal-subscribe-btn">Recevoir mon alerte gratuite</button>
             <p class="form-legal">
@@ -53,16 +51,24 @@
                 <a href="/mentions-legales">Politique de confidentialit&eacute;</a>
             </p>
         </form>
-        <div id="modal-form-result" class="form-result"></div>
-        <div class="modal-manage-section">
-            <span style="font-size:.82rem;color:var(--text-secondary)">D&eacute;j&agrave; inscrit&nbsp;?</span>
-            <button type="button" class="modal-manage-link-btn" id="modal-manage-toggle">G&eacute;rer mon abonnement</button>
-            <div id="modal-manage-form" style="display:none;margin-top:8px">
-                <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
-                    <input type="tel" id="modal-manage-phone" placeholder="06 12 34 56 78" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:.85rem;max-width:180px" inputmode="tel">
-                    <button type="button" class="btn" id="modal-manage-btn" style="margin-top:0;padding:6px 14px;font-size:.82rem">Envoyer</button>
+        </div>
+        <div id="modal-form-result" class="form-result" role="status" aria-live="polite"></div>
+        <div class="modal-success" id="modal-success" hidden>
+            <p class="modal-success-title"><span class="success-check" aria-hidden="true">&#10003;</span> V&eacute;rifiez votre WhatsApp&nbsp;!</p>
+            <p>Vous devriez recevoir un message dans les 30 secondes.</p>
+            <p class="form-hint">Si rien n'arrive, v&eacute;rifiez le num&eacute;ro saisi.</p>
+            <button type="button" class="btn" id="modal-success-close">Fermer</button>
+        </div>
+        <div class="modal-manage-section" id="modal-manage-section">
+            <span class="modal-manage-intro">D&eacute;j&agrave; inscrit&nbsp;?</span>
+            <button type="button" class="modal-manage-link-btn" id="modal-manage-toggle" aria-expanded="false" aria-controls="modal-manage-form">G&eacute;rer mon abonnement</button>
+            <div id="modal-manage-form" class="modal-manage-form" hidden>
+                <div class="modal-manage-row">
+                    <label class="sr-only" for="modal-manage-phone">Num&eacute;ro de mobile inscrit</label>
+                    <input type="tel" id="modal-manage-phone" placeholder="06 12 34 56 78" inputmode="tel" autocomplete="tel">
+                    <button type="button" class="btn" id="modal-manage-btn">Envoyer</button>
                 </div>
-                <div id="modal-manage-result" style="display:none;margin-top:6px;font-size:.82rem"></div>
+                <div id="modal-manage-result" class="modal-manage-result" role="status" aria-live="polite"></div>
             </div>
         </div>
     </div>
@@ -169,6 +175,7 @@
         var modal = document.getElementById('subscribe-modal');
         if (!modal) return;
         _previouslyFocused = document.activeElement;
+        resetModal();
         modal.style.display = 'flex';
         document.body.style.overflow = 'hidden';
         updateSmsBubble();
@@ -181,6 +188,32 @@
     };
 
     var _previouslyFocused = null;
+
+    // Remet la fenêtre dans son état initial (formulaire visible, succès masqué)
+    function resetModal() {
+        var area = document.getElementById('modal-form-area');
+        var success = document.getElementById('modal-success');
+        var manage = document.getElementById('modal-manage-section');
+        var resultEl = document.getElementById('modal-form-result');
+        if (area) area.hidden = false;
+        if (manage) manage.hidden = false;
+        if (success) success.hidden = true;
+        if (resultEl) { resultEl.className = 'form-result'; resultEl.textContent = ''; resultEl.style.display = 'none'; }
+    }
+
+    // MOD-02 : état de succès persistant, jamais de fermeture automatique
+    function showSuccess() {
+        var area = document.getElementById('modal-form-area');
+        var success = document.getElementById('modal-success');
+        var manage = document.getElementById('modal-manage-section');
+        if (area) area.hidden = true;
+        if (manage) manage.hidden = true;
+        if (success) {
+            success.hidden = false;
+            var closeBtn = document.getElementById('modal-success-close');
+            if (closeBtn) closeBtn.focus();
+        }
+    }
 
     window.closeSubscribeModal = function() {
         var modal = document.getElementById('subscribe-modal');
@@ -205,7 +238,13 @@
             if (e.key === 'Tab') {
                 var m = document.getElementById('subscribe-modal');
                 if (!m || m.style.display === 'none') return;
-                var focusable = m.querySelectorAll('button, input, a, [tabindex]:not([tabindex="-1"])');
+                // MOD-01 : uniquement les éléments visibles et atteignables au clavier
+                var focusable = Array.prototype.filter.call(
+                    m.querySelectorAll('button, input, a[href], [tabindex]'),
+                    function(el) {
+                        return el.offsetParent !== null && !el.disabled &&
+                            el.getAttribute('tabindex') !== '-1' && el.type !== 'hidden';
+                    });
                 if (!focusable.length) return;
                 var first = focusable[0], last = focusable[focusable.length - 1];
                 if (e.shiftKey) { if (document.activeElement === first) { e.preventDefault(); last.focus(); } }
@@ -255,6 +294,7 @@
                 if (!normalized) {
                     showResult(resultEl, 'error', 'Num\u00e9ro non reconnu. Formats accept\u00e9s\u00a0: 06/07, +33, +32, +41, +352, +49');
                     submitting = false;
+                    document.getElementById('modal-phone').focus();
                     return;
                 }
 
@@ -279,12 +319,8 @@
                     .then(function(result) {
                         if (result.ok) {
                             trackEvent('modal_submit', { page: window.location.pathname });
-                            resultEl.className = 'form-result success';
-                            resultEl.innerHTML = '<span class="success-check">\u2713</span> ' +
-                                "V\u00e9rifiez votre WhatsApp\u00a0! Vous devriez recevoir un message dans les 30 secondes.";
-                            resultEl.style.display = 'block';
                             form.reset();
-                            setTimeout(function() { closeSubscribeModal(); }, 4000);
+                            showSuccess();
                         } else {
                             trackEvent('modal_error', { page: window.location.pathname, reason: result.data.detail || 'api_error' });
                             showResult(resultEl, 'error', result.data.detail || "Erreur lors de l'inscription");
@@ -307,8 +343,14 @@
         var manageForm = document.getElementById('modal-manage-form');
         if (manageToggle && manageForm) {
             manageToggle.addEventListener('click', function() {
-                manageForm.style.display = manageForm.style.display === 'none' ? 'block' : 'none';
+                manageForm.hidden = !manageForm.hidden;
+                manageToggle.setAttribute('aria-expanded', String(!manageForm.hidden));
+                if (!manageForm.hidden) document.getElementById('modal-manage-phone').focus();
             });
+        }
+        var successClose = document.getElementById('modal-success-close');
+        if (successClose) {
+            successClose.addEventListener('click', closeSubscribeModal);
         }
         var manageBtn = document.getElementById('modal-manage-btn');
         if (manageBtn) {
@@ -318,8 +360,7 @@
                 var raw = phoneInput ? phoneInput.value : '';
                 var normalized = normalizePhoneLocal(raw);
                 if (!normalized) {
-                    resultEl.style.display = 'block';
-                    resultEl.style.color = '#b91c1c';
+                    resultEl.className = 'modal-manage-result is-error';
                     resultEl.textContent = 'Num\u00e9ro non reconnu.';
                     return;
                 }
@@ -329,18 +370,16 @@
                 fetch('/api/resend-manage-link', { method: 'POST', body: formData })
                     .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
                     .then(function(res) {
-                        resultEl.style.display = 'block';
                         if (res.ok) {
-                            resultEl.style.color = '#2e7d32';
+                            resultEl.className = 'modal-manage-result is-ok';
                             resultEl.textContent = res.data.message || 'Lien envoy\u00e9 par WhatsApp\u00a0!';
                         } else {
-                            resultEl.style.color = '#b91c1c';
+                            resultEl.className = 'modal-manage-result is-error';
                             resultEl.textContent = res.data.detail || 'Erreur.';
                         }
                     })
                     .catch(function() {
-                        resultEl.style.display = 'block';
-                        resultEl.style.color = '#b91c1c';
+                        resultEl.className = 'modal-manage-result is-error';
                         resultEl.textContent = 'Erreur de connexion.';
                     })
                     .finally(function() { manageBtn.disabled = false; });

@@ -31,7 +31,6 @@ function fetchWithTimeout(url, options = {}, timeoutMs = 10000) {
 document.addEventListener('DOMContentLoaded', () => {
     // Charger toutes les données en parallèle (au lieu de séquentiellement)
     loadAllData();
-    setupHamburger();
     setupBackToTop();
     setupUnsubscribeForm();
     setupWelcomeBanner();
@@ -144,9 +143,9 @@ async function loadRemaining() {
         if (!resp.ok) { throw new Error(`HTTP ${resp.status}`); }
         const data = await resp.json();
         if (!data || data.status !== 'ok') {
-            setText('count-rouge', '?');
-            setText('count-blanc', '?');
-            setText('count-bleu', '?');
+            setText('count-rouge', '-');
+            setText('count-blanc', '-');
+            setText('count-bleu', '-');
             setText('days-left', 'Données temporairement indisponibles');
             return;
         }
@@ -156,6 +155,10 @@ async function loadRemaining() {
         const totalRouge = t ? t.ROUGE : 22;
         const totalBlanc = t ? t.BLANC : 43;
         const totalBleu  = t ? t.BLEU : 208;
+        ['count-rouge', 'count-blanc', 'count-bleu'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) { el.classList.remove('count-pending'); el.removeAttribute('aria-label'); }
+        });
         setText('count-rouge', `${r.ROUGE}/${totalRouge}`);
         setText('count-blanc', `${r.BLANC}/${totalBlanc}`);
         setText('count-bleu',  `${r.BLEU}/${totalBleu}`);
@@ -186,9 +189,9 @@ async function loadRemaining() {
             }
         }
     } catch (e) {
-        setText('count-rouge', '?');
-        setText('count-blanc', '?');
-        setText('count-bleu', '?');
+        setText('count-rouge', '-');
+        setText('count-blanc', '-');
+        setText('count-bleu', '-');
         const daysEl = document.getElementById('days-left');
         if (daysEl) {
             daysEl.innerHTML = 'Erreur de connexion <button class="retry-btn" onclick="loadRemaining()">Réessayer</button>';
@@ -207,7 +210,7 @@ async function loadPredictions() {
         if (!resp.ok) { throw new Error(`HTTP ${resp.status}`); }
         const data = await resp.json();
         if (!data || data.status !== 'ok') {
-            container.innerHTML = '<p class="loading-state">Erreur lors du chargement</p>';
+            container.innerHTML = '<p class="loading-state">Les prévisions n’ont pas pu être chargées.<br><button class="retry-btn" onclick="loadPredictions()">Réessayer</button></p>';
             return;
         }
 
@@ -437,7 +440,9 @@ function renderWeekSummary(preds) {
         } else {
             const probKey = `probabilite_${couleur.toLowerCase()}`;
             const confidence = Math.round((p[probKey] || 0) * 100);
-            infoHtml = `<span class="week-dot-proba">${confidence}%</span>`;
+            if (couleur !== 'BLEU' || confidence < 90) {
+                infoHtml = `<span class="week-dot-proba">${confidence}%</span>`;
+            }
         }
 
         // UX audit #25: shape classes for colorblind users + #16: confirmed border
@@ -453,30 +458,11 @@ function renderWeekSummary(preds) {
     });
     dotsHtml += '</div>';
 
-    const title = document.createElement('h2');
-    title.className = 'section-title';
-    title.style.marginTop = '0';
-    title.textContent = 'R\u00e9sum\u00e9 des 10 prochains jours';
-
-    const card = document.createElement('div');
-    card.className = 'week-summary-card' + (rougeCount > 0 ? ' has-rouge' : '');
-    card.innerHTML = `
-        <div class="week-summary-text">${summaryText}</div>
-        ${dotsHtml}
-        <a href="/calendrier" class="btn btn-cta-summary" style="text-decoration:none">Voir les pr\u00e9visions d\u00e9taill\u00e9es des 15 prochains jours \u2192</a>
-    `;
-    container.innerHTML = '';
-    container.appendChild(title);
-    container.appendChild(card);
-
-    // Bannière hiver atypique (visible jusqu'au 30 mars 2026)
-    if (new Date() <= new Date('2026-03-30T23:59:59')) {
-        const notice = document.createElement('div');
-        notice.className = 'winter-notice';
-        notice.style.cssText = 'margin-top:12px;padding:12px 16px;background:#FFF8E1;border:1px solid #FFD54F;border-radius:var(--radius-sm);font-size:.88rem;color:#5D4037;line-height:1.6';
-        notice.innerHTML = '<strong>Hiver 2025-2026 atypique\u00a0:</strong> les temp\u00e9ratures exceptionnellement douces et la bonne disponibilit\u00e9 \u00e9nerg\u00e9tique rendent peu probable l\u2019utilisation de tous les jours rouges restants. La d\u00e9cision finale revient \u00e0 RTE, ce qui rend les pr\u00e9visions plus incertaines que d\u2019habitude.';
-        container.appendChild(notice);
-    }
+    // Accueil : #week-summary ne contient que les pastilles ; le titre, la phrase
+    // SSR (couleur du jour et de demain) et les liens restent dans la carte.
+    const card = document.getElementById('week-summary-card');
+    if (card) card.classList.toggle('has-rouge', rougeCount > 0);
+    container.innerHTML = `${dotsHtml}<p class="week-summary-text">${summaryText}</p>`;
 }
 
 // ================================================================
@@ -791,34 +777,6 @@ function escapeHtml(str) {
     return div.innerHTML;
 }
 
-// ================================================================
-// HAMBURGER MENU (mobile)
-// ================================================================
-
-function setupHamburger() {
-    const btn = document.getElementById('hamburger-btn');
-    const nav = document.getElementById('main-nav');
-    if (!btn || !nav) return;
-
-    btn.addEventListener('click', () => {
-        const open = nav.classList.toggle('open');
-        btn.setAttribute('aria-expanded', open);
-    });
-
-    nav.querySelectorAll('a').forEach(link => {
-        link.addEventListener('click', () => {
-            nav.classList.remove('open');
-            btn.setAttribute('aria-expanded', 'false');
-        });
-    });
-
-    document.addEventListener('click', (e) => {
-        if (!btn.contains(e.target) && !nav.contains(e.target)) {
-            nav.classList.remove('open');
-            btn.setAttribute('aria-expanded', 'false');
-        }
-    });
-}
 
 // ================================================================
 // BACK TO TOP BUTTON

@@ -1185,6 +1185,14 @@ class TestStructuredData:
         assert '"FAQPage"' in content
 
 
+def _with_shared_header(content: str) -> str:
+    """Inline l'en-tête partagé (templates/_header.html, GLO-02) pour les tests de template statiques."""
+    header_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates", "_header.html")
+    with open(header_path, encoding="utf-8") as f:
+        header = f.read()
+    return content.replace("{% include '_header.html' %}", header)
+
+
 class TestInternalLinking:
     """Navigation includes /calendrier on all pages."""
 
@@ -1201,7 +1209,7 @@ class TestInternalLinking:
         for tpl in self._TEMPLATES_WITH_CAL_NAV:
             filepath = os.path.join(templates_dir, tpl)
             with open(filepath) as f:
-                content = f.read()
+                content = _with_shared_header(f.read())
             assert 'href="/calendrier"' in content, (
                 f"/calendrier link missing in nav of {tpl}"
             )
@@ -1369,7 +1377,7 @@ class TestHeadingHierarchy:
         for tpl in self._NON_HOMEPAGE_TEMPLATES:
             filepath = os.path.join(templates_dir, tpl)
             with open(filepath) as f:
-                content = f.read()
+                content = _with_shared_header(f.read())
             # Should NOT have <h1 in the header section (before </header>)
             header_section = content.split("</header>")[0] if "</header>" in content else ""
             assert '<h1' not in header_section, f"{tpl} has <h1> in header (duplicate H1 risk)"
@@ -1381,7 +1389,7 @@ class TestHeadingHierarchy:
             "templates", "dashboard.html"
         )
         with open(filepath) as f:
-            content = f.read()
+            content = _with_shared_header(f.read())
         header_section, main_section = content.split("</header>", 1)
         assert '<h1' not in header_section
         assert main_section.count('<h1') == 1

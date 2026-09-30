@@ -1,8 +1,9 @@
+{% import '_icons.html' as icons -%}
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     {# Rendu : SSR à chaque requête (couleurs officielles + prévisions depuis la DB), cache 10 min #}
     {% if is_current_month %}
     {% set page_title = "Calendrier Tempo EDF " ~ season_label ~ " : jours rouges, blancs et bleus" %}
@@ -28,7 +29,7 @@
     <link rel="apple-touch-icon" href="/static/favicon-180.png">
     <meta name="application-name" content="Calendrier Tempo">
     <meta name="apple-mobile-web-app-title" content="Calendrier Tempo">
-    <meta name="theme-color" content="#1565C0">
+    <meta name="theme-color" content="#2563EB">
     <link rel="manifest" href="/manifest.json">
     <!-- Open Graph -->
     <meta property="og:title" content="{{ page_title }}">
@@ -65,9 +66,9 @@
     <!-- JSON-LD FAQPage : même source que la FAQ visible (site_facts.faq_calendrier) -->
     <script type="application/ld+json">{{ faq_ld|tojson }}</script>
     <link rel="preload" href="/static/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
-    <link rel="stylesheet" href="/static/css/fonts.css?v=20260929">
-    <link rel="preload" href="/static/css/style.min.css?v=20260929b" as="style">
-    <link rel="stylesheet" href="/static/css/style.min.css?v=20260929b">
+    <link rel="stylesheet" href="/static/css/fonts.css?v={{ facts.ASSET_V }}">
+    <link rel="preload" href="/static/css/style.min.css?v={{ facts.ASSET_V }}" as="style">
+    <link rel="stylesheet" href="/static/css/style.min.css?v={{ facts.ASSET_V }}">
     <script defer src="https://cloud.umami.is/script.js" data-website-id="1d187359-b4a6-4ba8-ba41-c449b356832f"></script>
     <style>
         .cal-nav { display: flex; justify-content: center; align-items: center; gap: 16px; margin: 24px 0; flex-wrap: wrap; }
@@ -83,7 +84,9 @@
         .cal-day.blanc { background: var(--blanc-bg); color: var(--text); border: 1px solid var(--blanc); }
         .cal-day.bleu { background: var(--bleu-bg); color: var(--bleu); }
         .cal-day.inconnu { background: transparent; color: var(--text-secondary); border: 1px dashed var(--border); }
-        .cal-day.future { opacity: 0.6; font-style: italic; }
+        .cal-day.future { font-style: italic; border-style: dashed; }
+        .cal-day.bleu.future { border: 1px dashed var(--bleu); }
+        .cal-day.rouge.future { background: var(--rouge-bg); color: #B91C1C; border: 1px dashed var(--rouge); }
         .cal-day.today { box-shadow: 0 0 0 3px var(--bleu); }
         .cal-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; max-width: 500px; margin: 0 auto 32px; }
         .cal-stat { text-align: center; padding: 16px; border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
@@ -100,11 +103,26 @@
         .cal-legend { display: flex; justify-content: center; gap: 24px; margin: 16px 0 24px; flex-wrap: wrap; }
         .cal-legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.9rem; }
         .cal-legend-dot { width: 16px; height: 16px; border-radius: 4px; }
-        .cal-seasons { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+        .cal-month-summary p { font-size: 0.9rem; }
+        .cal-source-note { text-align: center; font-size: 0.8rem; color: var(--text-secondary); margin: -8px auto 24px; max-width: 700px; }
+        .cal-forecast-intro { margin: 0 0 12px; font-size: 0.95rem; color: var(--text-secondary); }
+        .cal-forecast-intro .update-freq { display: block; font-size: 0.85rem; }
+        .legend.legend-inline { flex-direction: row; flex-wrap: wrap; gap: 8px 20px; align-items: center; padding: 12px 16px; }
+        .legend-inline .legend-item { align-items: center; }
+        .legend-inline .legend-note { flex-basis: 100%; margin: 0; }
+        #forecast-container { min-height: 320px; }
+        .cal-history-link { margin: 12px 0 0; font-size: 0.9rem; }
+        @media (max-width: 600px) { #forecast-container { min-height: 220px; } }
         @media (max-width: 600px) {
             .cal-grid { gap: 2px; }
             .cal-day { padding: 8px 2px; font-size: 0.8rem; min-height: 36px; }
-            .cal-stats { grid-template-columns: 1fr; max-width: 300px; }
+            .cal-stats { grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: none; margin-bottom: 16px; }
+            .cal-stat { padding: 10px 6px; }
+            .cal-stat .stat-count { font-size: 1.4rem; }
+            .cal-stat .stat-label { font-size: 0.75rem; line-height: 1.3; }
+            .cal-nav { margin: 16px 0; gap: 6px; flex-wrap: nowrap; }
+            .cal-nav a, .cal-nav span, .cal-nav .cal-current { padding: 8px 10px; font-size: 0.85rem; white-space: nowrap; }
+            .cal-legend { gap: 8px 16px; margin: 8px 0 16px; }
         }
     </style>
 </head>
@@ -112,27 +130,8 @@
 
 <a href="#main-content" class="skip-link">Aller au contenu principal</a>
 
-<header role="banner">
-    <div class="container header-row">
-        <a href="/" class="header-brand">
-            <svg class="header-logo" viewBox="0 0 100 100" width="32" height="32" aria-hidden="true"><circle cx="50" cy="50" r="45" fill="#fff"/><circle cx="50" cy="50" r="40" fill="#2563EB"/><path d="M50 10A40 40 0 0 1 90 50H10A40 40 0 0 1 50 10z" fill="#DC2626"/><circle cx="50" cy="50" r="16" fill="#fff"/></svg>
-            <span class="header-title">Calendrier Tempo EDF</span>
-        </a>
-        <button class="hamburger-btn" id="hamburger-btn" aria-label="Menu de navigation" aria-expanded="false" aria-controls="main-nav">
-            <span class="bar"></span>
-            <span class="bar"></span>
-            <span class="bar"></span>
-        </button>
-        <nav id="main-nav" aria-label="Navigation principale">
-            <a href="/">Accueil</a>
-            <a href="/calendrier" class="active"{% if is_current_month %} aria-current="page"{% endif %}>Calendrier</a>
-            <a href="/tarif-tempo-edf">Tarifs</a>
-            <a href="/historique-previsions">Historique</a>
-            <a href="/blog/">Blog</a>
-            <button type="button" class="nav-cta" onclick="openSubscribeModal()">Alertes gratuites</button>
-        </nav>
-    </div>
-</header>
+{% set nav_active = 'calendrier' %}{% set nav_current = is_current_month %}
+{% include '_header.html' %}
 
 <main id="main-content" class="container" role="main">
 
@@ -146,7 +145,7 @@
     </nav>
 
     {% if is_current_month %}
-    <h1>Calendrier Tempo EDF {{ season_label }}</h1>
+    <h1>Calendrier Tempo EDF <span class="nowrap">{{ season_label }}</span></h1>
     <p class="section-desc">
         Le <strong>calendrier Tempo EDF</strong> de la saison {{ season_label }} (du 1<sup>er</sup> septembre au 31 ao&ucirc;t) :
         les jours pass&eacute;s affichent la <strong>couleur officielle publi&eacute;e par EDF</strong>, les jours &agrave; venir nos
@@ -193,9 +192,9 @@
     <!-- Légende -->
     <div class="cal-legend" aria-hidden="true">
         <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--rouge)"></div> Rouge</div>
-        <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--blanc);border:1px solid #999"></div> Blanc</div>
+        <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--blanc);border:1px solid var(--incertain)"></div> Blanc</div>
         <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--bleu)"></div> Bleu</div>
-        <div class="cal-legend-item"><div class="cal-legend-dot" style="border:1px dashed #999"></div> Non publi&eacute; ou pas encore pr&eacute;vu</div>
+        <div class="cal-legend-item"><div class="cal-legend-dot" style="border:1px dashed var(--incertain)"></div> Non publi&eacute; ou pas encore pr&eacute;vu</div>
         <div class="cal-legend-item"><em>Italique</em>&nbsp;= pr&eacute;vision</div>
     </div>
 
@@ -213,11 +212,44 @@
             <div class="cal-day empty" aria-hidden="true"></div>
             {% else %}
             <div class="cal-day {{ (day.color or 'inconnu')|lower }}{% if day.is_today %} today{% endif %}{% if day.is_future %} future{% endif %}" title="{{ day.label }}">
-                <span aria-hidden="true">{{ day.num }}</span><span class="sr-only">{{ day.label }}</span>
+                <span aria-hidden="true">{{ day.num }}</span><span class="sr-only">{{ day.label }}{% if day.is_today %} (aujourd'hui){% endif %}</span>
             </div>
             {% endif %}
         {% endfor %}
     </div>
+    <p class="cal-source-note">Couleurs officielles&nbsp;: {{ facts.SOURCE_COULEURS_PHRASE }}. Seule la couleur publi&eacute;e par EDF fait foi.</p>
+
+    {% if is_current_month %}
+    <!-- Prévisions détaillées des 15 prochains jours (cartes, chargées par app.min.js) -->
+    <div class="last-update-bar" id="last-update-bar" role="status" aria-live="polite" style="display:none;margin-top:40px">
+        <span id="last-update-text"></span>
+    </div>
+    <h2 class="section-title" style="margin-top:16px">Pr&eacute;visions d&eacute;taill&eacute;es des 15 prochains jours</h2>
+    <p class="cal-forecast-intro">
+        <span class="source-label label-prediction">Nos pr&eacute;visions</span>
+        Plus le jour est proche, plus la pr&eacute;vision est fiable.
+        <em class="update-freq">Recalcul&eacute;es {{ facts.CALCUL_PREVISIONS }}.</em>
+    </p>
+
+    <div class="legend legend-inline">
+        <div class="legend-item"><span class="legend-dot" style="background:var(--bleu)" aria-hidden="true"></span><div><strong>Bleu</strong> <span class="legend-price">(HP {{ facts.TARIFS.BLEU.hp|string|replace('.', ',') }}&nbsp;&euro;)</span></div></div>
+        <div class="legend-item"><span class="legend-dot" style="background:var(--blanc)" aria-hidden="true"></span><div><strong>Blanc</strong> <span class="legend-price">(HP {{ facts.TARIFS.BLANC.hp|string|replace('.', ',') }}&nbsp;&euro;)</span></div></div>
+        <div class="legend-item"><span class="legend-dot" style="background:var(--rouge)" aria-hidden="true"></span><div><strong>Rouge</strong> <span class="legend-price">(HP {{ facts.TARIFS.ROUGE.hp|string|replace('.', ',') }}&nbsp;&euro;)</span> <span class="legend-desc">: reportez lessive, s&egrave;che-linge, four, recharge VE</span></div></div>
+        <div class="legend-note">Tarifs heures pleines TTC au {{ facts.TARIFS_DATE_EFFET_FR }} (<a href="/tarif-tempo-edf">grille compl&egrave;te</a>).</div>
+    </div>
+
+    <div id="forecast-container" role="region" aria-label="Prévisions Tempo 15 jours" aria-live="polite">
+        <div class="loading-state"><div class="loader" aria-label="Chargement"></div><p>Chargement des pr&eacute;visions...</p></div>
+    </div>
+    <p class="cal-history-link">Nos pr&eacute;visions sont-elles fiables&nbsp;? <a href="/historique-previsions">Voir l'historique</a>.</p>
+    {% endif %}
+
+    <!-- CTA -->
+    <section class="blog-cta page-cta">
+        <h2>Anticipez les {{ facts.ALERTES_HORIZON_JOURS }} prochains jours Tempo</h2>
+        <p>Recevez gratuitement par WhatsApp {{ facts.ALERTES_DESCRIPTION }}.</p>
+        <button type="button" class="btn btn-primary" onclick="openSubscribeModal()">{{ icons.whatsapp(18, '#fff', 'icon-inline') }}S'inscrire aux alertes gratuites</button>
+    </section>
 
     <!-- Résumé texte du mois (données réelles uniquement) -->
     <section class="cal-month-summary" aria-label="Résumé de {{ current_month_label }}">
@@ -231,62 +263,11 @@
             {% if predicted_red %}rouge le {{ predicted_red|join(', ') }}{% endif %}{% if predicted_red and predicted_white %} ; {% endif %}{% if predicted_white %}blanc le {{ predicted_white|join(', ') }}{% endif %}.
             {% endif %}
         </p>
-        <p>Couleurs officielles&nbsp;: {{ facts.SOURCE_COULEURS_PHRASE }}. Seule la couleur publi&eacute;e par EDF fait foi.</p>
     </section>
 
-    {% if is_current_month %}
-    <!-- Prévisions détaillées des 15 prochains jours (cartes, chargées par app.min.js) -->
-    <div class="last-update-bar" id="last-update-bar" role="status" aria-live="polite" style="display:none;margin-top:40px">
-        <span id="last-update-text"></span>
-    </div>
-    <h2 class="section-title" style="margin-top:16px">Pr&eacute;visions d&eacute;taill&eacute;es des 15 prochains jours</h2>
-    <p class="section-desc">
-        <span class="source-label label-prediction">Nos pr&eacute;visions</span>
-        Plus le jour est proche, plus la pr&eacute;vision est fiable.
-        Les cartes <strong style="color:var(--rouge)">rouges</strong> signalent les jours o&ugrave; votre &eacute;lectricit&eacute; sera la plus ch&egrave;re.
-        <br><em class="update-freq">Recalcul&eacute;es {{ facts.CALCUL_PREVISIONS }}.</em>
-    </p>
-
-    <div class="legend">
-        <div class="legend-item">
-            <span class="legend-dot" style="background:var(--bleu)" aria-hidden="true"></span>
-            <div><strong>BLEU</strong> <span class="legend-price">(HP {{ facts.TARIFS.BLEU.hp|string|replace('.', ',') }}&nbsp;&euro;)</span><br class="legend-br"><span class="legend-desc">Consommez librement, c'est le meilleur tarif</span></div>
-        </div>
-        <div class="legend-item">
-            <span class="legend-dot" style="background:var(--blanc)" aria-hidden="true"></span>
-            <div><strong>BLANC</strong> <span class="legend-price">(HP {{ facts.TARIFS.BLANC.hp|string|replace('.', ',') }}&nbsp;&euro;)</span><br class="legend-br"><span class="legend-desc">Tarif moyen, pas de pr&eacute;caution particuli&egrave;re</span></div>
-        </div>
-        <div class="legend-item">
-            <span class="legend-dot" style="background:var(--rouge)" aria-hidden="true"></span>
-            <div><strong>ROUGE</strong> <span class="legend-price">(HP {{ facts.TARIFS.ROUGE.hp|string|replace('.', ',') }}&nbsp;&euro;)</span><br class="legend-br"><span class="legend-desc"><strong>Reportez lessive, s&egrave;che-linge, four, recharge VE</strong></span></div>
-        </div>
-        <div class="legend-note">Tarifs heures pleines TTC au {{ facts.TARIFS_DATE_EFFET_FR }} (<a href="/tarif-tempo-edf">grille compl&egrave;te</a>).</div>
-    </div>
-
-    <div id="forecast-container" role="region" aria-label="Prévisions Tempo 15 jours" aria-live="polite">
-        <div class="loading-state"><div class="loader" aria-label="Chargement"></div><p>Chargement des pr&eacute;visions...</p></div>
-    </div>
-    {% endif %}
-
-    <!-- CTA -->
-    <section class="blog-cta" style="margin: 32px 0">
-        <h2>Anticipez les {{ facts.ALERTES_HORIZON_JOURS }} prochains jours Tempo</h2>
-        <p>Recevez gratuitement par WhatsApp {{ facts.ALERTES_DESCRIPTION }}.</p>
-        <button type="button" class="btn btn-primary" onclick="openSubscribeModal()"><svg viewBox="0 0 24 24" width="18" height="18" fill="#fff" style="vertical-align:middle;margin-right:6px" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>S'inscrire aux alertes gratuites</button>
-    </section>
-
-    <!-- Saisons : dates réelles publiées -->
-    <section class="cal-seo-content" aria-labelledby="saisons-title">
-        <h2 id="saisons-title">Dates des jours rouges et blancs par saison</h2>
-        <p>Liste compl&egrave;te des jours rouges et blancs publi&eacute;s par EDF, saison par saison&nbsp;:</p>
-        <p class="cal-seasons">
-            <a href="/calendrier/{{ season_label }}">Saison {{ season_label }} (en cours)</a>
-            {% for s in past_seasons %}<a href="/calendrier/{{ s }}">Saison {{ s }}</a>{% endfor %}
-        </p>
-    </section>
 
     <!-- FAQ visible (même source que le JSON-LD FAQPage) -->
-    <section class="faq-section">
+    <section class="faq-section cal-seo-content">
         <h2 class="section-title">Questions fr&eacute;quentes sur le calendrier Tempo EDF</h2>
         <div class="faq-list">
             {% for item in faq %}
@@ -299,6 +280,17 @@
             {% endfor %}
         </div>
     </section>
+
+    <!-- Saisons : dates réelles publiées -->
+    <section class="cal-seo-content" aria-labelledby="saisons-title">
+        <h2 id="saisons-title">Dates des jours rouges et blancs par saison</h2>
+        <p>Liste compl&egrave;te des jours rouges et blancs publi&eacute;s par EDF, saison par saison&nbsp;:</p>
+        <nav class="cal-seasons" aria-label="Saisons Tempo">
+            <a href="/calendrier/{{ season_label }}">Saison {{ season_label }} (en cours)</a>
+            {% for s in past_seasons %}<a href="/calendrier/{{ s }}">Saison {{ s }}</a>{% endfor %}
+        </nav>
+    </section>
+
 
     <!-- Contenu SEO -->
     <section class="cal-seo-content">
@@ -340,7 +332,7 @@
 
 {% include '_footer.html' %}
 
-<script src="/static/js/app.min.js?v=20260929b"></script>
+<script src="/static/js/app.min.js?v={{ facts.ASSET_V }}"></script>
 
 </body>
 </html>
