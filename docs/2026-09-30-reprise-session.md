@@ -25,7 +25,7 @@ Après un déploiement : attendre la bascule du conteneur et vérifier un marque
 
 Fait : audits @ux/@design, premiers écrans, relecture @copywriter, météo dans les 15 jours, historique sans case vide (décision Thomas), taux publics = dernière saison complète (2025-2026 : 90 %), accueil allégé (un seul bouton), rattrapage du calcul de 18 h (18h45/20h/22h, sans WhatsApp).
 
-Revue notée, tour 1 (docs/audits/2026-09-30-revue-tour1-ux.md et -design.md) : moyennes UX 8,7 / 8,1 (ordinateur / mobile), design 8,3 / 7,9. Corrections du tour 1 appliquées par @fullstack (voir le commit « Tour 1 »).
+Revue notée, tour 1 (docs/audits/2026-09-30-revue-tour1-ux.md et -design.md) : moyennes UX 8,7 / 8,1 (ordinateur / mobile), design 8,3 / 7,9. Corrections du tour 1 appliquées, commitées (ab4458c), déployées et vérifiées en ligne (version d'assets 20260930e, 10 pages en 200, 0 case vide dans l'historique). Non faits au tour 1 : MET-T2 (Performance et Limites en tête de /methodologie, accord de Thomas à demander), ALE-T1 (exemple d'alerte rouge : gabarit Meta hors dépôt), API-T2, ACC-T4 (température sous Aujourd'hui/Demain), ALE-T4, APR-T1/T2, G4 (P2).
 
 Reste à faire :
 - Tour 2 de revue notée (@ux + @design) sur la version en ligne, puis corrections, jusqu'à 9/10 minimum partout (exigence Thomas). Captures : attendre `.forecast-card` sur /calendrier ; fournir des tranches à l'échelle 1 pour les pages longues (article, mentions légales, historique mobile) ; inclure la fenêtre d'inscription et l'admin.
