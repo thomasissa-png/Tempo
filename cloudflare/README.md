@@ -80,6 +80,15 @@ Constats du 2026-09-30, suite (session de migration) :
 - `WHATSAPP_APP_SECRET` absent de la session : sans lui, le webhook accepte les requêtes non
   signées. À ajouter (depuis les Secrets Replit) avant la bascule s'il existe sur Replit.
 - DNS public = capture IONOS (14 enregistrements), pas de DNSSEC : changement de serveurs sans risque.
+- Un secret Cloudflare fait au plus 5,1 ko : `push_secrets.py` découpe (`CLÉ__PART1`, `__PART2`),
+  `worker.ts` recolle (cas de `METEOFRANCE_AROME_KEY`, 6,4 ko).
+- Logs du conteneur (Workers Logs) : le jeton n'a pas le droit Observability (403). Vérifications
+  faites par la base (prédictions, archives) et en exécutant le jumeau RTE sur les données Neon.
+
+État au 2026-09-30 16h10 (phase 1 faite) : Worker `calendrier-tempo.thomas-issa.workers.dev` en
+mode test (sans WhatsApp ni agents IA), copie Replit → Neon identique (empreintes MD5 par table),
+tâche `predictions` exécutée par le conteneur. Zone Cloudflare créée par `dns_zone.py` (pending) :
+serveurs `johnny.ns.cloudflare.com` et `treasure.ns.cloudflare.com` à saisir chez IONOS.
 
 Toujours commencer par `python3 cloudflare/check_access.py` (dépendances : `pip install -r requirements.txt`).
 
