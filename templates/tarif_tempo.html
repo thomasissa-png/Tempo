@@ -18,7 +18,9 @@
 {% endblock %}
 {% block extra_head %}
     <style>
-        .tarif-table { width: 100%; max-width: 640px; border-collapse: collapse; margin: 16px 0 8px; }
+        .tarif-table-wrap { overflow-x: auto; margin: 16px 0 8px; }
+        .tarif-table { width: 100%; max-width: 640px; border-collapse: collapse; }
+        @media (max-width: 480px) { .tarif-table th, .tarif-table td { padding: 8px 6px; font-size: 0.9rem; } }
         .tarif-table th, .tarif-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: left; }
         .tarif-table td.num, .tarif-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
         .tarif-table tr.rouge th { color: var(--rouge); }
@@ -40,6 +42,7 @@
     </p>
 
     <h2>Grille tarifaire Tempo EDF (TTC)</h2>
+    <div class="tarif-table-wrap">
     <table class="tarif-table">
         <caption class="sr-only">Prix du kWh Tempo EDF par couleur et par plage horaire, TTC, au {{ facts.TARIFS_DATE_EFFET_FR }}</caption>
         <thead>
@@ -51,6 +54,7 @@
             <tr class="rouge"><th scope="row">Jour rouge ({{ facts.JOURS_ROUGES }} jours/saison)</th><td class="num">{{ prix(T.ROUGE.hp) }}&nbsp;&euro;/kWh</td><td class="num">{{ prix(T.ROUGE.hc) }}&nbsp;&euro;/kWh</td></tr>
         </tbody>
     </table>
+    </div>
     <p><small>Source&nbsp;: {{ facts.TARIFS_SOURCE }}. V&eacute;rifiez toujours les prix sur votre contrat EDF.
         Les tarifs r&eacute;glement&eacute;s &eacute;voluent en g&eacute;n&eacute;ral en f&eacute;vrier et en ao&ucirc;t.</small></p>
 
