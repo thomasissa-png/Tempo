@@ -237,3 +237,37 @@ class TestPhoneKeyCheck:
         row[1] = "empreinte-d-une-autre-cle"
         ok, detail = check_access.verify_phone_key([row])
         assert not ok and "mauvaise clé" in detail
+
+
+class TestDnsZone:
+    def test_records_match_ionos_capture(self):
+        import dns_zone
+        assert len(dns_zone.RECORDS) == 14
+        types = sorted(r[0] for r in dns_zone.RECORDS)
+        assert types.count("MX") == 2 and types.count("CNAME") == 6 and types.count("TXT") == 4
+        # Le site reste sur Replit tant que la bascule (phase 2) n'est pas faite
+        assert {r[2] for r in dns_zone.RECORDS if r[0] == "A"} == {"34.111.179.208"}
+
+    def test_missing_records_ignores_quotes_case_and_trailing_dot(self):
+        import dns_zone
+        existing = [{"type": "MX", "name": "calendrier-tempo.fr", "content": "MX00.ionos.fr."},
+                    {"type": "TXT", "name": "calendrier-tempo.fr",
+                     "content": "v=spf1 include:_spf-eu.ionos.com ~all"}]
+        todo = dns_zone.missing_records(existing)
+        assert len(todo) == 12
+        assert ("MX", "calendrier-tempo.fr", "mx00.ionos.fr", 3600, 10) not in todo
+
+
+class TestPushSecrets:
+    def test_long_secret_split_and_rejoined_in_order(self):
+        import push_secrets
+        value = "".join(chr(65 + i % 26) for i in range(12000))
+        parts = push_secrets.split_secret("METEOFRANCE_AROME_KEY", value)
+        assert [k for k, _ in parts] == [f"METEOFRANCE_AROME_KEY__PART{i}" for i in (1, 2, 3)]
+        assert all(len(v) <= push_secrets.SECRET_MAX for _, v in parts)
+        assert "".join(v for _, v in parts) == value
+        assert push_secrets.split_secret("K", "court") == [("K", "court")]
+
+    def test_worker_rejoins_parts(self):
+        worker = open(os.path.join(os.path.dirname(copy_database.__file__), "worker.ts")).read()
+        assert "__PART${i}" in worker and "readSecret(env, key)" in worker

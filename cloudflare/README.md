@@ -29,6 +29,7 @@ Invariants à ne jamais casser :
 
 - `wrangler.jsonc` : Worker + conteneur + Durable Object + cron.
 - `worker.ts` : routage, en-têtes, keep-alive.
+- `neon_http.py` : transport SQL HTTPS de Neon (port 5432 bloqué depuis les sessions).
 - `check_access.py` : vérifie accès et secrets, et surtout que la clé relit les numéros des abonnés.
 - `copy_database.py` : copie complète Replit (`REPLIT_DATABASE_URL`) → Neon (`NEON_DATABASE_URL`).
 - `push_secrets.py` : secrets de l'app (environnement de la session) → Worker.
@@ -63,7 +64,22 @@ Constats du 2026-09-30 (session avec les secrets du fondateur) :
   les enregistrements à l'identique chez Cloudflare via l'API, puis donne au fondateur les 2 serveurs
   DNS à saisir chez IONOS (sa seule action sur le domaine).
 - Jeton Cloudflare = jeton **utilisateur** (Profil > API Tokens), variable `CLOUDFLARE_Token_Value`
-  à renommer `CLOUDFLARE_API_TOKEN` (sinon : lire `CLOUDFLARE_Token_Value`).
+  (lue par les scripts si `CLOUDFLARE_API_TOKEN` est absente ; pour wrangler :
+  `CLOUDFLARE_API_TOKEN="$CLOUDFLARE_Token_Value" npx wrangler ...`).
+
+Constats du 2026-09-30, suite (session de migration) :
+- Scripts passés sur l'API HTTPS Neon (`neon_http.py`). La base Replit est TOUJOURS lue dans une
+  transaction READ ONLY (Neon n'applique la lecture seule qu'aux requêtes groupées) : aucune
+  écriture possible sur Replit, même par erreur. La copie lit tout Replit en un instantané et
+  écrit tout Neon en une transaction (~3 Mo).
+- Jeton : droit Containers et sous-domaine workers.dev OK (`thomas-issa.workers.dev`).
+- `PHONE_ENCRYPTION_KEY` arrive dans la session sans son « = » final (43 caractères) : les scripts
+  le restaurent (`neon_http.phone_key`), `check_access.py` prouve que c'est la clé de Replit
+  (empreintes HMAC identiques, 228/229). L'abonné id 1 (2026-02-23, premier inscrit) est
+  illisible avec cette clé : il l'est donc aussi sur Replit, la migration ne change rien pour lui.
+- `WHATSAPP_APP_SECRET` absent de la session : sans lui, le webhook accepte les requêtes non
+  signées. À ajouter (depuis les Secrets Replit) avant la bascule s'il existe sur Replit.
+- DNS public = capture IONOS (14 enregistrements), pas de DNSSEC : changement de serveurs sans risque.
 
 Toujours commencer par `python3 cloudflare/check_access.py` (dépendances : `pip install -r requirements.txt`).
 

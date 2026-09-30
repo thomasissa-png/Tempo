@@ -45,6 +45,16 @@ PROD_ONLY = {"WHATSAPP_TOKEN", "ANTHROPIC_API_KEY"}
 # Clé des numéros = PHONE_ENCRYPTION_KEY, sinon dérivée d'ADMIN_PASSWORD, sinon de SESSION_SECRET
 # (database._get_fernet). Au moins une doit être présente, sinon abonnés illisibles.
 KEY_SOURCES = ("PHONE_ENCRYPTION_KEY", "ADMIN_PASSWORD", "SESSION_SECRET")
+# Cloudflare refuse un secret de plus de 5,1 ko (ex. METEOFRANCE_AROME_KEY : 6,4 ko).
+SECRET_MAX = 5000
+
+
+def split_secret(key: str, value: str) -> list[tuple[str, str]]:
+    """Découpe une valeur trop longue en CLÉ__PART1, CLÉ__PART2... (recollées par worker.ts)."""
+    if len(value.encode()) <= SECRET_MAX:
+        return [(key, value)]
+    return [(f"{key}__PART{i + 1}", value[start:start + SECRET_MAX])
+            for i, start in enumerate(range(0, len(value), SECRET_MAX))]
 
 
 def main() -> None:
@@ -74,7 +84,7 @@ def main() -> None:
         else:
             value = env(key)
         if value:
-            values[key] = value
+            values.update(split_secret(key, value))
 
     url = f"{API}/accounts/{account}/workers/scripts/{SCRIPT_NAME}/secrets"
     headers = {"Authorization": f"Bearer {token}"}
@@ -83,7 +93,7 @@ def main() -> None:
         for key, value in values.items():
             r = client.put(url, headers=headers,
                            json={"name": key, "text": value, "type": "secret_text"})
-            ok = r.status_code == 200 and r.json().get("success")
+            ok = r.status_code in (200, 201) and r.json().get("success")
             print(f"  {'OK ' if ok else 'ÉCHEC'} {key}")
             if not ok:
                 failed.append(f"{key} (HTTP {r.status_code})")

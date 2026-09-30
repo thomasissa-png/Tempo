@@ -50,8 +50,8 @@ export class TempoApp extends Container<Env> {
       FORWARDED_ALLOW_IPS: "*",
     };
     for (const key of APP_ENV_KEYS) {
-      const value = env[key];
-      if (typeof value === "string" && value !== "") vars[key] = value;
+      const value = readSecret(env, key);
+      if (value !== "") vars[key] = value;
     }
     this.envVars = vars;
 
@@ -68,6 +68,18 @@ export class TempoApp extends Container<Env> {
       await ctx.storage.put("envFingerprint", fingerprint);
     });
   }
+}
+
+// Cloudflare limite un secret à 5,1 ko : push_secrets.py découpe les valeurs plus longues
+// (ex. METEOFRANCE_AROME_KEY, 6,4 ko) en CLÉ__PART1, CLÉ__PART2... recollées ici.
+function readSecret(env: Env, key: string): string {
+  const whole = env[key];
+  if (typeof whole === "string" && whole !== "") return whole;
+  let joined = "";
+  for (let i = 1; typeof env[`${key}__PART${i}`] === "string"; i++) {
+    joined += env[`${key}__PART${i}`] as string;
+  }
+  return joined;
 }
 
 async function sha256(text: string): Promise<string> {
