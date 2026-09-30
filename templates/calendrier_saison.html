@@ -35,17 +35,17 @@
         {% if s.complete %}
         <strong>{{ s.counts.ROUGE }} jours rouges</strong>, <strong>{{ s.counts.BLANC }} jours blancs</strong> et
         <strong>{{ s.counts.BLEU }} jours bleus</strong> sur la saison compl&egrave;te.
-        Chaque saison compte au maximum {{ facts.JOURS_ROUGES }} jours rouges et {{ facts.JOURS_BLANCS }} jours blancs.
+        Une saison compte {{ facts.JOURS_ROUGES }} jours rouges et {{ facts.JOURS_BLANCS }} jours blancs.
         {% elif s.is_current %}
         Jusqu'au {{ s.last_date }}&nbsp;: <strong>{{ s.counts.ROUGE }} jour{{ 's' if s.counts.ROUGE > 1 }} rouge{{ 's' if s.counts.ROUGE > 1 }}</strong>
         et <strong>{{ s.counts.BLANC }} jour{{ 's' if s.counts.BLANC > 1 }} blanc{{ 's' if s.counts.BLANC > 1 }}</strong> publi&eacute;s par EDF,
-        sur {{ facts.JOURS_ROUGES }} et {{ facts.JOURS_BLANCS }} par saison. La liste s'allonge &agrave; chaque publication d'EDF.
+        sur les {{ facts.JOURS_ROUGES }} et {{ facts.JOURS_BLANCS }} d'une saison. La liste s'allonge &agrave; chaque publication d'EDF.
         Nos pr&eacute;visions sont sur le <a href="/calendrier">calendrier du mois</a>.
         {% else %}
         <strong>{{ s.counts.ROUGE }} jours rouges</strong>, <strong>{{ s.counts.BLANC }} jours blancs</strong> et
         <strong>{{ s.counts.BLEU }} jours bleus</strong> sur les {{ s.days_with_data }} jours disponibles dans notre base
         (du {{ s.first_date }} au {{ s.last_date }}), sur {{ s.total_days }} jours de saison.
-        Chaque saison compte au maximum {{ facts.JOURS_ROUGES }} jours rouges et {{ facts.JOURS_BLANCS }} jours blancs.
+        Une saison compte {{ facts.JOURS_ROUGES }} jours rouges et {{ facts.JOURS_BLANCS }} jours blancs&nbsp;: notre base ne couvre pas tous les jours de celle-ci.
         {% endif %}
     </p>
 
@@ -109,7 +109,7 @@
     {% if s.is_current %}
     <section class="blog-cta page-cta">
         <h2>Anticipez les {{ facts.ALERTES_HORIZON_JOURS }} prochains jours Tempo</h2>
-        <p>Recevez gratuitement par WhatsApp {{ facts.ALERTES_DESCRIPTION }}.</p>
+        <p>{{ facts.ALERTES_DESCRIPTION_COURT }}. Gratuit, sans engagement.</p>
         <button type="button" class="btn" onclick="openSubscribeModal()">S'inscrire aux alertes gratuites</button>
     </section>
     {% endif %}

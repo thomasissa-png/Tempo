@@ -91,7 +91,7 @@ class TestHistoryPage:
         _controlled_case(monkeypatch)
         page = html.unescape(client.get(PAGE + "/2025-2026").text)
         assert "Alertes rouges qui étaient justes" in page
-        assert "Repère : dire toujours bleu" in page.replace("\xa0", " ")
+        assert "Repère : toujours dire « bleu »" in page.replace("\xa0", " ")
 
 
 # ---------------------------------------------------------------- Accueil (ACC-01 à ACC-10)
@@ -109,15 +109,17 @@ class TestHomepage:
         page = client.get("/").text
         assert 'class="today-answer"' not in page
         card = page[page.index('id="week-summary-card"'):page.index('id="comment-ca-marche"')]
-        assert "week-summary-answer" in card or "Chargement" in card
+        # la couleur du jour est dans la grande pastille (plus de paragraphe de redite)
+        assert "week-summary-answer" not in card
+        assert "week-dot-hero" in card or "Chargement" in card
         assert page.count("<h1") == 1
 
     def test_prices_come_from_site_facts(self, client):
         import site_facts
         page = client.get("/").text
         hp = "{:.4f}".format(site_facts.TARIFS["ROUGE"]["hp"]).replace(".", ",")
-        assert f"HP {hp}" in page
-        assert "HP 0,73&nbsp;" not in page
+        assert f"{hp}&nbsp;&euro;/kWh en heures pleines" in page
+        assert "HP 0,73&nbsp;" not in page and "HP " + hp not in page  # « HP » : jargon retiré
 
     def test_counters_placeholder_is_a_dash_not_a_question_mark(self):
         src = (ROOT / "templates" / "dashboard.html").read_text(encoding="utf-8")
@@ -156,8 +158,9 @@ class TestSharedParts:
     def test_minified_assets_in_sync_with_sources(self):
         css = (ROOT / "static" / "css" / "style.css").read_text(encoding="utf-8")
         css_min = (ROOT / "static" / "css" / "style.min.css").read_text(encoding="utf-8")
-        for sel in (".data-table", ".history-bref", ".notfound-links", ".week-summary-answer", ".btn-outline",
-                    ".week-dots-hero", ".week-dot-color", ".week-summary-links a"):
+        for sel in (".data-table", ".history-bref", ".notfound-links", ".btn-outline",
+                    ".week-dots-hero", ".week-dot-color", ".week-summary-links a", ".week-dot-date",
+                    ".fc-temp-val", ".forecast-temp-note", ".fc-compact", ".hg-none"):
             assert sel in css and sel in css_min, sel
         js = (ROOT / "static" / "js" / "app.js").read_text(encoding="utf-8")
         js_min = (ROOT / "static" / "js" / "app.min.js").read_text(encoding="utf-8")

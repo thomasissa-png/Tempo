@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Alertes EDF Tempo gratuites | Calendrier Tempo EDF</title>
-    <meta name="description" content="Alertes Tempo EDF gratuites par WhatsApp : les 7 prochains jours chaque dimanche et une alerte avant chaque jour rouge. Inscription en 30 secondes.">
+    <meta name="description" content="Alertes Tempo EDF gratuites par WhatsApp : le récapitulatif des 7 jours chaque dimanche soir et une alerte avant chaque jour rouge prévu. Inscription en 30 secondes.">
     {% if bing_verification %}<meta name="msvalidate.01" content="{{ bing_verification }}">{% endif %}
     {% if google_verification %}<meta name="google-site-verification" content="{{ google_verification }}">{% endif %}
     <meta name="geo.region" content="FR">
@@ -89,15 +89,14 @@
     </nav>
 
     <section class="alertes-hero">
-        <h1>Anticipez les 7 prochains jours EDF Tempo par WhatsApp</h1>
+        <h1>Alertes EDF Tempo par WhatsApp&nbsp;: soyez pr&eacute;venu avant un jour rouge</h1>
         <p class="hero-desc">
-            Recevez par WhatsApp {{ facts.ALERTES_DESCRIPTION }}&nbsp;: pr&eacute;visions <strong>rouge</strong>, <strong>blanc</strong> et <strong>bleu</strong>.
-            100% gratuit, sans engagement, d&eacute;sinscription en 1 clic.
+            {{ facts.ALERTES_DESCRIPTION_COURT }}. Inscription en 30&nbsp;secondes.
         </p>
         <button type="button" class="btn btn-primary alertes-btn" onclick="openSubscribeModal()">
             {{ icons.whatsapp(20, '#fff', 'icon-inline') }}S'inscrire gratuitement
         </button>
-        <p class="alertes-reassure">Gratuit &middot; Sans application (WhatsApp) &middot; Num&eacute;ro chiffr&eacute;, jamais partag&eacute; &middot; D&eacute;sinscription en 1 clic</p>
+        <p class="alertes-reassure">100&nbsp;% gratuit &middot; Sans application &agrave; installer &middot; Num&eacute;ro chiffr&eacute; &middot; D&eacute;sinscription &agrave; tout moment (STOP)</p>
         <p class="alertes-proof">
             D&eacute;j&agrave; <strong>{{ facts.FOYERS_ALERTES_HTML|safe }} foyers Tempo</strong> alert&eacute;s dans toute la France.
         </p>
@@ -106,18 +105,21 @@
     <!-- Aperçu SMS -->
     <div class="alertes-sms-demo">
         <div class="sms-preview">
-            <div class="sms-preview-label">&#128172; Exemple de r&eacute;capitulatif (couleurs fictives)&nbsp;:</div>
-            <div class="sms-bubble">
-                &#128200; <strong>Calendrier Tempo EDF : Semaine &agrave; venir</strong><br><br>
-                &#128308; lundi<br>
-                &#128308; mardi<br>
-                &#9898; mercredi<br>
-                &#128309; jeudi<br>
-                &#128309; vendredi<br>
-                &#128309; samedi<br>
-                &#128309; dimanche<br><br>
-                &#9888;&#65039; 2 jours rouges pr&eacute;vus cette semaine.<br>
-                &#128073; Anticipez vos machines et chauffage !
+            <div class="sms-preview-label">&#128172; Exemple du r&eacute;cap du dimanche (couleurs fictives)&nbsp;:</div>
+            <!-- Même contenu que la fenêtre d'inscription : rempli par updateSmsBubble() (_subscribe_modal.html) -->
+            <div class="sms-bubble js-recap-preview">
+                &#128202; <strong>Calendrier Tempo EDF : Semaine &agrave; venir</strong><br><br>
+                &#128308; lun.<br>
+                &#9898; mar.<br>
+                &#128309; mer.<br>
+                &#128309; jeu.<br>
+                &#128308; ven.<br>
+                &#128309; sam.<br>
+                &#128309; dim.<br><br>
+                &#9888;&#65039; <strong>2 jours rouges</strong> et <strong>1 jour blanc</strong> pr&eacute;vus sur les 7 prochains jours.<br><br>
+                &#128161; <strong>Plan d'action :</strong><br>
+                &#128073; Lancez vos machines les jours bleus : mer., jeu., sam., dim.<br>
+                &#128308; Jours rouges : lun., ven.
             </div>
         </div>
     </div>
@@ -127,8 +129,8 @@
         <h2>Comment &ccedil;a marche ?</h2>
         <ol>
             <li><strong>Inscrivez-vous</strong> en tapant votre num&eacute;ro de mobile (30 secondes).</li>
-            <li><strong>Recevez</strong> {{ facts.ALERTES_DESCRIPTION }}.</li>
-            <li><strong>Adaptez votre conso</strong> : reportez vos usages gourmands aux jours bleus.</li>
+            <li><strong>Recevez</strong> le r&eacute;capitulatif du dimanche soir et une alerte avant chaque jour rouge pr&eacute;vu, de novembre &agrave; mars.</li>
+            <li><strong>Adaptez votre consommation</strong>&nbsp;: d&eacute;calez vos gros appareils vers les jours bleus.</li>
         </ol>
         <p>D&eacute;tail complet dans notre guide&nbsp;: <a href="/blog/alerte-jour-rouge-tempo">&ecirc;tre pr&eacute;venu d'un jour rouge</a>.</p>
         <div class="alertes-how-cta">
@@ -141,13 +143,13 @@
     <!-- Désinscription -->
     <section class="alertes-unsub">
         <p>D&eacute;j&agrave; inscrit ?</p>
-        <button type="button" class="link-btn" id="show-unsubscribe">G&eacute;rer ou se d&eacute;sinscrire</button>
+        <button type="button" class="link-btn" id="show-unsubscribe">Se d&eacute;sinscrire</button>
         <form id="unsubscribe-form" class="unsub-form hidden" style="max-width:400px;margin:16px auto 0">
             <div class="form-group">
-                <label for="unsub-phone">Votre num&eacute;ro</label>
+                <label for="unsub-phone">Num&eacute;ro de mobile inscrit</label>
                 <input type="tel" id="unsub-phone" name="phone" placeholder="06 12 34 56 78" required autocomplete="tel" inputmode="tel">
             </div>
-            <button type="submit" class="btn-unsub">Se d&eacute;sinscrire</button>
+            <button type="submit" class="btn-unsub">Me d&eacute;sinscrire</button>
             <div id="unsub-result" class="form-result" style="display:none" role="status" aria-live="polite"></div>
         </form>
     </section>
@@ -173,16 +175,14 @@
     if (unsubForm) {
         unsubForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            var raw = document.getElementById('unsub-phone').value.replace(/[\s.\-()]/g, '');
-            var phone = null;
-            if (/^0[67]\d{8}$/.test(raw)) phone = '+33' + raw.substring(1);
-            else if (/^\+33[67]\d{8}$/.test(raw)) phone = raw;
-            else if (/^33[67]\d{8}$/.test(raw)) phone = '+' + raw;
+            // Même règle qu'à l'inscription : +33, +32, +41, +352, +49 (normalizePhoneIntl, _subscribe_modal.html)
+            var raw = document.getElementById('unsub-phone').value;
+            var phone = window.normalizePhoneIntl ? window.normalizePhoneIntl(raw) : null;
 
             var resultEl = document.getElementById('unsub-result');
             if (!phone) {
                 resultEl.className = 'form-result error';
-                resultEl.textContent = 'Num\u00e9ro non reconnu.';
+                resultEl.textContent = 'Numéro non reconnu. Saisissez-le comme à l\'inscription, ou répondez STOP dans WhatsApp.';
                 resultEl.style.display = 'block';
                 return;
             }
@@ -195,12 +195,12 @@
             .then(function(resp) { return resp.json().then(function(d) { return {ok: resp.ok, data: d}; }); })
             .then(function(r) {
                 resultEl.className = r.ok ? 'form-result success' : 'form-result error';
-                resultEl.textContent = r.data.message || r.data.detail || 'Termin\u00e9.';
+                resultEl.textContent = r.data.message || r.data.detail || 'C\'est fait.';
                 resultEl.style.display = 'block';
             })
             .catch(function() {
                 resultEl.className = 'form-result error';
-                resultEl.textContent = 'Erreur de connexion.';
+                resultEl.textContent = 'Connexion impossible. Réessayez dans un instant.';
                 resultEl.style.display = 'block';
             });
         });

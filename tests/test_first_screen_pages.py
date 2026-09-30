@@ -91,7 +91,8 @@ class TestCouleurDemain:
         page = client.get("/couleur-tempo-demain").text
         i_answer = page.index("today-answer")
         i_table = page.index("Les prochains jours")
-        i_links = page.index('href="/alertes"')
+        # la phrase « alertes WhatsApp » (redite du bloc CTA) a été retirée (copy deck, section 7)
+        i_links = page.index('href="/api-tempo">API Tempo</a>')
         i_cta = page.index('class="blog-cta page-cta"')
         assert i_answer < i_table < i_links < i_cta
 

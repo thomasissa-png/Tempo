@@ -16,6 +16,7 @@ import secrets
 from datetime import datetime, date, timedelta
 from zoneinfo import ZoneInfo
 from config import Config, normalize_phone
+import site_facts
 from database import get_db, hash_phone, encrypt_phone, decrypt_phone
 
 
@@ -326,13 +327,32 @@ def _format_date_fr(d: date) -> str:
     return f"{jour} {d.day} {mois}"
 
 
+def _date_courte(d: date) -> str:
+    """date(2026, 12, 7) -> 'lun. 7 déc.' (abréviations normalisées de site_facts)."""
+    return site_facts.fr_date_courte(d, sep=" ")
+
+
+def _jour_court(d: date) -> str:
+    """date(2026, 12, 7) -> 'lun.'"""
+    return site_facts.JOURS_COURT[d.weekday()]
+
+
+def _prix_hp(couleur: str) -> str:
+    """Prix du kWh en heures pleines, lu dans site_facts : '0,7295 €' (espace insécable)."""
+    return f"{site_facts.fr_price(site_facts.TARIFS[couleur]['hp'])}\u00a0€"
+
+
+_RATIO = site_facts.fr_num(site_facts.RATIO_ROUGE_BLEU_HP)
+_HP = site_facts.HEURES_PLEINES  # « 6 h à 22 h »
+
+
 def _msg_footer(manage_token: str) -> str:
     """Footer commun : lien gestion + STOP."""
     parts = []
     link = _manage_link(manage_token)
     if link:
         parts.append(f"📋 Gérer mes alertes : {link}")
-    parts.append("_Répondez STOP ou RECAP._")
+    parts.append("_STOP pour vous désinscrire, RECAP pour voir les 7 prochains jours._")
     return "\n\n".join(parts)
 
 
@@ -345,11 +365,9 @@ def _build_welcome_template(predictions: list[dict], manage_token: str) -> tuple
     pred_lines = []
     for p in predictions[:5]:
         d = date.fromisoformat(p["date"])
-        jour = JOURS_FR[d.weekday()][:3]
-        mois = MOIS_FR[d.month - 1][:3]
         couleur = p.get("couleur_predite", "?")
         emoji = {"ROUGE": "🔴", "BLANC": "⚪", "BLEU": "🔵"}.get(couleur, "❓")
-        pred_lines.append(f"{emoji} {jour}. {d.day} {mois}.")
+        pred_lines.append(f"{emoji} {_date_courte(d)}")
     # Meta interdit les \n dans les variables de template — utiliser " · " comme séparateur
     pred_text = " · ".join(pred_lines) if pred_lines else "Aucune prévision disponible."
     manage_url = _manage_link(manage_token) or Config.BASE_URL
@@ -379,9 +397,9 @@ def _build_confirmation_template(target_date: date, couleur: str, manage_token: 
     emoji = {"ROUGE": "🔴", "BLANC": "⚪", "BLEU": "🔵"}.get(couleur, "")
     date_fr = _format_date_fr(target_date)
     if couleur == "ROUGE":
-        advice = "Heures pleines 6h-22h à 0,73€/kWh."
+        advice = f"En heures pleines ({_HP}), le kWh coûte {_prix_hp('ROUGE')}."
     elif couleur == "BLANC":
-        advice = "Tarif intermédiaire. OK pour les machines, évitez le four en heures pleines."
+        advice = "Tarif intermédiaire, proche du bleu."
     else:
         advice = "Tarif bleu, le moins cher. Profitez-en !"
     manage_url = _manage_link(manage_token) or Config.BASE_URL
@@ -397,7 +415,7 @@ def _build_change_template(target_date: date, old_color: str, new_color: str,
     old_str = f"{emoji_old} {old_color}"
     new_str = f"{emoji_new} {new_color}"
     if new_color == "ROUGE":
-        advice = "Heures pleines à 0,73€/kWh."
+        advice = f"En heures pleines, le kWh coûte {_prix_hp('ROUGE')}."
     elif new_color == "BLANC" and old_color == "ROUGE":
         advice = "Bonne nouvelle ! Tarif intermédiaire, moins cher que prévu."
     elif new_color == "BLEU" and old_color == "ROUGE":
@@ -418,18 +436,16 @@ def _build_recap_template(predictions: list[dict], manage_token: str) -> tuple[s
 
     for p in predictions[:7]:
         d = date.fromisoformat(p["date"])
-        jour = JOURS_FR[d.weekday()][:3]
-        mois = MOIS_FR[d.month - 1][:3]
         couleur = p["couleur_predite"]
         emoji = {"ROUGE": "🔴", "BLANC": "⚪", "BLEU": "🔵"}.get(couleur, "❓")
-        lines.append(f"{emoji} {jour}. {d.day} {mois}.")
+        lines.append(f"{emoji} {_date_courte(d)}")
         if couleur == "ROUGE":
             rouge_count += 1
-            rouge_days.append(JOURS_FR[d.weekday()][:3])
+            rouge_days.append(_jour_court(d))
         elif couleur == "BLANC":
             blanc_count += 1
         else:
-            bleu_days.append(JOURS_FR[d.weekday()][:3])
+            bleu_days.append(_jour_court(d))
 
     # Meta interdit les \n dans les variables de template — utiliser " · " comme séparateur
     pred_text = " · ".join(lines)
@@ -441,14 +457,16 @@ def _build_recap_template(predictions: list[dict], manage_token: str) -> tuple[s
         summary_parts.append(f"{blanc_count} jour{'s' if blanc_count > 1 else ''} blanc{'s' if blanc_count > 1 else ''}")
 
     summary_lines = []
+    nb = rouge_count + blanc_count
     if summary_parts:
-        summary_lines.append("⚠️ " + " et ".join(summary_parts) + " cette semaine.")
+        summary_lines.append("⚠️ " + " et ".join(summary_parts)
+                             + f" prévu{'s' if nb > 1 else ''} sur les 7 prochains jours.")
     else:
-        summary_lines.append("✅ Semaine 100% bleue : profitez-en !")
+        summary_lines.append("✅ Aucun jour rouge ni blanc prévu sur les 7 prochains jours.")
     if bleu_days:
-        summary_lines.append(f"👉 Lancez vos machines {', '.join(bleu_days)} (bleu).")
+        summary_lines.append(f"👉 Lancez vos machines les jours bleus : {', '.join(bleu_days)}")
     if rouge_days:
-        summary_lines.append(f"🔴 Jours rouge : {', '.join(rouge_days)}.")
+        summary_lines.append(f"🔴 Jours rouges : {', '.join(rouge_days)}")
 
     summary_text = " · ".join(summary_lines)
     manage_url = _manage_link(manage_token) or Config.BASE_URL
@@ -470,13 +488,15 @@ def format_alert_rouge(target_date: date, prediction: dict, manage_token: str = 
     date_fr = _format_date_fr(target_date)
     prob = round(prediction.get("probabilite_rouge", 0) * 100)
     temp = prediction.get("temp_min_prevue", "?")
-    temp_str = f"{temp:.0f}°C" if isinstance(temp, (int, float)) else "?"
+    temp_str = f"{temp:.0f}\u00a0°C" if isinstance(temp, (int, float)) else "non disponible"
 
     msg = (
         f"⚠️ *Calendrier Tempo EDF*\n\n"
-        f"*Jour ROUGE* prévu {date_fr} ({prob}% confiance).\n"
-        f"Temp min: {temp_str}.\n\n"
-        f"💰 Heures pleines (6h-22h) à *0,73€/kWh*, jusqu'à 4,4× le tarif bleu !"
+        f"*Jour ROUGE* prévu {date_fr} ({prob}\u00a0% de chances).\n"
+        f"Température minimale prévue : {temp_str}.\n\n"
+        f"💰 En heures pleines ({_HP}), le kWh coûte *{_prix_hp('ROUGE')}*, "
+        f"soit {_RATIO} fois le tarif d'un jour bleu.\n\n"
+        f"👉 Reportez lessive, sèche-linge, four et recharge de voiture électrique."
     )
     msg += "\n\n" + _msg_footer(manage_token)
     return msg
@@ -489,30 +509,28 @@ def format_alert_blanc(target_date: date, prediction: dict, manage_token: str = 
 
     msg = (
         f"📢 *Calendrier Tempo EDF*\n\n"
-        f"*Jour BLANC* prévu {date_fr} ({prob}% confiance).\n\n"
-        f"💰 Heures pleines à *0,19€/kWh* (tarif intermédiaire).\n\n"
-        f"👉 OK pour lancer les machines.\n"
-        f"Évitez four et chauffage d'appoint en heures pleines (6h-22h)."
+        f"*Jour BLANC* prévu {date_fr} ({prob}\u00a0% de chances).\n\n"
+        f"💰 En heures pleines, le kWh coûte *{_prix_hp('BLANC')}* (tarif intermédiaire).\n\n"
+        f"👉 Tarif proche du jour bleu : vous pouvez lancer vos machines normalement."
     )
     msg += "\n\n" + _msg_footer(manage_token)
     return msg
 
 
 def format_alert_officiel(target_date: date, couleur: str, manage_token: str = "") -> str:
-    """Message pour couleur officielle confirmée — reconnaît la prédiction."""
+    """Message pour couleur officielle confirmée.
+
+    Envoyé uniquement aux abonnés qui n'ont PAS reçu d'alerte de prévision pour cette
+    date (déduplication de send_official_alerts) : ne jamais écrire « comme anticipé ».
+    """
     date_fr = _format_date_fr(target_date)
     emoji = {"ROUGE": "🔴", "BLANC": "⚪", "BLEU": "🔵"}.get(couleur, "")
 
-    msg = f"{emoji} *Tempo confirmé : {couleur}* {date_fr}."
+    msg = f"{emoji} *Confirmé par EDF : {couleur}* {date_fr}."
     if couleur == "ROUGE":
-        msg += (
-            "\n✅ Comme anticipé : heures pleines 6h-22h à *0,73€/kWh*."
-        )
+        msg += f"\nEn heures pleines ({_HP}), le kWh coûte *{_prix_hp('ROUGE')}*."
     elif couleur == "BLANC":
-        msg += (
-            "\n💡 Tarif intermédiaire : OK pour les machines,"
-            "\névitez le four en heures pleines."
-        )
+        msg += "\n💡 Tarif intermédiaire, proche du bleu."
     msg += "\n\n" + _msg_footer(manage_token)
     return msg
 
@@ -530,9 +548,7 @@ def format_change_alert(target_date: date, old_color: str, new_color: str,
         f"{emoji_old} {old_color} → {emoji_new} *{new_color}*"
     )
     if new_color == "ROUGE":
-        msg += (
-            "\n\n💰 Heures pleines à *0,73€/kWh*."
-        )
+        msg += f"\n\n💰 En heures pleines, le kWh coûte *{_prix_hp('ROUGE')}*."
     elif new_color == "BLANC" and old_color == "ROUGE":
         msg += "\n\n✅ Bonne nouvelle ! Tarif intermédiaire, moins cher que prévu."
     elif new_color == "BLEU" and old_color == "ROUGE":
@@ -552,19 +568,17 @@ def format_recap_hebdo(predictions: list[dict], manage_token: str = "") -> str:
 
     for p in predictions[:7]:
         d = date.fromisoformat(p["date"])
-        jour = JOURS_FR[d.weekday()][:3]
-        mois = MOIS_FR[d.month - 1][:3]
         couleur = p["couleur_predite"]
         emoji = {"ROUGE": "🔴", "BLANC": "⚪", "BLEU": "🔵"}.get(couleur, "❓")
-        lines.append(f"  {emoji} {jour}. {d.day} {mois}.")
+        lines.append(f"  {emoji} {_date_courte(d)}")
 
         if couleur == "ROUGE":
             rouge_count += 1
-            rouge_days.append(JOURS_FR[d.weekday()][:3])
+            rouge_days.append(_jour_court(d))
         elif couleur == "BLANC":
             blanc_count += 1
         else:
-            bleu_days.append(JOURS_FR[d.weekday()][:3])
+            bleu_days.append(_jour_court(d))
 
     # Résumé
     lines.append("")
@@ -573,18 +587,20 @@ def format_recap_hebdo(predictions: list[dict], manage_token: str = "") -> str:
         summary_parts.append(f"*{rouge_count} jour{'s' if rouge_count > 1 else ''} rouge{'s' if rouge_count > 1 else ''}*")
     if blanc_count:
         summary_parts.append(f"*{blanc_count} jour{'s' if blanc_count > 1 else ''} blanc{'s' if blanc_count > 1 else ''}*")
+    nb = rouge_count + blanc_count
     if summary_parts:
-        lines.append("⚠️ " + " et ".join(summary_parts) + " cette semaine.")
+        lines.append("⚠️ " + " et ".join(summary_parts)
+                     + f" prévu{'s' if nb > 1 else ''} sur les 7 prochains jours.")
     else:
-        lines.append("✅ *Semaine 100% bleue* : profitez-en !")
+        lines.append("✅ *Aucun jour rouge ni blanc prévu* sur les 7 prochains jours.")
 
     # Plan d'action
     lines.append("")
     lines.append("💡 *Plan d'action :*")
     if bleu_days:
-        lines.append(f"👉 Lancez vos machines {', '.join(bleu_days)} (bleu).")
+        lines.append(f"👉 Lancez vos machines les jours bleus : {', '.join(bleu_days)}")
     if rouge_days:
-        lines.append(f"🔴 Jours rouge : {', '.join(rouge_days)}.")
+        lines.append(f"🔴 Jours rouges : {', '.join(rouge_days)}")
     if not rouge_days and not bleu_days:
         lines.append("👉 Semaine intermédiaire, privilégiez les heures creuses.")
 
@@ -597,18 +613,20 @@ def format_welcome(predictions: list[dict], manage_token: str = "") -> str:
     """Message de bienvenue envoyé immédiatement après inscription."""
     lines = [
         "👋 *Bienvenue sur le Calendrier Tempo EDF !*\n",
-        "Vous recevrez les prévisions Tempo selon vos préférences pour anticiper vos dépenses.",
+        "Vous recevrez, de novembre à mars, une alerte avant chaque jour rouge prévu et le "
+        "récapitulatif du dimanche soir, selon vos choix. Vous pouvez les modifier avec le lien "
+        "ci-dessous.",
     ]
+    if not _is_red_season():
+        lines.append("Les alertes démarrent le 1er novembre.")
 
     if predictions:
-        lines.append("\n📊 *Prochains jours :*")
+        lines.append("\n📊 *Les 5 prochains jours (prévisions) :*")
         for p in predictions[:5]:
             d = date.fromisoformat(p["date"])
-            jour = JOURS_FR[d.weekday()][:3]
-            mois = MOIS_FR[d.month - 1][:3]
             couleur = p.get("couleur_predite", "?")
             emoji = {"ROUGE": "🔴", "BLANC": "⚪", "BLEU": "🔵"}.get(couleur, "❓")
-            lines.append(f"  {emoji} {jour}. {d.day} {mois}.")
+            lines.append(f"  {emoji} {_date_courte(d)}")
 
     lines.append("")
     lines.append(_msg_footer(manage_token))
@@ -617,14 +635,12 @@ def format_welcome(predictions: list[dict], manage_token: str = "") -> str:
 
 def format_recap_on_demand(predictions: list[dict]) -> str:
     """Récap envoyé quand l'utilisateur écrit RECAP."""
-    lines = ["📊 *Prochains jours Tempo :*\n"]
+    lines = ["📊 *Les 7 prochains jours Tempo (prévisions) :*\n"]
     for p in predictions[:7]:  # L8 fix: 7 jours comme le récap hebdo
         d = date.fromisoformat(p["date"])
-        jour = JOURS_FR[d.weekday()][:3]
-        mois = MOIS_FR[d.month - 1][:3]
         couleur = p.get("couleur_predite", "?")
         emoji = {"ROUGE": "🔴", "BLANC": "⚪", "BLEU": "🔵"}.get(couleur, "❓")
-        lines.append(f"  {emoji} {jour}. {d.day} {mois}.")
+        lines.append(f"  {emoji} {_date_courte(d)}")
 
     if not predictions:
         lines.append("  Aucune prévision disponible pour le moment.")
@@ -1045,7 +1061,7 @@ def register_user(phone_number: str, seuil_rouge: int = 70,
         "+49":  re.compile(r"^\+491[5-7]\d{8,9}$"),    # Germany: 13-14 chars
     }
     if not phone_clean.startswith("+") or not phone_clean[1:].isdigit():
-        return {"error": "Format invalide. Utilisez un format international (+33, +32, +41, +352, +49)."}
+        return {"error": "Numéro invalide. Saisissez-le avec son indicatif : +33, +32, +41, +352 ou +49."}
     phone_valid = False
     for prefix, pattern in _PHONE_PATTERNS.items():
         if phone_clean.startswith(prefix):
@@ -1071,7 +1087,7 @@ def register_user(phone_number: str, seuil_rouge: int = 70,
 
         if existing:
             if existing["actif"]:
-                return {"error": "Ce numéro est déjà inscrit. Retrouvez votre lien de gestion dans vos messages WhatsApp."}
+                return {"error": "Ce numéro est déjà inscrit. Votre lien de gestion est dans vos messages WhatsApp, ou utilisez « Déjà inscrit ? » ci-dessous."}
             else:
                 # Réactiver + mettre à jour chiffré ET préférences (BUG-05 QA)
                 conn.execute(
@@ -1091,7 +1107,7 @@ def register_user(phone_number: str, seuil_rouge: int = 70,
                 return {"success": True, "user_id": existing["id"],
                         "manage_token": manage_token,
                         "phone": phone_clean,
-                        "message": "Compte réactivé avec vos nouvelles préférences !"}
+                        "message": "Vous êtes réinscrit avec vos nouvelles préférences."}
 
         cursor = conn.execute(
             """INSERT INTO users
@@ -1106,7 +1122,7 @@ def register_user(phone_number: str, seuil_rouge: int = 70,
         return {"success": True, "user_id": cursor.lastrowid,
                 "manage_token": manage_token,
                 "phone": phone_clean,
-                "message": "Inscription réussie ! Vous recevrez les alertes Tempo par WhatsApp."}
+                "message": "Inscription enregistrée."}
 
     finally:
         conn.close()
@@ -1265,19 +1281,20 @@ def handle_incoming_sms(from_number: str, body: str) -> str:
         result = _reactivate_user(phone_clean)
         if result.get("success"):
             logger.info(f"[WhatsApp IN] Réinscription: ****{phone_clean[-4:]}")
-            return "Vous êtes réinscrit aux alertes du Calendrier Tempo EDF !"
+            return ("Vous êtes réinscrit aux alertes du Calendrier Tempo EDF. "
+                    "Vos préférences précédentes sont conservées.")
         else:
-            return result.get("error", "Erreur lors de la réinscription.")
+            return result.get("error", "La réinscription a échoué. Réessayez dans un instant.")
 
     if body_clean in ("RECAP", "RESUME", "SEMAINE", "PROCHAINS"):
         predictions = _get_upcoming_predictions()
         logger.info(f"[WhatsApp IN] RECAP demandé: ****{phone_clean[-4:]}")
         return format_recap_on_demand(predictions)
 
-    return ("Calendrier Tempo EDF :\n"
-            "STOP = désinscrire\n"
-            "START = réinscrire\n"
-            "RECAP = prochains jours")
+    return ("Calendrier Tempo EDF, commandes disponibles :\n"
+            "STOP : se désinscrire\n"
+            "START : se réinscrire\n"
+            "RECAP : voir les 7 prochains jours")
 
 
 def _reactivate_user(phone_number: str) -> dict:
@@ -1294,7 +1311,7 @@ def _reactivate_user(phone_number: str) -> dict:
         if not user:
             return {"error": "Ce numéro n'est pas inscrit au Calendrier Tempo EDF."}
         if user["actif"]:
-            return {"error": "Ce numéro est déjà actif."}
+            return {"error": "Vous êtes déjà inscrit : rien à faire."}
         # Réactiver sans modifier les préférences
         conn.execute(
             "UPDATE users SET actif = 1, updated_at = ? WHERE id = ?",

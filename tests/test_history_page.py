@@ -161,10 +161,11 @@ class TestControlledCounts:
         s = _season_view()
         assert [d["date"] for d in s["days"]] == ["2026-02-02", "2026-02-03", "2026-02-04", "2026-02-05"]
         j2 = _hz(s, 2)
-        assert j2["ROUGE"] == {"reels": 2, "annonces": 2, "sans_prevision": 0, "alertes": 3,
+        assert j2["ROUGE"] == {"reels": 2, "reels_emis": 2, "annonces": 2, "sans_prevision": 0, "alertes": 3,
                                "alertes_justes": 2, "rappel_pct": None, "precision_pct": None}
         assert (j2["BLANC"]["reels"], j2["BLANC"]["annonces"], j2["BLANC"]["alertes"]) == (1, 0, 0)
         assert (j2["jours"], j2["justes"], j2["toujours_bleu"]) == (4, 3, 1)
+        assert (j2["emises"], j2["erronees"]) == (4, 1)
         j3 = _hz(s, 3)
         assert (j3["ROUGE"]["annonces"], j3["ROUGE"]["alertes"], j3["ROUGE"]["alertes_justes"]) == (1, 1, 1)
         assert (j3["BLANC"]["annonces"], j3["BLANC"]["alertes"], j3["BLANC"]["alertes_justes"]) == (1, 3, 1)
@@ -358,12 +359,13 @@ class TestGridAndTemperatures:
         self._case(monkeypatch)
         page = client.get(PAGE + "/2025-2026").text
         grid = re.search(r'<table class="history-grid-table">.*?</table>', page, re.S).group(0)
-        for t in ("8,4°", "3,2°", "-1,5°", "-2,0°"):
+        # Format unique du site : une décimale, virgule, vrai signe moins (U+2212)
+        for t in ("8,4°", "3,2°", "−1,5°", "−2,0°"):
             assert t in grid
-        assert "-2,3°" in grid  # température observée (weather_cache)
+        assert "−2,3°" in grid  # température observée (weather_cache)
         assert "Prévu 2 jours avant : Rouge, juste ; probabilité 64 %" in grid
         # Ligne confirmée : couleur émise, probabilité écrasée par EDF non affichée
-        assert "Prévu la veille : Rouge, juste ; température moyenne prévue -2,0 °C" in grid
+        assert "Prévu la veille : Rouge, juste ; température moyenne prévue −2,0 °C" in grid
         assert "Prévu 12 jours avant : Bleu, erroné" in grid
         assert "n/d" not in grid
 

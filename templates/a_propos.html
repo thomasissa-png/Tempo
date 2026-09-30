@@ -114,8 +114,7 @@
         <p class="legal-text">
             Chaque jour, nous croisons la <strong>m&eacute;t&eacute;o de 9 villes</strong> (M&eacute;t&eacute;o France), la
             <strong>consommation d'&eacute;lectricit&eacute; pr&eacute;vue par RTE</strong> et les <strong>r&egrave;gles officielles d'EDF</strong>
-            (jours rouges et blancs restant &agrave; placer, week-ends, jours f&eacute;ri&eacute;s). Notre priorit&eacute;&nbsp;:
-            <strong>ne pas manquer les jours rouges</strong>, quitte &agrave; donner parfois une fausse alerte.
+            (jours rouges et blancs restant &agrave; placer, week-ends, jours f&eacute;ri&eacute;s). Notre priorit&eacute;&nbsp;: <strong>rep&eacute;rer les jours rouges</strong>. Nous acceptons quelques fausses alertes plut&ocirc;t que de rater un rouge, mais nous ne pouvons pas promettre de n'en manquer aucun&nbsp;: le <a href="/historique-previsions">bilan jour par jour</a> est public.
         </p>
         <p class="apropos-links">
             <a href="/methodologie" class="btn btn-outline">M&eacute;thodologie d&eacute;taill&eacute;e</a>
@@ -125,8 +124,8 @@
             <summary>Le d&eacute;tail de la m&eacute;thode et des sources</summary>
         <h3>Notre m&eacute;thodologie de pr&eacute;vision</h3>
         <p class="legal-text">
-            Pour pr&eacute;dire la couleur Tempo de chaque jour, notre syst&egrave;me croise
-            <strong>plusieurs sources de donn&eacute;es en temps r&eacute;el</strong> au travers
+            Pour pr&eacute;voir la couleur Tempo de chaque jour, notre syst&egrave;me croise
+            <strong>plusieurs sources de donn&eacute;es mises &agrave; jour chaque jour</strong> au travers
             de deux approches compl&eacute;mentaires&nbsp;:
         </p>
 
@@ -137,52 +136,45 @@
         <ul>
             <li><strong>Temp&eacute;ratures</strong>&nbsp;: moyennes pond&eacute;r&eacute;es de 9 grandes villes fran&ccedil;aises, pour d&eacute;tecter les vagues de froid qui d&eacute;clenchent les jours rouges</li>
             <li><strong>Consommation &eacute;lectrique nationale</strong>&nbsp;: donn&eacute;es RTE refl&eacute;tant la tension sur le r&eacute;seau</li>
-            <li><strong>Budget saisonnier EDF</strong>&nbsp;: suivi du nombre de jours rouges et blancs restant &agrave; placer dans la saison</li>
-            <li><strong>Gradient thermique</strong>&nbsp;: une chute brutale de temp&eacute;rature entra&icirc;ne un pic de consommation</li>
+            <li><strong>Jours restants</strong>&nbsp;: nombre de jours rouges et blancs qu'il reste &agrave; placer dans la saison</li>
+            <li><strong>Chute de temp&eacute;rature</strong>&nbsp;: une baisse brutale fait monter la consommation</li>
             <li><strong>Pression atmosph&eacute;rique</strong>&nbsp;: indicateur compl&eacute;mentaire corr&eacute;l&eacute; aux vagues de froid</li>
             <li><strong>Profil du jour</strong>&nbsp;: jour de la semaine, week-end, jours f&eacute;ri&eacute;s (les dimanches et f&eacute;ri&eacute;s ne sont jamais rouges)</li>
         </ul>
 
         <h4>Machine Learning</h4>
         <p class="legal-text">
-            En parall&egrave;le, un mod&egrave;le de Machine Learning entra&icirc;n&eacute; sur
-            plusieurs saisons historiques analyse des dizaines de variables pour d&eacute;tecter des
-            sch&eacute;mas r&eacute;currents. Ce mod&egrave;le est calibr&eacute; pour
-            <strong>ne pas manquer les jours rouges</strong>&nbsp;: mieux vaut une fausse alerte
-            qu'un jour rouge manqu&eacute;.
+            En parall&egrave;le, un mod&egrave;le d'apprentissage automatique, entra&icirc;n&eacute; sur des saisons pass&eacute;es, analyse des dizaines de variables (m&eacute;t&eacute;o, consommation, calendrier). Ce mod&egrave;le est r&eacute;gl&eacute; pour signaler les jours rouges d&egrave;s qu'ils sont plausibles&nbsp;: mieux vaut une fausse alerte qu'un rouge manqu&eacute;.
         </p>
 
         <h4>Combinaison et r&egrave;gles EDF</h4>
         <p class="legal-text">
-            La pr&eacute;diction finale combine les deux approches pour un consensus robuste. Les
+            La pr&eacute;vision finale combine les deux approches. Les
             r&egrave;gles officielles EDF (pas de rouge le week-end ni les jours f&eacute;ri&eacute;s,
             rouge uniquement de novembre &agrave; mars, maximum 5 jours rouges cons&eacute;cutifs) sont
-            appliqu&eacute;es syst&eacute;matiquement (d&eacute;tails et chiffres sur la page <a href="/methodologie">m&eacute;thodologie</a>). Le syst&egrave;me s'am&eacute;liore en continu en
-            comparant ses pr&eacute;dictions pass&eacute;es avec les couleurs r&eacute;elles annonc&eacute;es par EDF.
+            appliqu&eacute;es syst&eacute;matiquement (d&eacute;tails et chiffres sur la page <a href="/methodologie">m&eacute;thodologie</a>). Chaque jour, nous comparons nos pr&eacute;visions pass&eacute;es aux couleurs r&eacute;elles annonc&eacute;es par EDF, et nous ajustons la m&eacute;thode apr&egrave;s validation manuelle.
         </p>
 
         <h3>Sources de donn&eacute;es</h3>
         <p class="legal-text">La transparence est essentielle. Voici d'o&ugrave; viennent nos donn&eacute;es&nbsp;:</p>
         <ul>
-            <li><strong>M&eacute;t&eacute;o France</strong>&nbsp;: mod&egrave;les AROME (haute r&eacute;solution, J+0 &agrave; J+2) et ARPEGE (global, J+2 &agrave; J+5) pour 9 villes repr&eacute;sentatives de la consommation nationale</li>
+            <li><strong>M&eacute;t&eacute;o France</strong>&nbsp;: mod&egrave;les AROME (court terme, tr&egrave;s d&eacute;taill&eacute;) et ARPEGE (plus long terme) pour 9 villes repr&eacute;sentatives de la consommation nationale</li>
             <li><strong>RTE</strong> (R&eacute;seau de Transport d'&Eacute;lectricit&eacute;)&nbsp;: pr&eacute;visions de consommation nationale</li>
             <li><strong>Couleurs officielles</strong>&nbsp;: {{ facts.SOURCE_COULEURS_PHRASE }}, v&eacute;rifi&eacute;es chaque jour</li>
-            <li><strong>Open-Meteo</strong>&nbsp;: source compl&eacute;mentaire pour &eacute;tendre les pr&eacute;visions au-del&agrave; de J+5, et source de secours si M&eacute;t&eacute;o France est indisponible</li>
+            <li><strong>Open-Meteo</strong>&nbsp;: source compl&eacute;mentaire pour &eacute;tendre les pr&eacute;visions au-del&agrave; de 5 jours, et source de secours si M&eacute;t&eacute;o France est indisponible</li>
         </ul>
 
         <h3>Pr&eacute;cision et fiabilit&eacute;</h3>
         <p class="legal-text">
-            Nous mesurons la pr&eacute;cision de nos pr&eacute;visions en continu. Le taux de r&eacute;ussite
-            r&eacute;el sur les 30 derniers jours (J+2 &agrave; J+5) est publi&eacute; sur la
-            <a href="/methodologie">page m&eacute;thodologie</a>, avec nos r&eacute;sultats de backtest et leur nature exacte.
+            Nous comparons chaque jour nos pr&eacute;visions aux couleurs officielles. Le taux de r&eacute;ussite mesur&eacute; en conditions r&eacute;elles (pr&eacute;visions faites 2 &agrave; 5 jours &agrave; l'avance, derni&egrave;re saison compl&egrave;te, calcul&eacute; sur les pr&eacute;visions r&eacute;ellement &eacute;mises) est publi&eacute; sur la <a href="/methodologie">page m&eacute;thodologie</a>, avec le d&eacute;tail par couleur.
         </p>
         <ul>
-            <li><strong>J+1</strong>&nbsp;: EDF confirme la couleur chaque matin, notre pr&eacute;diction est g&eacute;n&eacute;ralement align&eacute;e</li>
-            <li><strong>J+2 &agrave; J+5</strong>&nbsp;: l'horizon id&eacute;al pour prendre vos d&eacute;cisions, avec une fiabilit&eacute; qui baisse avec la distance</li>
-            <li><strong>J+6 &agrave; J+15</strong>&nbsp;: pr&eacute;visions indicatives, utiles pour anticiper une tendance, mais les donn&eacute;es m&eacute;t&eacute;o sont moins fiables au-del&agrave; de 5 jours</li>
+            <li><strong>Demain</strong>&nbsp;: EDF publie la couleur vers 11&nbsp;h, nous l'affichons d&egrave;s sa publication.</li>
+            <li><strong>Dans 2 &agrave; 5 jours</strong>&nbsp;: la zone id&eacute;ale pour d&eacute;cider, avec une fiabilit&eacute; qui baisse avec la distance.</li>
+            <li><strong>Dans 6 &agrave; 15 jours</strong>&nbsp;: une tendance, car la m&eacute;t&eacute;o est moins fiable au-del&agrave; de 5 jours.</li>
         </ul>
         <p class="legal-text">
-            Notre priorit&eacute; absolue est de <strong>ne pas manquer les jours rouges</strong>.
+            Notre priorit&eacute; est de <strong>rep&eacute;rer les jours rouges</strong>.
             Un faux positif (pr&eacute;voir rouge alors que c'est bleu) ne co&ucirc;te quasiment rien &agrave; l'utilisateur,
             tandis qu'un jour rouge manqu&eacute; peut co&ucirc;ter cher sur la facture.
         </p>
@@ -198,8 +190,8 @@
         <ul>
             <li>Nos pr&eacute;visions sont <strong>indicatives</strong> et ne constituent pas une information officielle EDF</li>
             <li>La couleur d&eacute;finitive est fix&eacute;e par RTE et publi&eacute;e par EDF&nbsp;: elle seule fait foi</li>
-            <li>La pr&eacute;cision diminue naturellement au-del&agrave; de J+5 (incertitude m&eacute;t&eacute;o)</li>
-            <li>Des &eacute;v&eacute;nements exceptionnels (temp&ecirc;te, gr&egrave;ve, maintenance nucl&eacute;aire impr&eacute;vue) peuvent affecter nos pr&eacute;dictions</li>
+            <li>La pr&eacute;cision diminue naturellement au-del&agrave; de 5 jours (incertitude m&eacute;t&eacute;o)</li>
+            <li>Des &eacute;v&eacute;nements exceptionnels (temp&ecirc;te, gr&egrave;ve, maintenance nucl&eacute;aire impr&eacute;vue) peuvent affecter nos pr&eacute;visions</li>
         </ul>
     </section>
 
@@ -234,7 +226,7 @@
     </section>
 
     <div class="btn-row">
-        <a href="/" class="btn">Voir le calendrier Tempo</a>
+        <a href="/" class="btn">Voir la couleur du jour</a>
         <a href="/alertes" class="btn btn-outline">S'inscrire aux alertes</a>
     </div>
 

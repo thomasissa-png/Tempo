@@ -142,63 +142,63 @@
         <h3>4.2 Données traitées, finalités et bases légales</h3>
         <p class="legal-text"><strong>a) Alertes WhatsApp (inscription, envoi, gestion des préférences)</strong></p>
         <ul>
-            <li><strong>Données :</strong> numéro de téléphone mobile, préférences choisies (alertes rouge et blanc, niveau de probabilité,
+            <li><strong>Données&nbsp;:</strong> numéro de téléphone mobile, préférences choisies (alertes rouge et blanc, niveau de probabilité,
                 délai d'anticipation, moment d'envoi, récapitulatif hebdomadaire), statut de l'abonnement (actif ou non),
                 dates de création et de dernière modification, lien de gestion personnel (jeton aléatoire).</li>
-            <li><strong>Stockage du numéro :</strong> sous deux formes, un hash SHA-256 avec clé secrète (HMAC, irréversible sans la clé,
+            <li><strong>Stockage du numéro&nbsp;:</strong> sous deux formes, un hash SHA-256 avec clé secrète (HMAC, irréversible sans la clé,
                 utilisé pour retrouver un abonné et éviter les doublons) et un chiffrement {{ facts.CHIFFREMENT_TELEPHONE }}
                 (réversible, nécessaire à l'envoi des messages). Les 4 derniers chiffres sont conservés en clair
                 pour le support et l'affichage sur la page de gestion.</li>
-            <li><strong>Finalité :</strong> vous envoyer les alertes et récapitulatifs sur les jours Tempo que vous avez demandés,
+            <li><strong>Finalité&nbsp;:</strong> vous envoyer les alertes et récapitulatifs sur les jours Tempo que vous avez demandés,
                 gérer vos préférences et votre désinscription. Aucune autre utilisation (pas de prospection commerciale).</li>
-            <li><strong>Base légale :</strong> exécution du service que vous demandez en vous inscrivant (article 6.1.b du RGPD).</li>
-            <li><strong>Caractère obligatoire :</strong> le numéro de téléphone est indispensable à l'envoi des alertes. Sans lui,
+            <li><strong>Base légale&nbsp;:</strong> exécution du service que vous demandez en vous inscrivant (article 6.1.b du RGPD).</li>
+            <li><strong>Caractère obligatoire&nbsp;:</strong> le numéro de téléphone est indispensable à l'envoi des alertes. Sans lui,
                 l'inscription est impossible.</li>
         </ul>
 
         <p class="legal-text"><strong>b) Historique des envois</strong></p>
         <ul>
-            <li><strong>Données :</strong> type de message, date d'envoi, jour Tempo concerné, couleur, texte du message
+            <li><strong>Données&nbsp;:</strong> type de message, date d'envoi, jour Tempo concerné, couleur, texte du message
                 (lien de gestion masqué), statut de livraison, identifiant du message côté WhatsApp, code d'erreur éventuel.</li>
-            <li><strong>Finalités :</strong> respecter la limite d'une alerte par jour, éviter les doublons, suivre la bonne
+            <li><strong>Finalités&nbsp;:</strong> respecter la limite d'une alerte par jour concerné, éviter les doublons, suivre la bonne
                 livraison et diagnostiquer les incidents. Si WhatsApp indique qu'un numéro n'est pas joignable
                 (numéro absent de WhatsApp, limite de réengagement), l'abonnement est désactivé automatiquement.</li>
-            <li><strong>Base légale :</strong> exécution du service (article 6.1.b) et intérêt légitime à assurer un service fiable (article 6.1.f).</li>
+            <li><strong>Base légale&nbsp;:</strong> exécution du service (article 6.1.b) et intérêt légitime à assurer un service fiable (article 6.1.f).</li>
         </ul>
 
         <p class="legal-text"><strong>c) Réponses par WhatsApp (STOP, START, RECAP)</strong></p>
         <ul>
             <li>Lorsque vous écrivez au numéro du service, WhatsApp nous transmet votre numéro et votre message. Ils servent uniquement
                 à exécuter la commande demandée et à vous répondre. Le contenu de vos messages n'est pas enregistré en base de données.</li>
-            <li><strong>Base légale :</strong> exécution du service (article 6.1.b).</li>
+            <li><strong>Base légale&nbsp;:</strong> exécution du service (article 6.1.b).</li>
         </ul>
 
         <p class="legal-text"><strong>d) Sécurité et lutte contre les abus</strong></p>
         <ul>
-            <li><strong>Données :</strong> adresse IP, utilisée pour limiter le nombre de tentatives d'inscription et de désinscription
+            <li><strong>Données&nbsp;:</strong> adresse IP, utilisée pour limiter le nombre de tentatives d'inscription et de désinscription
                 (compteurs conservés en mémoire, non enregistrés en base de données). Un champ invisible et un délai minimal de saisie
                 écartent les robots. Les journaux techniques d'erreur peuvent mentionner l'adresse IP d'une tentative refusée.</li>
-            <li><strong>Base légale :</strong> intérêt légitime à protéger le service contre les robots et les abus (article 6.1.f).</li>
+            <li><strong>Base légale&nbsp;:</strong> intérêt légitime à protéger le service contre les robots et les abus (article 6.1.f).</li>
         </ul>
 
         <p class="legal-text"><strong>e) Consultation du site et de l'API publique</strong></p>
         <ul>
             <li>Aucun compte ni identifiant n'est demandé pour consulter le site ou l'API. Comme tout serveur web, l'hébergeur traite
                 techniquement l'adresse IP pour délivrer les pages. La mesure d'audience est décrite à la section 5.</li>
-            <li><strong>Base légale :</strong> intérêt légitime à faire fonctionner et sécuriser le site (article 6.1.f).</li>
+            <li><strong>Base légale&nbsp;:</strong> intérêt légitime à faire fonctionner et sécuriser le site (article 6.1.f).</li>
         </ul>
 
         <p class="legal-text"><strong>f) Courriels que vous nous adressez</strong></p>
         <ul>
             <li>Votre adresse de courriel et le contenu de votre message, utilisés pour répondre à votre demande
                 (question, exercice de droits, signalement).</li>
-            <li><strong>Base légale :</strong> intérêt légitime à répondre aux demandes reçues (article 6.1.f) et, pour l'exercice de vos droits,
+            <li><strong>Base légale&nbsp;:</strong> intérêt légitime à répondre aux demandes reçues (article 6.1.f) et, pour l'exercice de vos droits,
                 respect d'une obligation légale (article 6.1.c).</li>
         </ul>
 
         <h3>4.3 Destinataires et sous-traitants</h3>
         <p class="legal-text">
-            <strong>Pas de revente :</strong> Vos données ne sont jamais vendues, ni utilisées à des fins publicitaires.
+            <strong>Pas de revente&nbsp;:</strong> vos données ne sont jamais vendues, ni utilisées à des fins publicitaires.
             Elles ne sont accessibles qu'aux personnes habilitées d'ISSA Capital et aux prestataires techniques suivants,
             dans la mesure nécessaire à leur mission&nbsp;:
         </p>
@@ -232,17 +232,17 @@
 
         <h3>4.5 Durées de conservation</h3>
         <ul>
-            <li><strong>Abonnement actif :</strong> vos données sont conservées tant que l'abonnement est actif.</li>
-            <li><strong>Après désinscription :</strong> que vous répondiez STOP, utilisiez le lien de gestion ou le formulaire de la section 9,
+            <li><strong>Abonnement actif&nbsp;:</strong> vos données sont conservées tant que l'abonnement est actif.</li>
+            <li><strong>Après désinscription&nbsp;:</strong> que vous répondiez STOP, utilisiez le lien de gestion ou le formulaire de la section 9,
                 ou que l'abonnement soit désactivé automatiquement, le compte est désactivé et cesse de recevoir des messages.
                 Ses données sont conservées 6 mois pour vous permettre de vous réinscrire (réponse START), puis supprimées
                 définitivement. Une purge automatique, exécutée le 1<sup>er</sup> et le 15 de chaque mois, supprime les comptes désactivés
                 depuis plus de 6 mois, avec leur historique d'envois.</li>
-            <li><strong>Historique des envois :</strong> conservé tant que le compte existe, supprimé avec lui.</li>
-            <li><strong>Limitation des tentatives (adresse IP) :</strong> uniquement en mémoire, sur une fenêtre d'une heure, jamais écrite en base de données.</li>
-            <li><strong>Journaux techniques :</strong> rotation automatique, avec une taille limitée (pas de conservation longue).</li>
-            <li><strong>Courriels reçus :</strong> le temps nécessaire au traitement de votre demande.</li>
-            <li><strong>Mesure d'audience :</strong> voir la section 5.</li>
+            <li><strong>Historique des envois&nbsp;:</strong> conservé tant que le compte existe, supprimé avec lui.</li>
+            <li><strong>Limitation des tentatives (adresse IP)&nbsp;:</strong> uniquement en mémoire, sur une fenêtre d'une heure, jamais écrite en base de données.</li>
+            <li><strong>Journaux techniques&nbsp;:</strong> rotation automatique, avec une taille limitée (pas de conservation longue).</li>
+            <li><strong>Courriels reçus&nbsp;:</strong> le temps nécessaire au traitement de votre demande.</li>
+            <li><strong>Mesure d'audience&nbsp;:</strong> voir la section 5.</li>
         </ul>
 
         <h3>4.6 Sécurité</h3>
@@ -259,9 +259,9 @@
             de vos données après votre décès.
         </p>
         <ul>
-            <li><strong>Arrêter les messages ou modifier vos préférences :</strong> répondez STOP à un message, utilisez le lien de gestion
+            <li><strong>Arrêter les messages ou modifier vos préférences&nbsp;:</strong> répondez STOP à un message, utilisez le lien de gestion
                 présent dans chaque message, ou le formulaire de la section 9. L'abonnement est alors désactivé (voir les durées en section 4.5).</li>
-            <li><strong>Accès, rectification, effacement immédiat, limitation, opposition, portabilité :</strong> écrivez à
+            <li><strong>Accès, rectification, effacement immédiat, limitation, opposition, portabilité&nbsp;:</strong> écrivez à
                 <a href="mailto:contact@calendrier-tempo.fr">contact@calendrier-tempo.fr</a> (ou à
                 <a href="mailto:contact@issa-capital.com">contact@issa-capital.com</a>) en indiquant le numéro de téléphone concerné.
                 Nous pouvons vous demander de justifier de votre identité. Nous répondons dans un délai d'un mois.</li>
@@ -282,13 +282,13 @@
             Le site ne dépose pas de cookie publicitaire ni de traceur de profilage. La fréquentation est mesurée avec
             <strong>Umami</strong> (script chargé depuis cloud.umami.is), un outil conçu pour fonctionner sans cookie
             et sans identifiant persistant, ni suivi entre sites.<br><br>
-            <strong>Données mesurées :</strong> pages consultées, provenance approximative, type d'appareil et de navigateur, ainsi que des
+            <strong>Données mesurées&nbsp;:</strong> pages consultées, provenance approximative, type d'appareil et de navigateur, ainsi que des
             événements d'usage du formulaire d'inscription (ouverture, fermeture, envoi, erreur), sans jamais transmettre votre numéro de
             téléphone. Ces statistiques ne sont pas rapprochées des données des abonnés.<br><br>
-            <strong>Finalité :</strong> connaître la fréquentation du site et améliorer ses pages.<br><br>
-            <strong>Base légale :</strong> intérêt légitime à mesurer l'audience (article 6.1.f du RGPD), pour notre seul compte
+            <strong>Finalité&nbsp;:</strong> connaître la fréquentation du site et améliorer ses pages.<br><br>
+            <strong>Base légale&nbsp;:</strong> intérêt légitime à mesurer l'audience (article 6.1.f du RGPD), pour notre seul compte
             et à des fins statistiques.<br><br>
-            <strong>Votre choix :</strong> vous pouvez vous opposer à cette mesure en écrivant à
+            <strong>Votre choix&nbsp;:</strong> vous pouvez vous opposer à cette mesure en écrivant à
             <a href="mailto:contact@calendrier-tempo.fr">contact@calendrier-tempo.fr</a> ou en bloquant le script
             dans votre navigateur.
         </p>
@@ -298,25 +298,25 @@
     <div class="legal-section">
         <h2 id="messagerie">6. Politique de messagerie</h2>
         <p class="legal-text">
-            <strong>Fréquence :</strong> Maximum 1 alerte par jour. Le récapitulatif hebdomadaire
+            <strong>Fréquence&nbsp;:</strong> au plus une alerte par jour concerné, et un message de plus seulement si la prévision change. Le récapitulatif hebdomadaire
             (optionnel) est envoyé le dimanche soir. Alertes et récapitulatifs sont envoyés
             du 1<sup>er</sup> novembre au 31 mars. Les messages de bienvenue et de lien de gestion
             peuvent être envoyés à tout moment de l'année.<br><br>
-            <strong>Opt-out :</strong> Répondez STOP à n'importe quel message pour vous désinscrire
+            <strong>Désinscription&nbsp;:</strong> répondez STOP à n'importe quel message pour vous désinscrire
             immédiatement. Vous pouvez aussi utiliser le lien de gestion inclus dans chaque message.
             Répondez START pour vous réinscrire, RECAP pour recevoir les prochains jours.<br><br>
-            <strong>Coût :</strong> Le service est entièrement gratuit.
+            <strong>Coût&nbsp;:</strong> le service est entièrement gratuit.
         </p>
     </div>
 
     <div class="legal-section">
         <h2 id="sources">7. Sources de données</h2>
         <p class="legal-text">
-            <strong>Couleurs Tempo :</strong> couleurs publiées par EDF, relayées par
+            <strong>Couleurs Tempo&nbsp;:</strong> couleurs publiées par EDF, relayées par
             <a href="https://www.api-couleur-tempo.fr/" target="_blank" rel="noopener">api-couleur-tempo.fr</a> (service tiers)<br><br>
-            <strong>Météo :</strong> <a href="https://portail-api.meteofrance.fr/" target="_blank" rel="noopener">Météo France</a> (modèles AROME et ARPEGE, prévisions 5 jours, 9 villes françaises)<br><br>
-            <strong>Consommation électrique :</strong> <a href="https://data.rte-france.com/" target="_blank" rel="noopener">RTE éco2mix</a> (données temps réel)<br><br>
-            <strong>Algorithme :</strong> Les prévisions sont basées sur un algorithme combinant
+            <strong>Météo&nbsp;:</strong> <a href="https://portail-api.meteofrance.fr/" target="_blank" rel="noopener">Météo France</a> (modèles AROME et ARPEGE, prévisions 5 jours, 9 villes françaises)<br><br>
+            <strong>Consommation électrique&nbsp;:</strong> <a href="https://data.rte-france.com/" target="_blank" rel="noopener">RTE éco2mix</a> (données temps réel)<br><br>
+            <strong>Algorithme&nbsp;:</strong> Les prévisions sont basées sur un algorithme combinant
             données météorologiques (température, gradient thermique), pression budgétaire saisonnière,
             profil du jour de la semaine, consommation nationale et analyse statistique.
             Le système tient un journal d'apprentissage de ses erreurs&nbsp;; ses paramètres ne sont mis à jour
@@ -342,7 +342,7 @@
         <form id="unsubscribe-form" class="unsub-form">
             <label for="unsub-phone" class="sr-only">Numéro de téléphone</label>
             <input type="tel" id="unsub-phone" name="phone" placeholder="06 12 34 56 78" required
-                   title="Format: 06/07 XX XX XX XX ou +33 6/7 XX XX XX XX"
+                   title="Format&nbsp;: 06/07 XX XX XX XX, ou avec l'indicatif +33, +32, +41, +352, +49"
                    aria-label="Numéro de téléphone pour désinscription">
             <button type="submit" class="btn btn-danger">Se désinscrire</button>
         </form>
@@ -350,12 +350,12 @@
     </div>
 
 <script>
-// BUG-04 QA : accepter les formats FR courants (06/07) en plus de +33
+// Même règle qu'à l'inscription (+33, +32, +41, +352, +49) : normalizePhoneIntl,
+// définie par la fenêtre d'inscription (_subscribe_modal.html) incluse sur cette page.
 function normalizeLegalPhone(input) {
-    let cleaned = input.replace(/[\s.\-()]/g, '');
+    if (window.normalizePhoneIntl) return window.normalizePhoneIntl(input || '');
+    const cleaned = (input || '').replace(/[\s.\-()]/g, '');
     if (/^0[67]\d{8}$/.test(cleaned)) return '+33' + cleaned.substring(1);
-    if (/^33[67]\d{8}$/.test(cleaned)) return '+' + cleaned;
-    if (/^\+33[67]\d{8}$/.test(cleaned)) return cleaned;
     return null;
 }
 
@@ -368,7 +368,7 @@ document.getElementById('unsubscribe-form').addEventListener('submit', async (e)
         resultEl.style.display = 'block';
         resultEl.style.background = '#FFEBEE';
         resultEl.style.color = '#C62828';
-        resultEl.textContent = 'Format invalide. Tapez votre numéro au format 06 12 34 56 78 ou +33612345678.';
+        resultEl.textContent = 'Numéro non reconnu. Saisissez-le comme à l\'inscription, ou répondez STOP dans WhatsApp.';
         return;
     }
     try {
@@ -384,13 +384,13 @@ document.getElementById('unsubscribe-form').addEventListener('submit', async (e)
         } else {
             resultEl.style.background = '#FFEBEE';
             resultEl.style.color = '#C62828';
-            resultEl.textContent = data.detail || 'Erreur lors de la désinscription.';
+            resultEl.textContent = data.detail || 'La désinscription a échoué. Réessayez dans un instant.';
         }
     } catch {
         resultEl.style.display = 'block';
         resultEl.style.background = '#FFEBEE';
         resultEl.style.color = '#C62828';
-        resultEl.textContent = 'Erreur de connexion au serveur.';
+        resultEl.textContent = 'Connexion impossible. Réessayez dans un instant.';
     }
 });
 </script>

@@ -7,12 +7,12 @@
 {% macro bilan_row(hz, rb) %}
             <tr{% if hz.fiable %} class="hb-fiable"{% endif %}>
                 <th scope="row">{% if hz.n == 1 %}La veille{% else %}{{ hz.n }} jours avant{% endif %}</th>
-                {% if rb %}<td class="num">{{ ratio(hz.ROUGE.annonces, hz.ROUGE.reels, hz.ROUGE.rappel_pct, 'aucun') }}</td>
+                {% if rb %}<td class="num">{{ ratio(hz.ROUGE.annonces, hz.ROUGE.reels_emis, hz.ROUGE.rappel_pct, 'aucun') }}</td>
                 <td class="num">{{ ratio(hz.ROUGE.alertes_justes, hz.ROUGE.alertes, hz.ROUGE.precision_pct, 'aucune') }}</td>
-                <td class="num">{{ ratio(hz.BLANC.annonces, hz.BLANC.reels, hz.BLANC.rappel_pct, 'aucun') }}</td>
+                <td class="num">{{ ratio(hz.BLANC.annonces, hz.BLANC.reels_emis, hz.BLANC.rappel_pct, 'aucun') }}</td>
                 <td class="num">{{ ratio(hz.BLANC.alertes_justes, hz.BLANC.alertes, hz.BLANC.precision_pct, 'aucune') }}</td>
-                {% endif %}<td class="num">{{ ratio(hz.justes, hz.jours, hz.justes_pct, 'aucun jour') }}{% if hz.sans_prevision %}<span class="hb-sub">dont {{ hz.sans_prevision }} sans prévision</span>{% endif %}</td>
-                <td class="num">{{ ratio(hz.toujours_bleu, hz.jours, hz.toujours_bleu_pct, 'aucun jour') }}</td>
+                {% endif %}<td class="num">{{ ratio(hz.justes, hz.emises, hz.justes_pct, 'aucune prévision') }}{% if hz.sans_prevision %}<span class="hb-sub">+ {{ hz.sans_prevision }} jour{{ 's' if hz.sans_prevision > 1 }} sans prévision</span>{% endif %}</td>
+                <td class="num">{{ ratio(hz.toujours_bleu, hz.emises, hz.toujours_bleu_pct, 'aucun jour') }}</td>
             </tr>
 {% endmacro %}
 {% block title %}{% if is_current %}Historique de nos prévisions Tempo EDF, jour par jour{% else %}Historique de nos prévisions Tempo EDF : saison {{ season_label }}{% endif %}{% endblock %}
@@ -70,9 +70,10 @@
             <summary>Comment nous mesurons</summary>
             <ul>
                 <li><strong>Données brutes, sans sélection</strong>&nbsp;: chaque jour dont EDF a publié la couleur figure dans la grille, que notre prévision ait été juste ou non.</li>
-                <li><strong>Prévision figée</strong>&nbsp;: pour chaque jour et chaque délai, nous gardons la dernière prévision émise ce jour-là, jamais recalculée après coup. Le délai se compte entre la date d'émission et le jour concerné&nbsp;: un calcul retardé après minuit compte pour le lendemain. Une prévision absente compte comme un jour manqué.</li>
+                <li><strong>Prévision figée</strong>&nbsp;: pour chaque jour et chaque délai, nous gardons la dernière prévision émise ce jour-là, jamais recalculée après coup. Le délai se compte entre la date d'émission et le jour concerné&nbsp;: un calcul retardé après minuit compte pour le lendemain.</li>
+                <li><strong>Taux sur les prévisions émises</strong>&nbsp;: un pourcentage de prévisions justes se calcule sur les prévisions réellement émises. Une prévision absente (service interrompu au moment du calcul, ou couleur déjà publiée par EDF pour la veille) n'est ni juste ni erronée&nbsp;: elle est comptée à part, dans la couverture. Nous ne la recréons jamais après coup.</li>
                 <li><strong>Températures</strong>&nbsp;: moyenne pondérée de 9 villes, telle que prévue au moment de la prévision&nbsp;; la température observée est la dernière mesure enregistrée pour le jour.</li>
-                <li><strong>Pourcentages</strong>&nbsp;: affichés seulement à partir de {{ pct_min }} jours d'une même couleur (ou {{ pct_min }} alertes) pour un délai donné. En dessous, l'échantillon est trop petit pour qu'un pourcentage ait un sens.</li>
+                <li><strong>Pourcentages</strong>&nbsp;: affichés seulement à partir de {{ pct_min }} jours d'une même couleur (ou {{ pct_min }} alertes) pour un délai donné, pour éviter les chiffres trompeurs sur de petits échantillons. Pour la saison en cours, ils apparaissent à partir du 1<sup>er</sup>&nbsp;novembre.</li>
                 <li><strong>Algorithme</strong>&nbsp;: il évolue au fil de la saison&nbsp;; chaque prévision est comparée telle qu'elle a été émise par la version alors en service.{% if start_date_label %} Historique tenu depuis le {{ start_date_label }}.{% endif %}</li>
             </ul>
         </details>

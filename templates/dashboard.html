@@ -52,7 +52,7 @@
         "name": "Calendrier Tempo EDF",
         "alternateName": ["Calendrier Tempo", "calendrier-tempo.fr"],
         "url": "https://www.calendrier-tempo.fr/",
-        "description": "Couleur Tempo EDF du jour et de demain, calendrier des saisons et prévisions des jours rouges, blancs et bleus jusqu'à 15 jours à l'avance.",
+        "description": "Couleur Tempo EDF du jour et de demain, calendrier des saisons et prévisions des jours rouges, blancs et bleus sur 15 jours.",
         "inLanguage": "fr"
     }
     </script>
@@ -62,7 +62,7 @@
         "@context": "https://schema.org",
         "@type": "SoftwareApplication",
         "name": "Calendrier Tempo EDF",
-        "description": "Service gratuit de prévision des jours Tempo EDF avec alertes. Anticipez les jours rouges, blancs et bleus jusqu'à 15 jours à l'avance.",
+        "description": "Service gratuit de prévision des jours Tempo EDF avec alertes WhatsApp. Prévisions des jours rouges, blancs et bleus sur 15 jours.",
         "url": "https://www.calendrier-tempo.fr/",
         "applicationCategory": "UtilitiesApplication",
         "operatingSystem": "Web",
@@ -110,13 +110,13 @@
                 "@type": "HowToStep",
                 "position": 1,
                 "name": "Consultez la prévision",
-                "text": "Consultez les prévisions Tempo pour les 15 prochains jours. L'algorithme analyse la météo de 9 villes, le budget EDF restant et la consommation nationale."
+                "text": "Consultez les prévisions Tempo pour les 15 prochains jours. Nos prévisions croisent la météo de 9 villes, le nombre de jours rouges et blancs qu'il reste à placer et la consommation nationale prévue."
             },
             {
                 "@type": "HowToStep",
                 "position": 2,
                 "name": "Recevez une alerte",
-                "text": "Inscrivez-vous gratuitement (30 secondes) pour recevoir une alerte avant chaque jour rouge avec le conseil d'action."
+                "text": "Inscrivez-vous gratuitement (30 secondes) pour recevoir, de novembre à mars, une alerte avant chaque jour rouge prévu."
             },
             {
                 "@type": "HowToStep",
@@ -153,8 +153,7 @@
     <!-- Fix #14 : noscript fallback -->
     <noscript>
         <div style="background:#FFEBEE;border:2px solid #F44336;border-radius:8px;padding:20px;margin:24px 0;text-align:center">
-            <strong>JavaScript est nécessaire</strong> pour afficher les prévisions Tempo en temps réel.
-            Veuillez activer JavaScript dans votre navigateur pour utiliser le Calendrier Tempo.
+            <strong>JavaScript est désactivé.</strong> Les couleurs ci-dessous datent du chargement de la page : activez JavaScript pour les voir se mettre à jour.
         </div>
     </noscript>
 
@@ -164,7 +163,7 @@
     <section class="welcome-banner home-lead" id="welcome-banner">
         <p>
             Un jour <span class="color-tag rouge">rouge</span> co&ucirc;te <strong>{{ facts.RATIO }} fois plus cher</strong> en heures pleines qu'un jour bleu.
-            Le Calendrier Tempo EDF vous aide &agrave; l'anticiper <strong>jusqu'&agrave; 15 jours &agrave; l'avance</strong>.
+            Nos pr&eacute;visions portent sur <strong>15 jours</strong>, les plus fiables sur <strong>2 &agrave; 5 jours</strong>.
         </p>
     </section>
 
@@ -180,11 +179,11 @@
             {% macro week_dot(d, hero) -%}
             <div class="week-dot{% if hero %} week-dot-highlight week-dot-hero{% endif %}">
                 <div class="week-dot-circle{% if d.couleur == 'BLANC' %} dot-blanc{% elif d.couleur == 'ROUGE' %} dot-rouge{% endif %}{% if d.confirmed %} confirmed-dot{% endif %}" style="background:var(--{{ d.couleur|lower }})" aria-hidden="true">{{ d.couleur[0] }}</div>
-                <span class="sr-only">{% if d.is_today %}Aujourd'hui, {% elif d.is_tomorrow %}Demain, {% endif %}{{ d.date_label }} : {{ d.couleur_label }}{% if d.confirmed %}, couleur officielle{% else %}, prévision {{ d.confidence }}&nbsp;%{% endif %}</span>
-                <div class="week-dot-text" aria-hidden="true">
+                {% if not hero %}<span class="sr-only">{{ d.date_label }} : {{ d.couleur_label }}{% if d.confirmed %}, couleur officielle{% else %}, prévision {{ d.confidence }}&nbsp;%{% endif %}</span>{% endif %}
+                <div class="week-dot-text"{% if not hero %} aria-hidden="true"{% endif %}>
                     <span class="week-dot-label">{% if d.is_today %}<strong>Aujourd'hui</strong>{% elif d.is_tomorrow %}<strong>Demain</strong>{% else %}{{ d.day_label }} {{ d.day_num }}{% endif %}</span>
-                    {% if hero %}<span class="week-dot-color">{{ d.couleur_label }}</span>{% endif %}
-                    <div class="week-dot-info">{% if d.confirmed %}<span class="week-dot-confirmed">Confirmé</span>{% elif hero %}<span class="week-dot-proba">Prévision {{ d.confidence }}&nbsp;%</span>{% elif d.couleur != 'BLEU' or d.confidence < 90 %}<span class="week-dot-proba">{{ d.confidence }}&nbsp;%</span>{% endif %}</div>
+                    {% if hero %}<span class="week-dot-date"><time datetime="{{ d.date }}">{{ d.day_label }} {{ d.day_num_label }}&nbsp;{{ d.month_label }}</time></span><span class="week-dot-color">{{ d.couleur_label }}</span>{% endif %}
+                    <div class="week-dot-info">{% if d.confirmed %}<span class="week-dot-confirmed">Confirmé par EDF</span>{% elif hero %}<span class="week-dot-proba">Prévu à {{ d.confidence }}&nbsp;%</span>{% elif d.couleur != 'BLEU' or d.confidence < 90 %}<span class="week-dot-proba">{{ d.confidence }}&nbsp;%</span>{% endif %}</div>
                 </div>
             </div>
             {%- endmacro %}
@@ -205,25 +204,11 @@
                 </div>
                 {% endif %}
             </div>
-            {% if ssr.today_color or ssr.tomorrow_color %}
-            <!-- Réponse directe SSR (SEO) : couleur du jour et de demain en toutes lettres, une seule fois -->
-            <p class="week-summary-answer">
-                {% if ssr.today_color %}
-                Couleur Tempo EDF aujourd'hui, <time datetime="{{ ssr.today_iso }}">{{ ssr.today_label }}</time>&nbsp;:
-                <strong class="color-tag {{ ssr.today_color|lower }}">{{ ssr.today_color|capitalize }}</strong>{% if not ssr.tomorrow_color %} (couleur officielle EDF){% endif %}.
-                Demain, <time datetime="{{ ssr.tomorrow_iso }}">{{ ssr.tomorrow_label }}</time>&nbsp;:
-                {% if ssr.tomorrow_color %}<strong class="color-tag {{ ssr.tomorrow_color|lower }}">{{ ssr.tomorrow_color|capitalize }}</strong> (couleurs officielles EDF).{% else %}pas encore publi&eacute;e par EDF (vers 11&nbsp;h).{% endif %}
-                {% else %}
-                Couleur Tempo EDF demain, <time datetime="{{ ssr.tomorrow_iso }}">{{ ssr.tomorrow_label }}</time>&nbsp;:
-                <strong class="color-tag {{ ssr.tomorrow_color|lower }}">{{ ssr.tomorrow_color|capitalize }}</strong> (couleur officielle EDF).
-                {% endif %}
-            </p>
-            {% endif %}
-            <!-- La suite (après aujourd'hui et demain) : même texte en SSR et en JS (weekOutlookHtml) -->
+            <!-- Phrase sous les pastilles (copy deck V1 à V5) : même texte en SSR et en JS (weekOutlookHtml) -->
             <p class="week-summary-text" id="week-outlook"{% if not ssr.week_outlook %} hidden{% endif %}>{{ ssr.week_outlook|safe }}</p>
             <div class="week-summary-actions">
-                <a href="/calendrier" class="btn btn-cta-summary">Voir les pr&eacute;visions d&eacute;taill&eacute;es des 15 prochains jours &rarr;</a>
-                <span class="week-summary-links"><a href="/couleur-tempo-demain">Couleur Tempo de demain</a> <a href="/calendrier">Calendrier de la saison</a></span>
+                <a href="/calendrier" class="btn btn-cta-summary">Voir les 15 prochains jours &rarr;</a>
+                <span class="week-summary-links"><a href="/couleur-tempo-demain">Couleur Tempo de demain</a></span>
             </div>
         </div>
     </section>
@@ -241,19 +226,19 @@
             <div class="label">Jours rouges restants</div>
             <!-- P-21 : barre de progression visuelle -->
             <div class="counter-progress" id="progress-rouge"><div class="counter-progress-fill rouge-fill"></div></div>
-            <div class="counter-help">HP {{ prix(facts.TARIFS.ROUGE.hp) }}&nbsp;&euro;/kWh, les plus chers</div>
+            <div class="counter-help">{{ prix(facts.TARIFS.ROUGE.hp) }}&nbsp;&euro;/kWh en heures pleines, le plus cher</div>
         </div>
         <div class="counter-card blanc" aria-label="Jours blancs restants">
             <div class="count{% if not ssr.remaining %} count-pending{% endif %}" id="count-blanc" aria-live="polite"{% if not ssr.remaining %} aria-label="en cours de chargement"{% endif %}>{% if ssr.remaining %}{{ ssr.remaining.BLANC }}{% else %}-{% endif %}</div>
             <div class="label">Jours blancs restants</div>
             <div class="counter-progress" id="progress-blanc"><div class="counter-progress-fill blanc-fill"></div></div>
-            <div class="counter-help">HP {{ prix(facts.TARIFS.BLANC.hp) }}&nbsp;&euro;/kWh, prix moyen</div>
+            <div class="counter-help">{{ prix(facts.TARIFS.BLANC.hp) }}&nbsp;&euro;/kWh en heures pleines, tarif interm&eacute;diaire</div>
         </div>
         <div class="counter-card bleu" aria-label="Jours bleus restants">
             <div class="count{% if not ssr.remaining %} count-pending{% endif %}" id="count-bleu" aria-live="polite"{% if not ssr.remaining %} aria-label="en cours de chargement"{% endif %}>{% if ssr.remaining %}{{ ssr.remaining.BLEU }}{% else %}-{% endif %}</div>
             <div class="label">Jours bleus restants</div>
             <div class="counter-progress" id="progress-bleu"><div class="counter-progress-fill bleu-fill"></div></div>
-            <div class="counter-help">HP {{ prix(facts.TARIFS.BLEU.hp) }}&nbsp;&euro;/kWh, tarif avantageux</div>
+            <div class="counter-help">{{ prix(facts.TARIFS.BLEU.hp) }}&nbsp;&euro;/kWh en heures pleines, le moins cher</div>
         </div>
     </div>
     <p class="days-left-text" id="days-left"></p>
@@ -268,8 +253,7 @@
             </div>
             <div class="subscribe-cta-content">
                 <h2>Anticipez les {{ facts.ALERTES_HORIZON_JOURS }} prochains jours EDF Tempo par WhatsApp</h2>
-                <p>Recevez {{ facts.ALERTES_DESCRIPTION }}.
-                    <strong>Gratuit, sans engagement, 30 secondes.</strong></p>
+                <p>{{ facts.ALERTES_DESCRIPTION_COURT }}. <strong>Gratuit, sans engagement, 30 secondes.</strong></p>
                 <p class="social-proof-inline">D&eacute;j&agrave; {{ facts.FOYERS_ALERTES_HTML|safe }} foyers Tempo alert&eacute;s.</p>
             </div>
             <button type="button" class="btn btn-subscribe-cta" onclick="openSubscribeModal()">
@@ -286,17 +270,17 @@
             <div class="step-card">
                 <div class="step-number">1</div>
                 <h3>Consultez la pr&eacute;vision</h3>
-                <p>Nous analysons en continu la m&eacute;t&eacute;o de 9 villes, le budget EDF restant et la consommation nationale pour pr&eacute;dire les <strong>15 prochains jours</strong>. Les pr&eacute;visions sont recalcul&eacute;es {{ facts.CALCUL_PREVISIONS }}.</p>
+                <p>Nous croisons la m&eacute;t&eacute;o de 9 villes, le nombre de jours rouges et blancs qu'il reste &agrave; placer et la consommation nationale pr&eacute;vue pour pr&eacute;voir les <strong>15 prochains jours</strong>. Les pr&eacute;visions sont recalcul&eacute;es {{ facts.CALCUL_PREVISIONS }}.</p>
             </div>
             <div class="step-card">
                 <div class="step-number">2</div>
                 <h3>Recevez une alerte</h3>
-                <p><a href="#subscribe">Inscrivez-vous</a> (gratuit, 30 secondes). Vous recevrez une alerte avant chaque jour rouge avec le conseil d'action&nbsp;: reportez vos machines et baissez le chauffage.</p>
+                <p><a href="#subscribe">Inscrivez-vous</a> (gratuit, 30 secondes). Vous recevez une alerte avant chaque jour rouge <strong>pr&eacute;vu</strong>, de novembre &agrave; mars, avec le conseil d'action&nbsp;: reportez vos machines et baissez le chauffage.</p>
             </div>
             <div class="step-card">
                 <div class="step-number">3</div>
                 <h3>&Eacute;conomisez concr&egrave;tement</h3>
-                <p>Chaque kWh d&eacute;plac&eacute; des heures pleines d'un jour rouge vers un jour bleu &eacute;conomise {{ facts.SURCOUT_KWH }}&nbsp;&euro;. En d&eacute;calant lessive, s&egrave;che-linge, four et recharge VE, soit {{ facts.KWH_BAS }}&nbsp;kWh, vous &eacute;conomisez <strong>environ {{ facts.SURCOUT_JOUR_BAS }}&nbsp;&euro; par jour rouge</strong>, et environ {{ facts.SURCOUT_SAISON_BAS }}&nbsp;&euro; sur les {{ facts.JOURS_ROUGES }} jours rouges d'une saison. <a href="/tarif-tempo-edf">Voir le tarif Tempo EDF</a>.</p>
+                <p>Chaque kWh d&eacute;plac&eacute; des heures pleines d'un jour rouge vers un jour bleu &eacute;conomise {{ facts.SURCOUT_KWH }}&nbsp;&euro;. Exemple&nbsp;: en d&eacute;calant {{ facts.KWH_BAS }}&nbsp;kWh (lessive, s&egrave;che-linge, four, recharge de voiture &eacute;lectrique), vous &eacute;conomisez <strong>environ {{ facts.SURCOUT_JOUR_BAS }}&nbsp;&euro; par jour rouge</strong>, soit environ {{ facts.SURCOUT_SAISON_BAS }}&nbsp;&euro; si vous le faites lors des {{ facts.JOURS_ROUGES }} jours rouges d'une saison. <a href="/tarif-tempo-edf">Voir le tarif Tempo EDF</a>.</p>
             </div>
         </div>
     </section>
@@ -305,9 +289,7 @@
     <div class="hors-saison-banner" id="hors-saison-banner" style="display:none" role="alert">
         <div class="hors-saison-icon" aria-hidden="true">&#9728;&#65039;</div>
         <div>
-            <strong>La saison Tempo est termin&eacute;e !</strong><br>
-            Les jours Tempo reprennent le 1<sup>er</sup> septembre.
-            Inscrivez-vous d&egrave;s maintenant pour &ecirc;tre alert&eacute; d&egrave;s le premier jour rouge.
+            <strong>Pas de jour rouge en ce moment.</strong><br>Les jours rouges ne tombent qu'entre le 1<sup>er</sup> novembre et le 31 mars. Inscrivez-vous maintenant&nbsp;: les alertes d&eacute;marrent en novembre.
         </div>
     </div>
 
@@ -321,8 +303,9 @@
                 <div class="faq-content">
                 {{ item.answer_html|safe }}
                 {% if item.id == 'faq-fiabilite' %}
-                <p id="faq-precision-text">Taux de pr&eacute;visions correctes sur les 30 derniers jours (J+2 &agrave; J+5), mesur&eacute; en conditions r&eacute;elles&nbsp;:
-                    <strong id="faq-precision-value">voir le d&eacute;tail dans <a href="/historique-previsions">l'historique de nos pr&eacute;visions</a>.</strong></p>
+                <p id="faq-precision-text">{% if ref_rate %}{% set r = ref_rate %}Saison {{ r.label }} (derni&egrave;re saison compl&egrave;te), pr&eacute;visions faites 2 &agrave; 5 jours &agrave; l'avance, toutes couleurs confondues&nbsp;:
+                    <strong id="faq-precision-value">{{ r.justes_pct }}&nbsp;% de pr&eacute;visions justes</strong> ({{ r.justes }} sur {{ r.emises }} pr&eacute;visions &eacute;mises, {{ r.sans_prevision }} jours sans pr&eacute;vision compt&eacute;s &agrave; part).
+                    Rep&egrave;re&nbsp;: dire «&nbsp;bleu&nbsp;» tous les jours aurait eu raison {{ r.toujours_bleu_pct }}&nbsp;% du temps. D&eacute;tail par couleur dans <a href="{{ r.path }}">l'historique de nos pr&eacute;visions</a>.{% else %}D&eacute;tail par couleur, jour par jour, dans <a href="/historique-previsions">l'historique de nos pr&eacute;visions</a>.{% endif %}</p>
                 {% endif %}
                 </div>
             </details>

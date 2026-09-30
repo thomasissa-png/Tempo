@@ -55,7 +55,7 @@
     <p>
         Les heures pleines vont de {{ facts.HEURES_PLEINES }}, les heures creuses de {{ facts.HEURES_CREUSES }}.
         Une journ&eacute;e Tempo commence &agrave; 6&nbsp;h et se termine &agrave; 6&nbsp;h le lendemain&nbsp;: la nuit qui suit un jour rouge
-        est factur&eacute;e au tarif rouge heures creuses ({{ prix(T.ROUGE.hc) }}&nbsp;&euro;/kWh), proche du bleu.
+        est factur&eacute;e au tarif rouge heures creuses ({{ prix(T.ROUGE.hc) }}&nbsp;&euro;/kWh), &agrave; peu pr&egrave;s le prix d'un kWh bleu en heures pleines ({{ prix(T.BLEU.hp) }}&nbsp;&euro;).
     </p>
 
     <h2>Combien co&ucirc;te un jour rouge Tempo&nbsp;?</h2>
@@ -72,13 +72,12 @@
     <h2>Anticiper les jours rouges</h2>
     <p>
         Consultez le <a href="/calendrier">calendrier Tempo EDF</a> et la <a href="/couleur-tempo-demain">couleur Tempo de demain</a>,
-        ou recevez gratuitement nos <a href="/alertes">alertes WhatsApp</a>&nbsp;: {{ facts.ALERTES_DESCRIPTION }}.
-        Conseils pratiques sur le <a href="/blog/">blog</a>.
+        ou recevez gratuitement nos <a href="/alertes">alertes WhatsApp</a>. Conseils pratiques sur le <a href="/blog/">blog</a>.
     </p>
 
     <section class="blog-cta page-cta">
         <h2>Anticipez les {{ facts.ALERTES_HORIZON_JOURS }} prochains jours Tempo</h2>
-        <p>Recevez gratuitement par WhatsApp {{ facts.ALERTES_DESCRIPTION }}.</p>
+        <p>{{ facts.ALERTES_DESCRIPTION_COURT }}. Gratuit, sans engagement.</p>
         <button type="button" class="btn" onclick="openSubscribeModal()">S'inscrire aux alertes gratuites</button>
     </section>
 </article>

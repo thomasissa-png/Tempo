@@ -71,7 +71,7 @@ SOURCE_COULEURS_PHRASE = (
 )
 ANNONCE_J1 = (
     "EDF publie la couleur Tempo du lendemain chaque jour en fin de matinée, "
-    "généralement vers 11 h, parfois un peu plus tôt"
+    "généralement vers 11 h"
 )
 VERIFICATION_SITE = (
     "notre site vérifie la publication toutes les 15 minutes entre 6 h et 11 h 15, "
@@ -79,12 +79,22 @@ VERIFICATION_SITE = (
 )
 CALCUL_PREVISIONS = "chaque jour à 18 h, et à nouveau dès qu'EDF publie une couleur"
 
-# Alertes WhatsApp (alerts.py : récap hebdo du dimanche sur 7 jours,
-# alerte avant un jour rouge, 1 alerte maximum par jour, de novembre à mars)
+# Alertes WhatsApp (alerts.py : récap hebdo du dimanche sur 7 jours, alerte avant un
+# jour rouge prévu, de novembre à mars). Déduplication PAR DATE CIBLE (pas par jour
+# d'envoi) : au plus une alerte par jour concerné, plus une mise à jour si la
+# prévision change. Ne jamais promettre une limite quotidienne de messages.
 ALERTES_HORIZON_JOURS = 7
 ALERTES_DESCRIPTION = (
-    "de novembre à mars, chaque dimanche soir, le récapitulatif des 7 prochains jours, "
-    "et une alerte avant chaque jour rouge prévu (une alerte par jour au maximum)"
+    "de novembre à mars, le récapitulatif des 7 prochains jours chaque dimanche soir "
+    "et une alerte avant chaque jour rouge prévu"
+)
+ALERTES_DESCRIPTION_COURT = (
+    "Un récapitulatif chaque dimanche soir et une alerte avant chaque jour rouge prévu, "
+    "de novembre à mars"
+)
+# Fréquence réelle des messages (modale, /alertes, mentions légales §6)
+ALERTES_FREQUENCE = (
+    "au plus une alerte par jour concerné, et un message de plus seulement si la prévision change"
 )
 FOYERS_ALERTES = "plus de 2 500"  # décision fondateur du 2026-09-29 : chiffre conservé
 FOYERS_ALERTES_HTML = "plus de 2&nbsp;500"  # même chiffre, espace insécable pour le HTML
@@ -94,6 +104,9 @@ CHIFFREMENT_TELEPHONE = "Fernet (AES-128)"
 HORIZON_MAX_JOURS = 15
 HORIZON_FIABLE = "J+2 à J+5"
 HORIZON_INDICATIF = "J+6 à J+15"
+# Formulations visiteur (le visiteur ne lit jamais « J+2 ») ; J+N reste pour l'API
+HORIZON_FIABLE_LISIBLE = "2 à 5 jours à l'avance"
+HORIZON_INDICATIF_LISIBLE = "6 à 15 jours à l'avance"
 
 # ================================================================
 # Performance : politique de publication (audit algorithme du 2026-09-29,
@@ -103,7 +116,7 @@ HORIZON_INDICATIF = "J+6 à J+15"
 # ================================================================
 PERFORMANCE_POLICY = (
     "Nous publions uniquement notre performance mesurée en conditions réelles : "
-    "nos prévisions de J+2 à J+5, figées au moment où elles sont émises, comparées "
+    "nos prévisions faites 2 à 5 jours à l'avance, figées au moment où elles sont émises, comparées "
     "aux couleurs publiées par EDF. Les tests rétrospectifs sur des données passées "
     "ne sont pas publiés, car ils surestiment la fiabilité réelle."
 )
@@ -113,15 +126,15 @@ PERFORMANCE_POLICY = (
 # À mettre à jour à chaque modification de contenu d'une page.
 # ================================================================
 PAGE_LASTMOD = {
-    "/alertes": date(2026, 9, 29),
-    "/a-propos": date(2026, 9, 29),
-    "/mentions-legales": date(2026, 9, 29),
-    "/tarif-tempo-edf": date(2026, 9, 29),
-    "/api-tempo": date(2026, 9, 29),
-    "/methodologie": date(2026, 9, 29),
-    "/historique-previsions": date(2026, 9, 29),
+    "/alertes": date(2026, 9, 30),
+    "/a-propos": date(2026, 9, 30),
+    "/mentions-legales": date(2026, 9, 30),
+    "/tarif-tempo-edf": date(2026, 9, 30),
+    "/api-tempo": date(2026, 9, 30),
+    "/methodologie": date(2026, 9, 30),
+    "/historique-previsions": date(2026, 9, 30),
 }
-LLMS_CONTENT_DATE = date(2026, 9, 29)  # dernière révision éditoriale de llms.txt
+LLMS_CONTENT_DATE = date(2026, 9, 30)  # dernière révision éditoriale de llms.txt
 
 
 # ================================================================
@@ -133,6 +146,15 @@ MOIS_FR = [
     "août", "septembre", "octobre", "novembre", "décembre",
 ]
 COULEUR_LABEL = {"BLEU": "Bleu", "BLANC": "Blanc", "ROUGE": "Rouge"}
+# Abréviations normalisées (miroir de JOURS / MOIS dans static/js/app.js)
+JOURS_COURT = ["lun.", "mar.", "mer.", "jeu.", "ven.", "sam.", "dim."]
+MOIS_COURT = [
+    "", "janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.",
+    "août", "sept.", "oct.", "nov.", "déc.",
+]
+# Températures affichées : hors de cette plage, valeur traitée comme absente
+TEMP_MIN_PLAUSIBLE = -30.0
+TEMP_MAX_PLAUSIBLE = 45.0
 
 
 def fr_num(value: float, decimals: int = 1) -> str:
@@ -156,6 +178,34 @@ def fr_date(d: date, with_weekday: bool = True, with_year: bool = True) -> str:
     return txt
 
 
+def fr_date_courte(d: date, sep: str = "\u00a0") -> str:
+    """date(2026, 9, 30) -> 'mer. 30 sept.' (espace insécable entre quantième et mois)."""
+    day = "1er" if d.day == 1 else str(d.day)
+    return f"{JOURS_COURT[d.weekday()]} {day}{sep}{MOIS_COURT[d.month]}"
+
+
+def fr_temp(value) -> str | None:
+    """Température au format du site : une décimale, virgule, vrai signe moins, « ° ».
+
+    14.06 -> '14,1°' ; -3.2 -> '−3,2°' ; -0.04 -> '0,0°' ; None / hors plage -> None.
+    Miroir de fmtTemp() dans static/js/app.js (même arrondi : demi vers le haut).
+    """
+    if value is None or value == "":
+        return None
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return None
+    if v != v or not (TEMP_MIN_PLAUSIBLE <= v <= TEMP_MAX_PLAUSIBLE):
+        return None
+    import math
+    r = math.floor(v * 10 + 0.5) / 10
+    if r == 0:
+        r = 0.0
+    txt = f"{abs(r):.1f}".replace(".", ",")
+    return f"{'−' if r < 0 else ''}{txt}°"
+
+
 def couleur_label(couleur: str | None) -> str:
     return COULEUR_LABEL.get((couleur or "").upper(), "Inconnue")
 
@@ -166,11 +216,17 @@ def _jour_court(d: date) -> str:
 
 
 def week_outlook_html(days: list[dict]) -> str:
-    """Phrase « la suite » sous les pastilles de l'accueil (après aujourd'hui et demain).
+    """Phrase sous les pastilles de l'accueil (copy deck du 2026-09-30, variantes V1 à V5).
 
-    `days` = période affichée (dicts avec date ISO, couleur, is_hero). Miroir exact de
-    weekOutlookHtml() dans static/js/app.js : toute modification se fait des deux côtés
-    (test tests/test_home_week_card.py).
+    `days` = période affichée (dicts avec date ISO, couleur, is_hero, is_tomorrow,
+    confirmed). Miroir exact de weekOutlookHtml() dans static/js/app.js : toute
+    modification se fait des deux côtés (test tests/test_home_week_card.py).
+    - V1 : rien de rouge ni blanc, fenêtre entière d'avril à octobre -> + règle R1 ;
+    - V2 : rien de rouge ni blanc, novembre à mars ;
+    - V3 : rouge et/ou blanc prévus après demain ;
+    - V4 : aujourd'hui ou demain rouge/blanc -> « Ensuite, ... » ;
+    - V5 : demain affiché mais pas encore publié par EDF -> phrase d'explication en tête.
+    Jamais « premier jour rouge possible le 1er novembre » (férié, parfois un dimanche).
     """
     if not days:
         return ""
@@ -178,7 +234,8 @@ def week_outlook_html(days: list[dict]) -> str:
     rest = [(dt, d["couleur"]) for dt, d in zip(dates, days) if not d.get("is_hero")]
     if not rest:
         return ""
-    fin = f"d'ici le {fr_date(dates[-1], with_year=False)}"
+    last = dates[-1]
+    fin = f"d'ici le {'1er' if last.day == 1 else last.day} {MOIS_FR[last.month]}"
     parts = []
     for couleur, nom in (("ROUGE", "rouge"), ("BLANC", "blanc")):
         jours = [_jour_court(dt) for dt, c in rest if c == couleur]
@@ -188,17 +245,18 @@ def week_outlook_html(days: list[dict]) -> str:
     if parts:
         total = sum(1 for _, c in rest if c in ("ROUGE", "BLANC"))
         txt = (f"{' et '.join(parts)} prévu{'s' if total > 1 else ''} {fin}. "
-               "<strong>Planifiez vos machines les jours bleus.</strong>")
+               "Planifiez vos machines les jours bleus.")
     else:
         txt = f"Aucun jour rouge ni blanc prévu {fin}."
     if any(d.get("is_hero") and d["couleur"] in ("ROUGE", "BLANC") for d in days):
         txt = "Ensuite, " + txt[0].lower() + txt[1:]
     # Règle EDF R1 : rouge seulement du 1er novembre au 31 mars
     if all(4 <= dt.month <= 10 for dt in dates):
-        if dates[0].month >= 9:
-            txt += " Aucun jour rouge possible avant le 1er novembre (règle EDF)."
-        else:
-            txt += " Plus de jour rouge depuis le 31 mars : aucun avant le 1er novembre (règle EDF)."
+        txt += " Pas de rouge possible avant novembre (règle EDF)."
+    # V5 : demain pas encore publié par EDF
+    if any(d.get("is_tomorrow") and not d.get("confirmed") for d in days):
+        txt = ("EDF publie la couleur de demain vers 11&nbsp;h : d'ici là, la pastille "
+               "montre notre prévision. " + txt)
     return txt
 
 
@@ -241,7 +299,7 @@ def breadcrumb_jsonld(items: list[tuple[str, str]]) -> dict:
 
 # Version des assets (style.min.css, app.min.js, fonts.css) : à incrémenter à chaque
 # régénération des fichiers minifiés. Un seul endroit, lu par tous les templates.
-ASSET_VERSION = "20260930b"
+ASSET_VERSION = "20260930c"
 
 
 def template_globals() -> dict:
@@ -274,12 +332,16 @@ def template_globals() -> dict:
         "CALCUL_PREVISIONS": CALCUL_PREVISIONS,
         "ALERTES_HORIZON_JOURS": ALERTES_HORIZON_JOURS,
         "ALERTES_DESCRIPTION": ALERTES_DESCRIPTION,
+        "ALERTES_DESCRIPTION_COURT": ALERTES_DESCRIPTION_COURT,
+        "ALERTES_FREQUENCE": ALERTES_FREQUENCE,
         "FOYERS_ALERTES": FOYERS_ALERTES,
         "FOYERS_ALERTES_HTML": FOYERS_ALERTES_HTML,
         "CHIFFREMENT_TELEPHONE": CHIFFREMENT_TELEPHONE,
         "HORIZON_MAX_JOURS": HORIZON_MAX_JOURS,
         "HORIZON_FIABLE": HORIZON_FIABLE,
         "HORIZON_INDICATIF": HORIZON_INDICATIF,
+        "HORIZON_FIABLE_LISIBLE": HORIZON_FIABLE_LISIBLE,
+        "HORIZON_INDICATIF_LISIBLE": HORIZON_INDICATIF_LISIBLE,
         "PERFORMANCE_POLICY": PERFORMANCE_POLICY,
         "ASSET_V": ASSET_VERSION,
     }
@@ -296,6 +358,7 @@ def _p(v: float) -> str:
 
 _T = TARIFS
 _R = fr_num(RATIO_ROUGE_BLEU_HP)
+_TARIFS_DATE_HTML = fr_date(TARIFS_DATE_EFFET, with_weekday=False).replace("1er", "1<sup>er</sup>")
 
 _ANSWER_JOUR_ROUGE = (
     f"<p>Un <strong>jour Tempo rouge</strong> est l'un des {JOURS_ROUGES} jours les plus chers de la "
@@ -328,10 +391,10 @@ FAQ_HOME: list[dict] = [
     {
         "question": "Quelle couleur Tempo aujourd'hui et demain ?",
         "answer_html": (
-            "<p>La <strong>couleur EDF Tempo</strong> du jour et celle de demain sont écrites en "
-            "toutes lettres en haut de cette page, puis reprises dans le résumé des 10 prochains jours. "
-            f"{ANNONCE_J1} ; {VERIFICATION_SITE}. Tant qu'EDF n'a pas publié la couleur de demain, "
-            "nous affichons notre <strong>prévision</strong>, signalée comme telle. Voir aussi la page "
+            "<p>La <strong>couleur EDF Tempo</strong> du jour et celle de demain sont en haut de cette page, "
+            "dans les deux grandes pastilles du résumé des 10 prochains jours. "
+            f"{ANNONCE_J1}. Tant qu'elle n'est pas publiée, la pastille de demain montre "
+            "notre <strong>prévision</strong>, signalée comme telle. Voir aussi la page "
             "<a href=\"/couleur-tempo-demain\">couleur Tempo de demain</a> et le "
             "<a href=\"/calendrier\">calendrier EDF Tempo complet</a>.</p>"
         ),
@@ -365,14 +428,14 @@ FAQ_HOME: list[dict] = [
             "<p><strong>Les gros postes à reporter :</strong></p>"
             "<ul class=\"faq-list-items\">"
             "<li>Lave-linge et sèche-linge : reporter au lendemain</li>"
-            "<li>Lave-vaisselle : lancer en heures creuses (22 h–6 h) ou reporter</li>"
+            "<li>Lave-vaisselle : lancer en heures creuses (22 h à 6 h) ou reporter</li>"
             "<li>Four et plaques électriques : préférer le micro-ondes ou un repas froid</li>"
             "<li>Recharge du véhicule électrique : décaler au jour bleu suivant</li>"
             "<li>Chauffage électrique : baisser de 1 à 2 °C, préchauffer la veille</li>"
             "<li>Ballon d'eau chaude : couper en heures pleines, utiliser l'eau stockée</li>"
             "</ul>"
             "<p><strong>Astuce :</strong> la veille d'un jour rouge, montez un peu le chauffage et "
-            "lancez vos machines. L'inertie thermique du logement vous portera une partie du lendemain.</p>"
+            "lancez vos machines. L'inertie thermique du logement peut vous aider à passer une partie du lendemain.</p>"
         ),
     },
     {"question": "Qu'est-ce qu'un jour Tempo rouge ?", "answer_html": _ANSWER_JOUR_ROUGE},
@@ -381,7 +444,7 @@ FAQ_HOME: list[dict] = [
         "answer_html": (
             "<p><strong>Non.</strong> Les jours rouges tombent uniquement du lundi au vendredi, hors "
             "jours fériés, entre le 1<sup>er</sup> novembre et le 31 mars. Un samedi peut être blanc "
-            "ou bleu, jamais rouge. Le dimanche n'est jamais ni rouge ni blanc : il est toujours bleu. "
+            "ou bleu, jamais rouge. Le dimanche n'est jamais rouge ni blanc : il est toujours bleu. "
             "Un jour férié peut être blanc (sauf un dimanche) ou bleu, jamais rouge.</p>"
         ),
     },
@@ -400,20 +463,19 @@ FAQ_HOME: list[dict] = [
             "transport d'électricité, selon une méthode publique, puis publiée par EDF. Elle dépend "
             "surtout de la consommation d'électricité prévue au niveau national, très liée à la "
             "température, et du nombre de jours rouges et blancs qu'il reste à placer dans la saison. "
-            "Notre algorithme s'appuie sur les mêmes signaux (météo de 9 villes, consommation prévue "
+            "Notre algorithme s'appuie sur des signaux de même nature (météo de 9 villes, consommation prévue "
             "par RTE, jours restants) : voir notre <a href=\"/methodologie\">méthodologie</a>.</p>"
         ),
     },
     {
         "question": "Quels sont les tarifs EDF Tempo en 2026 ?",
         "answer_html": (
-            f"<p>Depuis le 1<sup>er</sup> août 2026, en <strong>heures pleines</strong> ({HEURES_PLEINES}) : "
+            f"<p>Depuis le {_TARIFS_DATE_HTML}, en <strong>heures pleines</strong> ({HEURES_PLEINES}) : "
             f"jour bleu <strong>{_p(_T['BLEU']['hp'])} €/kWh</strong>, jour blanc "
             f"<strong>{_p(_T['BLANC']['hp'])} €/kWh</strong>, jour rouge "
             f"<strong>{_p(_T['ROUGE']['hp'])} €/kWh</strong>. En <strong>heures creuses</strong> "
             f"({HEURES_CREUSES}) : bleu {_p(_T['BLEU']['hc'])} €, blanc {_p(_T['BLANC']['hc'])} €, "
-            f"rouge {_p(_T['ROUGE']['hc'])} €/kWh. Un jour rouge en heures pleines coûte donc "
-            f"<strong>{_R} fois plus cher</strong> qu'un jour bleu. Tarifs TTC fixés par l'{TARIFS_SOURCE} ; "
+            f"rouge {_p(_T['ROUGE']['hc'])} €/kWh. Tarifs TTC fixés par l'{TARIFS_SOURCE} ; "
             "vérifiez sur votre contrat EDF. Détail sur notre page "
             "<a href=\"/tarif-tempo-edf\">tarif Tempo EDF</a>.</p>"
         ),
@@ -431,15 +493,13 @@ FAQ_HOME: list[dict] = [
         "id": "faq-fiabilite",
         "question": "Vos prévisions sont-elles fiables ?",
         "answer_html": (
-            f"<p>Les prévisions les plus utiles sont celles de {HORIZON_FIABLE}. Au-delà de 5 jours, les "
+            f"<p>Les prévisions les plus utiles sont celles faites {HORIZON_FIABLE_LISIBLE}. Au-delà de 5 jours, les "
             "prévisions météo deviennent moins précises, donc les nôtres aussi : de "
-            f"{HORIZON_INDICATIF}, c'est une <strong>tendance</strong>, pas une certitude. Pour une "
+            f"{HORIZON_INDICATIF_LISIBLE}, c'est une <strong>tendance</strong>, pas une certitude. Pour une "
             "décision importante (grosse lessive, recharge d'un véhicule), fiez-vous plutôt aux "
-            "prévisions à 2 ou 3 jours. Notre taux de réussite mesuré en conditions réelles est "
-            "détaillé sur la page "
-            "<a href=\"/methodologie\">méthodologie</a>, et chaque prévision passée est comparée à la "
-            "couleur officielle sur notre "
-            "<a href=\"/historique-previsions\">historique des prévisions</a>.</p>"
+            "prévisions à 2 ou 3 jours. Chaque prévision passée est comparée à la couleur officielle sur notre "
+            "<a href=\"/historique-previsions\">historique des prévisions</a> ; la mesure détaillée est sur la page "
+            "<a href=\"/methodologie\">méthodologie</a>.</p>"
         ),
     },
 ]
@@ -455,10 +515,11 @@ def faq_calendrier(season_label: str) -> list[dict]:
         {
             "question": "Quand sont les prochains jours rouges Tempo EDF ?",
             "answer_html": (
-                "<p>Les jours rouges EDF Tempo tombent uniquement entre le 1<sup>er</sup> novembre et "
-                f"le 31 mars, du lundi au vendredi hors jours fériés. {ANNONCE_J1}. Nos prévisions "
-                f"couvrent les {HORIZON_MAX_JOURS} prochains jours ; les plus fiables sont celles de "
-                f"{HORIZON_FIABLE}.</p>"
+                "<p>Les prochaines dates sont dans la grille et les prévisions de cette page. Les jours "
+                "rouges EDF Tempo tombent uniquement entre le 1<sup>er</sup> novembre et "
+                "le 31 mars, du lundi au vendredi hors jours fériés. Nos prévisions "
+                f"couvrent les {HORIZON_MAX_JOURS} prochains jours ; les plus fiables sont celles faites "
+                f"{HORIZON_FIABLE_LISIBLE}.</p>"
             ),
         },
         {

@@ -159,7 +159,7 @@
     {% else %}
     <h1>Calendrier Tempo EDF&nbsp;: {{ current_month_label|lower }}</h1>
     <p class="section-desc">
-        Couleur Tempo EDF de chaque jour de {{ current_month_label|lower }} (saison {{ month_season_label }}) :
+        Couleur Tempo EDF de chaque jour de {{ current_month_label|lower }} (saison {{ month_season_label }})&nbsp;:
         couleur officielle publi&eacute;e par EDF pour les jours pass&eacute;s, pr&eacute;vision pour les jours &agrave; venir.
         <a href="/calendrier/{{ month_season_label }}">Toutes les dates de la saison {{ month_season_label }}</a>.
     </p>
@@ -223,8 +223,7 @@
         {% endfor %}
     </div>
     <p class="cal-source-note">
-        {% if is_current_month %}Saison {{ season_label }}&nbsp;: du 1<sup>er</sup> septembre au 31 août. {% endif %}Les prévisions sont en italique&nbsp;; un jour sans donnée reste grisé (nous n'affichons jamais de couleur par défaut).
-        Couleurs officielles&nbsp;: {{ facts.SOURCE_COULEURS_PHRASE }}. Seule la couleur publiée par EDF fait foi.
+        {% if is_current_month %}Saison {{ season_label }}&nbsp;: du 1<sup>er</sup> septembre au 31 août. {% endif %}Un jour sans donnée reste grisé&nbsp;: nous n'affichons jamais de couleur par défaut. Les couleurs officielles sont les {{ facts.SOURCE_COULEURS_PHRASE }}. Seule la couleur publiée par EDF fait foi.
     </p>
 
     {% if is_current_month %}
@@ -240,14 +239,14 @@
     </p>
 
     <div class="legend legend-inline">
-        <div class="legend-item"><span class="legend-dot" style="background:var(--bleu)" aria-hidden="true"></span><div><strong>Bleu</strong> <span class="legend-price">(HP {{ facts.TARIFS.BLEU.hp|string|replace('.', ',') }}&nbsp;&euro;)</span></div></div>
-        <div class="legend-item"><span class="legend-dot" style="background:var(--blanc)" aria-hidden="true"></span><div><strong>Blanc</strong> <span class="legend-price">(HP {{ facts.TARIFS.BLANC.hp|string|replace('.', ',') }}&nbsp;&euro;)</span></div></div>
-        <div class="legend-item"><span class="legend-dot" style="background:var(--rouge)" aria-hidden="true"></span><div><strong>Rouge</strong> <span class="legend-price">(HP {{ facts.TARIFS.ROUGE.hp|string|replace('.', ',') }}&nbsp;&euro;)</span> <span class="legend-desc">: reportez lessive, s&egrave;che-linge, four, recharge VE</span></div></div>
-        <div class="legend-note">Tarifs heures pleines TTC au {{ facts.TARIFS_DATE_EFFET_FR }} (<a href="/tarif-tempo-edf">grille compl&egrave;te</a>).</div>
+        <div class="legend-item"><span class="legend-dot" style="background:var(--bleu)" aria-hidden="true"></span><div><strong>Bleu</strong> <span class="legend-price">({{ facts.TARIFS.BLEU.hp|string|replace('.', ',') }}&nbsp;&euro;/kWh)</span></div></div>
+        <div class="legend-item"><span class="legend-dot" style="background:var(--blanc)" aria-hidden="true"></span><div><strong>Blanc</strong> <span class="legend-price">({{ facts.TARIFS.BLANC.hp|string|replace('.', ',') }}&nbsp;&euro;/kWh)</span></div></div>
+        <div class="legend-item"><span class="legend-dot" style="background:var(--rouge)" aria-hidden="true"></span><div><strong>Rouge</strong> <span class="legend-price">({{ facts.TARIFS.ROUGE.hp|string|replace('.', ',') }}&nbsp;&euro;/kWh)</span> <span class="legend-desc">&nbsp;: reportez lessive, s&egrave;che-linge, four et recharge de voiture &eacute;lectrique</span></div></div>
+        <div class="legend-note">Prix du kWh en heures pleines, TTC, au {{ facts.TARIFS_DATE_EFFET_FR }} (<a href="/tarif-tempo-edf">grille compl&egrave;te</a>).</div>
     </div>
 
     <div id="forecast-container" role="region" aria-label="Prévisions Tempo 15 jours" aria-live="polite">
-        <div class="loading-state"><div class="loader" aria-label="Chargement"></div><p>Chargement des pr&eacute;visions...</p></div>
+        <div class="loading-state"><div class="loader" aria-label="Chargement"></div><p>Chargement des pr&eacute;visions&hellip;</p></div>
     </div>
     <p class="cal-history-link">Nos pr&eacute;visions sont-elles fiables&nbsp;? <a href="/historique-previsions">Voir l'historique</a>.</p>
     {% endif %}
@@ -255,7 +254,7 @@
     <!-- CTA -->
     <section class="blog-cta page-cta">
         <h2>Anticipez les {{ facts.ALERTES_HORIZON_JOURS }} prochains jours Tempo</h2>
-        <p>Recevez gratuitement par WhatsApp {{ facts.ALERTES_DESCRIPTION }}.</p>
+        <p>{{ facts.ALERTES_DESCRIPTION_COURT }}. Gratuit, sans engagement.</p>
         <button type="button" class="btn btn-primary" onclick="openSubscribeModal()">{{ icons.whatsapp(18, '#fff', 'icon-inline') }}S'inscrire aux alertes gratuites</button>
     </section>
 
@@ -316,16 +315,12 @@
             Les <strong>jours rouges Tempo</strong> sont r&eacute;serv&eacute;s &agrave; la p&eacute;riode hivernale,
             du <strong>1<sup>er</sup> novembre au 31 mars</strong>, du lundi au vendredi&nbsp;: jamais le week-end ni un jour f&eacute;ri&eacute;.
             Ils correspondent aux jours o&ugrave; la demande en &eacute;lectricit&eacute; est la plus forte,
-            g&eacute;n&eacute;ralement lors de vagues de froid. Notre algorithme analyse la m&eacute;t&eacute;o de 9 villes
-            fran&ccedil;aises et la consommation nationale pour <strong>anticiper ces jours jusqu'&agrave; 15 jours &agrave; l'avance</strong>
-            (<a href="/methodologie">m&eacute;thodologie</a>).
+            g&eacute;n&eacute;ralement lors de vagues de froid. Nos pr&eacute;visions croisent la m&eacute;t&eacute;o de 9 villes fran&ccedil;aises et la consommation nationale pr&eacute;vue pour <strong>rep&eacute;rer ces jours jusqu'&agrave; 15 jours &agrave; l'avance</strong>, avec une fiabilit&eacute; qui baisse apr&egrave;s 5 jours (<a href="/methodologie">m&eacute;thodologie</a>).
         </p>
 
         <h2>Comment utiliser ce calendrier ?</h2>
         <p>
-            Les jours pass&eacute;s affichent la <strong>couleur officielle publi&eacute;e par EDF</strong>.
-            Les jours futurs en italique montrent nos <strong>pr&eacute;visions</strong>, avec une fiabilit&eacute; qui
-            diminue au-del&agrave; de 5 jours. Pour recevoir automatiquement les pr&eacute;visions des {{ facts.ALERTES_HORIZON_JOURS }} prochains jours,
+            Les jours pass&eacute;s, aujourd'hui et demain (une fois publi&eacute;) affichent la <strong>couleur officielle publi&eacute;e par EDF</strong>. Les jours suivants, en italique, montrent nos <strong>pr&eacute;visions</strong>, moins fiables au-del&agrave; de 5 jours. Pour recevoir automatiquement les pr&eacute;visions des {{ facts.ALERTES_HORIZON_JOURS }} prochains jours,
             <a href="/alertes"><strong>inscrivez-vous aux alertes gratuites</strong></a>.
         </p>
         <p>

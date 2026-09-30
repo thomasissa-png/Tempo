@@ -5,9 +5,9 @@
     <h2 id="bilan">Bilan par délai d'anticipation</h2>
     <p>
         Pour chaque délai&nbsp;: les jours rouges et blancs annoncés à l'avance, et nos alertes qui étaient justes.
-        Pas de taux global&nbsp;: environ {{ facts.JOURS_BLEUS }} jours sur 365 sont bleus, dire «&nbsp;bleu&nbsp;» tous les jours aurait souvent raison&nbsp;; la dernière colonne le montre.
+        Les taux portent sur les prévisions réellement émises (les jours sans prévision sont comptés à part). Environ {{ facts.JOURS_BLEUS }} jours sur 365 sont bleus&nbsp;: dire «&nbsp;bleu&nbsp;» tous les jours aurait souvent raison, la dernière colonne le montre sur les mêmes jours.
     </p>
-    <p class="history-note">Pourcentage affiché seulement à partir de {{ pct_min }} jours (ou {{ pct_min }} alertes) d'une même couleur pour un délai donné&nbsp;: en dessous, seuls les effectifs bruts ont un sens.</p>
+    <p class="history-note">Pourcentage affiché seulement à partir de {{ pct_min }} jours (ou {{ pct_min }} alertes) d'une même couleur pour un délai donné&nbsp;: en dessous, seuls les nombres bruts ont un sens.{% if not pct_visible %} Saison en cours&nbsp;: pourcentages affichés à partir du 1<sup>er</sup>&nbsp;novembre.{% endif %}</p>
     {% if not rb.v %}
     <p class="history-note history-note--info">Aucun jour rouge ou blanc {% if is_current %}depuis le 1<sup>er</sup> septembre{% else %}sur cette saison{% endif %}&nbsp;: les colonnes rouge et blanc s'afficheront dès le premier jour concerné.</p>
     {% endif %}
@@ -15,7 +15,7 @@
     <div class="table-scroll-wrap">
     <div class="table-scroll history-bilan-scroll{% if not rb.v %} is-compact{% endif %}" role="region" aria-label="Bilan par délai d'anticipation" tabindex="0">
     <table class="history-table history-bilan">
-        <caption class="sr-only">Effectifs par délai d'anticipation, saison {{ season_label }}</caption>
+        <caption class="sr-only">Nombre de jours par délai d'anticipation, saison {{ season_label }}</caption>
         <thead>
             <tr>
                 <th scope="col">Délai</th>
@@ -26,7 +26,7 @@
                 <th scope="col" class="num">Alertes blanches qui étaient justes</th>
                 {% endif %}
                 <th scope="col" class="num">Prévisions justes</th>
-                <th scope="col" class="num">Repère&nbsp;: dire toujours bleu</th>
+                <th scope="col" class="num">Repère&nbsp;: toujours dire «&nbsp;bleu&nbsp;»</th>
             </tr>
         </thead>
         <tbody>

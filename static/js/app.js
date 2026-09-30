@@ -5,9 +5,9 @@
  * résumé hebdomadaire, prix concrets.
  */
 
-const JOURS = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+const JOURS = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
 const JOURS_FULL = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-const MOIS = ['jan', 'fév', 'mar', 'avr', 'mai', 'jun', 'jul', 'aoû', 'sep', 'oct', 'nov', 'déc'];
+const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 const MOIS_FULL = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 
 // Tarifs indicatifs Tempo au 1er août 2026 (€/kWh TTC — vérifiez sur votre contrat EDF)
@@ -162,7 +162,7 @@ async function loadRemaining() {
         setText('count-rouge', `${r.ROUGE}/${totalRouge}`);
         setText('count-blanc', `${r.BLANC}/${totalBlanc}`);
         setText('count-bleu',  `${r.BLEU}/${totalBleu}`);
-        setText('days-left', `${data.days_left_in_season} jours restants dans la saison (${data.season_start ? data.season_start.slice(0,4) : ''}–${data.season_end ? data.season_end.slice(0,4) : ''})`);
+        setText('days-left', `${data.days_left_in_season} jour${data.days_left_in_season > 1 ? 's' : ''} avant la fin de la saison ${data.season_start ? data.season_start.slice(0,4) : ''}-${data.season_end ? data.season_end.slice(0,4) : ''}`);
 
         // P-21 : barres de progression visuelles
         setProgress('progress-rouge', (totalRouge - r.ROUGE) / totalRouge);
@@ -177,15 +177,15 @@ async function loadRemaining() {
             const rougeDeadline = new Date(seasonEndYear, 2, 31); // 31 mars
             const daysLeftRouge = Math.max(0, Math.ceil((rougeDeadline - new Date()) / 86400000));
             if (r.ROUGE === 0) {
-                ctxEl.textContent = 'Tous les jours rouges de la saison ont \u00e9t\u00e9 utilis\u00e9s. Bonne nouvelle\u00a0!';
+                ctxEl.textContent = `Les ${totalRouge} jours rouges de la saison ont été utilisés : il n'y en aura plus avant novembre.`;
             } else if (daysLeftRouge === 0) {
-                ctxEl.textContent = 'La p\u00e9riode des jours rouges est termin\u00e9e (fin mars). Plus de risque\u00a0!';
+                ctxEl.textContent = 'La période des jours rouges est terminée (fin mars). Prochains jours rouges possibles dès novembre.';
             } else if (daysLeftRouge < 60) {
                 // Fréquence en langage naturel (1 jour rouge par X jours)
                 const freq = Math.round(daysLeftRouge / r.ROUGE);
-                ctxEl.innerHTML = `<strong style="color:var(--rouge)">Attention\u00a0:</strong> il reste ${r.ROUGE} jour${r.ROUGE > 1 ? 's' : ''} rouge${r.ROUGE > 1 ? 's' : ''} \u00e0 placer en ${daysLeftRouge} jours\u00a0: attendez-vous \u00e0 environ <strong>1 jour rouge tous les ${freq} jours</strong>.`;
+                ctxEl.innerHTML = `<strong style="color:var(--rouge)">Attention\u00a0:</strong> il reste ${r.ROUGE} jour${r.ROUGE > 1 ? 's' : ''} rouge${r.ROUGE > 1 ? 's' : ''} à placer d'ici le 31 mars (${daysLeftRouge} jours), soit environ <strong>1 tous les ${freq} jours</strong>.`;
             } else {
-                ctxEl.textContent = `Encore ${r.ROUGE} jours rouges \u00e0 placer d'ici fin mars. Restez vigilant\u00a0!`;
+                ctxEl.textContent = `Encore ${r.ROUGE} jours rouges à placer d'ici fin mars.`;
             }
         }
     } catch (e) {
@@ -203,7 +203,7 @@ async function loadRemaining() {
 async function loadPredictions() {
     const container = document.getElementById('forecast-container');
     if (!container) return;
-    container.innerHTML = '<div class="loading-state"><div class="loader"></div><p>Chargement des prévisions...</p></div>';
+    container.innerHTML = '<div class="loading-state"><div class="loader"></div><p>Chargement des prévisions…</p></div>';
 
     try {
         const resp = await fetchWithTimeout('/api/predictions');
@@ -220,7 +220,7 @@ async function loadPredictions() {
 
         if (preds.length === 0) {
             container.innerHTML = '<p class="loading-state">' +
-                escapeHtml(data.message || 'Aucune prévision disponible. Les prévisions se mettent à jour automatiquement.') + '</p>';
+                escapeHtml(data.message || 'Aucune prévision disponible pour le moment.') + '</p>';
             return;
         }
 
@@ -232,6 +232,19 @@ async function loadPredictions() {
         // Résumé de la semaine
         renderWeekSummary(preds);
 
+        // Météo : une ligne d'explication en tête, ou une note unique si aucune température
+        const hasTemp = preds.some(p => fmtTemp(p.temp_moy_prevue) !== null);
+        const note = document.createElement('p');
+        note.className = 'forecast-temp-note';
+        if (hasTemp) {
+            note.innerHTML = 'Sous chaque jour : température moyenne prévue en France, pondérée sur 9 villes. '
+                + 'Mise à jour à chaque recalcul. <a href="/methodologie">Méthode</a>';
+        } else {
+            note.textContent = 'Les températures prévues ne sont pas disponibles pour le moment.';
+        }
+        container.appendChild(note);
+        const cardOpts = { noTemp: !hasTemp };
+
         // Grouper les prédictions par horizon avec labels humains
         const groupPrimary = preds.slice(0, 3);
         const groupMedium  = preds.slice(3, 7);
@@ -240,13 +253,13 @@ async function loadPredictions() {
         if (groupPrimary.length > 0) {
             const label1 = document.createElement('div');
             label1.className = 'forecast-group-label';
-            label1.textContent = 'Les 3 prochains jours : prévisions fiables';
+            label1.textContent = 'Les 3 prochains jours : nos prévisions les plus fiables';
             container.appendChild(label1);
 
             const grid1 = document.createElement('div');
             grid1.className = 'forecast-grid forecast-grid-primary';
             groupPrimary.forEach(pred => {
-                grid1.appendChild(createForecastCard(pred));
+                grid1.appendChild(createForecastCard(pred, cardOpts));
 
             });
             container.appendChild(grid1);
@@ -255,13 +268,13 @@ async function loadPredictions() {
         if (groupMedium.length > 0) {
             const label2 = document.createElement('div');
             label2.className = 'forecast-group-label';
-            label2.textContent = 'Cette semaine : prévisions moyennes';
+            label2.textContent = 'Les jours suivants : prévisions moins sûres';
             container.appendChild(label2);
 
             const grid2 = document.createElement('div');
             grid2.className = 'forecast-grid';
             groupMedium.forEach(pred => {
-                grid2.appendChild(createForecastCard(pred));
+                grid2.appendChild(createForecastCard(pred, cardOpts));
 
             });
             container.appendChild(grid2);
@@ -270,21 +283,21 @@ async function loadPredictions() {
         if (groupFar.length > 0) {
             const label3 = document.createElement('div');
             label3.className = 'forecast-group-label';
-            label3.textContent = 'Semaine prochaine et au-del\u00e0\u00a0: tendances indicatives';
+            label3.textContent = 'Semaine prochaine et au-delà\u00a0: tendances indicatives';
             container.appendChild(label3);
 
             // UX audit #27: explanation for distant predictions
             const hint3 = document.createElement('div');
             hint3.className = 'forecast-group-hint';
-            hint3.textContent = 'Ces tendances \u00e9voluent souvent. Consultez \u00e0 nouveau dans 2-3 jours pour confirmer.';
+            hint3.textContent = 'Ces tendances évoluent souvent. Revenez dans 2 ou 3 jours pour les confirmer.';
             hint3.style.cssText = 'font-size:0.8rem;color:var(--text-secondary);margin:-6px 0 10px;font-style:italic;';
             container.appendChild(hint3);
 
-            // UX audit #9: desaturated grid for far predictions
+            // Jours lointains : pastille en pointillé (CSS), tuiles compactes en mobile
             const grid3 = document.createElement('div');
             grid3.className = 'forecast-grid forecast-grid-far';
             groupFar.forEach(pred => {
-                grid3.appendChild(createForecastCard(pred));
+                grid3.appendChild(createForecastCard(pred, { ...cardOpts, compact: true }));
 
             });
             container.appendChild(grid3);
@@ -294,12 +307,12 @@ async function loadPredictions() {
         container.innerHTML = `
             <div class="maintenance-banner">
                 <div class="maintenance-icon">&#9881;</div>
-                <h3 style="margin:0 0 6px">Maintenance en cours</h3>
+                <h3 style="margin:0 0 6px">Prévisions momentanément indisponibles</h3>
                 <p style="margin:0;font-size:.9rem;color:var(--text-secondary)">
-                    Le calendrier est temporairement indisponible.<br>
-                    Les pr\u00e9visions seront de retour tr\u00e8s vite.
+                    Nous n'avons pas pu les charger.<br>
+                    Réessayez dans quelques minutes.
                 </p>
-                <button class="retry-btn" onclick="loadPredictions()" style="margin-top:12px">R\u00e9essayer</button>
+                <button class="retry-btn" onclick="loadPredictions()" style="margin-top:12px">Réessayer</button>
             </div>`;
         console.error('Erreur prédictions:', e);
     }
@@ -332,35 +345,30 @@ async function loadWeekSummary() {
             container.innerHTML = `
                 <div class="maintenance-banner">
                     <div class="maintenance-icon">&#9881;</div>
-                    <h3 style="margin:0 0 6px">Maintenance en cours</h3>
+                    <h3 style="margin:0 0 6px">Prévisions momentanément indisponibles</h3>
                     <p style="margin:0;font-size:.9rem;color:var(--text-secondary)">
-                        Le calendrier est temporairement indisponible.<br>
-                        Les pr\u00e9visions seront de retour tr\u00e8s vite.
+                        Nous n'avons pas pu les charger.<br>
+                        Réessayez dans quelques minutes.
                     </p>
-                    <button class="retry-btn" onclick="loadWeekSummary()" style="margin-top:12px">R\u00e9essayer</button>
+                    <button class="retry-btn" onclick="loadWeekSummary()" style="margin-top:12px">Réessayer</button>
                 </div>`;
         }
     }
 }
 
 async function loadBadge() {
+    // FAQ « Vos prévisions sont-elles fiables ? » : le taux est rendu côté serveur
+    // (dernière saison complète). Ce complément ne sert qu'au démarrage à froid,
+    // quand la page a été servie sans données. Jamais de qualificatif flatteur : le chiffre seul.
+    const faqText = document.getElementById('faq-precision-text');
+    if (!faqText || document.getElementById('faq-precision-value')) return;
     try {
         const resp = await fetchWithTimeout('/api/performance/badge');
         if (!resp.ok) return;
         const data = await resp.json();
-        if (!data || data.status !== 'ok') return;
-
-        // Inject precision into FAQ "Vos prévisions sont-elles fiables ?"
-        const faqValue = document.getElementById('faq-precision-value');
-        if (faqValue) {
-            if (data.total_predictions > 0 && data.precision_30j != null) {
-                const pct = data.precision_30j;
-                const qualif = pct >= 90 ? 'Excellente' : pct >= 80 ? 'Tr\u00e8s bonne' : pct >= 70 ? 'Bonne' : 'En am\u00e9lioration';
-                faqValue.textContent = `${pct}% (${qualif}).`;
-            } else {
-                faqValue.textContent = 'en cours de calcul (pas encore assez de donn\u00e9es).';
-            }
-        }
+        if (!data || data.status !== 'ok' || data.precision == null) return;
+        faqText.innerHTML = `${escapeHtml(data.label)} Détail par couleur dans `
+            + `<a href="${escapeHtml(data.detail_url || '/historique-previsions')}">l'historique de nos prévisions</a>.`;
     } catch (e) {
         console.error('Erreur badge:', e);
     }
@@ -380,14 +388,15 @@ function frJour(d, withMonth) {
 }
 
 /**
- * Phrase « la suite » sous les pastilles (après aujourd'hui et demain).
+ * Phrase sous les pastilles (copy deck du 2026-09-30, variantes V1 à V5).
  * Miroir exact de site_facts.week_outlook_html : modifier les deux ensemble.
  */
 function weekOutlookHtml(days) {
     if (days.length === 0) return '';
     const rest = days.filter(x => !x.isHero);
     if (rest.length === 0) return '';
-    const fin = `d'ici le ${frJour(days[days.length - 1].d, true)}`;
+    const last = days[days.length - 1].d;
+    const fin = `d'ici le ${last.getDate() === 1 ? '1er' : last.getDate()} ${MOIS_FULL[last.getMonth()]}`;
     const parts = [];
     [['ROUGE', 'rouge'], ['BLANC', 'blanc']].forEach(([couleur, nom]) => {
         const jours = rest.filter(x => x.couleur === couleur).map(x => frJour(x.d, false));
@@ -399,8 +408,7 @@ function weekOutlookHtml(days) {
     let txt;
     if (parts.length > 0) {
         const total = rest.filter(x => x.couleur === 'ROUGE' || x.couleur === 'BLANC').length;
-        txt = `${parts.join(' et ')} prévu${total > 1 ? 's' : ''} ${fin}. `
-            + '<strong>Planifiez vos machines les jours bleus.</strong>';
+        txt = `${parts.join(' et ')} prévu${total > 1 ? 's' : ''} ${fin}. Planifiez vos machines les jours bleus.`;
     } else {
         txt = `Aucun jour rouge ni blanc prévu ${fin}.`;
     }
@@ -409,9 +417,11 @@ function weekOutlookHtml(days) {
     }
     // Règle EDF R1 : rouge seulement du 1er novembre au 31 mars (getMonth() : 3 = avril, 9 = octobre)
     if (days.every(x => x.d.getMonth() >= 3 && x.d.getMonth() <= 9)) {
-        txt += days[0].d.getMonth() >= 8
-            ? ' Aucun jour rouge possible avant le 1er novembre (règle EDF).'
-            : ' Plus de jour rouge depuis le 31 mars : aucun avant le 1er novembre (règle EDF).';
+        txt += ' Pas de rouge possible avant novembre (règle EDF).';
+    }
+    // V5 : demain pas encore publié par EDF
+    if (days.some(x => x.isTomorrow && !x.confirmed)) {
+        txt = 'EDF publie la couleur de demain vers 11&nbsp;h : d\'ici là, la pastille montre notre prévision. ' + txt;
     }
     return txt;
 }
@@ -420,24 +430,29 @@ function weekOutlookHtml(days) {
 function weekDotHtml(x, hero) {
     const shapeClass = x.couleur === 'BLANC' ? ' dot-blanc' : x.couleur === 'ROUGE' ? ' dot-rouge' : '';
     const confirmedClass = x.confirmed ? ' confirmed-dot' : '';
-    const prefix = x.isToday ? 'Aujourd\'hui, ' : x.isTomorrow ? 'Demain, ' : '';
+    const num = x.d.getDate();
     const label = x.isToday ? '<strong>Aujourd\'hui</strong>'
         : x.isTomorrow ? '<strong>Demain</strong>'
-        : `${JOURS[x.d.getDay()]} ${x.d.getDate()}`;
+        : `${JOURS[x.d.getDay()]} ${num}`;
     let info = '';
     if (x.confirmed) {
-        info = '<span class="week-dot-confirmed">Confirmé</span>';
+        info = '<span class="week-dot-confirmed">Confirmé par EDF</span>';
     } else if (hero) {
-        info = `<span class="week-dot-proba">Prévision ${x.confidence}&nbsp;%</span>`;
+        info = `<span class="week-dot-proba">Prévu à ${x.confidence}&nbsp;%</span>`;
     } else if (x.couleur !== 'BLEU' || x.confidence < 90) {
         info = `<span class="week-dot-proba">${x.confidence}&nbsp;%</span>`;
     }
+    // Grandes pastilles : le texte visible (jour, date, couleur, statut) est lu tel quel.
+    const srOnly = hero ? ''
+        : `<span class="sr-only">${frJour(x.d, true)} : ${COULEUR_NOM[x.couleur]}${x.confirmed ? ', couleur officielle' : `, prévision ${x.confidence}&nbsp;%`}</span>`;
+    const iso = `${x.d.getFullYear()}-${String(x.d.getMonth() + 1).padStart(2, '0')}-${String(num).padStart(2, '0')}`;
     return `<div class="week-dot${hero ? ' week-dot-highlight week-dot-hero' : ''}">`
         + `<div class="week-dot-circle${shapeClass}${confirmedClass}" style="background:var(--${x.couleur.toLowerCase()})" aria-hidden="true">${x.couleur[0]}</div>`
-        + `<span class="sr-only">${prefix}${frJour(x.d, true)} : ${COULEUR_NOM[x.couleur]}${x.confirmed ? ', couleur officielle' : `, prévision ${x.confidence}&nbsp;%`}</span>`
-        + '<div class="week-dot-text" aria-hidden="true">'
+        + srOnly
+        + `<div class="week-dot-text"${hero ? '' : ' aria-hidden="true"'}>`
         + `<span class="week-dot-label">${label}</span>`
-        + (hero ? `<span class="week-dot-color">${COULEUR_NOM[x.couleur]}</span>` : '')
+        + (hero ? `<span class="week-dot-date"><time datetime="${iso}">${JOURS[x.d.getDay()]} ${num === 1 ? '1er' : num}&nbsp;${MOIS[x.d.getMonth()]}</time></span>`
+            + `<span class="week-dot-color">${COULEUR_NOM[x.couleur]}</span>` : '')
         + `<div class="week-dot-info">${info}</div>`
         + '</div></div>';
 }
@@ -554,12 +569,44 @@ function renderTodayCard(el, data, label) {
     `;
 }
 
-function createForecastCard(pred) {
+// ================================================================
+// MÉTÉO DES PRÉVISIONS (audits UX et design du 2026-09-30)
+// Température moyenne prévue, pondérée sur 9 villes (predictions.temp_moy_prevue),
+// même format que /historique-previsions : une décimale, virgule, vrai signe moins, « ° ».
+// Miroir de site_facts.fr_temp (même arrondi, mêmes bornes de plausibilité).
+// ================================================================
+const TEMP_MIN_PLAUSIBLE = -30;
+const TEMP_MAX_PLAUSIBLE = 45;
+
+// 14.06 -> '14,1°' ; -3.2 -> '−3,2°' ; -0.04 -> '0,0°' ; absent ou aberrant -> null
+function fmtTemp(v) {
+    if (v === null || v === undefined || v === '') return null;
+    const n = Number(v);
+    if (!Number.isFinite(n) || n < TEMP_MIN_PLAUSIBLE || n > TEMP_MAX_PLAUSIBLE) return null;
+    let r = Math.round(n * 10) / 10;
+    if (r === 0) r = 0;  // évite « -0,0 »
+    return `${r < 0 ? '−' : ''}${Math.abs(r).toFixed(1).replace('.', ',')}°`;
+}
+
+function meteoHtml(pred) {
+    const t = fmtTemp(pred.temp_moy_prevue);
+    if (t === null) {
+        return '<div class="fc-temp fc-temp-nd">Météo indisponible<span class="sr-only"> (température prévue indisponible)</span></div>';
+    }
+    const lu = t.replace('−', 'moins ').replace('°', ' degrés Celsius');
+    return `<div class="fc-temp"><span class="fc-temp-val" aria-hidden="true">${t}</span>`
+        + `<span class="sr-only">Température moyenne prévue ${lu}</span></div>`;
+}
+
+const ICON_WARN = '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17h.01"/></svg>';
+
+function createForecastCard(pred, opts = {}) {
     const VALID_COULEURS = ['BLEU', 'BLANC', 'ROUGE'];
     const couleur = VALID_COULEURS.includes(pred.couleur_predite) ? pred.couleur_predite : 'BLEU';
 
     const card = document.createElement('div');
     card.className = `forecast-card color-${couleur}`;
+    if (opts.compact) card.classList.add('fc-compact');
 
     if (pred.confirmed) {
         card.classList.add('confirmed');
@@ -578,10 +625,8 @@ function createForecastCard(pred) {
     const pBlanc = pred.probabilite_blanc || 0;
     const pBleu  = pred.probabilite_bleu  || 0;
 
-    let tempHtml = '';
-    if (pred.temp_min_prevue != null && pred.temp_max_prevue != null) {
-        tempHtml = `<div class="fc-temp">${escapeHtml(String(pred.temp_min_prevue))}° / ${escapeHtml(String(pred.temp_max_prevue))}°</div>`;
-    }
+    // Aucune température sur toute la période : une note unique au-dessus des cartes
+    const tempHtml = opts.noTemp ? '' : meteoHtml(pred);
 
     // Raison technique supprimée (reco 3 audit UX — pas utile pour le prospect)
 
@@ -592,7 +637,7 @@ function createForecastCard(pred) {
 
     let changedHtml = '';
     if (pred.couleur_precedente) {
-        changedHtml = `<div class="fc-changed" title="Notre prévision a changé suite aux nouvelles données météo.">Était ${escapeHtml(pred.couleur_precedente)}</div>`;
+        changedHtml = `<div class="fc-changed" title="Notre prévision a changé avec les nouvelles données météo.">Avant : ${escapeHtml(COULEUR_NOM[pred.couleur_precedente] || pred.couleur_precedente)}</div>`;
     }
 
     // Confiance en langage humain (% visible dans la barre de proba en dessous)
@@ -621,7 +666,7 @@ function createForecastCard(pred) {
         if (pctRouge > 10) labels.push(`<span class="proba-label"><span class="proba-dot" style="background:var(--rouge)"></span>${pctRouge}%</span>`);
 
         probaBarHtml = `
-            <div class="fc-proba-bar" aria-label="Probabilités : bleu ${pctBleu}%, blanc ${pctBlanc}%, rouge ${pctRouge}%">
+            <div class="fc-proba-bar" role="img" aria-label="Probabilités : bleu ${pctBleu}%, blanc ${pctBlanc}%, rouge ${pctRouge}%">
                 ${segments.join('')}
             </div>
             <div class="fc-proba-labels">${labels.join('')}</div>`;
@@ -639,17 +684,16 @@ function createForecastCard(pred) {
         const gap = probs[0].val - probs[1].val;
         if (gap < 0.30 && probs[1].val > 0.15) {
             const colorNames = { rouge: 'Rouge', blanc: 'Blanc', bleu: 'Bleu' };
-            uncertainHtml = `<div class="fc-uncertain-badge">
-                <span class="uncertain-icon" aria-hidden="true">&#9888;</span>
-                H\u00e9sitation ${colorNames[probs[0].color]}/${colorNames[probs[1].color]}
-            </div>`;
+            uncertainHtml = `<div class="fc-uncertain-badge">`
+                + `<span class="uncertain-icon" aria-hidden="true">${ICON_WARN}</span>`
+                + `Hésitation<span class="fc-hesi-colors"> ${colorNames[probs[0].color]}/${colorNames[probs[1].color]}</span></div>`;
         }
     }
 
     card.innerHTML = `
         <div class="fc-day">${escapeHtml(dow)}</div>
-        <div class="fc-date">${dayNum} ${escapeHtml(month)}</div>
-        <span class="fc-couleur ${couleur}" role="img" aria-label="Couleur prédite : ${escapeHtml(couleur)}">${escapeHtml(couleur)}</span>
+        <div class="fc-date">${dayNum === 1 ? '1er' : dayNum} ${escapeHtml(month)}</div>
+        <span class="fc-couleur ${couleur}" role="img" aria-label="${pred.confirmed ? 'Couleur officielle' : 'Couleur prévue'} : ${COULEUR_NOM[couleur]}">${escapeHtml(couleur)}</span>
         ${confirmedHtml}
         ${tempHtml}
         <div class="fc-confidence">${confidenceText}</div>
@@ -697,29 +741,18 @@ function simplifyRaison(raison) {
 // ================================================================
 
 /**
- * Normalise un numéro de téléphone français vers le format +33.
- * Accepte : 06 12 34 56 78, 0612345678, +33612345678, 33612345678
+ * Normalise un numéro de mobile vers le format international (+33, +32, +41, +352, +49).
+ * Même règle que l'inscription : délègue à normalizePhoneIntl (fenêtre d'inscription,
+ * incluse sur toutes les pages publiques). Sans elle : France uniquement.
  */
 function normalizePhone(input) {
-    // Retirer espaces, points, tirets
-    let cleaned = input.replace(/[\s.\-()]/g, '');
-
-    // 06... ou 07... → +33...
-    if (/^0[67]\d{8}$/.test(cleaned)) {
-        return '+33' + cleaned.substring(1);
+    if (typeof window !== 'undefined' && typeof window.normalizePhoneIntl === 'function') {
+        return window.normalizePhoneIntl(input || '');
     }
-
-    // 336... ou 337... (sans le +)
-    if (/^33[67]\d{8}$/.test(cleaned)) {
-        return '+' + cleaned;
-    }
-
-    // Déjà au bon format
-    if (/^\+33[67]\d{8}$/.test(cleaned)) {
-        return cleaned;
-    }
-
-    return null; // Format non reconnu
+    const cleaned = (input || '').replace(/[\s.\-()]/g, '');
+    if (/^0[67]\d{8}$/.test(cleaned)) return '+33' + cleaned.substring(1);
+    if (/^\+?33[67]\d{8}$/.test(cleaned)) return '+' + cleaned.replace(/^\+/, '');
+    return null;
 }
 
 function showFormResult(el, type, message) {
@@ -786,8 +819,8 @@ function updateLastUpdateBar(timestamp) {
     const genDate = new Date(ts);
     if (!isNaN(genDate.getTime())) {
         const opts = {timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit'};
-        textEl.textContent = `Dernière mise à jour : ${genDate.toLocaleDateString('fr-FR', {timeZone: 'Europe/Paris'})} ` +
-            `à ${genDate.toLocaleTimeString('fr-FR', opts)}`;
+        const heure = genDate.toLocaleTimeString('fr-FR', opts).replace(':', '\u00a0h\u00a0');
+        textEl.textContent = `Dernière mise à jour : ${genDate.toLocaleDateString('fr-FR', {timeZone: 'Europe/Paris'})} à ${heure}`;
         bar.style.display = '';
     }
 }
@@ -860,13 +893,13 @@ function setupUnsubscribeForm() {
 
         if (!phone) {
             showFormResult(resultEl, 'error',
-                'Numéro non reconnu. Tapez votre numéro au format 06 12 34 56 78');
+                'Numéro non reconnu. Saisissez-le comme à l\'inscription, ou répondez STOP dans WhatsApp.');
             return;
         }
 
         const originalText = btn.textContent;
         btn.disabled = true;
-        btn.textContent = 'Désinscription...';
+        btn.textContent = 'Désinscription…';
 
         try {
             const formData = new FormData();
@@ -887,7 +920,7 @@ function setupUnsubscribeForm() {
                     data.detail || 'Numéro non trouvé dans nos inscrits.');
             }
         } catch {
-            showFormResult(resultEl, 'error', 'Erreur de connexion au serveur');
+            showFormResult(resultEl, 'error', 'Connexion impossible. Réessayez dans un instant.');
         } finally {
             btn.disabled = false;
             btn.textContent = originalText;

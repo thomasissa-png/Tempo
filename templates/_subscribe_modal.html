@@ -5,11 +5,11 @@
         <h2 id="modal-title">Anticipez les 7 prochains jours Tempo <span class="beta-badge">En test</span></h2>
         <div id="modal-form-area">
         <p class="sub-desc">
-            100% gratuit, sans engagement, 1 message par jour maximum.
-            <span class="beta-notice">Nouvelle fonctionnalit&eacute;&nbsp;: des perturbations ponctuelles sont possibles.</span>
+            100&nbsp;% gratuit, sans engagement. Au plus une alerte par jour concern&eacute;, et un message de plus seulement si la pr&eacute;vision change.
+            <span class="beta-notice">Service en test&nbsp;: de br&egrave;ves perturbations sont possibles.</span>
         </p>
         <div class="sms-preview" id="modal-sms-preview">
-            <div class="sms-preview-label">&#128172; Exemple de message que vous recevrez (couleurs fictives)&nbsp;:</div>
+            <div class="sms-preview-label">&#128172; Exemple du r&eacute;cap du dimanche (couleurs fictives)&nbsp;:</div>
             <div class="sms-bubble" id="modal-sms-bubble">
                 <!-- Content generated dynamically by updateSmsBubble() -->
             </div>
@@ -30,25 +30,24 @@
                     <legend>Quelles alertes souhaitez-vous&nbsp;?</legend>
                     <label class="form-checkbox">
                         <input type="checkbox" name="alerte_rouge" id="modal-alerte-rouge" checked>
-                        <span>Alertes jours <strong>rouge</strong></span>
+                        <span>Alerte avant un jour <strong>rouge</strong> pr&eacute;vu</span>
                     </label>
                     <label class="form-checkbox">
                         <input type="checkbox" name="alerte_blanc" id="modal-alerte-blanc">
-                        <span>Alertes jours <strong>blanc</strong></span>
+                        <span>Alerte avant un jour <strong>blanc</strong> pr&eacute;vu</span>
                     </label>
                     <label class="form-checkbox">
                         <input type="checkbox" name="recap_hebdo" id="modal-recap-hebdo" checked>
-                        <span>R&eacute;cap hebdomadaire (chaque dimanche)</span>
+                        <span>R&eacute;capitulatif des 7 jours, chaque dimanche soir</span>
                     </label>
-                    <span class="form-hint">Alertes actives du 1<sup>er</sup> novembre au 31 mars. Modifiables &agrave; tout moment.</span>
+                    <span class="form-hint">Alertes actives du 1<sup>er</sup> novembre au 31 mars. Vous pouvez changer vos choix &agrave; tout moment.</span>
                 </fieldset>
             </div>
-            <button type="submit" class="btn btn-subscribe" id="modal-subscribe-btn">Recevoir mon alerte gratuite</button>
+            <button type="submit" class="btn btn-subscribe" id="modal-subscribe-btn">Recevoir mes alertes gratuites</button>
             <p class="form-legal">
                 <strong class="social-proof">D&eacute;j&agrave; {{ facts.FOYERS_ALERTES_HTML|safe }} foyers Tempo alert&eacute;s dans toute la France.</strong><br>
-                Votre num&eacute;ro est prot&eacute;g&eacute; et ne sera jamais partag&eacute;.
-                D&eacute;sinscription en 1 clic &agrave; tout moment.
-                <a href="/mentions-legales">Politique de confidentialit&eacute;</a>
+                Votre num&eacute;ro est chiffr&eacute; et ne sert qu'&agrave; vous envoyer ces messages. D&eacute;sinscription &agrave; tout moment&nbsp;: r&eacute;pondez STOP sur WhatsApp.
+                <a href="/mentions-legales">Mentions l&eacute;gales et confidentialit&eacute;</a>
             </p>
         </form>
         </div>
@@ -57,6 +56,7 @@
             <p class="modal-success-title"><span class="success-check" aria-hidden="true">&#10003;</span> V&eacute;rifiez votre WhatsApp&nbsp;!</p>
             <p>Vous devriez recevoir un message dans les 30 secondes.</p>
             <p class="form-hint">Si rien n'arrive, v&eacute;rifiez le num&eacute;ro saisi.</p>
+            <p class="form-hint" id="modal-success-season" hidden>Les alertes et le r&eacute;capitulatif d&eacute;marrent le 1<sup>er</sup> novembre.</p>
             <button type="button" class="btn" id="modal-success-close">Fermer</button>
         </div>
         <div class="modal-manage-section" id="modal-manage-section">
@@ -64,9 +64,9 @@
             <button type="button" class="modal-manage-link-btn" id="modal-manage-toggle" aria-expanded="false" aria-controls="modal-manage-form">G&eacute;rer mon abonnement</button>
             <div id="modal-manage-form" class="modal-manage-form" hidden>
                 <div class="modal-manage-row">
-                    <label class="sr-only" for="modal-manage-phone">Num&eacute;ro de mobile inscrit</label>
+                    <label for="modal-manage-phone">Recevez votre lien de gestion par WhatsApp&nbsp;:</label>
                     <input type="tel" id="modal-manage-phone" placeholder="06 12 34 56 78" inputmode="tel" autocomplete="tel">
-                    <button type="button" class="btn" id="modal-manage-btn">Envoyer</button>
+                    <button type="button" class="btn" id="modal-manage-btn">Recevoir le lien</button>
                 </div>
                 <div id="modal-manage-result" class="modal-manage-result" role="status" aria-live="polite"></div>
             </div>
@@ -77,7 +77,7 @@
 <script>
 (function() {
     var JOURS = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
-    var MOIS = ['janvier','f\u00e9vrier','mars','avril','mai','juin','juillet','ao\u00fbt','septembre','octobre','novembre','d\u00e9cembre'];
+    var MOIS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
 
     // Supported countries: FR (+33, 9 digits), BE (+32, 8-9 digits),
     // CH (+41, 9 digits), LU (+352, 6-9 digits), DE (+49, 10-11 digits)
@@ -110,6 +110,9 @@
         }
         return null;
     }
+    // Même règle pour tous les formulaires du site (inscription, gestion, désinscription
+    // sur /alertes, les mentions légales et app.js) : +33, +32, +41, +352, +49.
+    window.normalizePhoneIntl = normalizePhoneLocal;
 
     function trackEvent(name, data) {
         if (typeof umami !== 'undefined' && umami.track) {
@@ -137,7 +140,7 @@
 
     function updateSmsBubble() {
         var JOURS_COURT = ['dim.','lun.','mar.','mer.','jeu.','ven.','sam.'];
-        var MOIS_COURT = ['jan.','f\u00e9v.','mars','avr.','mai','juin','juil.','ao\u00fbt','sept.','oct.','nov.','d\u00e9c.'];
+        var MOIS_COURT = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
 
         // Find next Monday
         var now = new Date();
@@ -152,23 +155,33 @@
             while (d.getDay() !== 1) d.setDate(d.getDate() + 1);
         }
 
-        var redCount = 0;
-        var lines = [];
+        var redCount = 0, blancCount = 0;
+        var lines = [], bleus = [], rouges = [];
         for (var i = 0; i < 7; i++) {
             var c = PREVIEW_COLORS[i];
-            var dayStr = JOURS_COURT[d.getDay()] + ' ' + d.getDate() + ' ' + MOIS_COURT[d.getMonth()];
+            var num = d.getDate() === 1 ? '1er' : String(d.getDate());
+            var dayStr = JOURS_COURT[d.getDay()] + ' ' + num + ' ' + MOIS_COURT[d.getMonth()];
             lines.push(c.emoji + ' ' + dayStr);
-            if (c.label === 'ROUGE') redCount++;
+            if (c.label === 'ROUGE') { redCount++; rouges.push(JOURS_COURT[d.getDay()]); }
+            else if (c.label === 'BLANC') { blancCount++; }
+            else { bleus.push(JOURS_COURT[d.getDay()]); }
             d.setDate(d.getDate() + 1);
         }
 
-        var bubble = document.getElementById('modal-sms-bubble');
-        if (!bubble) return;
-        var html = '\uD83D\uDCC8 <strong>Calendrier Tempo EDF\u00a0: Semaine \u00e0 venir</strong><br><br>';
+        var bubbles = Array.prototype.slice.call(document.querySelectorAll('#modal-sms-bubble, .js-recap-preview'));
+        if (!bubbles.length) return;
+        // Même texte que le vrai récap WhatsApp (alerts.format_recap_hebdo)
+        var parts = [];
+        if (redCount) parts.push('<strong>' + redCount + ' jour' + (redCount > 1 ? 's' : '') + ' rouge' + (redCount > 1 ? 's' : '') + '</strong>');
+        if (blancCount) parts.push('<strong>' + blancCount + ' jour' + (blancCount > 1 ? 's' : '') + ' blanc' + (blancCount > 1 ? 's' : '') + '</strong>');
+        var nb = redCount + blancCount;
+        var html = '📊 <strong>Calendrier Tempo EDF : Semaine à venir</strong><br><br>';
         html += lines.join('<br>');
-        html += '<br><br>\u26A0\uFE0F ' + redCount + ' jour' + (redCount > 1 ? 's' : '') + ' rouge' + (redCount > 1 ? 's' : '') + ' pr\u00e9vu' + (redCount > 1 ? 's' : '') + ' cette semaine.';
-        html += '<br>\uD83D\uDC49 Anticipez vos machines et chauffage\u00a0!';
-        bubble.innerHTML = html;
+        html += '<br><br>⚠️ ' + parts.join(' et ') + ' prévu' + (nb > 1 ? 's' : '') + ' sur les 7 prochains jours.';
+        html += '<br><br>💡 <strong>Plan d\'action :</strong>';
+        html += '<br>👉 Lancez vos machines les jours bleus : ' + bleus.join(', ');
+        html += '<br>🔴 Jours rouges : ' + rouges.join(', ');
+        bubbles.forEach(function(b) { b.innerHTML = html; });
     }
 
     window.openSubscribeModal = function() {
@@ -210,6 +223,10 @@
         if (manage) manage.hidden = true;
         if (success) {
             success.hidden = false;
+            // Hors période rouge (avril à octobre) : rien n'est envoyé avant novembre
+            var seasonHint = document.getElementById('modal-success-season');
+            var m = new Date().getMonth();
+            if (seasonHint) seasonHint.hidden = !(m >= 3 && m <= 9);
             var closeBtn = document.getElementById('modal-success-close');
             if (closeBtn) closeBtn.focus();
         }
@@ -225,6 +242,8 @@
     };
 
     document.addEventListener('DOMContentLoaded', function() {
+        // Aperçu du récap sur /alertes : mêmes dates et même texte que la fenêtre
+        if (document.querySelector('.js-recap-preview')) updateSmsBubble();
         // Close handlers
         var closeBtn = document.getElementById('modal-close');
         if (closeBtn) closeBtn.addEventListener('click', closeSubscribeModal);
@@ -261,17 +280,17 @@
                 if (!val || val.length < 2) { feedback.textContent = ''; feedback.className = 'phone-feedback'; return; }
                 // Try normalization — if it works, number is valid
                 var normalized = normalizePhoneLocal(val);
-                if (normalized) { feedback.textContent = 'Num\u00e9ro valide'; feedback.className = 'phone-feedback valid'; return; }
+                if (normalized) { feedback.textContent = 'Numéro valide'; feedback.className = 'phone-feedback valid'; return; }
                 // Partial input — show helpful feedback
                 if (/^0[67]/.test(val)) {
-                    if (val.length < 10) { feedback.textContent = 'Encore ' + (10 - val.length) + ' chiffre(s)'; feedback.className = 'phone-feedback'; }
+                    if (val.length < 10) { feedback.textContent = 'Encore ' + (10 - val.length) + (10 - val.length > 1 ? ' chiffres' : ' chiffre'); feedback.className = 'phone-feedback'; }
                     else { feedback.textContent = 'Trop de chiffres'; feedback.className = 'phone-feedback invalid'; }
                     return;
                 }
                 if (/^\+?\d{2,4}/.test(val) && val.length < 15) {
-                    feedback.textContent = 'Continuez\u2026'; feedback.className = 'phone-feedback'; return;
+                    feedback.textContent = 'Continuez…'; feedback.className = 'phone-feedback'; return;
                 }
-                feedback.textContent = 'Ex: 06 12 34 56 78 ou +32 4xx xx xx xx';
+                feedback.textContent = 'Ex. : 06 12 34 56 78 ou +32 4xx xx xx xx';
                 feedback.className = 'phone-feedback invalid';
             });
         }
@@ -290,9 +309,9 @@
                 resultEl.style.display = 'none';
 
                 var rawPhone = document.getElementById('modal-phone').value;
-                var normalized = (typeof normalizePhone === 'function') ? normalizePhone(rawPhone) : normalizePhoneLocal(rawPhone);
+                var normalized = normalizePhoneLocal(rawPhone);
                 if (!normalized) {
-                    showResult(resultEl, 'error', 'Num\u00e9ro non reconnu. Formats accept\u00e9s\u00a0: 06/07, +33, +32, +41, +352, +49');
+                    showResult(resultEl, 'error', 'Numéro non reconnu. Saisissez un mobile français (06 ou 07) ou un numéro belge, suisse, luxembourgeois ou allemand avec son indicatif.');
                     submitting = false;
                     document.getElementById('modal-phone').focus();
                     return;
@@ -300,7 +319,7 @@
 
                 var originalText = btn.textContent;
                 btn.disabled = true;
-                btn.innerHTML = '<span class="btn-spinner"></span> Inscription en cours...';
+                btn.innerHTML = '<span class="btn-spinner"></span> Inscription en cours…';
 
                 var formData = new FormData(form);
                 formData.set('phone', normalized);
@@ -323,12 +342,12 @@
                             showSuccess();
                         } else {
                             trackEvent('modal_error', { page: window.location.pathname, reason: result.data.detail || 'api_error' });
-                            showResult(resultEl, 'error', result.data.detail || "Erreur lors de l'inscription");
+                            showResult(resultEl, 'error', result.data.detail || "L'inscription a échoué. Réessayez dans un instant.");
                         }
                     })
                     .catch(function() {
                         trackEvent('modal_error', { page: window.location.pathname, reason: 'network' });
-                        showResult(resultEl, 'error', 'Erreur de connexion au serveur');
+                        showResult(resultEl, 'error', 'Connexion impossible. Réessayez dans un instant.');
                     })
                     .finally(function() {
                         btn.disabled = false;
@@ -361,7 +380,7 @@
                 var normalized = normalizePhoneLocal(raw);
                 if (!normalized) {
                     resultEl.className = 'modal-manage-result is-error';
-                    resultEl.textContent = 'Num\u00e9ro non reconnu.';
+                    resultEl.textContent = 'Numéro non reconnu. Saisissez-le comme à l\'inscription.';
                     return;
                 }
                 manageBtn.disabled = true;
@@ -372,15 +391,15 @@
                     .then(function(res) {
                         if (res.ok) {
                             resultEl.className = 'modal-manage-result is-ok';
-                            resultEl.textContent = res.data.message || 'Lien envoy\u00e9 par WhatsApp\u00a0!';
+                            resultEl.textContent = res.data.message || 'Lien envoyé par WhatsApp.';
                         } else {
                             resultEl.className = 'modal-manage-result is-error';
-                            resultEl.textContent = res.data.detail || 'Erreur.';
+                            resultEl.textContent = res.data.detail || 'Envoi impossible. Réessayez dans un instant.';
                         }
                     })
                     .catch(function() {
                         resultEl.className = 'modal-manage-result is-error';
-                        resultEl.textContent = 'Erreur de connexion.';
+                        resultEl.textContent = 'Connexion impossible. Réessayez dans un instant.';
                     })
                     .finally(function() { manageBtn.disabled = false; });
             });

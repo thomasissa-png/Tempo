@@ -568,7 +568,7 @@ def _get_ssr_data() -> dict:
             rows = conn.execute(
                 """SELECT date, couleur_predite, probabilite_rouge,
                           probabilite_blanc, probabilite_bleu,
-                          temp_min_prevue, confirmed
+                          temp_min_prevue, temp_moy_prevue, confirmed
                    FROM predictions
                    WHERE date >= ? AND id IN (
                        SELECT COALESCE(
@@ -586,8 +586,6 @@ def _get_ssr_data() -> dict:
             ).fetchall()
             actuals_map = {r["date"]: r["couleur_reelle"] for r in actual_rows}
 
-            # weekday(): 0=Mon..6=Sun → map to French labels
-            JOURS_SSR = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"]
             for r in rows:
                 actual = actuals_map.get(r["date"])
                 couleur = actual or r["couleur_predite"]
@@ -609,13 +607,16 @@ def _get_ssr_data() -> dict:
                         confidence = int((r[prob_key] or 0) * 100 + 0.5)
                         ssr["week_summary"].append({
                             "date": r["date"],
-                            "day_label": JOURS_SSR[d.weekday()],
+                            "day_label": site_facts.JOURS_COURT[d.weekday()],
                             "day_num": d.day,
+                            "day_num_label": "1er" if d.day == 1 else str(d.day),
+                            "month_label": site_facts.MOIS_COURT[d.month],
                             "date_label": site_facts.fr_date(d, with_year=False),
                             "couleur": couleur,
                             "couleur_label": site_facts.couleur_label(couleur),
                             "confirmed": is_confirmed,
                             "confidence": confidence,
+                            "temp_label": site_facts.fr_temp(r["temp_moy_prevue"]),
                             "is_today": d == today_d,
                             "is_tomorrow": d == tomorrow_d,
                             "is_hero": d in (today_d, tomorrow_d),
@@ -628,7 +629,27 @@ def _get_ssr_data() -> dict:
                     ssr["tomorrow_forecast_color"] = couleur
                     ssr["tomorrow_forecast_confidence"] = round(prob * 100) if prob is not None else None
 
-            # Phrase « la suite » sous les pastilles (même texte que renderWeekSummary en JS)
+            # Aujourd'hui / demain publiés par EDF mais absents des prédictions stockées
+            # (base neuve, calcul pas encore passé) : pastilles depuis la couleur officielle.
+            known = {w["date"] for w in ssr["week_summary"]}
+            for d_hero, couleur_hero in ((today_d, ssr["today_color"]), (tomorrow_d, ssr["tomorrow_color"])):
+                if couleur_hero in ("BLEU", "BLANC", "ROUGE") and d_hero.isoformat() not in known:
+                    ssr["week_summary"].append({
+                        "date": d_hero.isoformat(),
+                        "day_label": site_facts.JOURS_COURT[d_hero.weekday()],
+                        "day_num": d_hero.day,
+                        "day_num_label": "1er" if d_hero.day == 1 else str(d_hero.day),
+                        "month_label": site_facts.MOIS_COURT[d_hero.month],
+                        "date_label": site_facts.fr_date(d_hero, with_year=False),
+                        "couleur": couleur_hero,
+                        "couleur_label": site_facts.couleur_label(couleur_hero),
+                        "confirmed": True, "confidence": 100, "temp_label": None,
+                        "is_today": d_hero == today_d, "is_tomorrow": d_hero == tomorrow_d,
+                        "is_hero": True,
+                    })
+            ssr["week_summary"].sort(key=lambda w: w["date"])
+
+            # Phrase sous les pastilles (même texte que renderWeekSummary en JS)
             ssr["week_outlook"] = site_facts.week_outlook_html(ssr["week_summary"])
 
             # SSR: dernière mise à jour (reco 21)
@@ -642,7 +663,7 @@ def _get_ssr_data() -> dict:
                     ts = row["last_update"]
                     try:
                         parsed = dt.fromisoformat(ts)
-                        ssr["last_update"] = parsed.strftime("%d/%m/%Y à %Hh%M")
+                        ssr["last_update"] = parsed.strftime("%d/%m/%Y à %H\u00a0h\u00a0%M")
                         ssr["last_update_iso"] = parsed.isoformat(timespec="minutes")
                     except Exception:
                         pass
@@ -659,9 +680,11 @@ def _get_ssr_data() -> dict:
 async def page_dashboard(request: Request):
     """Page principale — dashboard des prévisions."""
     ssr = _get_ssr_data()
+    ref = _reference_rate()
     return templates.TemplateResponse("dashboard.html", {
         "request": request,
         "ssr": ssr,
+        "ref_rate": ref,
         "faq": site_facts.FAQ_HOME,
         "faq_ld": site_facts.faq_jsonld(site_facts.FAQ_HOME),
         "itemlist_ld": _predictions_itemlist_ld(ssr),
@@ -1091,7 +1114,7 @@ async def page_couleur_demain(request: Request):
     SSR à chaque requête (cache 2 min) : la couleur change en fin de matinée.
     """
     ssr = _get_ssr_data()
-    crumbs = [("Accueil", "/"), ("Couleur Tempo demain", "/couleur-tempo-demain")]
+    crumbs = [("Accueil", "/"), ("Couleur Tempo de demain", "/couleur-tempo-demain")]
     return templates.TemplateResponse("couleur_demain.html", {
         "request": request,
         "canonical_path": "/couleur-tempo-demain",
@@ -1113,16 +1136,11 @@ async def page_api_tempo(request: Request):
 
 @app.api_route("/methodologie", methods=["GET", "HEAD"], response_class=HTMLResponse)
 async def page_methodologie(request: Request):
-    """Méthodologie de prévision et chiffres de performance, avec leur nature exacte."""
-    live = None
-    if _db_ready.is_set():
-        try:
-            from performance_tracker import get_accuracy_global
-            acc = get_accuracy_global(30, min_horizon=2, max_horizon=5)
-            if acc.get("total", 0) >= 10:
-                live = acc
-        except Exception as e:
-            logger.debug(f"[Méthodologie] Mesure en direct indisponible : {e}")
+    """Méthodologie de prévision et chiffres de performance, avec leur nature exacte.
+
+    Taux publié = dernière saison complète, calculé sur les prévisions réellement émises
+    (décision fondateur du 2026-09-30), même source que /historique-previsions.
+    """
     labels = {
         "temperature": "Température nationale pondérée (9 villes)",
         "jours_restants": "Jours rouges et blancs restant à placer",
@@ -1137,23 +1155,21 @@ async def page_methodologie(request: Request):
         for k, v in sorted(Config.DEFAULT_WEIGHTS.items(), key=lambda kv: kv[1], reverse=True)
     ]
     cities = [c["name"] for c in Config.WEATHER_CITIES]
-    # MET-01 : mêmes effectifs que le bloc « En bref » de /historique-previsions (saison en cours)
-    bref, bref_season = None, None
+    ref, ref_path = None, "/historique-previsions"
     try:
-        from prediction_history import page_context, season_start_year, today_paris, season_label
-        current = season_label(season_start_year(today_paris()))
-        hctx = page_context(_history_data(), current, current)
-        if hctx.get("h"):
-            bref, bref_season = hctx["h"]["bref"], current
+        from prediction_history import (last_complete_season_summary, season_path,
+                                        season_start_year, today_paris, season_label)
+        ref = last_complete_season_summary(_history_data(), today_paris())
+        if ref:
+            ref_path = season_path(ref["label"], season_label(season_start_year(today_paris())))
     except Exception as e:
         logger.debug(f"[Méthodologie] Historique indisponible : {e}")
     crumbs = [("Accueil", "/"), ("Méthodologie", "/methodologie")]
     return templates.TemplateResponse("methodologie.html", {
         "request": request,
         "canonical_path": "/methodologie",
-        "live": live,
-        "bref": bref,
-        "bref_season": bref_season,
+        "ref": ref,
+        "ref_path": ref_path,
         "weights": weights,
         "cities": cities,
         "measured_on": site_facts.fr_date(date.today(), with_weekday=False),
@@ -1323,7 +1339,7 @@ async def page_manage(request: Request, token: str):
             "request": request,
             "user": None,
             "token": token,
-            "error": "Lien invalide ou expiré. Réinscrivez-vous depuis la page d'accueil.",
+            "error": "Ce lien n'est plus valide. Demandez-en un nouveau avec « Déjà inscrit ? » sur la page d'accueil.",
         })
     return templates.TemplateResponse("manage.html", {
         "request": request,
@@ -1647,12 +1663,14 @@ def _llms_common_sections() -> str:
         "\n"
         "## Sources des données\n"
         f"- Couleurs officielles : {site_facts.SOURCE_COULEURS_PHRASE}. Seule la couleur publiée par EDF fait foi.\n"
-        "- Météo : Météo France (modèles AROME et ARPEGE), moyenne pondérée de 9 villes ; Open-Meteo en secours\n"
+        "- Météo : Météo France (modèles AROME et ARPEGE), moyenne pondérée de 9 villes ; Open-Meteo au-delà de la portée de Météo France et en secours\n"
         "- Consommation d'électricité : prévisions RTE\n"
         "\n"
         "## Performance (nature exacte des chiffres)\n"
         f"- {site_facts.PERFORMANCE_POLICY}\n"
-        f"- En conditions réelles : taux de prévisions correctes de {site_facts.HORIZON_FIABLE} sur 30 jours, "
+        f"- En conditions réelles : taux de prévisions justes ({site_facts.HORIZON_FIABLE}) de la dernière saison "
+        "complète, calculé sur les prévisions réellement émises (jours sans prévision comptés à part), "
+        "avec le repère « dire bleu tous les jours » ; "
         f"publié sur {site_facts.SITE_URL}/methodologie et {site_facts.SITE_URL}/api/performance/badge\n"
         "\n"
         "## API publiques (JSON, gratuites, sans clé)\n"
@@ -2100,6 +2118,20 @@ async def api_remaining():
 # API : PRÉDICTIONS
 # ================================================================
 
+def _api_temp(value) -> float | None:
+    """Température moyenne prévue (9 villes) pour l'API : 1 décimale, None si absente
+    ou hors plage plausible (site_facts.TEMP_MIN_PLAUSIBLE..TEMP_MAX_PLAUSIBLE)."""
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return None
+    if v != v or not (site_facts.TEMP_MIN_PLAUSIBLE <= v <= site_facts.TEMP_MAX_PLAUSIBLE):
+        if value is not None:
+            logger.warning(f"[API predictions] température aberrante ignorée : {value}")
+        return None
+    return round(v, 1)
+
+
 @app.get("/api/predictions")
 async def api_predictions():
     """Retourne les prédictions J+1 → J+15 depuis la DB (source unique).
@@ -2136,6 +2168,7 @@ async def api_predictions():
             rows = conn.execute(
                 """SELECT date, couleur_predite, probabilite_bleu, probabilite_blanc,
                           probabilite_rouge, score_risque, temp_min_prevue, temp_max_prevue,
+                          temp_moy_prevue,
                           pression_prevue, jours_rouges_restants, jours_blancs_restants,
                           raison, horizon, timestamp_prediction, cycle_id,
                           couleur_precedente, simulated, confirmed
@@ -2192,6 +2225,7 @@ async def api_predictions():
                         "score_risque": r["score_risque"],
                         "temp_min_prevue": r["temp_min_prevue"],
                         "temp_max_prevue": r["temp_max_prevue"],
+                        "temp_moy_prevue": _api_temp(r["temp_moy_prevue"]),
                         "raison": "Couleur officielle EDF",
                         "horizon": r["horizon"],
                         "confirmed": True,
@@ -2207,6 +2241,7 @@ async def api_predictions():
                         "score_risque": r["score_risque"],
                         "temp_min_prevue": r["temp_min_prevue"],
                         "temp_max_prevue": r["temp_max_prevue"],
+                        "temp_moy_prevue": _api_temp(r["temp_moy_prevue"]),
                         "raison": r["raison"],
                         "horizon": r["horizon"],
                         "confirmed": bool(r["confirmed"]),
@@ -2301,6 +2336,8 @@ async def api_predictions():
         cycle_id = f"{date.today().isoformat()}_init"
         for pred in predictions:
             store_prediction(pred, pred.get("horizon", "J-?"), cycle_id=cycle_id)
+        for pred in predictions:
+            pred["temp_moy_prevue"] = _api_temp(pred.get("temp_moy_prevue"))
 
         accuracy = get_accuracy_global(30)
         result = {
@@ -2357,22 +2394,57 @@ async def api_performance(request: Request, authorization: str | None = Header(N
     return {"status": "ok", **get_performance_summary(season=season)}
 
 
+def _reference_rate() -> dict | None:
+    """Taux publié sur le site (décision fondateur du 2026-09-30) : dernière saison
+    complète, prévisions faites 2 à 5 jours avant, calculé sur les prévisions réellement
+    émises ; couverture et repère « toujours bleu » à côté. Même source que l'historique."""
+    try:
+        from prediction_history import (last_complete_season_summary, season_path,
+                                        season_start_year, today_paris, season_label)
+        ref = last_complete_season_summary(_history_data(), today_paris())
+        if not ref:
+            return None
+        current = season_label(season_start_year(today_paris()))
+        return {**ref, "path": season_path(ref["label"], current)}
+    except Exception as e:
+        logger.debug(f"[Taux de référence] indisponible : {e}")
+        return None
+
+
+def _reference_rate_label(ref: dict) -> str:
+    return (f"Saison {ref['label']} (dernière saison complète), prévisions faites "
+            f"{site_facts.HORIZON_FIABLE_LISIBLE}, toutes couleurs confondues : "
+            f"{ref['justes_pct']} % de prévisions justes ({ref['justes']} sur {ref['emises']} "
+            f"prévisions émises, {ref['sans_prevision']} jours sans prévision comptés à part). "
+            f"Repère : dire « bleu » tous les jours aurait eu raison {ref['toujours_bleu_pct']} % du temps.")
+
+
 @app.get("/api/performance/badge")
 async def api_performance_badge():
-    """Badge de fiabilité simplifié pour la homepage.
-    Filtre J+2 à J+5 : notre vrai critère de succès (J+1 fourni par EDF,
-    J+6+ météo trop imprécise).
-    Seuil minimum de 10 évaluations pour éviter un % trompeur."""
-    from performance_tracker import get_accuracy_global
-    acc = get_accuracy_global(30, min_horizon=2, max_horizon=5)
-    min_evaluations = 10
+    """Taux de réussite publié (décision fondateur du 2026-09-30).
+
+    Dernière saison complète (31 août passé), prévisions J+2 à J+5, taux sur les
+    prévisions réellement émises. Jamais un taux sur 30 jours (en septembre, presque
+    tous les jours sont bleus : un 100 % ne voudrait rien dire).
+    """
+    ref = _reference_rate()
+    if not ref:
+        return {"status": "ok", "saison": None, "precision": None, "emises": 0,
+                "label": "Taux de réussite : pas encore de saison complète mesurée."}
     return {
         "status": "ok",
-        "precision_30j": acc["precision"] if acc["total"] >= min_evaluations else None,
-        "total_predictions": acc["total"],
-        "label": f"Nos prévisions J+2 à J+5 : {acc['precision']}% de prévisions correctes sur {acc['total']} évaluations (30 derniers jours)"
-                 if acc["total"] >= min_evaluations
-                 else "Taux de réussite en cours de calcul : pas encore assez de données",
+        "saison": ref["label"],
+        "horizons": "J+2 à J+5",
+        "precision": ref["justes_pct"],
+        "justes": ref["justes"],
+        "erronees": ref["erronees"],
+        "emises": ref["emises"],
+        "sans_prevision": ref["sans_prevision"],
+        "attendues": ref["jours"],
+        "jours_sans_calcul": ref["jours_sans_calcul"],
+        "toujours_bleu_pct": ref["toujours_bleu_pct"],
+        "detail_url": ref["path"],
+        "label": _reference_rate_label(ref),
     }
 
 
@@ -2441,7 +2513,7 @@ async def api_subscribe(
     """Inscription aux alertes WhatsApp (Fix #16 : rate limiting + CSRF check)."""
     # Fix #16 (CSRF) : verify origin
     if not _check_origin(request):
-        raise HTTPException(status_code=403, detail="Origine de la requête non autorisée")
+        raise HTTPException(status_code=403, detail="Requête refusée. Rechargez la page puis réessayez.")
 
     # Anti-bot: honeypot field must be empty (bots auto-fill hidden fields)
     if website:
@@ -2455,7 +2527,7 @@ async def api_subscribe(
             elapsed = int(time.time()) - open_ts
             if elapsed < 3:
                 logger.warning(f"[Subscribe] Speed check failed ({elapsed}s) from {request.client.host if request.client else 'unknown'}")
-                raise HTTPException(status_code=400, detail="Trop rapide. Veuillez réessayer.")
+                raise HTTPException(status_code=400, detail="Un instant : réessayez dans quelques secondes.")
         except ValueError:
             pass  # Invalid timestamp, skip check
 
@@ -2468,7 +2540,7 @@ async def api_subscribe(
             t for t in _rate_limit_store[client_ip] if now - t < window
         ]
         if len(_rate_limit_store[client_ip]) >= Config.SUBSCRIBE_RATE_LIMIT:
-            raise HTTPException(status_code=429, detail="Trop de tentatives. Réessayez plus tard.")
+            raise HTTPException(status_code=429, detail="Trop de tentatives. Réessayez dans une heure.")
         _rate_limit_store[client_ip].append(now)
         _cleanup_rate_limit_store(now)
 
@@ -2505,7 +2577,7 @@ async def api_unsubscribe(request: Request, phone: str = Form(...)):
     """Désinscription des alertes WhatsApp."""
     # Fix #16 (CSRF) : verify origin
     if not _check_origin(request):
-        raise HTTPException(status_code=403, detail="Origine de la requête non autorisée")
+        raise HTTPException(status_code=403, detail="Requête refusée. Rechargez la page puis réessayez.")
 
     # H-06 QA : rate limiting sur la désinscription
     client_ip = request.client.host if request.client else "unknown"
@@ -2516,13 +2588,13 @@ async def api_unsubscribe(request: Request, phone: str = Form(...)):
             t for t in _rate_limit_store[client_ip] if now - t < window
         ]
         if len(_rate_limit_store[client_ip]) >= Config.SUBSCRIBE_RATE_LIMIT:
-            raise HTTPException(status_code=429, detail="Trop de tentatives. Réessayez plus tard.")
+            raise HTTPException(status_code=429, detail="Trop de tentatives. Réessayez dans une heure.")
         _rate_limit_store[client_ip].append(now)
 
     # H-06 QA : validation format téléphone (international)
     phone_clean = phone.strip().replace(" ", "").replace("-", "").replace(".", "")
     if not phone_clean.startswith("+") or len(phone_clean) < 10 or len(phone_clean) > 15 or not phone_clean[1:].isdigit():
-        raise HTTPException(status_code=400, detail="Format invalide. Utilisez un format international (+33, +32, +41...).")
+        raise HTTPException(status_code=400, detail="Numéro invalide. Saisissez-le avec son indicatif (+33, +32, +41…).")
 
     from alerts import unsubscribe_user
     # Numéro nettoyé (points, tirets, espaces) : même hash qu'à l'inscription
@@ -2543,7 +2615,7 @@ async def api_resend_manage_link(
     les timeouts (send_whatsapp peut prendre 30-45s avec les retries).
     """
     if not _check_origin(request):
-        raise HTTPException(status_code=403, detail="Origine de la requête non autorisée")
+        raise HTTPException(status_code=403, detail="Requête refusée. Rechargez la page puis réessayez.")
 
     # Rate limiting (same pool as subscribe)
     client_ip = request.client.host if request.client else "unknown"
@@ -2554,12 +2626,12 @@ async def api_resend_manage_link(
             t for t in _rate_limit_store[client_ip] if now - t < window
         ]
         if len(_rate_limit_store[client_ip]) >= Config.SUBSCRIBE_RATE_LIMIT:
-            raise HTTPException(status_code=429, detail="Trop de tentatives. Réessayez plus tard.")
+            raise HTTPException(status_code=429, detail="Trop de tentatives. Réessayez dans une heure.")
         _rate_limit_store[client_ip].append(now)
 
     phone_clean = phone.strip().replace(" ", "").replace("-", "").replace(".", "")
     if not phone_clean.startswith("+") or len(phone_clean) < 10 or len(phone_clean) > 15:
-        raise HTTPException(status_code=400, detail="Format invalide.")
+        raise HTTPException(status_code=400, detail="Numéro invalide.")
 
     # Generic message to avoid revealing if number exists (privacy)
     generic_msg = "Si ce numéro est inscrit, vous recevrez un message WhatsApp avec votre lien de gestion."
@@ -2782,7 +2854,7 @@ async def api_manage_update(
     """Met à jour les préférences via le token de gestion."""
     # CSRF check
     if not _check_origin(request):
-        raise HTTPException(status_code=403, detail="Origine de la requête non autorisée")
+        raise HTTPException(status_code=403, detail="Requête refusée. Rechargez la page puis réessayez.")
 
     # Valider les paramètres
     seuil_rouge = max(0, min(100, seuil_rouge))
@@ -2801,7 +2873,7 @@ async def api_manage_update(
 async def api_manage_unsubscribe(request: Request, token: str):
     """Désinscription via le token de gestion (pas besoin de numéro)."""
     if not _check_origin(request):
-        raise HTTPException(status_code=403, detail="Origine de la requête non autorisée")
+        raise HTTPException(status_code=403, detail="Requête refusée. Rechargez la page puis réessayez.")
 
     from alerts import get_user_by_token
     from database import get_db
@@ -2832,7 +2904,7 @@ async def admin_run_task(request: Request, task: str = Form(...)):
     """Execute une tache du scheduler manuellement.
     Fix #8 audit v4 : ajout check CSRF."""
     if not _check_origin(request):
-        raise HTTPException(status_code=403, detail="Origine de la requête non autorisée")
+        raise HTTPException(status_code=403, detail="Requête refusée. Rechargez la page puis réessayez.")
     client_ip = request.client.host if request.client else "unknown"
     verify_admin(request.headers.get("Authorization"), client_ip)
     from scheduler import run_task_now

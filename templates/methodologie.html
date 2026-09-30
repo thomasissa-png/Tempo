@@ -24,9 +24,7 @@
     <p class="section-desc">
         Nos pr&eacute;visions Tempo combinent la m&eacute;t&eacute;o de {{ cities|length }} villes, la consommation d'&eacute;lectricit&eacute; pr&eacute;vue par RTE,
         le nombre de jours rouges et blancs restant &agrave; placer, un <strong>scoring pond&eacute;r&eacute; sur 7 crit&egrave;res</strong> et deux
-        <strong>mod&egrave;les d'apprentissage automatique</strong>, puis appliquent les r&egrave;gles officielles d'EDF. Nous pr&eacute;voyons
-        chaque jour de J+1 &agrave; J+{{ facts.HORIZON_MAX_JOURS }}&nbsp;; les pr&eacute;visions de {{ facts.HORIZON_FIABLE }} sont les plus utiles,
-        celles de {{ facts.HORIZON_INDICATIF }} donnent une tendance.
+        <strong>mod&egrave;les d'apprentissage automatique</strong>, puis appliquent les r&egrave;gles officielles d'EDF. Nous pr&eacute;voyons chaque jour jusqu'&agrave; {{ facts.HORIZON_MAX_JOURS }} jours &agrave; l'avance&nbsp;: les pr&eacute;visions faites {{ facts.HORIZON_FIABLE_LISIBLE }} sont les plus utiles, celles faites {{ facts.HORIZON_INDICATIF_LISIBLE }} donnent une tendance.
     </p>
     <nav class="page-toc" aria-label="Sommaire">
         <ul>
@@ -43,7 +41,7 @@
         <h2 id="donnees">1. Les donn&eacute;es</h2>
     <ul>
         <li><strong>M&eacute;t&eacute;o</strong>&nbsp;: M&eacute;t&eacute;o France (mod&egrave;les AROME et ARPEGE), moyenne pond&eacute;r&eacute;e de {{ cities|length }} villes
-            ({{ cities|join(', ') }})&nbsp;; Open-Meteo en secours. Sans m&eacute;t&eacute;o, aucune pr&eacute;vision n'est publi&eacute;e.</li>
+            ({{ cities|join(', ') }})&nbsp;; Open-Meteo pour les jours au-del&agrave; de la port&eacute;e de M&eacute;t&eacute;o France, et en secours. Sans m&eacute;t&eacute;o, aucune pr&eacute;vision n'est publi&eacute;e.</li>
         <li><strong>Consommation</strong>&nbsp;: pr&eacute;visions de consommation nationale de RTE.</li>
         <li><strong>Couleurs officielles</strong>&nbsp;: {{ facts.SOURCE_COULEURS_PHRASE }}&nbsp;; elles remplacent nos pr&eacute;visions d&egrave;s leur publication.</li>
         <li><strong>Calendrier</strong>&nbsp;: jours de la semaine, jours f&eacute;ri&eacute;s et jours restants dans la saison.</li>
@@ -70,9 +68,10 @@
 
     <section class="legal-section" aria-labelledby="apprentissage">
         <h2 id="apprentissage">3. L'apprentissage automatique</h2>
-    <p>Un mod&egrave;le <strong>GradientBoosting</strong> (33 variables m&eacute;t&eacute;o, consommation et calendrier), entra&icirc;n&eacute; sur les
-        saisons 2019 &agrave; 2026, sert de filet de s&eacute;curit&eacute; pour les jours rouges et filtre les faux jours blancs. Un second
+    <p>Un mod&egrave;le <strong>GradientBoosting</strong> (un ensemble d'arbres de d&eacute;cision, 33 variables m&eacute;t&eacute;o, consommation et calendrier), entra&icirc;n&eacute; sur les
+        saisons 2019-2020 &agrave; 2025-2026 (donn&eacute;es r&eacute;elles du 3 septembre 2019 au 11 f&eacute;vrier 2026), sert de filet de s&eacute;curit&eacute; pour les jours rouges et filtre les faux jours blancs. Un second
         mod&egrave;le, plus petit, tranche les cas ambigus (score de risque entre 50 et 70) entre rouge et non-rouge.</p>
+    <p>Depuis le 29 septembre 2026, un module reproduit aussi la m&eacute;thode publi&eacute;e par RTE (consommation nette compar&eacute;e aux seuils officiels, stock de jours restants), &agrave; partir de la m&eacute;t&eacute;o pr&eacute;vue. Pour les pr&eacute;visions faites 2 &agrave; 5 jours &agrave; l'avance, il sert de filet de s&eacute;curit&eacute; aux jours rouges et peut &eacute;carter un rouge jug&eacute; improbable.</p>
     </section>
 
     <section class="legal-section" aria-labelledby="regles">
@@ -89,22 +88,19 @@
     <section class="legal-section" aria-labelledby="performance">
         <h2 id="performance">5. Performance&nbsp;: ce que disent nos chiffres</h2>
     <h3>En conditions r&eacute;elles</h3>
-    {% if live %}
-    <p><strong>{{ live.precision|string|replace('.', ',') }}&nbsp;%</strong> de pr&eacute;visions correctes sur les {{ live.total }} pr&eacute;visions de
-        {{ facts.HORIZON_FIABLE }} v&eacute;rifi&eacute;es au cours des 30 derniers jours (mesure au {{ measured_on }}, compar&eacute;e aux couleurs publi&eacute;es par EDF).</p>
-    {% else %}
-    <p>Pas encore assez de pr&eacute;visions v&eacute;rifi&eacute;es sur les 30 derniers jours (minimum 10 pr&eacute;visions de {{ facts.HORIZON_FIABLE }})
-        pour publier un taux fiable. La mesure s'affiche ici d&egrave;s que ce seuil est atteint.</p>
-    {% endif %}
-    {% if bref %}
+    {% if ref %}
+    <p><strong>Saison {{ ref.label }}&nbsp;: {{ ref.justes_pct }}&nbsp;%</strong> de couleurs exactes, toutes couleurs confondues, soit {{ ref.justes }} pr&eacute;visions justes sur les {{ ref.emises }} pr&eacute;visions faites {{ facts.HORIZON_FIABLE_LISIBLE }} et r&eacute;ellement &eacute;mises ({{ ref.erronees }} erron&eacute;e{{ 's' if ref.erronees > 1 }}), compar&eacute;es aux couleurs publi&eacute;es par EDF. C'est la derni&egrave;re saison compl&egrave;te.</p>
     <ul class="method-bref">
-        <li>Saison {{ bref_season }}, pr&eacute;visions de {{ facts.HORIZON_FIABLE }}&nbsp;:
-            {% if bref.ROUGE.reels or bref.BLANC.reels %}jours rouges annonc&eacute;s &agrave; l'avance&nbsp;: <strong>{{ bref.ROUGE.annonces }}</strong> sur {{ bref.ROUGE.reels }}, jours blancs&nbsp;: <strong>{{ bref.BLANC.annonces }}</strong> sur {{ bref.BLANC.reels }}{% else %}aucun jour rouge ou blanc pour l'instant{% endif %}.</li>
-        <li>Rep&egrave;re&nbsp;: dire «&nbsp;bleu&nbsp;» tous les jours aurait eu raison {{ bref.toujours_bleu }} fois sur {{ bref.jours }}{% if bref.toujours_bleu_pct is not none %} ({{ bref.toujours_bleu_pct }}&nbsp;%){% endif %}. <a href="/historique-previsions#bilan">Voir le d&eacute;tail</a>.</li>
+        <li>Couverture&nbsp;: {{ ref.emises }} pr&eacute;visions &eacute;mises sur {{ ref.jours }} attendues ({{ ref.sans_prevision }} sans pr&eacute;vision{% if ref.jours_sans_calcul %}, {{ ref.jours_sans_calcul }} jour{{ 's' if ref.jours_sans_calcul > 1 }} sans calcul{% endif %})&nbsp;: une pr&eacute;vision absente n'est ni juste ni erron&eacute;e, elle est compt&eacute;e &agrave; part.</li>
+        <li>{% if ref.ROUGE.reels_emis or ref.BLANC.reels_emis %}Jours rouges annonc&eacute;s &agrave; l'avance&nbsp;: <strong>{{ ref.ROUGE.annonces }}</strong> sur {{ ref.ROUGE.reels_emis }}, jours blancs&nbsp;: <strong>{{ ref.BLANC.annonces }}</strong> sur {{ ref.BLANC.reels_emis }}{% else %}Aucun jour rouge ou blanc dans les jours compar&eacute;s{% endif %}.</li>
+        <li>Rep&egrave;re&nbsp;: dire «&nbsp;bleu&nbsp;» tous les jours aurait eu raison {{ ref.toujours_bleu }} fois sur {{ ref.emises }}{% if ref.toujours_bleu_pct is not none %} ({{ ref.toujours_bleu_pct }}&nbsp;%){% endif %}. <a href="{{ ref_path }}#bilan">Voir le d&eacute;tail</a>.</li>
     </ul>
+    <p>La saison en cours est suivie jour par jour sur l'<a href="/historique-previsions">historique</a>&nbsp;; son pourcentage s'affiche &agrave; partir du 1<sup>er</sup>&nbsp;novembre (avant, presque tous les jours sont bleus et le taux ne veut pas dire grand-chose).</p>
+    {% else %}
+    <p>Pas encore de saison compl&egrave;te mesur&eacute;e en conditions r&eacute;elles. La mesure s'affichera ici &agrave; la fin de la premi&egrave;re saison suivie.</p>
     {% endif %}
     <h3>Historique complet</h3>
-    <p>Toutes nos pr&eacute;visions de {{ facts.HORIZON_FIABLE }}, jour par jour et sans s&eacute;lection, sont publi&eacute;es sur la page
+    <p>Toutes nos pr&eacute;visions faites {{ facts.HORIZON_FIABLE_LISIBLE }}, jour par jour et sans s&eacute;lection, sont publi&eacute;es sur la page
         <a href="/historique-previsions">historique de nos pr&eacute;visions Tempo</a>, avec les effectifs bruts par couleur et <a href="/historique-previsions.csv" download data-umami-event="csv_download">les donn&eacute;es brutes en CSV</a>.</p>
     <h3>Ce que nous ne publions pas</h3>
     <p>{{ facts.PERFORMANCE_POLICY }}</p>
@@ -125,7 +121,7 @@
 
     <section class="blog-cta page-cta">
         <h2>Anticipez les {{ facts.ALERTES_HORIZON_JOURS }} prochains jours Tempo</h2>
-        <p>Recevez gratuitement par WhatsApp {{ facts.ALERTES_DESCRIPTION }}.</p>
+        <p>{{ facts.ALERTES_DESCRIPTION_COURT }}. Gratuit, sans engagement.</p>
         <button type="button" class="btn" onclick="openSubscribeModal()">S'inscrire aux alertes gratuites</button>
     </section>
 </article>

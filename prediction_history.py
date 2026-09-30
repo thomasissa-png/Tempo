@@ -130,10 +130,20 @@ def _num(value) -> float | None:
 _PROBA_COL = {"BLEU": "probabilite_bleu", "BLANC": "probabilite_blanc", "ROUGE": "probabilite_rouge"}
 
 
-def _load_preds(conn, start: str) -> dict:
-    """{(date_cible, N): {"couleur", "ts", "emise_le", "temp", "proba"}}."""
+def _load_preds(conn, start: str) -> tuple[dict, dict]:
+    """({(date_cible, N): {"couleur", "ts", "emise_le", "temp", "proba"}}, info).
+
+    info["emissions"] : jours où au moins un calcul réel a été enregistré (toutes
+    lignes réelles, quel que soit l'horizon) ; sert à repérer les jours sans calcul.
+    info["publiee_avant_calcul"] : dates cibles dont la ligne « la veille » a été
+    enregistrée directement comme couleur officielle (confirmed = 1 sans
+    couleur_originale) : EDF avait déjà publié la couleur avant le calcul de 18 h,
+    predict_range() n'a donc pas émis de prévision pour ce jour (comportement voulu).
+    """
     preds: dict = {}
     backtest_keys: set = set()
+    emissions: set = set()
+    publiee: set = set()
     # 1) Évaluations figées (table performance) : couleur émise, jamais purgée.
     for p in conn.execute(
         "SELECT date_prediction, date_cible, jours_avance, couleur_predite, contexte_meteo "
@@ -148,6 +158,8 @@ def _load_preds(conn, start: str) -> dict:
                 continue
         except (TypeError, ValueError):
             continue
+        if not _is_backtest(p["contexte_meteo"]):
+            emissions.add(emitted)
         if _is_backtest(p["contexte_meteo"]):
             # Une prédiction de backtest importée sans cycle_id (db_sync n'exporte pas
             # cette colonne) est reconnue par son évaluation « backtest ».
@@ -175,9 +187,14 @@ def _load_preds(conn, start: str) -> dict:
         except ValueError:
             continue
         n = emission_horizon(target, emitted)
-        if emitted.isoformat() < start or n not in HORIZONS:
+        if emitted.isoformat() < start:
+            continue
+        emissions.add(emitted.isoformat())
+        if n not in HORIZONS:
             continue
         couleur, proba = r["couleur_predite"], None
+        if r["confirmed"] and n == 1 and not r["couleur_originale"]:
+            publiee.add(target.isoformat())
         if r["confirmed"]:
             # confirm_prediction() écrase couleur et probabilités : couleur émise =
             # couleur_originale ; perdue -> l'évaluation figée (performance) fait foi.
@@ -209,7 +226,7 @@ def _load_preds(conn, start: str) -> dict:
         for (d, _n), v in preds.items():
             if v["temp"] is None:
                 v["temp"] = log.get((d, v["emise_le"][:10]))
-    return preds
+    return preds, {"emissions": emissions, "publiee_avant_calcul": publiee}
 
 
 def _load_actuals(conn, start: str) -> tuple[dict, dict, dict]:
@@ -241,12 +258,18 @@ def _load_actuals(conn, start: str) -> tuple[dict, dict, dict]:
 # ================================================================
 
 def _empty_color_stats() -> dict:
-    return {"reels": 0, "annonces": 0, "sans_prevision": 0,
+    return {"reels": 0, "reels_emis": 0, "annonces": 0, "sans_prevision": 0,
             "alertes": 0, "alertes_justes": 0}
 
 
 def _horizon_stats(days: list[dict], n: int) -> dict:
-    """Effectifs pour un horizon N sur une liste de jours (déjà bornée à la saison)."""
+    """Effectifs pour un horizon N sur une liste de jours (déjà bornée à la saison).
+
+    Décision fondateur du 2026-09-30 : les taux se calculent sur les prévisions
+    RÉELLEMENT ÉMISES (un jour sans prévision n'est ni juste ni erroné) ; la
+    couverture (jours sans prévision) est publiée à part. Le repère « dire bleu
+    tous les jours » est calculé sur les mêmes jours (ceux qui ont une prévision).
+    """
     st = {c: _empty_color_stats() for c in ("ROUGE", "BLANC")}
     eligible = justes = bleus = sans = 0
     for d in days:
@@ -258,7 +281,7 @@ def _horizon_stats(days: list[dict], n: int) -> dict:
         prevu = cell["couleur"] if cell else None
         sans += prevu is None
         justes += prevu == reel
-        bleus += reel == "BLEU"
+        bleus += reel == "BLEU" and prevu is not None
         for c, s in st.items():
             if reel == c:
                 s["reels"] += 1
@@ -270,20 +293,23 @@ def _horizon_stats(days: list[dict], n: int) -> dict:
                 s["alertes"] += 1
                 s["alertes_justes"] += reel == c
     for s in st.values():
-        s["rappel_pct"] = _pct(s["annonces"], s["reels"])
+        s["reels_emis"] = s["reels"] - s["sans_prevision"]
+        s["rappel_pct"] = _pct(s["annonces"], s["reels_emis"])
         s["precision_pct"] = _pct(s["alertes_justes"], s["alertes"])
+    emises = eligible - sans
     return {
         "n": n, "fiable": n in RELIABLE, "ROUGE": st["ROUGE"], "BLANC": st["BLANC"],
-        "jours": eligible, "sans_prevision": sans,
-        "justes": justes, "justes_pct": _pct(justes, eligible),
-        "toujours_bleu": bleus, "toujours_bleu_pct": _pct(bleus, eligible),
+        "jours": eligible, "sans_prevision": sans, "emises": emises,
+        "justes": justes, "erronees": emises - justes, "justes_pct": _pct(justes, emises),
+        "toujours_bleu": bleus, "toujours_bleu_pct": _pct(bleus, emises),
     }
 
 
 def _bref(fiables: list[dict]) -> dict:
     """Bloc « En bref » : effectifs J-2 à J-5 cumulés (une prévision par jour et par délai)."""
-    tot = {"jours": 0, "justes": 0, "toujours_bleu": 0}
-    col = {c: {"reels": 0, "annonces": 0, "alertes": 0, "alertes_justes": 0} for c in ("ROUGE", "BLANC")}
+    tot = {"jours": 0, "emises": 0, "justes": 0, "erronees": 0, "sans_prevision": 0, "toujours_bleu": 0}
+    col = {c: {"reels": 0, "reels_emis": 0, "annonces": 0, "alertes": 0, "alertes_justes": 0}
+           for c in ("ROUGE", "BLANC")}
     for h in fiables:
         for k in tot:
             tot[k] += h[k]
@@ -291,24 +317,49 @@ def _bref(fiables: list[dict]) -> dict:
             for k in s:
                 s[k] += h[c][k]
     for s in col.values():
-        s["rappel_pct"] = _pct(s["annonces"], s["reels"])
+        s["rappel_pct"] = _pct(s["annonces"], s["reels_emis"])
         s["precision_pct"] = _pct(s["alertes_justes"], s["alertes"])
-    return {**tot, "justes_pct": _pct(tot["justes"], tot["jours"]),
-            "toujours_bleu_pct": _pct(tot["toujours_bleu"], tot["jours"]), **col}
+    return {**tot, "justes_pct": _pct(tot["justes"], tot["emises"]),
+            "toujours_bleu_pct": _pct(tot["toujours_bleu"], tot["emises"]), **col}
+
+
+def _jours_sans_calcul(emissions: set, start_d: date | None, today: date) -> list[str]:
+    """Jours d'émission sans AUCUN calcul enregistré, de la première émission à hier.
+
+    Aujourd'hui est exclu (le calcul de 18 h n'a peut-être pas encore eu lieu).
+    Aucune prévision n'est jamais recréée pour ces jours (règle zéro invention).
+    """
+    if not emissions:
+        return []
+    try:
+        first = min(date.fromisoformat(e) for e in emissions)
+    except ValueError:
+        return []
+    if start_d and first < start_d:
+        first = start_d
+    out, d = [], first
+    while d < today:
+        if d.isoformat() not in emissions:
+            out.append(d.isoformat())
+        d += timedelta(days=1)
+    return out
 
 
 def _build(conn, today: date) -> dict:
     start = _start_date()
-    preds = _load_preds(conn, start)
+    preds, info = _load_preds(conn, start)
     actuals, confirmed_at, observed = _load_actuals(conn, start)
     start_d = date.fromisoformat(start) if start[:4] != "0000" else None
+    sans_calcul = _jours_sans_calcul(info["emissions"], start_d, today)
+    sans_calcul_set = set(sans_calcul)
+    publiee = info["publiee_avant_calcul"]
 
     by_season: dict[int, list] = {}
     for d_iso in sorted(actuals):
         d = date.fromisoformat(d_iso)
         if d > today:
             continue  # uniquement les jours passés ou aujourd'hui
-        cells = {}
+        cells, causes = {}, {}
         for n in HORIZONS:
             if start_d and d - timedelta(days=n) < start_d:
                 cells[n] = NA
@@ -316,10 +367,16 @@ def _build(conn, today: date) -> dict:
                 p = preds.get((d_iso, n))
                 cells[n] = ({"couleur": p["couleur"], "emise_le": p["emise_le"],
                              "temp": p["temp"], "proba": p["proba"]} if p else None)
+                if not p:
+                    e_iso = (d - timedelta(days=n)).isoformat()
+                    if e_iso in sans_calcul_set:
+                        causes[n] = ("interruption", e_iso)
+                    elif n == 1 and d_iso in publiee:
+                        causes[n] = ("publiee", e_iso)
         if all(c == NA for c in cells.values()):
             continue  # service pas encore lancé pour ce jour, quel que soit l'horizon
         by_season.setdefault(season_start_year(d), []).append(
-            {"date": d_iso, "couleur": actuals[d_iso], "cells": cells,
+            {"date": d_iso, "couleur": actuals[d_iso], "cells": cells, "causes": causes,
              "temp_observee": observed.get(d_iso),
              "confirme_le": confirmed_at.get(d_iso, "")})
 
@@ -339,8 +396,50 @@ def _build(conn, today: date) -> dict:
             "last_date": days[-1]["date"],
             "last_evaluation": lm,
             "horizons": [_horizon_stats(days, n) for n in HORIZONS],
+            "jours_sans_calcul": [e for e in sans_calcul
+                                  if season_start_year(date.fromisoformat(e)) == y],
         }
     return {"seasons": seasons, "last_evaluation": last_eval}
+
+
+def season_is_complete(label: str, today: date) -> bool:
+    """Saison terminée : son 31 août est passé."""
+    y = parse_season_label(label)
+    return y is not None and today > date(y + 1, 8, 31)
+
+
+def pct_visible(label: str, today: date) -> bool:
+    """Décision fondateur du 2026-09-30 : pas de pourcentage pour la saison en cours
+    avant le 1er novembre (avant, presque tous les jours sont bleus et le taux ne
+    veut pas dire grand-chose). Saisons passées : toujours visibles."""
+    y = parse_season_label(label)
+    if y is None:
+        return False
+    return season_is_complete(label, today) or today >= date(y, 11, 1)
+
+
+def season_summary(data: dict, label: str) -> dict | None:
+    """Résumé 2 à 5 jours avant d'une saison : effectifs, taux sur prévisions émises,
+    couverture et repère « toujours bleu ». None si aucune prévision émise."""
+    s = data.get("seasons", {}).get(label)
+    if not s:
+        return None
+    b = _bref([h for h in s["horizons"] if h["fiable"]])
+    if not b["emises"]:
+        return None
+    return {**b, "label": label, "jours_sans_calcul": len(s.get("jours_sans_calcul", []))}
+
+
+def last_complete_season_summary(data: dict, today: date | None = None) -> dict | None:
+    """Taux mis en avant sur tout le site (décision fondateur du 2026-09-30) :
+    celui de la DERNIÈRE SAISON COMPLÈTE (31 août passé), calculé, jamais en dur."""
+    today = today or today_paris()
+    for label in sorted(data.get("seasons", {}), reverse=True):
+        if season_is_complete(label, today):
+            summary = season_summary(data, label)
+            if summary and summary["justes_pct"] is not None:
+                return summary
+    return None
 
 
 def get_history(force: bool = False) -> dict:
@@ -425,29 +524,70 @@ def season_path(label: str, current_label: str) -> str:
 
 
 def _temp_label(t: float | None) -> str:
-    return "n/d" if t is None else f"{_fr_temp(t)}°"
+    """Même format que les cartes du calendrier : « 16,1° », vrai signe moins."""
+    import site_facts
+    return site_facts.fr_temp(t) or "n/d"
 
 
-def _grid_cell(cell, n: int, reel: str) -> dict:
+def _grid_cell(cell, n: int, reel: str, cause: tuple | None = None) -> dict:
+    import site_facts
     avant = "la veille" if n == 1 else f"{n} jours avant"
     if cell == NA:
         return {"state": "na", "title": f"{avant.capitalize()} : service pas encore lancé"}
     if not cell:
-        return {"state": "absente", "title": f"{avant.capitalize()} : aucune prévision émise"}
+        if cause and cause[0] == "interruption":
+            e = site_facts.fr_date(date.fromisoformat(cause[1]), with_weekday=False)
+            title = f"{avant.capitalize()} : pas de prévision, service interrompu le {e}"
+        elif cause and cause[0] == "publiee":
+            title = (f"{avant.capitalize()} : pas de prévision, couleur déjà publiée par EDF "
+                     "avant notre calcul de 18 h")
+        else:
+            title = f"{avant.capitalize()} : aucune prévision enregistrée"
+        return {"state": "absente", "cause": cause[0] if cause else None, "title": title}
     juste = cell["couleur"] == reel
     parts = [f"Prévu {avant} : {NOMS[cell['couleur']]}, {'juste' if juste else 'erroné'}"]
     if cell["proba"] is not None:
         parts.append(f"probabilité {cell['proba']} %")
-    parts.append("température prévue non conservée" if cell["temp"] is None
-                 else f"température moyenne prévue {_fr_temp(cell['temp'])} °C")
+    t = site_facts.fr_temp(cell["temp"])
+    parts.append("température prévue non conservée" if t is None
+                 else f"température moyenne prévue {t[:-1]} °C")
     return {"state": "ok", "couleur": cell["couleur"], "juste": juste,
-            "temp": _temp_label(cell["temp"]), "has_temp": cell["temp"] is not None,
+            "temp": _temp_label(cell["temp"]), "has_temp": t is not None,
             "title": " ; ".join(parts)}
 
 
-def page_context(data: dict, label: str, current_label: str) -> dict:
+def _mask_pcts(obj):
+    """Retire les pourcentages (clés *_pct) d'un bloc de statistiques."""
+    if isinstance(obj, dict):
+        return {k: (None if k.endswith("_pct") else _mask_pcts(v)) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_mask_pcts(v) for v in obj]
+    return obj
+
+
+def _fr_liste_dates(isos: list[str]) -> str:
+    """['2026-09-15', '2026-09-17', '2026-10-02'] -> '15 et 17 septembre 2026, 2 octobre 2026'
+    (dates groupées par mois, séparateur final « et »)."""
+    import site_facts
+    groups: list[tuple[tuple[int, int], list[int]]] = []
+    for iso in isos:
+        d = date.fromisoformat(iso)
+        if groups and groups[-1][0] == (d.year, d.month):
+            groups[-1][1].append(d.day)
+        else:
+            groups.append(((d.year, d.month), [d.day]))
+    parts = []
+    for (y, m), days in groups:
+        nums = ["1er" if x == 1 else str(x) for x in days]
+        txt = nums[0] if len(nums) == 1 else ", ".join(nums[:-1]) + " et " + nums[-1]
+        parts.append(f"{txt} {site_facts.MOIS_FR[m]} {y}")
+    return " ; ".join(parts)
+
+
+def page_context(data: dict, label: str, current_label: str, today: date | None = None) -> dict:
     """Contexte Jinja pour une saison (dates formatées, liens de saison)."""
     import site_facts
+    today = today or today_paris()
 
     def short(d_iso: str) -> str:
         return site_facts.fr_date(date.fromisoformat(d_iso), with_weekday=False)
@@ -460,19 +600,24 @@ def page_context(data: dict, label: str, current_label: str) -> dict:
     ]
     s = seasons.get(label)
     view = None
+    show_pct = pct_visible(label, today)
     if s:
         rows = []
         for d in reversed(s["days"]):  # plus récent en premier
             dd = date.fromisoformat(d["date"])
+            causes = d.get("causes", {})
             rows.append({
                 "iso": d["date"],
                 "label": f"{site_facts.JOURS_FR[dd.weekday()][:3]}. {dd.day:02d}/{dd.month:02d}",
                 "label_long": site_facts.fr_date(dd),
                 "couleur": d["couleur"],
                 "temp_observee": _temp_label(d["temp_observee"]),
-                "cells": [_grid_cell(d["cells"][n], n, d["couleur"]) for n in GRID_HORIZONS],
+                "cells": [_grid_cell(d["cells"][n], n, d["couleur"], causes.get(n)) for n in GRID_HORIZONS],
             })
         hz = s["horizons"]
+        if not show_pct:
+            hz = _mask_pcts(hz)
+        sans_calcul = s.get("jours_sans_calcul", [])
         view = {
             "label": label,
             "first_date": short(s["first_date"]),
@@ -482,19 +627,29 @@ def page_context(data: dict, label: str, current_label: str) -> dict:
             "nb_days": len(s["days"]),
             "veille": [h for h in hz if h["n"] == 1],
             "fiables": [h for h in hz if h["fiable"]],
-            "bref": _bref([h for h in hz if h["fiable"]]),
+            "bref": _bref([h for h in hz if h["fiable"]]) if show_pct
+                    else _mask_pcts(_bref([h for h in hz if h["fiable"]])),
             "indicatifs": [h for h in hz if h["n"] > max(RELIABLE)],
             "rows": rows,
             "temp_manquante": any(c["state"] == "ok" and not c["has_temp"]
                                   for r in rows for c in r["cells"]),
+            "jours_sans_calcul": sans_calcul,
+            "jours_sans_calcul_txt": _fr_liste_dates(sans_calcul),
+            "veille_publiee": any(c.get("cause") == "publiee" for r in rows for c in r["cells"]),
         }
     y = parse_season_label(label) or 0
+    reference = last_complete_season_summary(data, today)
+    if reference:
+        reference = {**reference, "path": season_path(reference["label"], current_label)}
     return {
         "season_label": label,
         "is_current": label == current_label,
         "season_links": season_links,
         "h": view,
         "pct_min": PCT_MIN_EFFECTIF,
+        "pct_visible": show_pct,
+        # Taux de référence publié (dernière saison complète), rappelé en tête de la saison en cours
+        "reference": reference if reference and label == current_label and reference["label"] != label else None,
         "grid_horizons": GRID_HORIZONS,
         "season_start_iso": f"{y}-09-01",
         "season_end_iso": f"{y + 1}-08-31",

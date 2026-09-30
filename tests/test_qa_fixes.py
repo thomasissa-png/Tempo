@@ -1303,7 +1303,7 @@ class TestWhatsAppFixes:
         with open(os.path.join(os.path.dirname(os.path.dirname(__file__)), "alerts.py")) as f:
             content = f.read()
         # Must contain the shortened message
-        assert "Ce numéro est déjà inscrit. Retrouvez votre lien de gestion dans vos messages WhatsApp." in content
+        assert "Ce numéro est déjà inscrit. Votre lien de gestion est dans vos messages WhatsApp" in content
         # Must NOT contain the old RECAP mention
         assert "répondez RECAP au bot" not in content
 

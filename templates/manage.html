@@ -39,7 +39,7 @@
     <section class="subscribe-section" style="margin-top:16px">
         <h2 style="text-align:center">G&eacute;rer mes alertes</h2>
         <p class="sub-desc" style="text-align:center">
-            Compte ****{{ user.phone_last4 }} : modifiez vos préférences ci-dessous.
+            Num&eacute;ro se terminant par {{ user.phone_last4 }}&nbsp;: modifiez vos pr&eacute;f&eacute;rences ci-dessous.
         </p>
 
         <form id="manage-form">
@@ -47,15 +47,18 @@
                 <div class="form-group">
                     <label for="seuil_rouge">Quand vous prévenir ?</label>
                     <select id="seuil_rouge" name="seuil_rouge">
-                        <option value="70" {% if user.seuil_alerte_rouge == 70 %}selected{% endif %}>Prudent : dès qu'un jour rouge est probable</option>
-                        <option value="80" {% if user.seuil_alerte_rouge == 80 %}selected{% endif %}>Recommandé : bon équilibre</option>
-                        <option value="90" {% if user.seuil_alerte_rouge == 90 %}selected{% endif %}>Sûr : alertes rares, quasi certaines</option>
+                        {# Depuis la calibration (alerts.rouge_alert_due), les niveaux 70 et 80 déclenchent la
+                           même alerte : un seul choix affiché, valeur stockée conservée (70 ou 80). #}
+                        {% set s = user.seuil_alerte_rouge %}
+                        <option value="{{ 80 if s == 80 else 70 }}" {% if s in (70, 80) %}selected{% endif %}>Recommandé : tous les jours rouges que nous prévoyons</option>
+                        <option value="90" {% if s == 90 %}selected{% endif %}>Sélectif : seulement les rouges quasi certains</option>
+                        {% if s not in (70, 80, 90) %}<option value="{{ s }}" selected>{% if not s %}Pas d'alerte avant un jour rouge{% else %}Votre réglage actuel (seuil {{ s }}&nbsp;%){% endif %}</option>{% endif %}
                     </select>
                 </div>
                 <div class="form-group">
                     <label for="delai">Combien de temps avant ?</label>
                     <select id="delai" name="delai">
-                        <option value="1" {% if user.delai_alerte == 1 %}selected{% endif %}>La veille (le plus fiable)</option>
+                        <option value="1" {% if user.delai_alerte == 1 %}selected{% endif %}>La veille (la plus fiable)</option>
                         <option value="2" {% if user.delai_alerte == 2 %}selected{% endif %}>2 jours avant</option>
                         <option value="3" {% if user.delai_alerte == 3 %}selected{% endif %}>3 jours avant (pour mieux planifier)</option>
                     </select>
@@ -63,9 +66,10 @@
                 <div class="form-group">
                     <label for="heure_envoi">Heure d'envoi</label>
                     <select id="heure_envoi" name="heure_envoi">
-                        <option value="matin" {% if user.heure_envoi == 'matin' or not user.heure_envoi %}selected{% endif %}>Matin (7h30), pour planifier votre journée</option>
-                        <option value="soir" {% if user.heure_envoi == 'soir' %}selected{% endif %}>Soir (18h), pour préparer le lendemain</option>
+                        <option value="matin" {% if user.heure_envoi == 'matin' or not user.heure_envoi %}selected{% endif %}>Matin (7&nbsp;h&nbsp;30), pour planifier votre journ&eacute;e</option>
+                        <option value="soir" {% if user.heure_envoi == 'soir' %}selected{% endif %}>Soir (18&nbsp;h), pour pr&eacute;parer le lendemain</option>
                     </select>
+                    <span class="form-hint" id="soir-veille-hint" aria-live="polite"{% if not (user.heure_envoi == 'soir' and user.delai_alerte == 1) %} hidden{% endif %}>Avec &laquo;&nbsp;La veille&nbsp;&raquo; et l'envoi du soir, vous ne recevez que la couleur officielle&nbsp;: &agrave; 18&nbsp;h, celle de demain est d&eacute;j&agrave; publi&eacute;e.</span>
                 </div>
                 <div class="form-group">
                     <label>Options</label>
@@ -75,7 +79,7 @@
                     </div>
                     <div class="form-checkbox" style="margin-top:8px">
                         <input type="checkbox" id="recap_hebdo" name="recap_hebdo" value="true" {% if user.recap_hebdo %}checked{% endif %}>
-                        <label for="recap_hebdo">Récap hebdomadaire chaque dimanche</label>
+                        <label for="recap_hebdo">R&eacute;capitulatif des 7 jours, chaque dimanche soir</label>
                     </div>
                 </div>
             </div>
@@ -98,24 +102,19 @@
 
 </main>
 
-<footer role="contentinfo">
-    <div class="footer-inner">
-        <div class="footer-brand">Calendrier Tempo EDF</div>
-        <div class="footer-tagline">Service ind&eacute;pendant et gratuit.</div>
-        <div class="footer-links">
-            <a href="/">Accueil</a>
-            <a href="/calendrier">Calendrier</a>
-            <a href="/blog/">Blog</a>
-            <a href="/alertes">Alertes</a>
-            <a href="/mentions-legales">Mentions l&eacute;gales</a>
-        </div>
-    </div>
-</footer>
+{% include '_footer.html' %}
 
 {% if not error %}
 <script>
 (function() {
     const token = {{ token | tojson }};
+
+    // Soir + « La veille » : seule la couleur officielle arrive (déjà publiée à 18 h)
+    const heure = document.getElementById('heure_envoi');
+    const delai = document.getElementById('delai');
+    const hint = document.getElementById('soir-veille-hint');
+    function updateHint() { if (hint) hint.hidden = !(heure.value === 'soir' && delai.value === '1'); }
+    if (heure && delai) { heure.addEventListener('change', updateHint); delai.addEventListener('change', updateHint); }
 
     // Formulaire de mise à jour des préférences
     const form = document.getElementById('manage-form');
@@ -127,7 +126,7 @@
         resultEl.style.display = 'none';
         const originalText = btn.textContent;
         btn.disabled = true;
-        btn.textContent = 'Enregistrement...';
+        btn.textContent = 'Enregistrement…';
 
         try {
             const formData = new FormData(form);
@@ -142,14 +141,14 @@
 
             if (resp.ok) {
                 resultEl.className = 'form-result success';
-                resultEl.textContent = data.message || 'Préférences mises à jour !';
+                resultEl.textContent = data.message || 'Préférences enregistrées.';
             } else {
                 resultEl.className = 'form-result error';
-                resultEl.textContent = data.detail || 'Erreur lors de la mise à jour.';
+                resultEl.textContent = data.detail || 'L\'enregistrement a échoué. Réessayez dans un instant.';
             }
         } catch {
             resultEl.className = 'form-result error';
-            resultEl.textContent = 'Erreur de connexion au serveur.';
+            resultEl.textContent = 'Connexion impossible. Réessayez dans un instant.';
         } finally {
             resultEl.style.display = 'block';
             btn.disabled = false;
@@ -162,11 +161,11 @@
     const unsubResult = document.getElementById('unsub-manage-result');
 
     unsubBtn.addEventListener('click', async function() {
-        if (!confirm('Voulez-vous vraiment vous désinscrire des alertes du Calendrier Tempo ?')) return;
+        if (!confirm('Confirmer la désinscription ? Vous pourrez vous réinscrire en répondant START sur WhatsApp.')) return;
 
         unsubResult.style.display = 'none';
         unsubBtn.disabled = true;
-        unsubBtn.textContent = 'Désinscription...';
+        unsubBtn.textContent = 'Désinscription…';
 
         try {
             const resp = await fetch('/api/manage/' + token + '/unsubscribe', {
@@ -176,19 +175,19 @@
 
             if (resp.ok) {
                 unsubResult.className = 'form-result success';
-                unsubResult.textContent = 'Désinscription effectuée. Vous ne recevrez plus d\'alertes.';
+                unsubResult.textContent = 'Désinscription effectuée. Vous ne recevrez plus de messages. Pour revenir, répondez START sur WhatsApp.';
                 // Masquer le formulaire de préférences
                 form.style.display = 'none';
                 unsubBtn.style.display = 'none';
             } else {
                 unsubResult.className = 'form-result error';
-                unsubResult.textContent = data.detail || 'Erreur lors de la désinscription.';
+                unsubResult.textContent = data.detail || 'La désinscription a échoué. Réessayez dans un instant.';
                 unsubBtn.disabled = false;
                 unsubBtn.textContent = 'Me désinscrire';
             }
         } catch {
             unsubResult.className = 'form-result error';
-            unsubResult.textContent = 'Erreur de connexion au serveur.';
+            unsubResult.textContent = 'Connexion impossible. Réessayez dans un instant.';
             unsubBtn.disabled = false;
             unsubBtn.textContent = 'Me désinscrire';
         } finally {

@@ -14,6 +14,8 @@ from datetime import date, datetime, timedelta
 
 import pytest
 
+import site_facts
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 NEW_PAGES = ["/tarif-tempo-edf", "/couleur-tempo-demain", "/api-tempo", "/methodologie"]
@@ -87,7 +89,8 @@ class TestFaqSingleSource:
         faq = dict(_faq_ld(client.get("/").text))
         weekend = faq["Un jour rouge peut-il tomber un samedi, un dimanche ou un jour férié ?"]
         assert weekend.startswith("Non.")
-        assert "jamais rouge" in weekend and "jamais ni rouge ni blanc" in weekend
+        assert "jamais rouge" in weekend and "jamais rouge ni blanc" in weekend
+        assert "jamais ni" not in weekend  # double négation fautive (copy deck 14.2)
 
     def test_selectra_link_unchanged(self, client):
         page = client.get("/").text
@@ -139,9 +142,9 @@ class TestSsrColors:
         _insert_actual(today + timedelta(days=1), "ROUGE")
         text = html.unescape(re.sub(r"<[^>]+>", " ", client.get("/").text))
         text = re.sub(r"\s+", " ", text)
-        assert "Couleur Tempo EDF aujourd'hui," in text
-        assert ": Bleu . Demain," in text
-        assert "Rouge (couleurs officielles EDF)" in text
+        # Texte visible des grandes pastilles : jour, date courte, couleur, statut
+        assert "Aujourd'hui " + site_facts.fr_date_courte(today, sep=" ") + " Bleu Confirmé par EDF" in text.replace("\xa0", " ")
+        assert "Demain " + site_facts.fr_date_courte(today + timedelta(days=1), sep=" ") + " Rouge Confirmé par EDF" in text.replace("\xa0", " ")
 
     def test_tomorrow_forecast_is_labelled(self, client):
         from database import get_db
@@ -156,8 +159,9 @@ class TestSsrColors:
         conn.commit()
         conn.close()
         page = html.unescape(client.get("/couleur-tempo-demain").text)
-        assert "notre prévision est" in page
-        assert "jour blanc" in page and "70" in page
+        assert "notre prévision donne un" in page
+        assert "jour blanc" in page and "70 % de chances" in page.replace("\xa0", " ")
+        assert "edf publie" not in page  # ANNONCE_J1|lower mettait « EDF » en minuscules
 
     def test_week_dots_have_full_color_name(self, client):
         from database import get_db

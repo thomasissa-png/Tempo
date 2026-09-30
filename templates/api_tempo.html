@@ -78,7 +78,7 @@
             <tr><th scope="row"><a href="/api/remaining" target="_blank" rel="noopener"><code>GET /api/remaining</code></a></th><td data-label="Contenu">Jours restants par couleur dans la saison en cours</td><td class="api-cache" data-label="Cache">2 min</td></tr>
             <tr><th scope="row"><a href="/api/predictions" target="_blank" rel="noopener"><code>GET /api/predictions</code></a></th><td data-label="Contenu">Nos pr&eacute;visions jour par jour (jusqu'&agrave; J+{{ facts.HORIZON_MAX_JOURS }}), avec probabilit&eacute;s</td><td class="api-cache" data-label="Cache">2 min</td></tr>
             <tr><th scope="row"><a href="/api/history?days=30" target="_blank" rel="noopener"><code>GET /api/history?days=30</code></a></th><td data-label="Contenu">Couleurs officielles des N derniers jours (1 &agrave; 365)</td><td class="api-cache" data-label="Cache">aucun</td></tr>
-            <tr><th scope="row"><a href="/api/performance/badge" target="_blank" rel="noopener"><code>GET /api/performance/badge</code></a></th><td data-label="Contenu">Taux de pr&eacute;visions correctes de {{ facts.HORIZON_FIABLE }} sur 30 jours</td><td class="api-cache" data-label="Cache">5 min</td></tr>
+            <tr><th scope="row"><a href="/api/performance/badge" target="_blank" rel="noopener"><code>GET /api/performance/badge</code></a></th><td data-label="Contenu">Taux de pr&eacute;visions justes (faites 2 &agrave; 5 jours &agrave; l'avance) de la derni&egrave;re saison compl&egrave;te, calcul&eacute; sur les pr&eacute;visions r&eacute;ellement &eacute;mises, avec la couverture et le rep&egrave;re &laquo;&nbsp;toujours bleu&nbsp;&raquo;</td><td class="api-cache" data-label="Cache">5 min</td></tr>
         </tbody>
     </table>
     </div>
@@ -101,7 +101,9 @@
     <p>Champs&nbsp;: <code>predictions</code> (liste), <code>generated_at</code>, <code>cycle_id</code>, <code>accuracy</code>.
         Chaque pr&eacute;vision contient <code>date</code>, <code>couleur_predite</code>, <code>probabilite_bleu</code>,
         <code>probabilite_blanc</code>, <code>probabilite_rouge</code> (entre 0 et 1), <code>score_risque</code>,
-        <code>temp_min_prevue</code>, <code>temp_max_prevue</code>, <code>raison</code>, <code>horizon</code> et
+        <code>temp_min_prevue</code>, <code>temp_max_prevue</code>, <code>temp_moy_prevue</code> (temp&eacute;rature moyenne pr&eacute;vue en &deg;C,
+        pond&eacute;r&eacute;e sur 9 villes, 1 d&eacute;cimale, <code>null</code> si absente&nbsp;: c'est la valeur affich&eacute;e sous chaque jour du calendrier),
+        <code>raison</code>, <code>horizon</code> et
         <code>confirmed</code> (<code>true</code> quand la couleur officielle EDF est connue&nbsp;: elle remplace alors la pr&eacute;vision).</p>
 
     <h2>/api/history</h2>

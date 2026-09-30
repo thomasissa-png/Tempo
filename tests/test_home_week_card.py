@@ -1,9 +1,10 @@
 """Carte « Les 10 prochains jours » de l'accueil (passe du 2026-09-30).
 
-- Aujourd'hui et Demain en grandes pastilles avec le nom de la couleur écrit.
-- Une seule phrase SEO (SSR) pour aujourd'hui et demain, sans triple redite.
-- Phrase « la suite » identique en Python (site_facts.week_outlook_html) et en JS
-  (weekOutlookHtml), couvrant toute la période affichée, avec la règle EDF R1.
+- Aujourd'hui et Demain en grandes pastilles avec le nom de la couleur écrit et la date
+  courte visible (« mer. 30 sept. ») ; statut « Confirmé par EDF » ou « Prévu à 88 % ».
+- Plus de paragraphe de redite sous les pastilles (copy deck du 2026-09-30, section 0).
+- Phrase sous les pastilles (variantes V1 à V5) identique en Python
+  (site_facts.week_outlook_html) et en JS (weekOutlookHtml), avec la règle EDF R1.
 - Le rendu SSR des pastilles et le rendu JS (renderWeekSummary) produisent le même HTML.
 """
 
@@ -31,9 +32,10 @@ def client():
     return TestClient(app_module.app)
 
 
-def _days(start: date, couleurs: list[str], heroes: int = 2) -> list[dict]:
+def _days(start: date, couleurs: list[str], heroes: int = 2, demain_publie: bool = True) -> list[dict]:
     return [
-        {"date": (start + timedelta(days=i)).isoformat(), "couleur": c, "is_hero": i < heroes}
+        {"date": (start + timedelta(days=i)).isoformat(), "couleur": c, "is_hero": i < heroes,
+         "is_tomorrow": i == 1 and heroes >= 2, "confirmed": i == 0 or (i == 1 and demain_publie)}
         for i, c in enumerate(couleurs)
     ]
 
@@ -46,18 +48,30 @@ def _text(fragment: str) -> str:
 # ---------------------------------------------------------------- phrase « la suite »
 
 class TestWeekOutlook:
-    def test_all_blue_before_november_mentions_r1(self):
+    def test_v1_all_blue_before_november_mentions_r1(self):
         txt = week_outlook_html(_days(date(2026, 9, 30), ["BLEU"] * 10))
-        assert txt == ("Aucun jour rouge ni blanc prévu d'ici le vendredi 9 octobre. "
-                       "Aucun jour rouge possible avant le 1er novembre (règle EDF).")
+        assert txt == ("Aucun jour rouge ni blanc prévu d'ici le 9 octobre. "
+                       "Pas de rouge possible avant novembre (règle EDF).")
+        # jamais « premier jour rouge possible le 1er novembre » (férié, dimanche en 2026)
+        assert "1er novembre" not in txt
+
+    def test_v2_all_blue_in_winter_has_no_rule(self):
+        txt = week_outlook_html(_days(date(2026, 11, 30), ["BLEU"] * 10))
+        assert txt == "Aucun jour rouge ni blanc prévu d'ici le 9 décembre."
+
+    def test_v5_tomorrow_not_published(self):
+        txt = week_outlook_html(_days(date(2026, 9, 30), ["BLEU"] * 10, demain_publie=False))
+        assert txt == ("EDF publie la couleur de demain vers 11&nbsp;h : d'ici là, la pastille montre "
+                       "notre prévision. Aucun jour rouge ni blanc prévu d'ici le 9 octobre. "
+                       "Pas de rouge possible avant novembre (règle EDF).")
 
     def test_counts_cover_whole_period_with_day_numbers(self):
         # 2027-01-04 = lundi ; J+2 mercredi 6 et jeudi 7 rouges, vendredi 8 blanc
         couleurs = ["BLEU", "BLEU", "ROUGE", "ROUGE", "BLANC", "BLEU", "BLEU", "BLEU", "BLEU", "BLEU"]
         txt = week_outlook_html(_days(date(2027, 1, 4), couleurs))
         assert txt == ("<strong>2 jours rouges</strong> (mercredi 6, jeudi 7) et "
-                       "<strong>1 jour blanc</strong> (vendredi 8) prévus d'ici le mercredi 13 janvier. "
-                       "<strong>Planifiez vos machines les jours bleus.</strong>")
+                       "<strong>1 jour blanc</strong> (vendredi 8) prévus d'ici le 13 janvier. "
+                       "Planifiez vos machines les jours bleus.")
         assert "cette semaine" not in txt
 
     def test_singular_and_first_of_month(self):
@@ -71,9 +85,14 @@ class TestWeekOutlook:
         assert txt.startswith("Ensuite, aucun jour rouge ni blanc prévu")
         assert "mardi 5" not in txt  # demain (rouge) déjà affiché en grand
 
-    def test_after_march_31(self):
+    def test_after_march_31_same_rule(self):
         txt = week_outlook_html(_days(date(2027, 4, 2), ["BLEU"] * 10))
-        assert txt.endswith("Plus de jour rouge depuis le 31 mars : aucun avant le 1er novembre (règle EDF).")
+        assert txt.endswith("Pas de rouge possible avant novembre (règle EDF).")
+
+    def test_v4_hero_colour_in_summer_keeps_rule(self):
+        txt = week_outlook_html(_days(date(2026, 10, 1), ["BLEU", "BLANC"] + ["BLEU"] * 8))
+        assert txt == ("Ensuite, aucun jour rouge ni blanc prévu d'ici le 10 octobre. "
+                       "Pas de rouge possible avant novembre (règle EDF).")
 
     def test_period_reaching_november_has_no_r1_sentence(self):
         txt = week_outlook_html(_days(date(2026, 10, 25), ["BLEU"] * 10))
@@ -140,25 +159,24 @@ def _card(page: str) -> str:
 
 
 class TestHomeCardSsr:
-    def test_single_seo_sentence_today_and_tomorrow(self, client):
-        today = date.today()
-        _insert_actual(today, "BLEU")
-        _insert_actual(today + timedelta(days=1), "ROUGE")
+    def test_no_redundant_paragraph_under_dots(self, client):
+        _insert_predictions()
         page = client.get("/").text
-        txt = _text(_card(page))
-        expected = (f"Couleur Tempo EDF aujourd'hui, {site_facts.fr_date(today)} : Bleu . "
-                    f"Demain, {site_facts.fr_date(today + timedelta(days=1), with_year=False)} : "
-                    "Rouge (couleurs officielles EDF).")
-        assert expected in txt
-        assert txt.count("Couleur Tempo EDF") == 1
-        assert "confirmé par EDF" not in txt and "cette semaine" not in txt
+        card = _card(page)
+        assert "week-summary-answer" not in page
+        assert "couleurs officielles EDF" not in card
+        assert "Calendrier de la saison" not in card  # même cible que le CTA
+        assert "Voir les 15 prochains jours" in card
         assert page.count("<h1") == 1
+        assert "Couleur Tempo EDF aujourd'hui, demain et pr" in page  # H1 inchangé (requête n°1)
 
-    def test_tomorrow_not_yet_published(self, client):
-        _insert_actual(date.today(), "BLANC")
-        txt = _text(_card(client.get("/").text))
-        assert ": Blanc (couleur officielle EDF). Demain," in txt
-        assert "pas encore publiée par EDF (vers 11 h)." in txt
+    def test_hero_dots_show_short_date(self, client):
+        _insert_predictions()
+        card = _card(client.get("/").text)
+        today = date.today()
+        court = site_facts.fr_date_courte(today).replace("\u00a0", "&nbsp;")
+        assert f'<time datetime="{today.isoformat()}">{court}</time>' in card
+        assert "Confirmé par EDF" in card
 
     def test_hero_dots_with_colour_name(self, client):
         _insert_predictions()
@@ -169,8 +187,10 @@ class TestHomeCardSsr:
         assert '<span class="week-dot-color">Blanc</span>' in card
         # la lettre reste dans la pastille (daltoniens)
         assert re.search(r'week-dot-circle dot-blanc" [^>]*aria-hidden="true">B</div>', card)
-        assert "Prévision 62&nbsp;%" in card
+        assert "Prévu à 62&nbsp;%" in card
         assert 'id="week-outlook"' in card and "prévus d'ici le" in card
+        # demain (non publié) : la phrase V5 explique que la pastille montre notre prévision
+        assert "EDF publie la couleur de demain vers 11&nbsp;h" in card
         assert "—" not in card
 
     def test_links_are_secondary_pills(self):
@@ -206,7 +226,7 @@ def test_ssr_and_js_render_identical_html(client, tmp_path):
     preds = _insert_predictions()
     page = client.get("/").text
     start = page.index(">", page.index('<div id="week-summary"')) + 1
-    end = page.index("<!-- Réponse directe") if "<!-- Réponse directe" in page else page.index("<!-- La suite")
+    end = page.index("<!-- Phrase sous les pastilles")
     ssr_dots = page[start:end].strip()
     assert ssr_dots.endswith("</div>")
     ssr_dots = ssr_dots[: -len("</div>")]
