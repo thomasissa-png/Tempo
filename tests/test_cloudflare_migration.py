@@ -271,3 +271,18 @@ class TestPushSecrets:
     def test_worker_rejoins_parts(self):
         worker = open(os.path.join(os.path.dirname(copy_database.__file__), "worker.ts")).read()
         assert "__PART${i}" in worker and "readSecret(env, key)" in worker
+
+
+class TestWhatsAppTestModeGuard:
+    def test_prod_requires_test_numbers_unless_explicitly_lifted(self):
+        import push_secrets
+        assert push_secrets.test_mode_error(prod=True, sans_mode_test=False, test_numbers="")
+        assert push_secrets.test_mode_error(prod=True, sans_mode_test=False, test_numbers="+33600000000") == ""
+        assert push_secrets.test_mode_error(prod=True, sans_mode_test=True, test_numbers="") == ""
+        assert push_secrets.test_mode_error(prod=False, sans_mode_test=False, test_numbers="") == ""
+
+    def test_key_forwarded_by_worker_and_pushed(self):
+        import push_secrets
+        worker = open(os.path.join(os.path.dirname(copy_database.__file__), "worker.ts")).read()
+        assert "WHATSAPP_TEST_NUMBERS" in push_secrets.APP_ENV_KEYS
+        assert '"WHATSAPP_TEST_NUMBERS"' in worker

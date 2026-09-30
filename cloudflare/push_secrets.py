@@ -3,7 +3,9 @@
 À lancer depuis une session Claude Code dont l'environnement contient les Secrets Replit
 (ou, à défaut, depuis le Shell Replit) :
     python3 cloudflare/push_secrets.py          # phase de test : AUCUN envoi WhatsApp, agents IA coupés
-    python3 cloudflare/push_secrets.py --prod   # bascule : ajoute WHATSAPP_TOKEN et ANTHROPIC_API_KEY
+    python3 cloudflare/push_secrets.py --prod   # bascule : ajoute WHATSAPP_TOKEN et ANTHROPIC_API_KEY,
+                                                # en mode test WhatsApp (WHATSAPP_TEST_NUMBERS obligatoire)
+    python3 cloudflare/push_secrets.py --prod --sans-mode-test   # fin des tests : tous les abonnés
 
 Variables nécessaires en plus des secrets habituels de l'app :
     CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID, NEON_DATABASE_URL
@@ -37,6 +39,7 @@ APP_ENV_KEYS = [
     "WHATSAPP_TEMPLATE_ALERT_BLANC", "WHATSAPP_TEMPLATE_ALERT_ROUGE",
     "WHATSAPP_TEMPLATE_CHANGE", "WHATSAPP_TEMPLATE_CONFIRMATION",
     "WHATSAPP_TEMPLATE_MANAGE_LINK", "WHATSAPP_TEMPLATE_RECAP", "WHATSAPP_TEMPLATE_WELCOME",
+    "WHATSAPP_TEST_NUMBERS",
     "ANTHROPIC_API_KEY", "SEO_AGENT_MODEL", "SEO_AGENT_MAX_TURNS", "BACKLINKS_AGENT_MAX_TURNS",
     "INDEXNOW_KEY", "GOOGLE_SITE_VERIFICATION", "BING_SITE_VERIFICATION",
 ]
@@ -57,8 +60,23 @@ def split_secret(key: str, value: str) -> list[tuple[str, str]]:
             for i, start in enumerate(range(0, len(value), SECRET_MAX))]
 
 
+def test_mode_error(prod: bool, sans_mode_test: bool, test_numbers: str) -> str:
+    """Décision fondateur (2026-09-30) : WhatsApp n'écrit qu'aux numéros de test tant qu'il
+    n'a pas validé. En production, WHATSAPP_TEST_NUMBERS est donc obligatoire, sauf
+    --sans-mode-test, qui retire le mode test et ouvre les envois à tous les abonnés."""
+    if prod and not sans_mode_test and not test_numbers:
+        return ("WHATSAPP_TEST_NUMBERS absente : ajoutez le numéro de test (TEMPO_WHATSAPP_TEST_NUMBERS) "
+                "ou passez --sans-mode-test une fois les tests validés par le fondateur.")
+    return ""
+
+
 def main() -> None:
     prod = "--prod" in sys.argv[1:]
+    sans_mode_test = "--sans-mode-test" in sys.argv[1:]
+    error = test_mode_error(prod, sans_mode_test, env("WHATSAPP_TEST_NUMBERS"))
+    if error:
+        print("ERREUR : " + error)
+        sys.exit(1)
     token = cloudflare_token()
     account = os.getenv("CLOUDFLARE_ACCOUNT_ID", "")
     neon = os.getenv("NEON_DATABASE_URL", "")
@@ -74,6 +92,8 @@ def main() -> None:
     values = {}
     for key in APP_ENV_KEYS:
         if key in PROD_ONLY and not prod:
+            continue
+        if key == "WHATSAPP_TEST_NUMBERS" and sans_mode_test:
             continue
         # Certains noms sont refusés dans l'environnement de la session Claude (ex. ANTHROPIC_API_KEY,
         # que Claude Code prendrait pour lui) : le fondateur les range sous TEMPO_<NOM>.
@@ -97,7 +117,15 @@ def main() -> None:
             print(f"  {'OK ' if ok else 'ÉCHEC'} {key}")
             if not ok:
                 failed.append(f"{key} (HTTP {r.status_code})")
+        if sans_mode_test:
+            r = client.delete(f"{url}/WHATSAPP_TEST_NUMBERS", headers=headers)
+            ok = r.status_code in (200, 404)
+            print(f"  {'OK ' if ok else 'ÉCHEC'} WHATSAPP_TEST_NUMBERS retiré (envois à tous les abonnés)")
+            if not ok:
+                failed.append(f"retrait WHATSAPP_TEST_NUMBERS (HTTP {r.status_code})")
 
+    if prod and not sans_mode_test:
+        print("\nMode test WhatsApp : envois planifiés réservés aux numéros de WHATSAPP_TEST_NUMBERS.")
     if not prod:
         print("\nPhase de test : WHATSAPP_TOKEN et ANTHROPIC_API_KEY NON envoyés "
               "(aucun message aux abonnés, agents IA coupés).")
