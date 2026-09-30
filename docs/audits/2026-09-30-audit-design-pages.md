@@ -273,4 +273,148 @@ Constat : le composant le plus abouti des pages neuves (puces de saison, légend
 - **P2 H4.** Section « Méthode » : la mettre dans une `.legal-section` (G12) comme sur à propos, pour finir la page par une carte et pas du texte brut.
 - **P2 H5.** Contrôle visuel 390 px à refaire après G1-G5 avec une capture non réduite (résolution 390 px vue à l'échelle 1).
 
-<!-- FIN-PARTIE-3 -->
+### 4.5 Tarif `/tarif-tempo-edf` (`templates/tarif_tempo.html`, style inline l.20-27)
+
+Constat : texte brut sur fond de page, tableau sans cadre limité à 640 px, en-têtes qui se cassent sur 3 lignes (« Heures pleines (6 h à 22 h) »).
+
+- **P0 T1. Tableau** : `.table-scroll` + `.data-table` (G3), supprimer `.tarif-table-wrap` et `.tarif-table`. Conserver `class="rouge"` sur la ligne (défini dans G3), `class="num"` sur les `th` et `td` de prix (déjà là, montants alignés à droite). Pleine largeur de carte : les 3 colonnes tiennent sur 1 ligne d'en-tête en desktop.
+- **P1 T2. Libellés de ligne** : en 390 px « Jour bleu (300 jours/saison) » prend 4 lignes. Envelopper la parenthèse dans `<span class="hb-sub">(300 jours/saison)</span>` (classe existante : petit, gris, sur sa propre ligne). Texte inchangé.
+- **P1 T3. Section « Combien coûte un jour rouge »** : paragraphe dense de 6 chiffres. Reprendre `.counters` / `.counter-card` (existants, bord haut coloré) pour 3 repères : « 4,4 fois » (rouge), « 14 à 20 € de plus » (rouge), « 310 € d'économie » (bleu), le paragraphe étant conservé dessous. Option visuelle, la hiérarchie finale reste à @ux.
+- **P2 T4.** `<small>` de la source : `font-size: 0.85rem; color: var(--text-secondary)` (classe `.form-hint` existe déjà, l'utiliser).
+
+### 4.6 Couleur de demain `/couleur-tempo-demain` (`templates/couleur_demain.html`, style inline l.16-20)
+
+Constat : c'est le même encadré réponse que l'accueil, avec une troisième variante de style.
+
+- **P0 D1. `.demain-answer`** : supprimer le style inline et utiliser `class="today-answer today-answer--lead"` (composant A1). Ajouter `.today-answer--lead { font-size: 1.1rem; } .today-answer--lead .color-tag { font-size: 0.95rem; }`. `color-word` devient `color-tag`. Une phrase par `<p>` est déjà le cas (pas de `today-answer-line` nécessaire).
+- **P0 D2. `.days-table`** : `.table-scroll` + `.data-table` (G3).
+- **P1 D3. Colonnes du tableau** : cellule Couleur = `<span class="color-tag bleu">Bleu</span>` (le mot reste, la forme ne dépend plus de la seule couleur), cellule Statut = `<span class="source-label label-officiel">officielle (EDF)</span>` ou `label-prediction` (classes existantes `.source-label`, P-13). La probabilité « 99 % » reste dans le texte du statut.
+- **P2 D4.** Liste « Quelles couleurs sont possibles demain » : mettre `<strong class="color-tag rouge">Rouge</strong>` (idem blanc, bleu) à la place du `<strong>` nu.
+
+### 4.7 Méthodologie `/methodologie` (`templates/methodologie.html`, style inline l.17-21)
+
+Constat : page sœur de « À propos » (qui est en cartes) rendue en texte brut : deux pages du même type qui ne se ressemblent pas.
+
+- **P0 M1. Tableau des poids** : `.table-scroll` + `.data-table`, `class="num"` sur `th` et `td` du poids (G3). Supprimer `.method-table`.
+- **P1 M2. Sections 1 à 6** : chaque `<h2>` et son contenu dans `<section class="legal-section">` (G12), comme à propos. Les `<h3>` de la section 5 (« En conditions réelles », « Historique complet », « Ce que nous ne publions pas ») profitent de G12. Aucun texte retiré, aucun H1 touché.
+- **P1 M3. Mesure en direct** (« 100,0 % ... ») : passer `<strong>` en carte `.counter-card bleu` (grand chiffre), paragraphe conservé dessous. Option.
+- **P2 M4.** H1 : G2 (interligne 1,25).
+
+### 4.8 API Tempo `/api-tempo` (`templates/api_tempo.html`, style inline l.34-41)
+
+- **P0 Ap1. Tableau des endpoints** : `.table-scroll` + `.data-table` (G3), supprimer `.api-table-wrap`/`.api-table`. La 1re colonne `<code>` : G13 (`main code`).
+- **P1 Ap2. `.api-doc pre`** : fond `#0F172A` = `--cta-dark` : utiliser `var(--cta-dark)`. Ajouter `tabindex="0"` aux `<pre>` (défilement clavier, WCAG 2.1.1) et `pre:focus-visible { outline: 3px solid var(--bleu); outline-offset: 2px; }`.
+- **P2 Ap3.** Les `<h2>` qui sont des routes (`/api/today et /api/tomorrow`) sont à laisser en texte (SEO), ne pas les passer en `<code>`.
+
+### 4.9 Blog index `/blog/` (`templates/blog_index.html`)
+
+Constat : cartes identiques à l'AVANT, conformes. Écart : la ligne de méta affiche 3 éléments (date, « mis à jour le JJ/MM/AAAA », temps de lecture) et répète souvent la même date.
+
+- **P1 B1.** Afficher « mis à jour le » seulement si la date diffère de la date de publication (logique de template). Sinon ligne trop chargée et redondante.
+- **P1 B2.** `.blog-card-meta { flex-wrap: wrap; gap: 4px 16px; }` (évite le débordement en 390 px avec 3 items).
+- Vérifié OK : CTA final `.blog-cta`, boutons, espacements, H1.
+
+### 4.10 Article de blog `/blog/<slug>` (`templates/blog_article.html`, `.blog-article*`)
+
+Constat limité par la taille des captures `[code]`. Structure conforme (carte blanche unique, H2 à filet, tableau comparatif, CTA inline, FAQ).
+
+- **P1 Ar1. Tableaux** : `.blog-article-body table { display: block; overflow-x: auto; }` (le tableau « Comparaison des services » à 4 colonnes déborde probablement en 390 px).
+- **P1 Ar2. `.blog-article-meta { flex-wrap: wrap; }`** (nouvelle mention « Mis à jour le », 3 éléments).
+- **P1 Ar3. Bloc « À lire aussi »** (`.blog-related`) : liens en G1, `ul` à puces système : `list-style: none; margin-left: 0;` et `li { padding: 6px 0; border-bottom: 1px solid var(--border); }` pour ressembler à une liste de cartes (comme `.blog-card`), ou `.blog-nav-articles` existant.
+- **P2 Ar4. Montants dans les tableaux Markdown** : `blog.py` peut poser `class="num"` sur les `td` dont le contenu commence par un nombre suivi de `€`, `%`, `kWh` ; ajouter `.blog-article-body td.num { text-align: right; font-variant-numeric: tabular-nums; }`. Non vérifié sur les 22 articles.
+
+### 4.11 Alertes `/alertes` (`templates/alertes.html`)
+
+Constat : page presque identique à l'AVANT, propre (cartes, bulle WhatsApp, CTA). Pas de P0.
+
+- **P1 Al1.** Vérifier que le H1 (centré, 2 lignes, interligne 1,7 visible dans les 2 captures) n'est pas déjà stylé en ligne : sinon appliquer G2 (`line-height: 1.25`).
+- **P2 Al2.** Bord gauche non aligné : « Comment ça marche ? » (x=383) décalé par rapport aux cartes (x=303) et au fil d'Ariane (x=317). Élargir la liste à la largeur des cartes, non bloquant (déjà présent en AVANT).
+- Liens « Gérer ou se désinscrire » : G1.
+
+### 4.12 À propos `/a-propos` (`templates/a_propos.html`)
+
+Constat : cartes `.legal-section` conformes à l'AVANT, nouveaux liens (méthodologie, API) propres sauf lien brut.
+
+- **P0 Ap-A1. Boutons de fin de page** « Voir le calendrier Tempo », « S'inscrire aux alertes » soulignés : G4 (`.btn { text-decoration: none }`), conteneur `class="btn-row"`.
+- **P1 Ap-A2.** Sous-titres sans marge (« Scoring multi-critères », « Machine Learning », « Combinaison et règles EDF ») : G12.
+- **P2 Ap-A3.** Phrase « Nous répondons généralement sous 48 h » et adresse en gras : inchangé.
+
+### 4.13 Mentions légales `/mentions-legales` (`templates/legal.html`)
+
+Constat : H1 collé sous le header (AVANT identique, à corriger maintenant), page de 6 100 px avec une section 4 très dense (sous-sections 4.1 à 4.8, lettres a à f) rendue sans hiérarchie visible.
+
+- **P0 L1. `<main>`** (l.83) : `class="container" style="max-width:800px"` devient `class="container page-content"` (G2 pose l'air haut, 860 px). Supprimer le `style` inline.
+- **P0 L2. Non design, à transmettre** : section 2 « Hébergeur » cite Replit, Inc. À remplacer au moment de la bascule (Cloudflare, Inc. et Neon pour la base) : obligation légale.
+- **P1 L3. Hiérarchie des sections** : G12 (`h2` 1,25 rem, `h3` 1,05 rem, `h4` 0,95 rem, marges, listes). Supprimer les `style` inline des `<ul>`.
+- **P1 L4. Fil d'Ariane visible** : ajouter `<nav class="breadcrumb">Accueil › Mentions légales</nav>` (le JSON-LD BreadcrumbList est déjà dans le `<head>`, le visible doit le refléter ; aligne la page sur les 10 autres).
+- **P2 L5. Formulaire de désinscription** : `.btn-unsub` (rayon 8 px, rouge) contre les pilules du site : `border-radius: 50px; min-height: 44px; font-weight: 700; background: var(--rouge);` et `.unsub-form input { min-height: 44px; }`. Ajouter un `<label class="sr-only">` au champ.
+- **P2 L6.** Sommaire en haut (9 liens d'ancre en pilules `.history-seasons`) pour une page de 6 000 px : décision de placement à valider avec @ux.
+
+### 4.14 Page 404 (`templates/404.html`)
+
+- **P0 N1.** `.btn-outline` inexistant, `<a class="btn">` souligné, marge haute parasite : G4. Remplacer `<ul style="...">` par `<ul class="btn-row">`. Résultat : 1 bouton plein (action principale) + 4 pilules à bord bleu + le bouton « Alertes gratuites » au même niveau de rangée.
+- **P1 N2.** Pied de page qui flotte : G6.
+- **P2 N3.** Supprimer les styles inline (`padding:2rem 0`, `font-size:1.1rem;margin:1.5rem 0`) : `<p class="section-desc">` et `padding-top` par le G2.
+
+### 4.15 Fenêtre d'inscription (`templates/_subscribe_modal.html`, `.subscribe-modal*`)
+
+- **P0 Mo1.** Bottom sheet mobile, focus des champs : G9.
+- **P1 Mo2. Styles inline** (l.29-46 et 58-66) : trois `<label style="display:flex...">` deviennent `<label class="form-checkbox">` (classe existante, case de 24 px) ; le titre « Quelles alertes souhaitez-vous ? » devient `<fieldset class="form-group form-choices"><legend>` avec `.form-choices { border: 0; padding: 0; } .form-choices legend { font-size: 0.85rem; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px; }`. Le champ « gérer mon abonnement » : retirer le `style` inline (il hérite de `.form-group input` dans un `.form-group`) et ajouter `<label class="sr-only" for="modal-manage-phone">`.
+- **P1 Mo3.** Badge « En test » : G8 (contraste et fin du dégradé).
+- **P2 Mo4.** `.sms-bubble { background: var(--info-bg); }` (G8).
+
+### 4.16 Admin `/admin` (`templates/admin.html`)
+
+Constat `[code, lignes 1-330 lues, pas de capture]` : l'admin doit rester une extension du produit, or il s'en écarte sur la police, les couleurs et l'en-tête.
+
+- **P0 Ad1. Police** : `fonts.css` n'est pas chargée (seulement `style.min.css`, sans `?v=`). Inter absente, police système en repli. Ajouter avant la feuille de style : `<link rel="preload" href="/static/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin><link rel="stylesheet" href="/static/css/fonts.css?v=20260929">` et `?v=20260929b` sur `style.min.css`.
+- **P0 Ad2. Couleurs des pastilles** : `.recap-dot.bleu #2196F3`, `.blanc #B0BEC5`, `.rouge #F44336`, `.recap-actual.*` (bleu `#2196F3`, blanc `#9E9E9E`, rouge `#F44336`) divergent des tokens publics (`#2563EB`, `#6B7280`, `#DC2626`). Utiliser `var(--bleu)`, `var(--blanc)`, `var(--rouge)` (et `.action-btn.green` : `var(--vert)`). Le violet `#7B1FA2` reste réservé aux marqueurs de version (documenté dans CLAUDE.md).
+- **P1 Ad3. En-tête** : la nav n'a que Accueil / Calendrier / Blog ; aligner sur `_base.html` (Accueil, Calendrier, Tarifs, Historique, Blog, CTA).
+- **P1 Ad4. Collision de classe** : `.section-title` redéfini dans le `<style>` de l'admin (0,92 rem) alors que c'est la classe publique (1,15 rem) : renommer en `.admin-section-title` (admin.html l.30-32 et usages).
+- **P1 Ad5. Focus du login** : `.admin-login input:focus { outline: none; box-shadow: 0 0 0 3px var(--accent-shadow) }` donne un indicateur d'environ 1,9:1 : remplacer par `outline: 2px solid var(--accent); outline-offset: 2px;`.
+- **P1 Ad6. Texte trop petit en mobile** : `.recap-table` 0,55 à 0,65 rem (9 à 10 px), `.diag-text` 0,58 rem, `.prf-table` 0,65 rem : plancher à 0,7 rem (11 px), le défilement horizontal existe déjà (`.recap-wrapper`).
+- **P1 Ad7. Contraste** : `.rouge-table .val-good` : G8 (`#15803D`).
+- **P2 Ad8.** `.action-btn` : pilule (`border-radius: 50px`, `min-height: 40px`) comme `.btn`; limiter les couleurs à bleu / vert / gris (supprimer teal et violet des boutons d'action). ~40 styles inline répétitifs (`display:flex;gap:10px;...`) : classe `.toolbar`.
+- **P2 Ad9.** Largeur : `main` en 1100 px alors que la grille de récap demande 900-1100 px de `min-width` : élargir à 1400 px pour l'admin seul.
+- **Non vérifié** : admin.html au-delà de la ligne 330 (rendus JS, tableaux injectés). Montants : aucune colonne monétaire repérée dans les 330 lignes lues.
+
+### 4.17 Transversal (header, nav, méta)
+
+- **P1 X1.** Nav header : G8 (contraste) et G11 (5 liens).
+- **P2 X2.** `<meta name="theme-color" content="#1565C0">` (toutes pages) : le header est `#2563EB`, l'onglet mobile sera d'un autre bleu : `#2563EB`.
+- **P2 X3.** `?v=20260929b` écrit en dur dans ~12 templates : variable Jinja globale `asset_v` pour ne plus oublier un fichier à la prochaine modification de CSS.
+- **P2 X4.** `style.css` ligne 6 (commentaire « Google Fonts loaded via <link> ») : obsolète (Inter auto-hébergée), à supprimer pour éviter qu'un agent le « corrige ».
+- Zéro tiret cadratin : aucun rendu dans les captures APRÈS (les « — » de l'AVANT ont disparu : aperçu WhatsApp, à propos, compteurs). Non vérifié dans le texte des 22 articles Markdown et dans `admin.html` (titre avec « — », usage interne noindex toléré).
+
+---
+
+## 5. Les 10 critères visuels : échecs constatés sur les captures APRÈS
+
+Seuls les FAIL sont listés (tout le reste est PASS). Devices évalués : 1366 px et 390 px ; 768 px non évaluable (aucune capture).
+
+| Page | Critère en échec | Preuve visuelle |
+|------|------------------|-----------------|
+| Accueil | 1 PRO, 5 PROPRE, 9 HIÉRARCHIE | encadré sous le H1 : liens bleus soulignés navigateur, pastilles « Bleu » de radius différent, interligne des deux phrases identique, bande grise `#f5f5f5` juste dessous |
+| Calendrier | 4 MÊME IDENTITÉ | liens de saisons bruts soulignés, 3 largeurs de colonne (1100 / 800 / 700) |
+| Saison | 1, 3, 4, 5, 6 | H1 coupé « 2026- / 2027 », tableau à liens gras `#0000EE`, aucune carte, listes à puces système |
+| Tarif | 4, 5, 7 AÉRÉ | en-têtes sur 3 lignes, tableau sans cadre collé sous le H1 (écart nul H1/paragraphe) |
+| Couleur demain | 4, 5 | 3e variante de l'encadré réponse, tableau nu |
+| Méthodologie | 4, 5 | texte brut alors que « À propos » (même nature) est en cartes |
+| API | 5 | tableau nu, `<code>` sans fond |
+| Mentions légales | 5, 7, 9 | H1 à 0 px sous le header, section 4 sans hiérarchie |
+| 404 | 4, 5 | 5 boutons identiques dont 4 soulignés, pied de page flottant |
+| Toutes | 6 ALIGNÉ, 10 ACCESSIBLE | pied de page décalé de 20 px par rapport au header ; nav header 3,7:1 ; badges orange 3,4:1 |
+
+## 6. Ordre d'exécution recommandé pour @fullstack
+
+1. `style.css` : G1, G2, G3, G4, G5, G6, G7, G8, G9, G10, G11, G12, G13 (1 passe, 1 seul commit CSS), puis régénérer `style.min.css` et incrémenter `?v=` partout.
+2. Templates : accueil A1-A3, demain D1-D3, saison S1-S3, tarif T1-T2, méthodologie M1-M2, API Ap1-Ap2, mentions légales L1/L3/L4, 404 N1, modale Mo2, admin Ad1-Ad5.
+3. Reprendre les captures à 390, 768 et 1280 px sur toutes les pages et les redonner à @design pour la validation des 10 critères (aucune validation sans preuve visuelle). Vérifier en particulier : accueil (encadré), modale sur iOS, FAQ ouverte la plus longue en 390 px, nav à 820 px, 404 (pied de page).
+4. Lancer la procédure de test du repo avant tout push (`tests/test_qa_fixes.py`, dont les tests de templates et de polices locales) : les gabarits changent (classes, balises `<div class="table-scroll">`, `<fieldset>`).
+
+## Handoff
+
+- Destinataire : @fullstack (via orchestrateur). Fichier produit : `/home/user/Tempo/docs/audits/2026-09-30-audit-design-pages.md`.
+- Décisions : pas de nouveau design system. 1 composant nouveau (`.data-table`), 6 corrections globales de CSS (liens, titres, boutons, pied de page, FAQ, modale), tout le reste réutilise les classes existantes (`.table-scroll`, `.history-seasons`, `.color-tag`, `.legal-section`, `.counter-card`, `.source-label`, `.form-checkbox`).
+- Points d'attention : décisions fondateur intactes (lien Selectra, « 2 500 foyers » non touchés), aucun contenu SEO retiré (H1, textes, FAQ, JSON-LD, liens internes), `style.min.css` à resynchroniser, contrastes à confirmer par outil, mention Replit dans `legal.html` à changer à la bascule.
+
