@@ -142,9 +142,14 @@ class TestSsrColors:
         _insert_actual(today + timedelta(days=1), "ROUGE")
         text = html.unescape(re.sub(r"<[^>]+>", " ", client.get("/").text))
         text = re.sub(r"\s+", " ", text)
-        # Texte visible des grandes pastilles : jour, date courte, couleur, statut
-        assert "Aujourd'hui " + site_facts.fr_date_courte(today, sep=" ") + " Bleu Confirmé par EDF" in text.replace("\xa0", " ")
-        assert "Demain " + site_facts.fr_date_courte(today + timedelta(days=1), sep=" ") + " Rouge Confirmé par EDF" in text.replace("\xa0", " ")
+        text = text.replace("\xa0", " ")
+        # Pastilles Aujourd'hui / Demain : libellé puis couleur écrite, coche si officielle
+        # (date complète lue par les lecteurs d'écran dans le texte sr-only)
+        assert "Aujourd'hui ✓ Bleu" in text
+        assert "Demain ✓ Rouge" in text
+        assert site_facts.fr_date(today, with_year=False) + " : Bleu, couleur officielle" in text
+        assert ("Couleur Tempo de demain, " + site_facts.fr_date(today + timedelta(days=1), with_year=False)
+                + " : Rouge, confirmée par EDF") in client.get("/").text
 
     def test_tomorrow_forecast_is_labelled(self, client):
         from database import get_db

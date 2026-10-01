@@ -135,10 +135,14 @@ class TestPourcentageSaisonEnCours:
         monkeypatch.setattr(ph, "today_paris", lambda: date(2026, 9, 30))
         page = html.unescape(client.get("/historique-previsions").text).replace("\xa0", " ")
         assert "Pourcentages à partir du 1er novembre" in page.replace("<sup>", "").replace("</sup>", "")
-        bref = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", page[page.index('id="en-bref"'):page.index('id="jour-par-jour"')]))
+        bref = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", page[page.index('id="en-bref"'):page.index("Légende complète")]))
         # Tour 1 (HIS-T3) : chiffre de la dernière saison complète en tête, en tuile
         assert "90 % de prévisions justes en 2025-2026, dernière saison complète" in bref
         assert "(100 %)" not in bref
+        # Au-dessus de la grille : une seule ligne de chiffre clé, celui de la dernière saison complète
+        keyline = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", re.search(r'<p class="history-keyline">(.*?)</p>', page, re.S).group(1)))
+        assert keyline == "Saison 2025-2026, dernière saison complète : 90 % de prévisions justes, 2 à 5 jours avant. Détail"
+        assert page.index('class="history-keyline"') < page.index('id="jour-par-jour"')
 
 
 class TestTauxPublies:

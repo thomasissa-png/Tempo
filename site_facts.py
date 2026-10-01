@@ -216,48 +216,36 @@ def _jour_court(d: date) -> str:
 
 
 def week_outlook_html(days: list[dict]) -> str:
-    """Phrase sous les pastilles de l'accueil (copy deck du 2026-09-30, variantes V1 à V5).
+    """Ligne de message en tête de la carte « Résumé des 10 prochains jours ».
 
-    `days` = période affichée (dicts avec date ISO, couleur, is_hero, is_tomorrow,
-    confirmed). Miroir exact de weekOutlookHtml() dans static/js/app.js : toute
-    modification se fait des deux côtés (test tests/test_home_week_card.py).
-    - V1 : rien de rouge ni blanc, fenêtre entière d'avril à octobre -> + règle R1 ;
-    - V2 : rien de rouge ni blanc, novembre à mars ;
-    - V3 : rouge et/ou blanc prévus après demain ;
-    - V4 : aujourd'hui ou demain rouge/blanc -> « Ensuite, ... » ;
-    - V5 : demain affiché mais pas encore publié par EDF -> phrase d'explication en tête.
-    Jamais « premier jour rouge possible le 1er novembre » (férié, parfois un dimanche).
+    Retour à la mise en page de l'ancienne accueil (décision fondateur du 2026-10-01) :
+    une seule ligne, toutes les pastilles comptées (aujourd'hui et demain compris).
+    `days` = période affichée (dicts avec date ISO, couleur, is_today, is_tomorrow).
+    Miroir exact de weekOutlookHtml() dans static/js/app.js : toute modification se
+    fait des deux côtés (test tests/test_home_week_card.py).
     """
     if not days:
         return ""
     dates = [date.fromisoformat(d["date"]) for d in days]
-    rest = [(dt, d["couleur"]) for dt, d in zip(dates, days) if not d.get("is_hero")]
-    if not rest:
-        return ""
-    last = dates[-1]
-    fin = f"d'ici le {'1er' if last.day == 1 else last.day} {MOIS_FR[last.month]}"
+    fin = f"d'ici le {fr_date(dates[-1], with_year=False)}"
     parts = []
     for couleur, nom in (("ROUGE", "rouge"), ("BLANC", "blanc")):
-        jours = [_jour_court(dt) for dt, c in rest if c == couleur]
+        jours = [
+            "aujourd'hui" if d.get("is_today") else "demain" if d.get("is_tomorrow") else _jour_court(dt)
+            for dt, d in zip(dates, days) if d["couleur"] == couleur
+        ]
         if jours:
             s = "s" if len(jours) > 1 else ""
             parts.append(f"<strong>{len(jours)} jour{s} {nom}{s}</strong> ({', '.join(jours)})")
-    if parts:
-        total = sum(1 for _, c in rest if c in ("ROUGE", "BLANC"))
-        txt = (f"{' et '.join(parts)} prévu{'s' if total > 1 else ''} {fin}. "
-               "Planifiez vos machines les jours bleus.")
-    else:
-        txt = f"Aucun jour rouge ni blanc prévu {fin}."
-    if any(d.get("is_hero") and d["couleur"] in ("ROUGE", "BLANC") for d in days):
-        txt = "Ensuite, " + txt[0].lower() + txt[1:]
-    # Règle EDF R1 : rouge seulement du 1er novembre au 31 mars
-    if all(4 <= dt.month <= 10 for dt in dates):
-        txt += " Pas de rouge possible avant novembre (règle EDF)."
-    # V5 : demain pas encore publié par EDF
-    if any(d.get("is_tomorrow") and not d.get("confirmed") for d in days):
-        txt = ("EDF publie la couleur de demain vers 11&nbsp;h : d'ici là, la pastille "
-               "montre notre prévision. " + txt)
-    return txt
+    if not parts:
+        return (f"Bonne nouvelle&nbsp;: <strong>aucun jour rouge ni blanc</strong> en vue {fin}. "
+                "Consommez normalement&nbsp;!")
+    return f"{' et '.join(parts)} en vue {fin}. Planifiez vos machines les jours bleus."
+
+
+def week_dot_label(d: date) -> str:
+    """Libellé court sous une pastille : 'Sam 3' (miroir de JOURS_FULL.slice(0, 3) en JS)."""
+    return f"{JOURS_FR[d.weekday()][:3].capitalize()} {d.day}"
 
 
 def html_to_text(fragment: str) -> str:
@@ -299,7 +287,7 @@ def breadcrumb_jsonld(items: list[tuple[str, str]]) -> dict:
 
 # Version des assets (style.min.css, app.min.js, fonts.css) : à incrémenter à chaque
 # régénération des fichiers minifiés. Un seul endroit, lu par tous les templates.
-ASSET_VERSION = "20260930e"
+ASSET_VERSION = "20261001a"
 
 
 def template_globals() -> dict:

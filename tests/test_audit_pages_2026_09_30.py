@@ -45,11 +45,18 @@ class TestHistoryPage:
         assert 'data-umami-event="csv_download"' in link and "btn" not in link
         assert art.index('id="methode"') < art.index("/historique-previsions.csv")
 
-    def test_en_bref_comes_before_the_grid_and_the_bilan(self, client, monkeypatch):
+    def test_grid_first_then_en_bref_legend_bilan_method(self, client, monkeypatch):
+        # Décision fondateur du 2026-10-01 : la grille arrive tout de suite, le reste dessous
         _controlled_case(monkeypatch)
         art = _article(client.get(PAGE + "/2025-2026").text)
-        assert art.index('id="en-bref"') < art.index('id="jour-par-jour"') < art.index('id="bilan"')
-        bref = art[art.index('id="en-bref"'):art.index('id="jour-par-jour"')]
+        order = ['id="jour-par-jour"', 'class="history-grid-table"', 'id="en-bref"',
+                 "Légende complète", 'id="bilan"', 'id="methode"']
+        positions = [art.index(x) for x in order]
+        assert positions == sorted(positions)
+        above = art[:art.index('id="jour-par-jour"')]
+        assert above.count("<p") <= 2  # une phrase d'intro + au plus une ligne de chiffre clé
+        assert "hb-kpi" not in above and "<details" not in above
+        bref = art[art.index('id="en-bref"'):art.index("Légende complète")]
         assert "Repère" in bref and "sur" in bref
         assert "hb-pct" not in bref  # effectifs < 20 : pas de pourcentage
 
@@ -161,7 +168,7 @@ class TestSharedParts:
         css = (ROOT / "static" / "css" / "style.css").read_text(encoding="utf-8")
         css_min = (ROOT / "static" / "css" / "style.min.css").read_text(encoding="utf-8")
         for sel in (".data-table", ".history-bref", ".notfound-links", ".btn-outline",
-                    ".week-dots-hero", ".week-dot-color", "a.week-dot-link", ".week-summary-foot", ".week-dot-date",
+                    ".week-dots-separator", ".week-dot-color", "a.week-dot-link", ".week-dot-hero",
                     ".fc-temp-val", ".forecast-temp-note", ".fc-compact", ".hg-none"):
             assert sel in css and sel in css_min, sel
         js = (ROOT / "static" / "js" / "app.js").read_text(encoding="utf-8")

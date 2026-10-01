@@ -608,6 +608,7 @@ def _get_ssr_data() -> dict:
                         ssr["week_summary"].append({
                             "date": r["date"],
                             "day_label": site_facts.JOURS_COURT[d.weekday()],
+                            "dot_label": site_facts.week_dot_label(d),
                             "day_num": d.day,
                             "day_num_label": "1er" if d.day == 1 else str(d.day),
                             "month_label": site_facts.MOIS_COURT[d.month],
@@ -638,6 +639,7 @@ def _get_ssr_data() -> dict:
                     ssr["week_summary"].append({
                         "date": d_hero.isoformat(),
                         "day_label": site_facts.JOURS_COURT[d_hero.weekday()],
+                        "dot_label": site_facts.week_dot_label(d_hero),
                         "day_num": d_hero.day,
                         "day_num_label": "1er" if d_hero.day == 1 else str(d_hero.day),
                         "month_label": site_facts.MOIS_COURT[d_hero.month],
@@ -650,8 +652,9 @@ def _get_ssr_data() -> dict:
                         "is_hero": True,
                     })
             ssr["week_summary"].sort(key=lambda w: w["date"])
+            ssr["week_summary"] = ssr["week_summary"][:10]
 
-            # Phrase sous les pastilles (même texte que renderWeekSummary en JS)
+            # Ligne de message en tête de la carte (même texte que renderWeekSummary en JS)
             ssr["week_outlook"] = site_facts.week_outlook_html(ssr["week_summary"])
 
             # SSR: dernière mise à jour (reco 21)

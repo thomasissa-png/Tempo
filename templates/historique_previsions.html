@@ -42,9 +42,9 @@
 {% block content %}
 <article class="legal-content history-page">
     <h1>Historique de nos prévisions Tempo EDF{% if not is_current %}&nbsp;: <span class="nowrap">saison {{ season_label }}</span>{% endif %}</h1>
-    <p class="section-desc">
-        Chaque jour, nous prévoyons la couleur Tempo des 15 jours suivants. Chaque prévision est montrée
-        <strong>telle qu'elle a été émise</strong>, puis comparée à la couleur officielle d'EDF, y compris quand nous nous sommes trompés.
+    <!-- Haut de page court (décision fondateur du 2026-10-01) : la grille arrive tout de suite -->
+    <p class="section-desc history-intro">
+        Nos prévisions Tempo faites jusqu'à 15 jours avant, <strong>telles qu'elles ont été émises</strong>, comparées à la couleur officielle d'EDF, y compris quand nous nous sommes trompés.
     </p>
 
     <nav class="history-seasons" aria-label="Choisir une saison">
@@ -54,8 +54,15 @@
     </nav>
 
     {% if h %}
-    {% include "_historique_bref.html" %}
+    {% set ref_kl = reference if (reference and reference.label != season_label) else none %}
+    {% set b_kl = h.bref %}
+    {% if (ref_kl and ref_kl.emises) or b_kl.emises %}
+    <!-- Une seule ligne de chiffre clé (taux public = dernière saison complète), le détail est sous la grille -->
+    <p class="history-keyline">{% if ref_kl and ref_kl.emises %}Saison {{ ref_kl.label }}, dernière saison complète&nbsp;: <strong>{% if ref_kl.justes_pct is not none %}{{ ref_kl.justes_pct }}&nbsp;% de prévisions justes{% else %}{{ ref_kl.justes }} prévisions justes sur {{ ref_kl.emises }}{% endif %}</strong>, 2 à 5 jours avant.{% elif b_kl.justes_pct is not none %}Saison {{ season_label }}&nbsp;: <strong>{{ b_kl.justes_pct }}&nbsp;% de prévisions justes</strong>, 2 à 5 jours avant.{% else %}Saison {{ season_label }}{% if is_current %} en cours{% endif %}&nbsp;: <strong>{{ b_kl.justes }} prévision{{ 's' if b_kl.justes > 1 }} juste{{ 's' if b_kl.justes > 1 }} sur {{ b_kl.emises }}</strong>, 2 à 5 jours avant.{% endif %} <a href="#en-bref">Détail</a></p>
+    {% endif %}
     {% include "_historique_grille.html" %}
+    {% include "_historique_bref.html" %}
+    {% include "_historique_legende.html" %}
     {% include "_historique_bilan.html" %}
     {% else %}
     <p class="history-empty" role="status">

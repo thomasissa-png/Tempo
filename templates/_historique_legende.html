@@ -1,0 +1,14 @@
+{# Légende complète de la grille de /historique-previsions : sous le bloc « En bref »,
+   avant le bilan par délai (décision fondateur du 2026-10-01 : la grille d'abord). #}
+    <details class="history-details history-legend-more">
+        <summary>Légende complète</summary>
+        <ul class="history-legend" aria-label="Légende complète de la grille">
+            <li><span class="hg-dot hg-rouge hg-ok" aria-hidden="true"></span> prévision juste (coche, anneau vert)</li>
+            <li><span class="hg-dot hg-rouge hg-ko" aria-hidden="true"></span> prévision erronée (croix, anneau rouge)</li>
+            <li><span class="hg-dot hg-bleu" aria-hidden="true"></span> bleu, <span class="hg-dot hg-blanc" aria-hidden="true"></span> blanc, <span class="hg-dot hg-rouge" aria-hidden="true"></span> rouge</li>
+            <li><strong>Case sans prévision enregistrée</strong> (calcul de 18&nbsp;h interrompu ce jour-là, ou couleur de la veille déjà publiée par EDF avant notre calcul)&nbsp;: la case affiche, pour la veille, la couleur officielle EDF, sinon la couleur de la prévision voisine la plus récente (voir l'infobulle). Aucune prévision n'est recalculée après coup&nbsp;: ces cases ne comptent dans aucun taux, elles sont comptées à part (couverture).</li>
+            {% if h.absentes %}<li><span class="hg-none" aria-hidden="true"></span> aucune prévision voisine sur la ligne</li>{% endif %}
+            <li><span class="hg-na-sample" aria-hidden="true"></span> service pas encore lancé</li>
+            <li><span class="hg-fiable-sample" aria-hidden="true"></span> zone la plus fiable (2 à 5 jours avant)</li>
+        </ul>
+    </details>

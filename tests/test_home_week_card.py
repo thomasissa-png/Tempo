@@ -1,11 +1,14 @@
-"""Carte « Les 10 prochains jours » de l'accueil (passe du 2026-09-30).
+"""Carte « Résumé des 10 prochains jours » de l'accueil.
 
-- Aujourd'hui et Demain en grandes pastilles avec le nom de la couleur écrit et la date
-  courte visible (« mer. 30 sept. ») ; statut « Confirmé par EDF » ou « Prévu à 88 % ».
-- Plus de paragraphe de redite sous les pastilles (copy deck du 2026-09-30, section 0).
-- Phrase sous les pastilles (variantes V1 à V5) identique en Python
-  (site_facts.week_outlook_html) et en JS (weekOutlookHtml), avec la règle EDF R1.
-- Le rendu SSR des pastilles et le rendu JS (renderWeekSummary) produisent le même HTML.
+Retour à la mise en page de l'ancienne accueil (décision fondateur du 2026-10-01,
+variante B : ancienne + mise en avant sobre d'aujourd'hui et demain) :
+- accroche en une ligne, H1 discret, bandeau « Dernière mise à jour » ;
+- une ligne de message en tête de carte, identique en Python (site_facts.week_outlook_html)
+  et en JS (weekOutlookHtml) ;
+- 10 pastilles dans une grille de 5 colonnes, 2 rangées séparées par un filet ;
+  Aujourd'hui et Demain dans la même grille (couleur écrite, coche si officielle) ;
+- un seul bouton, aligné à gauche sous les pastilles ;
+- le rendu SSR et le rendu JS (renderWeekSummary) produisent le même HTML.
 """
 
 import html
@@ -32,10 +35,10 @@ def client():
     return TestClient(app_module.app)
 
 
-def _days(start: date, couleurs: list[str], heroes: int = 2, demain_publie: bool = True) -> list[dict]:
+def _days(start: date, couleurs: list[str], today: bool = True) -> list[dict]:
     return [
-        {"date": (start + timedelta(days=i)).isoformat(), "couleur": c, "is_hero": i < heroes,
-         "is_tomorrow": i == 1 and heroes >= 2, "confirmed": i == 0 or (i == 1 and demain_publie)}
+        {"date": (start + timedelta(days=i)).isoformat(), "couleur": c,
+         "is_today": today and i == 0, "is_tomorrow": today and i == 1, "confirmed": i == 0}
         for i, c in enumerate(couleurs)
     ]
 
@@ -45,61 +48,41 @@ def _text(fragment: str) -> str:
     return re.sub(r"\s+", " ", txt).strip()
 
 
-# ---------------------------------------------------------------- phrase « la suite »
+# ---------------------------------------------------------------- ligne de message
 
 class TestWeekOutlook:
-    def test_v1_all_blue_before_november_mentions_r1(self):
-        txt = week_outlook_html(_days(date(2026, 9, 30), ["BLEU"] * 10))
-        assert txt == ("Aucun jour rouge ni blanc prévu d'ici le 9 octobre. "
-                       "Pas de rouge possible avant novembre (règle EDF).")
-        # jamais « premier jour rouge possible le 1er novembre » (férié, dimanche en 2026)
-        assert "1er novembre" not in txt
+    def test_all_blue_good_news_single_line(self):
+        txt = week_outlook_html(_days(date(2026, 10, 1), ["BLEU"] * 10))
+        assert txt == ("Bonne nouvelle&nbsp;: <strong>aucun jour rouge ni blanc</strong> en vue "
+                       "d'ici le samedi 10 octobre. Consommez normalement&nbsp;!")
 
-    def test_v2_all_blue_in_winter_has_no_rule(self):
-        txt = week_outlook_html(_days(date(2026, 11, 30), ["BLEU"] * 10))
-        assert txt == "Aucun jour rouge ni blanc prévu d'ici le 9 décembre."
+    def test_no_extra_sentences(self):
+        # ni règle du 1er novembre ni explication « EDF publie… » : une seule ligne
+        for start in (date(2026, 9, 30), date(2026, 11, 30), date(2027, 4, 2)):
+            txt = week_outlook_html(_days(start, ["BLEU"] * 10))
+            assert "règle EDF" not in txt and "EDF publie" not in txt
+            assert txt.count(". ") == 1
 
-    def test_v5_tomorrow_not_published(self):
-        txt = week_outlook_html(_days(date(2026, 9, 30), ["BLEU"] * 10, demain_publie=False))
-        assert txt == ("EDF publie la couleur de demain vers 11&nbsp;h : d'ici là, la pastille montre "
-                       "notre prévision. Aucun jour rouge ni blanc prévu d'ici le 9 octobre. "
-                       "Pas de rouge possible avant novembre (règle EDF).")
-
-    def test_counts_cover_whole_period_with_day_numbers(self):
-        # 2027-01-04 = lundi ; J+2 mercredi 6 et jeudi 7 rouges, vendredi 8 blanc
+    def test_counts_cover_whole_period_with_day_names(self):
+        # 2027-01-04 = lundi ; mercredi 6 et jeudi 7 rouges, vendredi 8 blanc
         couleurs = ["BLEU", "BLEU", "ROUGE", "ROUGE", "BLANC", "BLEU", "BLEU", "BLEU", "BLEU", "BLEU"]
         txt = week_outlook_html(_days(date(2027, 1, 4), couleurs))
         assert txt == ("<strong>2 jours rouges</strong> (mercredi 6, jeudi 7) et "
-                       "<strong>1 jour blanc</strong> (vendredi 8) prévus d'ici le 13 janvier. "
+                       "<strong>1 jour blanc</strong> (vendredi 8) en vue d'ici le mercredi 13 janvier. "
                        "Planifiez vos machines les jours bleus.")
-        assert "cette semaine" not in txt
+
+    def test_today_and_tomorrow_counted_and_named(self):
+        couleurs = ["ROUGE", "BLANC"] + ["BLEU"] * 8
+        txt = week_outlook_html(_days(date(2027, 1, 4), couleurs))
+        assert txt.startswith("<strong>1 jour rouge</strong> (aujourd'hui) et "
+                              "<strong>1 jour blanc</strong> (demain) en vue")
 
     def test_singular_and_first_of_month(self):
         couleurs = ["BLEU", "BLEU", "BLANC"] + ["BLEU"] * 7
         txt = week_outlook_html(_days(date(2027, 1, 30), couleurs))
-        assert "<strong>1 jour blanc</strong> (lundi 1er) prévu d'ici" in txt
+        assert "<strong>1 jour blanc</strong> (lundi 1er) en vue d'ici" in txt
 
-    def test_hero_colour_not_repeated_and_prefix_ensuite(self):
-        couleurs = ["BLEU", "ROUGE"] + ["BLEU"] * 8
-        txt = week_outlook_html(_days(date(2027, 1, 4), couleurs))
-        assert txt.startswith("Ensuite, aucun jour rouge ni blanc prévu")
-        assert "mardi 5" not in txt  # demain (rouge) déjà affiché en grand
-
-    def test_after_march_31_same_rule(self):
-        txt = week_outlook_html(_days(date(2027, 4, 2), ["BLEU"] * 10))
-        assert txt.endswith("Pas de rouge possible avant novembre (règle EDF).")
-
-    def test_v4_hero_colour_in_summer_keeps_rule(self):
-        txt = week_outlook_html(_days(date(2026, 10, 1), ["BLEU", "BLANC"] + ["BLEU"] * 8))
-        assert txt == ("Ensuite, aucun jour rouge ni blanc prévu d'ici le 10 octobre. "
-                       "Pas de rouge possible avant novembre (règle EDF).")
-
-    def test_period_reaching_november_has_no_r1_sentence(self):
-        txt = week_outlook_html(_days(date(2026, 10, 25), ["BLEU"] * 10))
-        assert "règle EDF" not in txt
-
-    def test_empty_when_only_heroes(self):
-        assert week_outlook_html(_days(date(2027, 1, 4), ["BLEU", "BLEU"])) == ""
+    def test_empty(self):
         assert week_outlook_html([]) == ""
 
     def test_no_em_dash(self):
@@ -159,66 +142,76 @@ def _card(page: str) -> str:
 
 
 class TestHomeCardSsr:
-    def test_no_redundant_paragraph_under_dots(self, client):
+    def test_top_of_page_like_old_home(self, client):
         _insert_predictions()
         page = client.get("/").text
-        card = _card(page)
-        assert "week-summary-answer" not in page
-        assert "couleurs officielles EDF" not in card
-        assert "Calendrier de la saison" not in card  # même cible que le CTA
-        assert "Voir les 15 prochains jours" in card
         assert page.count("<h1") == 1
         assert "Couleur Tempo EDF aujourd'hui, demain et pr" in page  # H1 inchangé (requête n°1)
+        top = page[page.index('class="home-title"'):page.index('id="week-summary-card"')]
+        # ordre : H1 discret, accroche, bandeau mise à jour, titre de la carte
+        assert top.index("welcome-banner") < top.index('id="last-update-bar"') < top.index("Résumé des 10 prochains jours")
+        lead = _text(top[top.index("welcome-banner"):top.index('id="last-update-bar"')]).replace(" .", ".")
+        ratio = site_facts.fr_num(site_facts.RATIO_ROUGE_BLEU_HP)
+        assert (f"Un jour rouge coûte {ratio} fois plus cher en heures pleines qu'un jour bleu. "
+                "Le Calendrier Tempo EDF vous alerte jusqu'à 15 jours à l'avance.") in lead
+        assert "—" not in top
 
-    def test_hero_dots_show_short_date(self, client):
+    def test_card_message_dots_then_single_left_button(self, client):
         _insert_predictions()
         card = _card(client.get("/").text)
-        today = date.today()
-        court = site_facts.fr_date_courte(today).replace("\u00a0", "&nbsp;")
-        assert f'<time datetime="{today.isoformat()}">{court}</time>' in card
-        assert "Confirmé par EDF" in card
+        assert card.index('id="week-outlook"') < card.index('id="week-summary"') < card.index("btn-cta-summary")
+        assert card.count('class="btn') == 1
+        assert "Voir les prévisions détaillées des 15 prochains jours" in html.unescape(card)
+        assert "week-summary-foot" not in card and "week-dots-hero" not in card
+        assert "EDF publie la couleur de demain" not in card
+        assert "Prévu à" not in card and "<time" not in card  # plus de dates sous les libellés
+        assert "—" not in card
 
-    def test_hero_dots_with_colour_name(self, client):
+    def test_ten_dots_two_rows_of_five(self, client):
+        _insert_predictions()
+        card = _card(client.get("/").text)
+        assert len(re.findall(r'class="week-dot[" ]', card)) == 10
+        assert card.count('class="week-dots-separator"') == 1
+        before_sep = card[:card.index("week-dots-separator")]
+        assert len(re.findall(r'class="week-dot[" ]', before_sep)) == 5
+        # libellés courts « Sam 3 » à partir d'après-demain
+        j2 = date.today() + timedelta(days=2)
+        assert f'<span class="week-dot-label" aria-hidden="true">{site_facts.week_dot_label(j2)}</span>' in card
+        # pourcentage ou « Confirmé » sous chaque pastille
+        assert card.count('class="week-dot-proba"') + card.count('class="week-dot-confirmed"') == 10
+
+    def test_today_and_tomorrow_highlighted_in_same_grid(self, client):
         _insert_predictions()
         card = _card(client.get("/").text)
         assert card.count("week-dot-hero") == 2
-        assert card.count('class="week-dot"') == 8
-        assert '<span class="week-dot-color">Bleu</span>' in card
-        assert '<span class="week-dot-color">Blanc</span>' in card
+        # aujourd'hui confirmé : coche + couleur écrite ; demain prévu : couleur + %
+        assert '<span class="week-dot-confirmed">&#10003;&nbsp;Bleu</span>' in card
+        assert '<span class="week-dot-color">Blanc</span> <span class="week-dot-proba">62&nbsp;%</span>' in card
         # la lettre reste dans la pastille (daltoniens)
         assert re.search(r'week-dot-circle dot-blanc" [^>]*aria-hidden="true">B</div>', card)
-        assert "Prévu à 62&nbsp;%" in card
-        assert 'id="week-outlook"' in card and "prévus d'ici le" in card
-        # demain (non publié) : la phrase V5 explique que la pastille montre notre prévision
-        assert "EDF publie la couleur de demain vers 11&nbsp;h" in card
-        assert "—" not in card
 
-    def test_single_button_and_tomorrow_dot_is_the_link(self, client):
-        # Retour fondateur du 2026-09-30 : un seul bouton, le lien SEO est porté par la pastille Demain
+    def test_tomorrow_dot_is_the_only_link(self, client):
         _insert_predictions()
         card = _card(client.get("/").text)
-        assert card.count('class="btn') == 1
-        assert "week-summary-links" not in card
         assert card.count('href="/couleur-tempo-demain"') == 1
         link = re.search(r'<a class="week-dot week-dot-highlight week-dot-hero week-dot-link" '
                          r'href="/couleur-tempo-demain" aria-label="([^"]+)">(.*?)</a>', card, re.S)
-        assert link, "la grande pastille Demain doit être le lien"
+        assert link, "la pastille Demain doit être le lien"
         demain = date.today() + timedelta(days=1)
         assert link.group(1) == (f"Couleur Tempo de demain, {site_facts.fr_date(demain, with_year=False)} : "
-                                 "Blanc, prévu à 62&nbsp;%, voir le détail")
+                                 "Blanc, prévision 62&nbsp;%")
         assert "<strong>Demain</strong>" in link.group(2)
-        # aujourd'hui reste une pastille simple (pas de lien)
-        assert '<div class="week-dot week-dot-highlight week-dot-hero">' in card
 
-    def test_light_card_css(self):
+    def test_old_card_css(self):
         css = (ROOT / "static" / "css" / "style.css").read_text(encoding="utf-8")
-        assert ".week-summary-links" not in css
-        hero = re.search(r"\.week-dot\.week-dot-hero \{([^}]*)\}", css).group(1)
-        assert "border" not in hero and "background" not in hero  # pas de cadre dans le cadre
-        hero_group = re.search(r"\.week-dots-hero \{([^}]*)\}", css).group(1)
-        assert "border" not in hero_group  # plus de séparateur vertical
+        for gone in (".week-dots-hero", ".week-summary-foot", ".week-summary-head", ".week-dot-date"):
+            assert gone not in css, gone
+        dots = re.search(r"\.week-summary-dots \{([^}]*)\}", css).group(1)
+        assert "grid-template-columns: repeat(5, minmax(0, 1fr))" in dots
         confirmed = re.search(r"\.week-dot-confirmed \{([^}]*)\}", css).group(1)
-        assert "background" not in confirmed
+        assert "background: #E8F5E9" in confirmed  # petit badge vert, comme avant
+        bar = re.search(r"\.last-update-bar \{([^}]*)\}", css).group(1)
+        assert "background" in bar and "text-align: center" in bar
         focus = re.search(r"a\.week-dot-link:focus-visible \{([^}]*)\}", css).group(1)
         assert "outline: 2px solid" in focus
 
@@ -250,7 +243,7 @@ def test_ssr_and_js_render_identical_html(client, tmp_path):
     preds = _insert_predictions()
     page = client.get("/").text
     start = page.index(">", page.index('<div id="week-summary"')) + 1
-    end = page.index("<!-- Phrase sous les pastilles")
+    end = page.index('<a href="/calendrier" class="btn btn-cta-summary"')
     ssr_dots = page[start:end].strip()
     assert ssr_dots.endswith("</div>")
     ssr_dots = ssr_dots[: -len("</div>")]
@@ -265,3 +258,4 @@ def test_ssr_and_js_render_identical_html(client, tmp_path):
     js = json.loads(out.stdout)
     assert _norm(js["dots"]) == _norm(ssr_dots)
     assert js["outlook"] == ssr_outlook
+    assert "week-dots-separator" in js["dots"]

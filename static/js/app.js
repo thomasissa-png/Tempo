@@ -388,86 +388,59 @@ function frJour(d, withMonth) {
 }
 
 /**
- * Phrase sous les pastilles (copy deck du 2026-09-30, variantes V1 à V5).
+ * Ligne de message en tête de la carte « Résumé des 10 prochains jours ».
  * Miroir exact de site_facts.week_outlook_html : modifier les deux ensemble.
  */
 function weekOutlookHtml(days) {
     if (days.length === 0) return '';
-    const rest = days.filter(x => !x.isHero);
-    if (rest.length === 0) return '';
-    const last = days[days.length - 1].d;
-    const fin = `d'ici le ${last.getDate() === 1 ? '1er' : last.getDate()} ${MOIS_FULL[last.getMonth()]}`;
+    const fin = `d'ici le ${frJour(days[days.length - 1].d, true)}`;
     const parts = [];
     [['ROUGE', 'rouge'], ['BLANC', 'blanc']].forEach(([couleur, nom]) => {
-        const jours = rest.filter(x => x.couleur === couleur).map(x => frJour(x.d, false));
+        const jours = days.filter(x => x.couleur === couleur)
+            .map(x => (x.isToday ? 'aujourd\'hui' : x.isTomorrow ? 'demain' : frJour(x.d, false)));
         if (jours.length > 0) {
             const s = jours.length > 1 ? 's' : '';
             parts.push(`<strong>${jours.length} jour${s} ${nom}${s}</strong> (${jours.join(', ')})`);
         }
     });
-    let txt;
-    if (parts.length > 0) {
-        const total = rest.filter(x => x.couleur === 'ROUGE' || x.couleur === 'BLANC').length;
-        txt = `${parts.join(' et ')} prévu${total > 1 ? 's' : ''} ${fin}. Planifiez vos machines les jours bleus.`;
-    } else {
-        txt = `Aucun jour rouge ni blanc prévu ${fin}.`;
+    if (parts.length === 0) {
+        return `Bonne nouvelle&nbsp;: <strong>aucun jour rouge ni blanc</strong> en vue ${fin}. Consommez normalement&nbsp;!`;
     }
-    if (days.some(x => x.isHero && (x.couleur === 'ROUGE' || x.couleur === 'BLANC'))) {
-        txt = 'Ensuite, ' + txt[0].toLowerCase() + txt.slice(1);
-    }
-    // Règle EDF R1 : rouge seulement du 1er novembre au 31 mars (getMonth() : 3 = avril, 9 = octobre)
-    if (days.every(x => x.d.getMonth() >= 3 && x.d.getMonth() <= 9)) {
-        txt += ' Pas de rouge possible avant novembre (règle EDF).';
-    }
-    // V5 : demain pas encore publié par EDF
-    if (days.some(x => x.isTomorrow && !x.confirmed)) {
-        txt = 'EDF publie la couleur de demain vers 11&nbsp;h : d\'ici là, la pastille montre notre prévision. ' + txt;
-    }
-    return txt;
+    return `${parts.join(' et ')} en vue ${fin}. Planifiez vos machines les jours bleus.`;
 }
 
-// Une pastille : même HTML que la macro week_dot de templates/dashboard.html
-function weekDotHtml(x, hero) {
+// Une pastille : même HTML que la boucle de templates/dashboard.html (test de parité)
+function weekDotHtml(x) {
     const shapeClass = x.couleur === 'BLANC' ? ' dot-blanc' : x.couleur === 'ROUGE' ? ' dot-rouge' : '';
     const confirmedClass = x.confirmed ? ' confirmed-dot' : '';
-    const num = x.d.getDate();
     const label = x.isToday ? '<strong>Aujourd\'hui</strong>'
         : x.isTomorrow ? '<strong>Demain</strong>'
-        : `${JOURS[x.d.getDay()]} ${num}`;
-    let info = '';
-    if (x.confirmed) {
-        info = '<span class="week-dot-confirmed">Confirmé par EDF</span>';
-    } else if (hero) {
-        info = `<span class="week-dot-proba">Prévu à ${x.confidence}&nbsp;%</span>`;
-    } else if (x.couleur !== 'BLEU' || x.confidence < 90) {
-        info = `<span class="week-dot-proba">${x.confidence}&nbsp;%</span>`;
-    }
-    // Grandes pastilles : le texte visible (jour, date, couleur, statut) est lu tel quel.
-    const srOnly = hero ? ''
-        : `<span class="sr-only">${frJour(x.d, true)} : ${COULEUR_NOM[x.couleur]}${x.confirmed ? ', couleur officielle' : `, prévision ${x.confidence}&nbsp;%`}</span>`;
-    const iso = `${x.d.getFullYear()}-${String(x.d.getMonth() + 1).padStart(2, '0')}-${String(num).padStart(2, '0')}`;
-    // Grande pastille Demain : lien vers /couleur-tempo-demain (seul lien de la carte hors bouton)
-    const link = hero && x.isTomorrow;
-    const tag = link ? 'a' : 'div';
-    const linkAttrs = link
-        ? ` href="/couleur-tempo-demain" aria-label="Couleur Tempo de demain, ${frJour(x.d, true)} : ${COULEUR_NOM[x.couleur]}, ${x.confirmed ? 'confirmé par EDF' : `prévu à ${x.confidence}&nbsp;%`}, voir le détail"`
-        : '';
-    return `<${tag} class="week-dot${hero ? ' week-dot-highlight week-dot-hero' : ''}${link ? ' week-dot-link' : ''}"${linkAttrs}>`
+        : `${JOURS_FULL[x.d.getDay()].slice(0, 3)} ${x.d.getDate()}`;
+    const statut = x.confirmed ? 'couleur officielle' : `prévision ${x.confidence}&nbsp;%`;
+    // Aujourd'hui et Demain : couleur écrite en toutes lettres (coche verte si officielle)
+    const hero = x.isToday || x.isTomorrow;
+    const proba = `<span class="week-dot-proba">${x.confidence}&nbsp;%</span>`;
+    const info = hero
+        ? (x.confirmed ? `<span class="week-dot-confirmed">&#10003;&nbsp;${COULEUR_NOM[x.couleur]}</span>`
+            : `<span class="week-dot-color">${COULEUR_NOM[x.couleur]}</span> ${proba}`)
+        : (x.confirmed ? '<span class="week-dot-confirmed">Confirmé</span>' : proba);
+    // Pastille Demain : lien discret vers /couleur-tempo-demain, même aspect que les autres
+    const open = x.isTomorrow
+        ? `<a class="week-dot week-dot-highlight week-dot-hero week-dot-link" href="/couleur-tempo-demain" aria-label="Couleur Tempo de demain, ${frJour(x.d, true)} : ${COULEUR_NOM[x.couleur]}, ${x.confirmed ? 'confirmée par EDF' : `prévision ${x.confidence}&nbsp;%`}">`
+        : `<div class="week-dot${x.isToday ? ' week-dot-highlight week-dot-hero' : ''}">`;
+    return open
         + `<div class="week-dot-circle${shapeClass}${confirmedClass}" style="background:var(--${x.couleur.toLowerCase()})" aria-hidden="true">${x.couleur[0]}</div>`
-        + srOnly
-        + `<div class="week-dot-text"${hero ? '' : ' aria-hidden="true"'}>`
-        + `<span class="week-dot-label">${label}</span>`
-        + (hero ? `<span class="week-dot-date"><time datetime="${iso}">${JOURS[x.d.getDay()]} ${num === 1 ? '1er' : num}&nbsp;${MOIS[x.d.getMonth()]}</time></span>`
-            + `<span class="week-dot-color">${COULEUR_NOM[x.couleur]}</span>` : '')
-        + `<div class="week-dot-info">${info}</div>`
-        + `</div></${tag}>`;
+        + (x.isTomorrow ? '' : `<span class="sr-only">${frJour(x.d, true)} : ${COULEUR_NOM[x.couleur]}, ${statut}</span>`)
+        + `<span class="week-dot-label" aria-hidden="true">${label}</span>`
+        + `<span class="week-dot-info" aria-hidden="true">${info}</span>`
+        + (x.isTomorrow ? '</a>' : '</div>');
 }
 
 function renderWeekSummary(preds) {
     const container = document.getElementById('week-summary');
     if (!container) return;
 
-    // Les 10 premiers jours : aujourd'hui et demain en grand, puis les 8 suivants
+    // Les 10 premiers jours, 2 rangées de 5 séparées par un filet
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
@@ -476,29 +449,20 @@ function renderWeekSummary(preds) {
         .filter(p => COULEUR_NOM[p.couleur_predite])
         .map(p => {
             const d = parseLocalDate(p.date);
-            const isToday = d.getTime() === today.getTime();
-            const isTomorrow = d.getTime() === tomorrow.getTime();
             const prob = p[`probabilite_${p.couleur_predite.toLowerCase()}`] || 0;
             return {
                 d, couleur: p.couleur_predite, confirmed: !!p.confirmed,
                 confidence: Math.round(prob * 100),
-                isToday, isTomorrow, isHero: isToday || isTomorrow,
+                isToday: d.getTime() === today.getTime(),
+                isTomorrow: d.getTime() === tomorrow.getTime(),
             };
         });
     if (days.length === 0) return;
 
-    const heroes = days.filter(x => x.isHero);
-    let html = '<div class="week-summary-dots">';
-    if (heroes.length > 0) {
-        html += `<div class="week-dots-hero">${heroes.map(x => weekDotHtml(x, true)).join('')}</div>`;
-    }
-    html += `<div class="week-dots-next">${days.filter(x => !x.isHero).map(x => weekDotHtml(x, false)).join('')}</div>`;
-    html += '</div>';
-
-    // Le pied de carte (#week-outlook + bouton) reste en place : seule la phrase est réécrite.
+    const dots = days.map((x, i) => (i === 5 ? '<div class="week-dots-separator" aria-hidden="true"></div>' : '') + weekDotHtml(x));
     const card = document.getElementById('week-summary-card');
     if (card) card.classList.toggle('has-rouge', days.some(x => x.couleur === 'ROUGE'));
-    container.innerHTML = html;
+    container.innerHTML = `<div class="week-summary-dots">${dots.join('')}</div>`;
     const outlookEl = document.getElementById('week-outlook');
     if (outlookEl) {
         const outlook = weekOutlookHtml(days);

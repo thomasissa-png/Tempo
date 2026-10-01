@@ -157,47 +157,39 @@
         </div>
     </noscript>
 
+    <!-- Haut de page : mise en page de l'ancienne accueil (décision fondateur du 2026-10-01) -->
     <h1 class="home-title">Couleur Tempo EDF aujourd'hui, demain et pr&eacute;visions &agrave; 15 jours</h1>
 
-    <!-- Sous-titre compact (ACC-02) : id conservé pour app.js -->
+    <!-- Accroche en une ligne : id conservé pour app.js -->
     <section class="welcome-banner home-lead" id="welcome-banner">
         <p>
             Un jour <span class="color-tag rouge">rouge</span> co&ucirc;te <strong>{{ facts.RATIO }} fois plus cher</strong> en heures pleines qu'un jour bleu.
-            Nos pr&eacute;visions portent sur <strong>15 jours</strong>, les plus fiables sur <strong>2 &agrave; 5 jours</strong>.
+            Le Calendrier Tempo EDF vous alerte <strong>jusqu'&agrave; 15 jours &agrave; l'avance</strong>.
         </p>
     </section>
 
-    <!-- Résumé des 10 prochains jours : la réponse à l'intention (décision fondateur : pas de bloc aujourd'hui/demain séparé) -->
+    <div class="last-update-bar" id="last-update-bar" role="status" aria-live="polite" {% if not ssr.last_update %}style="display:none"{% endif %}>
+        <span id="last-update-text">{% if ssr.last_update %}Derni&egrave;re mise &agrave; jour : <time datetime="{{ ssr.last_update_iso }}">{{ ssr.last_update }}</time>{% endif %}</span>
+    </div>
+
+    <!-- Résumé des 10 prochains jours (décision fondateur : pas de bloc aujourd'hui/demain séparé) -->
     <section class="week-summary week-summary-top" aria-labelledby="week-summary-title">
-        <div class="week-summary-head">
-            <h2 class="section-title" id="week-summary-title">Les 10 prochains jours</h2>
-            <p class="last-update-bar" id="last-update-bar" role="status" aria-live="polite" {% if not ssr.last_update %}style="display:none"{% endif %}>
-                <span id="last-update-text">{% if ssr.last_update %}Derni&egrave;re mise &agrave; jour : <time datetime="{{ ssr.last_update_iso }}">{{ ssr.last_update }}</time>{% endif %}</span>
-            </p>
-        </div>
+        <h2 class="section-title" id="week-summary-title">R&eacute;sum&eacute; des 10 prochains jours</h2>
         <div class="week-summary-card{% if ssr.week_summary|selectattr('couleur', 'equalto', 'ROUGE')|list %} has-rouge{% endif %}" id="week-summary-card">
-            {% macro week_dot(d, hero) -%}
-            {%- set link = hero and d.is_tomorrow %}
-            <{{ 'a' if link else 'div' }} class="week-dot{% if hero %} week-dot-highlight week-dot-hero{% endif %}{% if link %} week-dot-link{% endif %}"{% if link %} href="/couleur-tempo-demain" aria-label="Couleur Tempo de demain, {{ d.date_label }} : {{ d.couleur_label }}, {% if d.confirmed %}confirmé par EDF{% else %}prévu à {{ d.confidence }}&nbsp;%{% endif %}, voir le détail"{% endif %}>
-                <div class="week-dot-circle{% if d.couleur == 'BLANC' %} dot-blanc{% elif d.couleur == 'ROUGE' %} dot-rouge{% endif %}{% if d.confirmed %} confirmed-dot{% endif %}" style="background:var(--{{ d.couleur|lower }})" aria-hidden="true">{{ d.couleur[0] }}</div>
-                {% if not hero %}<span class="sr-only">{{ d.date_label }} : {{ d.couleur_label }}{% if d.confirmed %}, couleur officielle{% else %}, prévision {{ d.confidence }}&nbsp;%{% endif %}</span>{% endif %}
-                <div class="week-dot-text"{% if not hero %} aria-hidden="true"{% endif %}>
-                    <span class="week-dot-label">{% if d.is_today %}<strong>Aujourd'hui</strong>{% elif d.is_tomorrow %}<strong>Demain</strong>{% else %}{{ d.day_label }} {{ d.day_num }}{% endif %}</span>
-                    {% if hero %}<span class="week-dot-date"><time datetime="{{ d.date }}">{{ d.day_label }} {{ d.day_num_label }}&nbsp;{{ d.month_label }}</time></span><span class="week-dot-color">{{ d.couleur_label }}</span>{% endif %}
-                    <div class="week-dot-info">{% if d.confirmed %}<span class="week-dot-confirmed">Confirmé par EDF</span>{% elif hero %}<span class="week-dot-proba">Prévu à {{ d.confidence }}&nbsp;%</span>{% elif d.couleur != 'BLEU' or d.confidence < 90 %}<span class="week-dot-proba">{{ d.confidence }}&nbsp;%</span>{% endif %}</div>
-                </div>
-            </{{ 'a' if link else 'div' }}>
-            {%- endmacro %}
+            <!-- Ligne de message : même texte en SSR et en JS (site_facts.week_outlook_html / weekOutlookHtml) -->
+            <p class="week-summary-text" id="week-outlook"{% if not ssr.week_outlook %} hidden{% endif %}>{{ ssr.week_outlook|safe }}</p>
             <div id="week-summary" role="region" aria-label="Couleur Tempo d'aujourd'hui, de demain et des jours suivants">
                 {% if ssr.week_summary %}
-                {% set heroes = ssr.week_summary|selectattr('is_hero')|list %}
                 <div class="week-summary-dots">
-                    {% if heroes %}<div class="week-dots-hero">
-                        {% for d in heroes %}{{ week_dot(d, true) }}{% endfor %}
-                    </div>{% endif %}
-                    <div class="week-dots-next">
-                        {% for d in ssr.week_summary|rejectattr('is_hero') %}{{ week_dot(d, false) }}{% endfor %}
-                    </div>
+                    {% for d in ssr.week_summary %}
+                    {% if loop.index == 6 %}<div class="week-dots-separator" aria-hidden="true"></div>{% endif %}
+                    {% if d.is_tomorrow %}<a class="week-dot week-dot-highlight week-dot-hero week-dot-link" href="/couleur-tempo-demain" aria-label="Couleur Tempo de demain, {{ d.date_label }} : {{ d.couleur_label }}, {% if d.confirmed %}confirmée par EDF{% else %}prévision {{ d.confidence }}&nbsp;%{% endif %}">{% else %}<div class="week-dot{% if d.is_today %} week-dot-highlight week-dot-hero{% endif %}">{% endif %}
+                        <div class="week-dot-circle{% if d.couleur == 'BLANC' %} dot-blanc{% elif d.couleur == 'ROUGE' %} dot-rouge{% endif %}{% if d.confirmed %} confirmed-dot{% endif %}" style="background:var(--{{ d.couleur|lower }})" aria-hidden="true">{{ d.couleur[0] }}</div>
+                        {% if not d.is_tomorrow %}<span class="sr-only">{{ d.date_label }} : {{ d.couleur_label }}{% if d.confirmed %}, couleur officielle{% else %}, prévision {{ d.confidence }}&nbsp;%{% endif %}</span>{% endif %}
+                        <span class="week-dot-label" aria-hidden="true">{% if d.is_today %}<strong>Aujourd'hui</strong>{% elif d.is_tomorrow %}<strong>Demain</strong>{% else %}{{ d.dot_label }}{% endif %}</span>
+                        <span class="week-dot-info" aria-hidden="true">{% if d.is_today or d.is_tomorrow %}{% if d.confirmed %}<span class="week-dot-confirmed">&#10003;&nbsp;{{ d.couleur_label }}</span>{% else %}<span class="week-dot-color">{{ d.couleur_label }}</span> <span class="week-dot-proba">{{ d.confidence }}&nbsp;%</span>{% endif %}{% elif d.confirmed %}<span class="week-dot-confirmed">Confirmé</span>{% else %}<span class="week-dot-proba">{{ d.confidence }}&nbsp;%</span>{% endif %}</span>
+                    {% if d.is_tomorrow %}</a>{% else %}</div>{% endif %}
+                    {% endfor %}
                 </div>
                 {% else %}
                 <div class="week-summary-dots week-summary-loading" id="week-summary-loading">
@@ -205,12 +197,7 @@
                 </div>
                 {% endif %}
             </div>
-            <!-- Phrase sous les pastilles (copy deck V1 à V5) : même texte en SSR et en JS (weekOutlookHtml) -->
-            <!-- Un seul bouton : le lien vers /couleur-tempo-demain est porté par la grande pastille Demain -->
-            <div class="week-summary-foot">
-                <p class="week-summary-text" id="week-outlook"{% if not ssr.week_outlook %} hidden{% endif %}>{{ ssr.week_outlook|safe }}</p>
-                <a href="/calendrier" class="btn btn-cta-summary">Voir les 15 prochains jours &rarr;</a>
-            </div>
+            <a href="/calendrier" class="btn btn-cta-summary">Voir les pr&eacute;visions d&eacute;taill&eacute;es des 15 prochains jours &rarr;</a>
         </div>
     </section>
 
