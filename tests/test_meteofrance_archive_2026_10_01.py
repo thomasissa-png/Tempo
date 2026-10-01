@@ -286,7 +286,7 @@ class TestMigrationV26:
     def test_version_and_columns(self):
         conn = get_db()
         try:
-            assert conn.execute("PRAGMA user_version").fetchone()[0] == 26
+            assert conn.execute("PRAGMA user_version").fetchone()[0] == 27
             cols = [r[1] for r in conn.execute(
                 "PRAGMA table_info(weather_forecast_mf_log)").fetchall()]
         finally:

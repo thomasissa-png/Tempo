@@ -9,11 +9,15 @@ la plus juste avant toute décision (qui imposera ensuite un rejeu, CLAUDE.md).
 Sources :
   - Open-Meteo     : weather_forecast_log (horizon_days), source 'open-meteo' par défaut
   - Météo France   : weather_forecast_mf_log, modèle 'merged' par défaut
-  - Référence      : weather_cache.temp_moy, dernière valeur par date (même
-                     référence que l'admin « fiabilité météo », get_weather_reliability)
+  - Référence      : weather_observed.temp_moy (v27, réanalyse ERA5, 9 villes
+                     pondérées) ; dates pas encore couvertes par l'archive :
+                     repli weather_cache (même règle que l'admin « fiabilité
+                     météo », get_weather_reliability). Options :
+                     --reference observed-only (aucun repli) ou
+                     --reference cache (ancienne référence weather_cache seule).
 
-Limite connue : la référence est la prévision J+0 relevée en fin de journée
-(Open-Meteo depuis février), donc légèrement favorable à Open-Meteo à J+0.
+Limite de l'ancienne référence (weather_cache) : c'est une prévision du jour
+même (une seule échéance), pas une observation ; favorable à Open-Meteo à J+0.
 
 Usage (depuis la racine du dépôt) :
   python tools/replay/compare_weather_sources.py [--since AAAA-MM-JJ] [--json [FICHIER]]
@@ -40,22 +44,40 @@ def _stats(errors: list[float]) -> dict:
             "bias": round(sum(errors) / len(errors), 2)}
 
 
+REFERENCES = ("observed", "observed-only", "cache")
+_REF_LABELS = {
+    "observed": "weather_observed.temp_moy (ERA5), repli weather_cache si date non couverte",
+    "observed-only": "weather_observed.temp_moy (ERA5) uniquement",
+    "cache": "weather_cache.temp_moy (dernière valeur par date)",
+}
+
+
 def compare(conn, since: str | None = None, max_horizon: int = 4,
             mf_model: str = "merged", om_source: str | None = "open-meteo",
-            ref_source: str | None = None) -> dict:
+            ref_source: str | None = None, reference: str = "observed") -> dict:
     """Calcule MAE et biais (prévu - observé) de temp_moy par horizon.
 
     om_source : filtre weather_forecast_log.source (None = toutes sources).
     ref_source : filtre weather_cache.description, qui contient la source de
-    la référence (None = toutes, comme l'admin).
+    la référence weather_cache (None = toutes, comme l'admin).
+    reference : 'observed' (défaut, ERA5 + repli weather_cache),
+    'observed-only' ou 'cache' (ancienne référence).
     """
+    if reference not in REFERENCES:
+        raise ValueError(f"reference inconnue : {reference}")
     since = since or "0000-00-00"
-    ref_rows = _rows(conn, """
+    ref_rows = [] if reference == "observed-only" else _rows(conn, """
         SELECT wc1.date, wc1.temp_moy, wc1.description FROM weather_cache wc1
         WHERE wc1.temp_moy IS NOT NULL AND wc1.date >= ?
           AND wc1.fetched_at = (SELECT MAX(wc2.fetched_at) FROM weather_cache wc2
                                 WHERE wc2.date = wc1.date)""", (since,))
     warnings = []
+    observed = {}
+    if reference != "cache":
+        observed = {str(r["date"])[:10]: float(r["temp_moy"]) for r in _rows(conn, """
+            SELECT date, temp_moy FROM weather_observed
+            WHERE temp_moy IS NOT NULL AND date >= ?""", (since,))}
+        ref_rows = [r for r in ref_rows if str(r["date"])[:10] not in observed]
     n_ref_mf = sum(1 for r in ref_rows if (r["description"] or "") in MF_SOURCES)
     if n_ref_mf:
         warnings.append(
@@ -64,7 +86,12 @@ def compare(conn, since: str | None = None, max_horizon: int = 4,
             f"--ref-source open-meteo pour les exclure")
     if ref_source:
         ref_rows = [r for r in ref_rows if (r["description"] or "") == ref_source]
-    ref = {r["date"]: float(r["temp_moy"]) for r in ref_rows}
+    ref = {str(r["date"])[:10]: float(r["temp_moy"]) for r in ref_rows}
+    if reference == "observed" and ref:
+        warnings.append(f"{len(ref)} date(s) pas encore couvertes par weather_observed : "
+                        f"référence weather_cache (prévision du jour) en repli ; "
+                        f"--reference observed-only pour les exclure")
+    ref.update(observed)
 
     om_rows = _rows(conn, """
         SELECT target_date, horizon_days, temp_moy, source FROM weather_forecast_log
@@ -92,7 +119,8 @@ def compare(conn, since: str | None = None, max_horizon: int = 4,
             "n": len(dates), "open_meteo": _stats(om_err), "meteofrance": _stats(mf_err),
             "first_date": dates[0] if dates else None, "last_date": dates[-1] if dates else None,
         }
-    return {"reference": "weather_cache.temp_moy (dernière valeur par date)",
+    return {"reference": _REF_LABELS[reference], "reference_mode": reference,
+            "n_reference_observed": len(observed),
             "since": since if since != "0000-00-00" else None, "mf_model": mf_model,
             "om_source": om_source, "ref_source": ref_source,
             "horizons": horizons, "warnings": warnings}
@@ -136,6 +164,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--mf-model", default="merged", choices=["merged", "arome", "arpege"])
     ap.add_argument("--om-source", default="open-meteo",
                     help="source weather_forecast_log retenue ('all' = toutes)")
+    ap.add_argument("--reference", default="observed", choices=list(REFERENCES),
+                    help="référence observée : observed (défaut, ERA5 + repli weather_cache), "
+                         "observed-only, ou cache (ancienne référence)")
     ap.add_argument("--ref-source", default=None,
                     help="source de la référence weather_cache (défaut : toutes, comme l'admin)")
     ap.add_argument("--database-url", help="URL PostgreSQL (sinon DATABASE_URL, sinon SQLite local)")
@@ -153,7 +184,7 @@ def main(argv: list[str] | None = None) -> int:
         res = compare(conn, since=args.since, max_horizon=args.max_horizon,
                       mf_model=args.mf_model,
                       om_source=None if args.om_source == "all" else args.om_source,
-                      ref_source=args.ref_source)
+                      ref_source=args.ref_source, reference=args.reference)
     finally:
         conn.close()
 

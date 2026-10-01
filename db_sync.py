@@ -21,6 +21,7 @@ Tables exportées (données de prédiction/évaluation — PAS les users/SMS) :
 - weather_forecast_log : historique des prévisions météo
 - rte_forecast_log : archive des prévisions RTE (conso, éolien, solaire), v25
 - weather_forecast_mf_log : archive des prévisions Météo France (AROME, ARPEGE), v26
+- weather_observed : température observée (réanalyse ERA5, archive Open-Meteo), v27
 - rte_daily      : données RTE agrégées
 - weights_history : historique des recalibrations
 """
@@ -45,6 +46,7 @@ SYNC_TABLES = [
     "weather_forecast_log",
     "rte_forecast_log",
     "weather_forecast_mf_log",
+    "weather_observed",
     "rte_daily",
     "weights_history",
 ]
@@ -88,6 +90,9 @@ TABLE_COLUMNS = {
         "temp_max", "temp_moy", "humidity", "wind_speed", "pressure", "n_villes",
         "run", "fetched_at",
     ],
+    "weather_observed": [
+        "date", "temp_moy", "temp_min", "temp_max", "n_villes", "source", "fetched_at",
+    ],
     "rte_daily": [
         "date", "conso_peak_mw", "conso_mean_mw", "prevision_j1_peak_mw",
         "nucleaire_mean_mw", "eolien_mean_mw", "solaire_mean_mw",
@@ -108,6 +113,7 @@ CONFLICT_COLS = {
     "weather_forecast_log": "(target_date, forecast_date)",
     "rte_forecast_log": "(target_date, forecast_date)",
     "weather_forecast_mf_log": "(target_date, forecast_date, model)",
+    "weather_observed": "(date)",
     "rte_daily": "(date)",
     "weights_history": None,  # no natural key, always insert
 }

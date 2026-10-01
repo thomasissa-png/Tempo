@@ -1373,6 +1373,15 @@ def get_daily_recap(season: str | None = None) -> list[dict]:
                     "humidity": r["humidity"],
                     "wind_speed": r["wind_speed"],
                 }
+        # Vraie observation (v27, ERA5) prioritaire pour la température ;
+        # dates pas encore couvertes par l'archive : valeur weather_cache.
+        from database import load_weather_observed
+        for d_obs, t_obs in load_weather_observed(conn, since).items():
+            if d_obs > until:
+                continue
+            entry = weather_obs_map.setdefault(
+                d_obs, {"temp_moy": None, "humidity": None, "wind_speed": None})
+            entry["temp_moy"] = t_obs
 
         # 5) Build per-date predictions structure
         dates_data = {}
@@ -1565,19 +1574,20 @@ def get_daily_recap(season: str | None = None) -> list[dict]:
 def get_weather_reliability(days: int = 90) -> dict:
     """D6: Measure weather forecast accuracy by horizon.
 
-    Compares forecast temperature at each horizon vs J-0 observation.
+    Compares forecast temperature at each horizon vs the observed temperature:
+    weather_observed (v27, ERA5 reanalysis, 9 weighted cities) when the archive
+    covers the date, else the former reference (latest weather_cache value).
     Returns avg absolute error and bias per horizon.
     """
+    from database import load_weather_observed
     conn = get_db()
     try:
         since = _enforce_start_date((date.today() - timedelta(days=days)).isoformat())
         rows = conn.execute(
-            """SELECT wf.horizon_days,
-                      AVG(ABS(wf.temp_moy - wc.temp_moy)) as avg_abs_error,
-                      AVG(wf.temp_moy - wc.temp_moy) as avg_bias,
-                      COUNT(*) as cnt
+            """SELECT wf.horizon_days, wf.target_date, wf.temp_moy AS fc,
+                      wc.temp_moy AS ref
                FROM weather_forecast_log wf
-               JOIN (SELECT wc1.date, wc1.temp_moy FROM weather_cache wc1
+               LEFT JOIN (SELECT wc1.date, wc1.temp_moy FROM weather_cache wc1
                      WHERE wc1.temp_moy IS NOT NULL
                        AND wc1.fetched_at = (SELECT MAX(wc2.fetched_at)
                                               FROM weather_cache wc2
@@ -1585,19 +1595,28 @@ def get_weather_reliability(days: int = 90) -> dict:
                  ON wf.target_date = wc.date
                WHERE wf.target_date >= ?
                  AND wf.temp_moy IS NOT NULL
-                 AND wf.horizon_days BETWEEN 1 AND 15
-               GROUP BY wf.horizon_days
-               ORDER BY wf.horizon_days""",
+                 AND wf.horizon_days BETWEEN 1 AND 15""",
             (since,),
         ).fetchall()
+        observed = load_weather_observed(conn, since)
+
+        errors: dict[int, list[float]] = {}
+        for r in rows:
+            ref = observed.get(str(r["target_date"])[:10], r["ref"])
+            if ref is None:
+                continue
+            errors.setdefault(int(r["horizon_days"]), []).append(
+                float(r["fc"]) - float(ref))
 
         result = {}
-        for r in rows:
-            h = r["horizon_days"]
+        for h in sorted(errors):
+            errs = errors[h]
+            avg_abs = sum(abs(e) for e in errs) / len(errs)
+            bias = sum(errs) / len(errs)
             result[f"J-{h}"] = {
-                "avg_error": round(r["avg_abs_error"], 1) if r["avg_abs_error"] else None,
-                "avg_bias": round(r["avg_bias"], 1) if r["avg_bias"] else None,
-                "samples": r["cnt"],
+                "avg_error": round(avg_abs, 1) if avg_abs else None,
+                "avg_bias": round(bias, 1) if bias else None,
+                "samples": len(errs),
             }
         return result
     except Exception as e:

@@ -1421,3 +1421,154 @@ def fetch_meteofrance_archive(today: date | None = None) -> dict:
     if per_model:
         report["rows"] = _mf_national_rows(per_model, cities, today, tz, now.isoformat())
     return report
+
+
+# ---------------------------------------------------------------------------
+# Température OBSERVÉE (v27, weather_observed) : réanalyse ERA5 via l'archive
+# Open-Meteo, moyenne pondérée des 9 villes de Config.WEATHER_CITIES.
+# Affichage et diagnostic uniquement (historique, fiabilité météo, rejeux) :
+# jamais utilisée par le scoring, weather_cache reste inchangé (2026-10-01).
+# L'archive a quelques jours de retard : une date que l'archive ne couvre pas
+# (valeur nulle, ville manquante, hors plage) n'est PAS écrite ; les lecteurs
+# retombent alors sur leur ancienne valeur. Rien n'est jamais estimé.
+# ---------------------------------------------------------------------------
+
+_OBSERVED_ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
+OBSERVED_MODEL = "era5"
+OBSERVED_SOURCE = "open-meteo-era5"
+_OBSERVED_TIMEOUT_S = 30
+_OBSERVED_CHUNK_DAYS = 120
+_OBSERVED_DAILY = ("temperature_2m_mean", "temperature_2m_min", "temperature_2m_max")
+
+
+def _observed_http_get(url: str, params: dict) -> tuple[int, object]:
+    """GET JSON (point d'injection des tests). Retourne (statut, JSON)."""
+    with httpx.Client(timeout=_OBSERVED_TIMEOUT_S) as client:
+        resp = client.get(url, params=params)
+        try:
+            payload = resp.json()
+        except Exception:
+            payload = {"error": True, "reason": resp.text[:200]}
+        return resp.status_code, payload
+
+
+def _observed_series(loc: dict, var: str) -> list:
+    """Série quotidienne d'une variable (tolère le suffixe de modèle)."""
+    daily = loc.get("daily") or {}
+    if var in daily:
+        return daily[var] or []
+    for k, v in daily.items():
+        if k.startswith(var + "_"):
+            return v or []
+    return []
+
+
+def aggregate_observed(payload, cities: list[dict]) -> dict[str, dict]:
+    """Agrège la réponse multi-villes de l'archive en moyenne pondérée par date.
+
+    Une date n'est retenue que si TOUTES les villes ont moyenne, min et max
+    (pas de moyenne partielle). Retourne {date: {temp_moy, temp_min, temp_max,
+    n_villes}}.
+    """
+    locs = payload if isinstance(payload, list) else [payload]
+    if len(locs) != len(cities):
+        raise ValueError(f"{len(locs)} villes reçues pour {len(cities)} demandées")
+    per_date: dict[str, list[tuple[float, float, float, float]]] = {}
+    for loc, city in zip(locs, cities):
+        times = (loc.get("daily") or {}).get("time") or []
+        series = [_observed_series(loc, v) for v in _OBSERVED_DAILY]
+        for i, d in enumerate(times):
+            vals = [s[i] if i < len(s) else None for s in series]
+            if any(v is None for v in vals):
+                continue
+            per_date.setdefault(str(d)[:10], []).append(
+                (float(city["weight"]), float(vals[0]), float(vals[1]), float(vals[2])))
+    out = {}
+    for d, items in per_date.items():
+        if len(items) != len(cities):
+            continue
+        wsum = sum(w for w, *_ in items)
+        if wsum <= 0:
+            continue
+        out[d] = {
+            "temp_moy": round(sum(w * m for w, m, _, _ in items) / wsum, 2),
+            "temp_min": round(sum(w * lo for w, _, lo, _ in items) / wsum, 2),
+            "temp_max": round(sum(w * hi for w, _, _, hi in items) / wsum, 2),
+            "n_villes": len(items),
+        }
+    return out
+
+
+def _observed_fetch_chunk(start: date, end: date, cities: list[dict]) -> tuple[dict, date | None]:
+    """Une requête multi-coordonnées. Si l'archive refuse une fin hors plage,
+    relance une fois avec la date max qu'elle annonce. Retourne
+    (agrégats, date max annoncée ou None). Lève RuntimeError sur erreur API."""
+    params = {
+        "latitude": ",".join(str(c["lat"]) for c in cities),
+        "longitude": ",".join(str(c["lon"]) for c in cities),
+        "start_date": start.isoformat(), "end_date": end.isoformat(),
+        "daily": ",".join(_OBSERVED_DAILY), "timezone": "Europe/Paris",
+        "models": OBSERVED_MODEL,
+    }
+    status, payload = _observed_http_get(_OBSERVED_ARCHIVE_URL, params)
+    announced = None
+    if isinstance(payload, dict) and payload.get("error"):
+        reason = str(payload.get("reason") or "")
+        m = re.findall(r"(\d{4}-\d{2}-\d{2})", reason)
+        if status == 400 and "range" in reason and m:
+            announced = date.fromisoformat(m[-1])
+            if announced < start:
+                return {}, announced
+            params["end_date"] = announced.isoformat()
+            status, payload = _observed_http_get(_OBSERVED_ARCHIVE_URL, params)
+            if isinstance(payload, dict) and payload.get("error"):
+                raise RuntimeError(f"HTTP {status} : {str(payload.get('reason'))[:160]}")
+        else:
+            raise RuntimeError(f"HTTP {status} : {reason[:160]}")
+    if status != 200:
+        raise RuntimeError(f"HTTP {status}")
+    return aggregate_observed(payload, cities), announced
+
+
+def fetch_observed_temperatures(start: date, end: date) -> dict:
+    """Températures observées (ERA5) du `start` au `end` inclus, 9 villes.
+    Synchrone (à lancer dans un thread), ne lève jamais.
+
+    Retourne {"rows": [lignes weather_observed], "requested": [début, fin],
+    "last_covered": dernière date écrite ou None, "not_covered": [dates de la
+    plage absentes de l'archive], "requests": n, "error": str|None}.
+    """
+    from zoneinfo import ZoneInfo
+    cities = Config.WEATHER_CITIES
+    fetched_at = datetime.now(ZoneInfo("Europe/Paris")).isoformat()
+    report = {"rows": [], "requested": [start.isoformat(), end.isoformat()],
+              "last_covered": None, "not_covered": [], "requests": 0, "error": None}
+    if end < start:
+        return report
+    agg: dict[str, dict] = {}
+    cur = start
+    while cur <= end:
+        chunk_end = min(end, cur + timedelta(days=_OBSERVED_CHUNK_DAYS - 1))
+        try:
+            report["requests"] += 1
+            part, announced = _observed_fetch_chunk(cur, chunk_end, cities)
+            agg.update(part)
+            if announced is not None and announced < chunk_end:
+                break  # l'archive ne va pas plus loin : inutile d'insister
+        except Exception as e:
+            report["error"] = str(e)[:200]
+            logger.warning(f"[Météo observée] archive Open-Meteo en échec : {e}")
+            break
+        cur = chunk_end + timedelta(days=1)
+    day = start
+    while day <= end:
+        d = day.isoformat()
+        if d in agg:
+            report["rows"].append({"date": d, **agg[d], "source": OBSERVED_SOURCE,
+                                   "fetched_at": fetched_at})
+        else:
+            report["not_covered"].append(d)
+        day += timedelta(days=1)
+    if report["rows"]:
+        report["last_covered"] = report["rows"][-1]["date"]
+    return report

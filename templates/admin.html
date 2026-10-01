@@ -430,6 +430,7 @@
                         <button class="action-btn gray" onclick="runTask('db_import')">Importer dump &rarr; DB</button>
                         <button class="action-btn gray" onclick="if(confirm('Écraser les données existantes ?'))runTask('db_import_force')" title="Écrase les données existantes (ON CONFLICT DO UPDATE)">Import forcé</button>
                         <button class="action-btn gray" onclick="runTask('meteofrance_archive')" title="Archive AROME + ARPEGE (weather_forecast_mf_log), comparaison uniquement, hors scoring">Archiver Météo France</button>
+                        <button class="action-btn gray" onclick="runTask('weather_observed')" title="Température observée (réanalyse ERA5, archive Open-Meteo) dans weather_observed : historique et fiabilité météo, hors scoring">Récupérer météo observée</button>
                         <button class="action-btn gray" onclick="runTask('reset_bad_backfill')" title="Remet temp_moy_prevue à NULL pour les prédictions importées (corrige le backfill incorrect)">Reset temp backfill</button>
                     </div>
                     <div id="db-diagnostic" style="margin-top:12px;font-size:0.8rem;display:none"></div>
@@ -1244,12 +1245,13 @@ async function loadSmsLogs() {
     } catch (e) { console.error('loadSmsLogs:', e); container.innerHTML='<p style="color:#DC2626">Erreur de chargement</p>'; }
 }
 
-// Archives de prévisions (lecture seule) : weather_forecast_log (v18), rte_forecast_log (v25), weather_forecast_mf_log (v26)
+// Archives de prévisions (lecture seule) : weather_forecast_log (v18), rte_forecast_log (v25), weather_forecast_mf_log (v26), weather_observed (v27)
 function renderForecastLogs(logs) {
     if (!logs) return '';
     const labels = {weather_forecast_log: 'Pr&eacute;visions m&eacute;t&eacute;o (weather_forecast_log)',
                     rte_forecast_log: 'Pr&eacute;visions RTE (rte_forecast_log)',
-                    weather_forecast_mf_log: 'Pr&eacute;visions M&eacute;t&eacute;o France, hors scoring (weather_forecast_mf_log)'};
+                    weather_forecast_mf_log: 'Pr&eacute;visions M&eacute;t&eacute;o France, hors scoring (weather_forecast_mf_log)',
+                    weather_observed: 'Temp&eacute;rature observ&eacute;e ERA5, hors scoring (weather_observed, derni&egrave;re date couverte)'};
     let html = '<div style="overflow-x:auto;margin-top:16px"><table class="sub-table"><thead><tr><th>Archive</th><th>Lignes</th><th>Derni&egrave;re date d&rsquo;&eacute;mission</th><th>Dernier enregistrement</th></tr></thead><tbody>';
     for (const [table, st] of Object.entries(logs)) {
         const rows = st.rows === null || st.rows === undefined

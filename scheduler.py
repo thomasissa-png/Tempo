@@ -318,6 +318,18 @@ def start_scheduler():
         replace_existing=True,
     )
 
+    # 23h30 quotidien — température observée (v27, archive ERA5 Open-Meteo),
+    # affichage/diagnostic uniquement, hors scoring. Comble aussi les dates
+    # manquantes depuis PREDICTION_START_DATE (premier passage = rattrapage).
+    scheduler.add_job(
+        _tracked(OBSERVED_JOB_ID, task_weather_observed),
+        CronTrigger(hour=23, minute=30, timezone="Europe/Paris"),
+        id=OBSERVED_JOB_ID,
+        name="Température observée (archive ERA5, hors scoring)",
+        replace_existing=True,
+        misfire_grace_time=3600,
+    )
+
     # Dimanche 20h00 — récap hebdomadaire
     scheduler.add_job(
         _tracked("weekly_recap", task_weekly_recap),
@@ -876,6 +888,62 @@ async def task_meteofrance_archive() -> str:
         msg = (f"{tag} {n} lignes weather_forecast_mf_log ({report.get('forecast_date')}) ; "
                + " ; ".join(parts) + f" ; {report.get('requests', 0)} requêtes")
         (logger.info if n else logger.warning)(msg)
+        return msg
+    except Exception as e:
+        logger.warning(f"{tag} échec (non bloquant) : {e}")
+        return f"{tag} échec : {e}"
+
+
+OBSERVED_JOB_ID = "weather_observed"
+OBSERVED_WINDOW_DAYS = 10
+
+
+def _observed_fetch_range(today, covered: set[str]):
+    """(début, fin) à demander à l'archive : fenêtre glissante des
+    OBSERVED_WINDOW_DAYS derniers jours (jusqu'à la veille), élargie à la plus
+    ancienne date manquante depuis PREDICTION_START_DATE. None si rien à faire."""
+    from config import Config
+    end = today - timedelta(days=1)
+    first = date.fromisoformat(Config.PREDICTION_START_DATE)
+    window_start = max(first, end - timedelta(days=OBSERVED_WINDOW_DAYS - 1))
+    if end < first:
+        return None
+    start = window_start
+    day = first
+    while day < window_start:
+        if day.isoformat() not in covered:
+            start = day
+            break
+        day += timedelta(days=1)
+    return start, end
+
+
+async def task_weather_observed(today=None) -> str:
+    """Température observée (v27, weather_observed) : archive ERA5 Open-Meteo,
+    moyenne pondérée des 9 villes. Affichage/diagnostic uniquement, JAMAIS
+    utilisée par le scoring. Dates pas encore couvertes par l'archive : rien
+    n'est écrit (les lecteurs gardent l'ancienne valeur). Ne lève jamais."""
+    tag = "[Météo observée]"
+    try:
+        from config import Config
+        from database import get_weather_observed_dates, store_weather_observed
+        from weather_client import fetch_observed_temperatures
+        today = today or _now_paris().date()
+        covered = await asyncio.to_thread(get_weather_observed_dates,
+                                          Config.PREDICTION_START_DATE)
+        rng = _observed_fetch_range(today, covered)
+        if rng is None:
+            return f"{tag} rien à demander"
+        report = await asyncio.to_thread(fetch_observed_temperatures, *rng)
+        rows = report.get("rows") or []
+        n = await asyncio.to_thread(store_weather_observed, rows) if rows else 0
+        msg = (f"{tag} {n} jour(s) weather_observed ({rng[0]} → {rng[1]}) ; "
+               f"archive couverte jusqu'au {report.get('last_covered') or 'n/d'} ; "
+               f"{len(report.get('not_covered') or [])} jour(s) pas encore couverts "
+               f"(ancienne valeur conservée)")
+        if report.get("error"):
+            msg += f" ; erreur : {report['error']}"
+        (logger.info if n and not report.get("error") else logger.warning)(msg)
         return msg
     except Exception as e:
         logger.warning(f"{tag} échec (non bloquant) : {e}")
@@ -1859,6 +1927,9 @@ async def run_task_now(task_name: str) -> str:
                     "des archives ci-dessous")
         return await task_meteofrance_archive()
 
+    if task_name == OBSERVED_JOB_ID:
+        return await task_weather_observed()
+
     if task_name == "weights":
         # Déclenchement MANUEL et explicite : seul chemin qui recalcule les poids
         # tant que Config.AUTO_WEIGHTS_RECALC_ENABLED = False (pause 2026-09-29).
@@ -1881,7 +1952,7 @@ async def run_task_now(task_name: str) -> str:
             "backfill", "analyze", "evaluate_missed",
             "db_export", "db_import",
             "seo_agent", "backlinks_agent", "morning_alerts",
-            "meteofrance_archive",
+            "meteofrance_archive", "weather_observed",
         ]
         return f"Tâche inconnue: {task_name}. Disponibles: {available}"
 

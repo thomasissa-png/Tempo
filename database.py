@@ -73,6 +73,7 @@ _CONFLICT_COLS = {
     'weather_forecast_log': '(target_date, forecast_date)',
     'rte_forecast_log': '(target_date, forecast_date)',
     'weather_forecast_mf_log': '(target_date, forecast_date, model)',
+    'weather_observed': '(date)',
     'performance': '(date_prediction, date_cible, jours_avance)',
     'scheduler_executions': '(task_id)',
     'agent_files': '(path)',
@@ -1494,6 +1495,42 @@ def init_db():
         conn.commit()
         logger.info("Migration v26 appliquee (table weather_forecast_mf_log)")
 
+    if version < 27:
+        # Migration v27 — température réellement OBSERVÉE par date (réanalyse
+        # ERA5, archive Open-Meteo, moyenne pondérée des 9 villes). Affichage et
+        # diagnostic uniquement (historique, fiabilité météo, outils de rejeu) :
+        # PAS utilisée par le scoring, weather_cache reste inchangé (2026-10-01).
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS weather_observed (
+                date TEXT PRIMARY KEY,
+                temp_moy REAL,
+                temp_min REAL,
+                temp_max REAL,
+                n_villes INTEGER,
+                source TEXT,
+                fetched_at TEXT NOT NULL
+            )
+        """)
+        for col, ddl in (
+            ("temp_moy", "REAL"),
+            ("temp_min", "REAL"),
+            ("temp_max", "REAL"),
+            ("n_villes", "INTEGER"),
+            ("source", "TEXT"),
+            ("fetched_at", "TEXT"),
+        ):
+            try:
+                conn.execute(f"ALTER TABLE weather_observed ADD COLUMN {col} {ddl}")
+            except _DbOperationalError:
+                logger.debug(f"Migration v27: colonne {col} existe deja")
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_weather_observed_date "
+            "ON weather_observed(date)"
+        )
+        conn.execute("PRAGMA user_version = 27")
+        conn.commit()
+        logger.info("Migration v27 appliquee (table weather_observed)")
+
     # Poids initiaux si vide
     existing = conn.execute("SELECT COUNT(*) as c FROM weights_history").fetchone()
     if not existing or existing["c"] == 0:
@@ -1801,16 +1838,72 @@ def store_weather_mf_log(rows: list[dict]) -> int:
         conn.close()
 
 
+_WEATHER_OBSERVED_COLS = (
+    "date", "temp_moy", "temp_min", "temp_max", "n_villes", "source", "fetched_at",
+)
+
+
+def store_weather_observed(rows: list[dict]) -> int:
+    """Upsert des températures observées (v27, clé date). Une valeur
+    d'archive plus récente remplace l'ancienne pour la même date."""
+    if not rows:
+        return 0
+    cols = ", ".join(_WEATHER_OBSERVED_COLS)
+    marks = ", ".join("?" for _ in _WEATHER_OBSERVED_COLS)
+    updates = ", ".join(f"{c} = excluded.{c}" for c in _WEATHER_OBSERVED_COLS[1:])
+    sql = (f"INSERT INTO weather_observed ({cols}) VALUES ({marks}) "
+           f"ON CONFLICT(date) DO UPDATE SET {updates}")
+    conn = get_db()
+    try:
+        for r in rows:
+            conn.execute(sql, tuple(r.get(c) for c in _WEATHER_OBSERVED_COLS))
+        conn.commit()
+        return len(rows)
+    finally:
+        conn.close()
+
+
+def load_weather_observed(conn, start: str | None = None) -> dict:
+    """{date: temp_moy observée} (v27) sur une connexion existante. Table
+    absente ou illisible : {} (les appelants retombent sur weather_cache)."""
+    try:
+        rows = conn.execute(
+            "SELECT date, temp_moy FROM weather_observed "
+            "WHERE date >= ? AND temp_moy IS NOT NULL", (start or "0000-00-00",),
+        ).fetchall()
+    except Exception as e:
+        logger.debug(f"[weather_observed] illisible : {e}")
+        try:
+            conn.rollback()  # PG : libérer la transaction avortée
+        except Exception:
+            pass
+        return {}
+    return {str(r["date"])[:10]: float(r["temp_moy"]) for r in rows}
+
+
+def get_weather_observed_dates(since: str) -> set[str]:
+    """Dates déjà couvertes par weather_observed depuis `since`."""
+    conn = get_db()
+    try:
+        return set(load_weather_observed(conn, since))
+    finally:
+        conn.close()
+
+
 def get_forecast_log_stats() -> dict:
     """Diagnostic admin (lecture seule) : volume et fraîcheur des archives
-    de prévisions météo Open-Meteo (v18), RTE (v25) et Météo France (v26)."""
+    de prévisions météo Open-Meteo (v18), RTE (v25), Météo France (v26) et
+    des températures observées (v27, dernière date couverte)."""
     stats = {}
     conn = get_db()
     try:
-        for table in ("weather_forecast_log", "rte_forecast_log", "weather_forecast_mf_log"):
+        for table, date_col in (("weather_forecast_log", "forecast_date"),
+                                ("rte_forecast_log", "forecast_date"),
+                                ("weather_forecast_mf_log", "forecast_date"),
+                                ("weather_observed", "date")):
             try:
                 row = conn.execute(
-                    f"SELECT COUNT(*) AS n, MAX(forecast_date) AS last_forecast, "
+                    f"SELECT COUNT(*) AS n, MAX({date_col}) AS last_forecast, "
                     f"MAX(fetched_at) AS last_fetched FROM {table}"
                 ).fetchone()
                 stats[table] = {"rows": row["n"] or 0,

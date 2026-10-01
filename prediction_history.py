@@ -17,7 +17,8 @@ Sources et exclusions :
   en base (purge historique > 90 jours, supprimée le 2026-09-29) : couleur seule,
   température « n/d ».
 - actuals : couleurs officielles réelles (synthetic = 0).
-- weather_cache : température moyenne observée (dernier relevé du jour).
+- weather_observed (v27) : température moyenne observée (ERA5, 9 villes pondérées) ;
+  repli weather_cache (dernier relevé du jour) tant que l'archive ne couvre pas la date.
 - weather_forecast_log : température prévue si la ligne de prédiction ne l'a pas.
 
 Pas d'appel à performance_tracker.get_daily_recap() (vue admin, autres
@@ -257,6 +258,10 @@ def _load_actuals(conn, start: str) -> tuple[dict, dict, dict]:
         if d not in seen or f > seen[d]:
             seen[d] = f
             observed[d] = _num(w["temp_moy"])
+    # Vraie observation (v27, ERA5) prioritaire ; dates pas encore couvertes
+    # par l'archive : ancienne valeur weather_cache conservée.
+    from database import load_weather_observed
+    observed.update(load_weather_observed(conn, start))
     return actuals, confirmed_at, observed
 
 
