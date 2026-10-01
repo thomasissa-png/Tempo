@@ -15,6 +15,8 @@ from datetime import date
 # Identité
 # ================================================================
 SITE_URL = "https://www.calendrier-tempo.fr"
+# Identifiant JSON-LD unique et stable de l'organisation (audit GEO 2026-10-01)
+ORG_ID = f"{SITE_URL}/#organization"
 SITE_NAME = "Calendrier Tempo EDF"
 SITE_ALTERNATE_NAMES = ["Calendrier Tempo", "calendrier-tempo.fr"]
 SITE_DISCLAIMER = (
@@ -248,13 +250,34 @@ def week_dot_label(d: date) -> str:
     return f"{JOURS_FR[d.weekday()][:3].capitalize()} {d.day}"
 
 
+def _list_to_text(match: "re.Match[str]") -> str:
+    """Liste HTML -> énumération lisible en texte : « élément ; élément ; élément. »."""
+    items = re.findall(r"<li[^>]*>(.*?)</li>", match.group(0), flags=re.S)
+    items = [re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", it)).strip().rstrip(" .;") for it in items]
+    return " " + " ; ".join(it for it in items if it) + ". "
+
+
 def html_to_text(fragment: str) -> str:
-    """Convertit un fragment HTML de FAQ en texte brut (JSON-LD, llms.txt)."""
-    text = re.sub(r"<li[^>]*>", " ", fragment)
+    """Convertit un fragment HTML de FAQ en texte brut (JSON-LD, llms.txt).
+
+    Les listes deviennent une énumération séparée par des points-virgules (audit GEO
+    2026-10-01 : des puces collées en une phrase rendaient la réponse illisible)."""
+    text = re.sub(r"<(ul|ol)[^>]*>.*?</\1>", _list_to_text, fragment, flags=re.S)
+    text = re.sub(r"<li[^>]*>", " ", text)
     text = re.sub(r"</(p|li|ul|ol|h[1-6])>", " ", text)
     text = re.sub(r"<[^>]+>", "", text)
     text = html.unescape(text)
     return re.sub(r"\s+", " ", text).strip()
+
+
+def absolute_md_links(markdown_text: str) -> str:
+    """Liens Markdown relatifs « ](/chemin) » -> absolus (llms-full.txt, lu hors du site)."""
+    return re.sub(r"\]\((/(?!/)[^)\s]*)\)", lambda m: f"]({SITE_URL}{m.group(1)})", markdown_text)
+
+
+def absolute_html_links(fragment: str) -> str:
+    """href/src relatifs « ="/chemin" » -> absolus (feed.xml, lu hors du site)."""
+    return re.sub(r'(href|src)="(/(?!/)[^"]*)"', lambda m: f'{m.group(1)}="{SITE_URL}{m.group(2)}"', fragment)
 
 
 def faq_jsonld(items: list[dict]) -> dict:
@@ -379,8 +402,8 @@ FAQ_HOME: list[dict] = [
     {
         "question": "Quelle couleur Tempo aujourd'hui et demain ?",
         "answer_html": (
-            "<p>La <strong>couleur EDF Tempo</strong> du jour et celle de demain sont en haut de cette page, "
-            "dans les deux grandes pastilles du résumé des 10 prochains jours. "
+            "<p>La <strong>couleur EDF Tempo</strong> du jour et celle de demain sont affichées en haut de la "
+            "page d'accueil de calendrier-tempo.fr, dans les deux grandes pastilles du résumé des 10 prochains jours. "
             f"{ANNONCE_J1}. Tant qu'elle n'est pas publiée, la pastille de demain montre "
             "notre <strong>prévision</strong>, signalée comme telle. Voir aussi la page "
             "<a href=\"/couleur-tempo-demain\">couleur Tempo de demain</a> et le "

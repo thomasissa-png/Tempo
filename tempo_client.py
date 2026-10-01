@@ -11,8 +11,14 @@ import asyncio
 import httpx
 import logging
 from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 from config import Config
 from database import get_db
+
+
+def _today_paris() -> date:
+    """Date du jour à Paris (le conteneur tourne en UTC)."""
+    return datetime.now(tz=ZoneInfo("Europe/Paris")).date()
 
 
 logger = logging.getLogger(__name__)
@@ -246,7 +252,7 @@ def seed_from_remaining(remaining_rouge: int, remaining_blanc: int):
     # D'abord injecter les rouges, puis les blancs, le reste en bleu
     colors_to_inject = (["ROUGE"] * need_rouge) + (["BLANC"] * need_blanc)
 
-    yesterday = date.today() - timedelta(days=1)
+    yesterday = _today_paris() - timedelta(days=1)
     idx = 0
     while current <= yesterday and idx < len(colors_to_inject):
         if current.isoformat() not in existing_dates:
@@ -282,7 +288,7 @@ async def backfill_season_actuals():
     les compteurs globaux et injecte des actuals synthétiques.
     """
     start, _ = get_season_dates()
-    yesterday = date.today() - timedelta(days=1)
+    yesterday = _today_paris() - timedelta(days=1)
 
     # Charger les dates déjà présentes en DB
     conn = get_db()
@@ -378,7 +384,7 @@ async def backfill_season_actuals():
 def get_season_dates() -> tuple[date, date]:
     """Retourne (début, fin) de la saison Tempo en cours.
     Saison = 1er septembre → 31 août."""
-    today = date.today()
+    today = _today_paris()
     if today.month >= 9:
         return date(today.year, 9, 1), date(today.year + 1, 8, 31)
     else:
@@ -429,7 +435,7 @@ def get_remaining_days() -> dict:
 def days_left_in_season() -> int:
     """Nombre de jours restants jusqu'à la fin de la saison."""
     _, end = get_season_dates()
-    delta = (end - date.today()).days
+    delta = (end - _today_paris()).days
     return max(0, delta)
 
 

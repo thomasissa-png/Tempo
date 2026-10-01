@@ -94,7 +94,10 @@ async function sha256(text: string): Promise<string> {
 //   no-store, no-cache, Set-Cookie, ni les 503 de démarrage de main.py).
 // - Durée de stockage = max-age + stale-while-revalidate : entre les deux, la copie
 //   en cache est servie (STALE) et rafraîchie en arrière-plan (ctx.waitUntil).
-// - Clé = URL complète (query comprise), hôte normalisé. En-tête de diagnostic X-Edge-Cache.
+// - Clé = URL complète (query comprise), hôte normalisé + version des données
+//   (/api/edge-version, relue toutes les 15 s au plus) : un changement de couleur,
+//   un calcul ou une évaluation rend toutes les copies obsolètes en <= 15 s.
+// - En-tête de diagnostic X-Edge-Cache.
 // ---------------------------------------------------------------------------
 
 const EDGE_STATUS = "X-Edge-Cache"; // HIT | STALE | MISS | BYPASS
@@ -106,6 +109,7 @@ const ORIGIN_CC = "X-Edge-Origin-Cache-Control";
 const BYPASS_PREFIXES = ["/admin", "/manage/", "/api/webhook/"] as const;
 const BYPASS_EXACT = new Set([
   "/manage", "/api/webhook", "/api/subscribe", "/api/resend-manage-link", "/health", "/keepalive",
+  "/api/edge-version",
 ]);
 // Cookies sans effet sur le rendu (Cloudflare, mesure d'audience) : ils n'empêchent pas le cache.
 const NEUTRAL_COOKIE = /^(__cf|_cf|cf_|__cflb|_ga|_gid|umami)/i;
@@ -119,18 +123,83 @@ function isCacheableRequest(request: Request, url: URL): boolean {
     const names = cookie.split(";").map((c) => c.split("=")[0].trim()).filter((n) => n !== "");
     if (names.some((n) => !NEUTRAL_COOKIE.test(n))) return false; // cookie de session possible
   }
+  if (url.searchParams.has(VERSION_PARAM)) return false; // paramètre interne, jamais fourni par le client
   const path = url.pathname;
   if (BYPASS_EXACT.has(path)) return false;
   if (BYPASS_PREFIXES.some((p) => path.startsWith(p))) return false;
   return true;
 }
 
-function cacheKey(url: URL): Request {
+// ---------------------------------------------------------------------------
+// Version des données (app.py : invalidate_predictions_cache -> /api/edge-version).
+// Par isolat : dernière version connue + date de lecture. Au-delà de 15 s, relue auprès du
+// conteneur (2 s max, une seule relecture en vol). Échec (503 de démarrage, délai) : on garde
+// la dernière version connue (nouvel essai 5 s plus tard) ; aucune connue : pas de cache.
+// ---------------------------------------------------------------------------
+
+const EDGE_VERSION_PATH = "/api/edge-version";
+const VERSION_PARAM = "__edge_v"; // ajouté à la clé de cache uniquement
+const VERSION_MAX_AGE_MS = 15_000;
+const VERSION_TIMEOUT_MS = 2_000;
+const VERSION_RETRY_MS = 5_000;
+const VERSION_FORMAT = /^[0-9A-Za-z._:-]{1,80}$/;
+
+let knownVersion: { value: string; readAt: number } | null = null;
+let lastVersionFailure = 0;
+let versionInFlight: { promise: Promise<string | null>; startedAt: number } | null = null;
+
+function timeout(ms: number): Promise<null> {
+  return new Promise((resolve) => setTimeout(() => resolve(null), ms));
+}
+
+async function fetchDataVersion(env: Env): Promise<string | null> {
+  try {
+    const request = new Request(`${CANONICAL_ORIGIN}${EDGE_VERSION_PATH}`, { method: "GET" });
+    const response = await Promise.race([getContainer(env.TEMPO_APP).fetch(request), timeout(VERSION_TIMEOUT_MS)]);
+    if (!response) return null; // délai dépassé
+    if (response.status !== 200) {
+      discard(response); // 503 pendant le démarrage de main.py
+      return null;
+    }
+    const text = (await Promise.race([response.text(), timeout(VERSION_TIMEOUT_MS)]))?.trim() ?? "";
+    return VERSION_FORMAT.test(text) ? text : null;
+  } catch (e) {
+    console.error(`[edge-cache] version : ${e}`);
+    return null;
+  }
+}
+
+// Version courante pour la clé de cache, ou null (=> BYPASS).
+async function currentDataVersion(env: Env): Promise<string | null> {
+  const now = Date.now();
+  if (knownVersion && now - knownVersion.readAt < VERSION_MAX_AGE_MS) return knownVersion.value;
+  if (knownVersion && now - lastVersionFailure < VERSION_RETRY_MS) return knownVersion.value;
+  // Une relecture bloquée (requête initiatrice annulée) ne doit pas tout figer.
+  if (!versionInFlight || now - versionInFlight.startedAt > VERSION_TIMEOUT_MS * 2) {
+    const flight = {
+      startedAt: now,
+      promise: fetchDataVersion(env).then((value) => {
+        if (value !== null) knownVersion = { value, readAt: Date.now() };
+        else lastVersionFailure = Date.now();
+        return value;
+      }).finally(() => {
+        if (versionInFlight === flight) versionInFlight = null;
+      }),
+    };
+    versionInFlight = flight;
+  }
+  // Délai propre à chaque requête : une promesse née dans une autre requête peut ne jamais aboutir.
+  const value = await Promise.race([versionInFlight.promise, timeout(VERSION_TIMEOUT_MS + 500)]);
+  return value ?? knownVersion?.value ?? null;
+}
+
+function cacheKey(url: URL, version: string): Request {
   const key = new URL(url.toString());
   key.protocol = "https:";
   key.hostname = key.hostname.toLowerCase().replace(/\.$/, "");
   key.port = "";
   key.hash = "";
+  key.searchParams.set(VERSION_PARAM, version);
   return new Request(key.toString(), { method: "GET" });
 }
 
@@ -238,8 +307,10 @@ async function serveWithEdgeCache(
   const passThrough = () => container.fetch(new Request(request, { headers, redirect: "manual" }));
   if (!isCacheableRequest(request, url)) return withEdgeStatus(await passThrough(), "BYPASS");
 
+  const version = await currentDataVersion(env);
+  if (version === null) return withEdgeStatus(await passThrough(), "BYPASS"); // version inconnue
   const head = request.method.toUpperCase() === "HEAD";
-  const key = cacheKey(url);
+  const key = cacheKey(url, version);
   let cached: Response | undefined;
   try {
     cached = await caches.default.match(key);

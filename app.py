@@ -37,6 +37,12 @@ def _now_paris() -> datetime:
     """Retourne l'heure actuelle en timezone Paris (CET/CEST)."""
     return datetime.now(tz=_PARIS_TZ)
 
+
+def _today_paris() -> date:
+    """Date du jour à Paris. Le conteneur Cloudflare tourne en UTC : date.today()
+    y serait la veille entre minuit et 1 h ou 2 h (audit GEO 2026-10-01, 5.4)."""
+    return _now_paris().date()
+
 from fastapi import BackgroundTasks, FastAPI, Request, Form, HTTPException, Header
 from fastapi.middleware.gzip import GZipMiddleware
 from pathlib import Path
@@ -81,6 +87,13 @@ _EDF_CACHE_TTL = 120  # 2 minutes
 # === Fix #25 : Signal de disponibilité DB pour Cloud Run health checks ===
 _db_ready = asyncio.Event()
 
+# === Version des données pour le cache au bord (cloudflare/worker.ts) ===
+# Incrémentée par invalidate_predictions_cache() (point unique : confirmation EDF,
+# calcul de 18h, évaluation). Le Worker l'ajoute à sa clé de cache : un changement
+# rend toutes les copies au bord obsolètes en <= 15 s. Conteneur mono-processus.
+_DATA_VERSION_BOOT = int(time.time())
+_data_version = 0
+
 
 
 def invalidate_predictions_cache():
@@ -90,6 +103,7 @@ def invalidate_predictions_cache():
     après génération de nouvelles prédictions (18h00) pour que
     les visiteurs voient immédiatement les données à jour.
     """
+    global _data_version
     _predictions_cache["data"] = None
     _predictions_cache["expires"] = 0
     # Invalider aussi les caches EDF pour que today/tomorrow/remaining
@@ -109,6 +123,9 @@ def invalidate_predictions_cache():
         invalidate_history_cache()
     except Exception:
         pass
+    # En dernier : une page rendue avant la purge des caches mémoire ne doit jamais
+    # être stockée au bord sous la nouvelle version.
+    _data_version += 1
 
 # === Fix #16 : Rate limiting simple pour /api/subscribe ===
 _rate_limit_store: dict[str, list[float]] = defaultdict(list)
@@ -153,7 +170,7 @@ def purge_old_data() -> None:
         # la normalisation RTE (C_nette). Le volume est faible (~1 ligne/jour,
         # ~2000 lignes pour 6 saisons) donc aucun risque de croissance.
         deleted_cache = 0
-        cutoff_preds = (date.today() - timedelta(days=90)).isoformat()
+        cutoff_preds = (_today_paris() - timedelta(days=90)).isoformat()
         # Fix audit ML #38 : préserver les predictions backtest (essentielles pour ML)
         # Historique public (2026-09-29) : les prédictions réelles ne sont plus
         # jamais purgées (grille J-15 → J-1 et températures de /historique-previsions,
@@ -404,6 +421,16 @@ _CACHE_EXACT: dict[str, str] = {
 }
 
 
+_CACHE_VERSIONED_ASSET = "public, max-age=31536000, immutable"
+
+
+def _is_slash_redirect(path: str, location: str) -> bool:
+    """Vrai si ``location`` est ``path`` avec ou sans slash final (redirection de Starlette)."""
+    from urllib.parse import urlsplit
+    target = urlsplit(location).path
+    return bool(target) and target != path and target.rstrip("/") == path.rstrip("/")
+
+
 @app.middleware("http")
 async def add_cache_and_security_headers(request: Request, call_next):
     """Ajoute Cache-Control et headers de sécurité sur toutes les réponses."""
@@ -418,6 +445,11 @@ async def add_cache_and_security_headers(request: Request, call_next):
     # --- Content-Language pour les pages HTML (aide Bing à classifier la langue) ---
     if path in _CACHE_EXACT or path.startswith(("/blog/", "/calendrier/", "/historique-previsions/")):
         response.headers["Content-Language"] = "fr"
+    # --- Slash final : la redirection automatique de Starlette (307, temporaire) devient
+    # permanente (301) pour GET/HEAD (audit SEO 2026-10-01 P2-1). POST garde 307.
+    if (response.status_code == 307 and request.method in ("GET", "HEAD")
+            and _is_slash_redirect(path, response.headers.get("location", ""))):
+        response.status_code = 301
     # --- Cache-Control --- (jamais sur les erreurs : une 404 ne doit pas être mise en cache 1 h)
     if response.status_code >= 400:
         return response
@@ -428,6 +460,10 @@ async def add_cache_and_security_headers(request: Request, call_next):
     # Match exact d'abord (pages HTML)
     if path in _CACHE_EXACT:
         response.headers["Cache-Control"] = _CACHE_EXACT[path]
+        return response
+    # Assets versionnés (?v=) : l'URL change à chaque version, cache long immuable (P2-7)
+    if path.startswith("/static/") and request.query_params.get("v"):
+        response.headers["Cache-Control"] = _CACHE_VERSIONED_ASSET
         return response
     # Match par préfixe (static + API)
     for prefix, directive in _CACHE_RULES:
@@ -513,7 +549,7 @@ def _get_ssr_data() -> dict:
     Best-effort : si la DB n'est pas prête, retourne des valeurs vides.
     Ceci permet à Google de crawler du contenu réel au lieu de placeholders JS.
     """
-    today_d = date.today()
+    today_d = _today_paris()
     tomorrow_d = today_d + timedelta(days=1)
     ssr = {
         "today_color": None, "tomorrow_color": None,
@@ -533,8 +569,8 @@ def _get_ssr_data() -> dict:
         from database import get_db
         conn = get_db()
         try:
-            today_str = date.today().isoformat()
-            tomorrow_str = (date.today() + timedelta(days=1)).isoformat()
+            today_str = _today_paris().isoformat()
+            tomorrow_str = (_today_paris() + timedelta(days=1)).isoformat()
 
             # Couleur d'aujourd'hui depuis actuals
             row = conn.execute(
@@ -606,7 +642,7 @@ def _get_ssr_data() -> dict:
                 if len(ssr["week_summary"]) < 10:
                     try:
                         d = date.fromisoformat(r["date"])
-                        today_d = date.today()
+                        today_d = _today_paris()
                         tomorrow_d = today_d + timedelta(days=1)
                         prob_key = f"probabilite_{couleur.lower()}"
                         # Arrondi « demi vers le haut » comme Math.round côté JS (même HTML)
@@ -773,7 +809,7 @@ def _calendar_bounds() -> tuple[date, date]:
 
 def _month_path(year: int, month: int) -> str:
     """URL canonique d'un mois : /calendrier pour le mois en cours, sinon /calendrier/AAAA-MM."""
-    today = date.today()
+    today = _today_paris()
     if (year, month) == (today.year, today.month):
         return "/calendrier"
     return f"/calendrier/{year}-{month:02d}"
@@ -800,7 +836,7 @@ def _get_calendrier_data(month: int | None = None, year: int | None = None) -> d
     """
     import calendar as cal_module
 
-    today = date.today()
+    today = _today_paris()
     if not month or not year:
         month = today.month
         year = today.year
@@ -989,7 +1025,7 @@ def _get_season_data(start_year: int) -> dict:
 
 def _calendar_context(request: Request, data: dict, canonical_path: str) -> dict:
     """Contexte commun des pages calendrier (SSR)."""
-    today = date.today()
+    today = _today_paris()
     faq = site_facts.faq_calendrier(data["season_label"])
     crumbs = [("Accueil", "/"), ("Calendrier Tempo EDF", "/calendrier")]
     if canonical_path != "/calendrier":
@@ -1189,7 +1225,7 @@ async def page_methodologie(request: Request):
         "ref_path": ref_path,
         "weights": weights,
         "cities": cities,
-        "measured_on": site_facts.fr_date(date.today(), with_weekday=False),
+        "measured_on": site_facts.fr_date(_today_paris(), with_weekday=False),
         "breadcrumb_ld": site_facts.breadcrumb_jsonld(crumbs),
     })
 
@@ -1276,10 +1312,10 @@ async def _render_blog_index(request: Request):
     })
 
 
-@app.api_route("/blog", methods=["GET", "HEAD"], response_class=HTMLResponse, include_in_schema=False)
-async def page_blog(request: Request):
-    """Sert /blog directement (évite le 301 redirect)."""
-    return await _render_blog_index(request)
+@app.api_route("/blog", methods=["GET", "HEAD"], include_in_schema=False)
+async def page_blog():
+    """/blog -> 301 vers /blog/ (URL du sitemap et du canonical, audit SEO 2026-10-01 P2-2)."""
+    return RedirectResponse("/blog/", status_code=301)
 
 
 @app.api_route("/blog/", methods=["GET", "HEAD"], response_class=HTMLResponse)
@@ -1298,6 +1334,7 @@ async def page_blog_article(request: Request, slug: str):
     url = f"{site_facts.SITE_URL}/blog/{article.slug}"
     org = {
         "@type": "Organization",
+        "@id": site_facts.ORG_ID,
         "name": site_facts.SITE_NAME,
         "url": f"{site_facts.SITE_URL}/",
         "logo": {"@type": "ImageObject", "url": f"{site_facts.SITE_URL}/static/favicon-192.png",
@@ -1311,7 +1348,7 @@ async def page_blog_article(request: Request, slug: str):
         "datePublished": article.publish_date.isoformat(),
         "dateModified": article.last_modified.isoformat(),
         "inLanguage": "fr",
-        "author": {"@type": "Organization", "name": site_facts.SITE_NAME, "url": f"{site_facts.SITE_URL}/"},
+        "author": {"@type": "Organization", "@id": site_facts.ORG_ID, "name": site_facts.SITE_NAME, "url": f"{site_facts.SITE_URL}/"},
         "publisher": org,
         "mainEntityOfPage": {"@type": "WebPage", "@id": url},
         "image": {"@type": "ImageObject", "url": f"{site_facts.SITE_URL}/static/og-image.png",
@@ -1488,10 +1525,10 @@ def _robots_group(user_agent: str, comment: str, crawl_delay: int | None = None)
 
 def build_robots_txt() -> str:
     """Contenu de robots.txt (fonction pure, testée)."""
-    parts = [
-        "# Tous les robots : pages publiques, pas d'API\n"
-        "User-agent: *\n" + "".join(_ROBOTS_PAGES) + "".join(_ROBOTS_DISALLOW)
-    ]
+    # Groupe « * » : mêmes Allow des endpoints publics que les groupes nommés.
+    # Googlebot n'a pas de groupe dédié : sans eux, il ne lirait pas le contentUrl
+    # du Dataset de /calendrier (/api/history). Le reste de /api/ reste bloqué.
+    parts = [_robots_group("*", "Tous les robots : pages publiques et endpoints API publics")]
     for ua, comment in _ROBOTS_SEARCH_BOTS:
         parts.append(_robots_group(ua, comment, crawl_delay=1))
     for ua, comment in _ROBOTS_AI_SEARCH_BOTS + _ROBOTS_AI_TRAINING_BOTS:
@@ -1613,7 +1650,7 @@ async def sitemap_xml():
         lm = max(dates + [content_date])
         urls.append(_sitemap_url(f"/calendrier/{label}", lm, "monthly", "0.7"))
     first_month, _ = _calendar_bounds()
-    today = date.today()
+    today = _today_paris()
     y, m = first_month.year, first_month.month
     while (y, m) < (today.year, today.month):
         ym = f"{y}-{m:02d}"
@@ -1810,7 +1847,7 @@ async def llms_full_txt():
             f"## {a.title}\n\n"
             f"URL : {u}/blog/{a.slug}\n"
             f"Publié le {a.publish_date.isoformat()}{updated}\n\n"
-            f"{_demote_markdown_headings(a.body_md)}\n"
+            f"{site_facts.absolute_md_links(_demote_markdown_headings(a.body_md))}\n"
         )
 
     return PlainTextResponse(
@@ -1856,7 +1893,7 @@ async def rss_feed():
             f"      <title>{html_mod.escape(a.title)}</title>\n"
             f"      <link>https://www.calendrier-tempo.fr/blog/{a.slug}</link>\n"
             f"      <description>{html_mod.escape(a.description)}</description>\n"
-            f"      <content:encoded><![CDATA[{a.content_html}]]></content:encoded>\n"
+            f"      <content:encoded><![CDATA[{site_facts.absolute_html_links(a.content_html)}]]></content:encoded>\n"
             f"      <pubDate>{_rfc822(a.publish_date)}</pubDate>\n"
             f"      <guid isPermaLink=\"true\">https://www.calendrier-tempo.fr/blog/{a.slug}</guid>\n"
             f"      <author>contact@calendrier-tempo.fr (Calendrier Tempo EDF)</author>\n"
@@ -2047,6 +2084,24 @@ def _propagate_edf_confirmation(date_str: str | None, couleur: str | None):
         logger.debug(f"[API→DB] Erreur propagation {date_str}: {e}")
 
 
+def edge_version() -> str:
+    """Version des données servie au Worker : « {boot}-{n}-{date Paris} ».
+
+    Change à chaque invalidate_predictions_cache(), à chaque redémarrage et à minuit
+    (Paris : « aujourd'hui » et « demain » changent de sens). Aucune requête base.
+    """
+    return f"{_DATA_VERSION_BOOT}-{_data_version}-{_now_paris().date().isoformat()}"
+
+
+@app.get("/api/edge-version", response_class=PlainTextResponse, include_in_schema=False)
+async def api_edge_version():
+    """Version des données pour la clé du cache au bord (interne, jamais en cache)."""
+    return PlainTextResponse(
+        edge_version(),
+        headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex"},
+    )
+
+
 @app.get("/api/today")
 async def api_today():
     """Couleur Tempo du jour via l'API officielle (cache 2 min)."""
@@ -2179,7 +2234,7 @@ async def api_predictions():
 
         conn = get_db()
         try:
-            today_str = date.today().isoformat()
+            today_str = _today_paris().isoformat()
             # Fix #31 : préférer la ligne confirmée (EDF officiel) au simple MAX(id).
             # COALESCE prend l'id confirmé si disponible, sinon le plus récent.
             rows = conn.execute(
@@ -2350,7 +2405,7 @@ async def api_predictions():
         rte_score = await get_consumption_score()
         predictions = predict_range(forecasts, rte_score=rte_score)
 
-        cycle_id = f"{date.today().isoformat()}_init"
+        cycle_id = f"{_today_paris().isoformat()}_init"
         for pred in predictions:
             store_prediction(pred, pred.get("horizon", "J-?"), cycle_id=cycle_id)
         for pred in predictions:
@@ -2381,7 +2436,7 @@ async def api_history(days: int = 30):
 
     conn = get_db()
     try:
-        since = (date.today() - timedelta(days=days)).isoformat()
+        since = (_today_paris() - timedelta(days=days)).isoformat()
         rows = conn.execute(
             "SELECT date, couleur_reelle FROM actuals WHERE date >= ? AND synthetic = 0 ORDER BY date",
             (since,)
@@ -2473,9 +2528,9 @@ async def api_performance_csv(request: Request, month: int | None = None, year: 
     from performance_tracker import export_monthly_csv
 
     if not month:
-        month = date.today().month
+        month = _today_paris().month
     if not year:
-        year = date.today().year
+        year = _today_paris().year
 
     # M-06 QA : valider month et year
     if not (1 <= month <= 12):
@@ -3101,8 +3156,8 @@ async def admin_db_diagnostic(request: Request, authorization: str | None = Head
                FROM predictions
                WHERE date >= ? AND date <= ?
                GROUP BY date ORDER BY date DESC""",
-            ((date.today() - timedelta(days=15)).isoformat(),
-             (date.today() + timedelta(days=15)).isoformat()),
+            ((_today_paris() - timedelta(days=15)).isoformat(),
+             (_today_paris() + timedelta(days=15)).isoformat()),
         ).fetchall()
 
         # 2. Actuals: recent entries
@@ -3111,7 +3166,7 @@ async def admin_db_diagnostic(request: Request, authorization: str | None = Head
                FROM actuals
                WHERE date >= ?
                ORDER BY date DESC""",
-            ((date.today() - timedelta(days=15)).isoformat(),),
+            ((_today_paris() - timedelta(days=15)).isoformat(),),
         ).fetchall()
 
         # 3. Performance: count evaluations
@@ -3121,7 +3176,7 @@ async def admin_db_diagnostic(request: Request, authorization: str | None = Head
                FROM performance
                WHERE date_cible >= ?
                GROUP BY date_cible ORDER BY date_cible DESC""",
-            ((date.today() - timedelta(days=15)).isoformat(),),
+            ((_today_paris() - timedelta(days=15)).isoformat(),),
         ).fetchall()
 
         # 4. Global stats
@@ -3141,7 +3196,7 @@ async def admin_db_diagnostic(request: Request, authorization: str | None = Head
         return {
             "status": "ok",
             "prediction_start_date": Config.PREDICTION_START_DATE,
-            "today": date.today().isoformat(),
+            "today": _today_paris().isoformat(),
             "global_stats": dict(stats),
             "predictions_by_date": [dict(r) for r in pred_rows],
             "actuals_recent": [dict(r) for r in actual_rows],

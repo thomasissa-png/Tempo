@@ -10,8 +10,8 @@
         "headline": "Méthodologie de prévision des jours Tempo EDF",
         "url": "https://www.calendrier-tempo.fr/methodologie",
         "inLanguage": "fr",
-        "author": {"@type": "Organization", "name": "Calendrier Tempo EDF", "url": "https://www.calendrier-tempo.fr/"},
-        "publisher": {"@type": "Organization", "name": "Calendrier Tempo EDF", "url": "https://www.calendrier-tempo.fr/"}
+        "author": {"@type": "Organization", "@id": "https://www.calendrier-tempo.fr/#organization", "name": "Calendrier Tempo EDF", "url": "https://www.calendrier-tempo.fr/"},
+        "publisher": {"@type": "Organization", "@id": "https://www.calendrier-tempo.fr/#organization", "name": "Calendrier Tempo EDF", "url": "https://www.calendrier-tempo.fr/"}
     }|tojson }}</script>
 {% endblock %}
 {% block breadcrumb %}
@@ -94,13 +94,13 @@
     {% if ref %}
     <div class="counters method-counters" role="list" aria-label="Saison {{ ref.label }} en chiffres">
         <div class="counter-card bleu" role="listitem"><div class="count">{% if ref.justes_pct is not none %}{{ ref.justes_pct }}&nbsp;%{% else %}{{ ref.justes }} sur {{ ref.emises }}{% endif %}</div><div class="label">de pr&eacute;visions justes en {{ ref.label }}</div></div>
-        {% if ref.ROUGE.reels_emis %}<div class="counter-card rouge" role="listitem"><div class="count">{{ ref.ROUGE.annonces }} sur {{ ref.ROUGE.reels_emis }}</div><div class="label">jours rouges annonc&eacute;s &agrave; l'avance</div></div>{% endif %}
-        {% if ref.BLANC.reels_emis %}<div class="counter-card blanc" role="listitem"><div class="count">{{ ref.BLANC.annonces }} sur {{ ref.BLANC.reels_emis }}</div><div class="label">jours blancs annonc&eacute;s &agrave; l'avance</div></div>{% endif %}
+        {% if ref.ROUGE.reels_emis %}<div class="counter-card rouge" role="listitem"><div class="count">{{ ref.ROUGE.annonces }} sur {{ ref.ROUGE.reels_emis }}</div><div class="label">pr&eacute;visions justes pour des jours rouges</div></div>{% endif %}
+        {% if ref.BLANC.reels_emis %}<div class="counter-card blanc" role="listitem"><div class="count">{{ ref.BLANC.annonces }} sur {{ ref.BLANC.reels_emis }}</div><div class="label">pr&eacute;visions justes pour des jours blancs</div></div>{% endif %}
     </div>
     <p><strong>Saison {{ ref.label }}&nbsp;: {{ ref.justes_pct }}&nbsp;%</strong> de couleurs exactes, toutes couleurs confondues, soit {{ ref.justes }} pr&eacute;visions justes sur les {{ ref.emises }} pr&eacute;visions faites {{ facts.HORIZON_FIABLE_LISIBLE }} et r&eacute;ellement &eacute;mises ({{ ref.erronees }} erron&eacute;e{{ 's' if ref.erronees > 1 }}), compar&eacute;es aux couleurs publi&eacute;es par EDF. C'est la derni&egrave;re saison compl&egrave;te.</p>
     <ul class="method-bref">
         <li>Couverture&nbsp;: {{ ref.emises }} pr&eacute;visions &eacute;mises sur {{ ref.jours }} attendues ({{ ref.sans_prevision }} sans pr&eacute;vision{% if ref.jours_sans_calcul %}, {{ ref.jours_sans_calcul }} jour{{ 's' if ref.jours_sans_calcul > 1 }} sans calcul{% endif %})&nbsp;: une pr&eacute;vision absente n'est ni juste ni erron&eacute;e, elle est compt&eacute;e &agrave; part.</li>
-        <li>{% if ref.ROUGE.reels_emis or ref.BLANC.reels_emis %}Jours rouges annonc&eacute;s &agrave; l'avance&nbsp;: <strong>{{ ref.ROUGE.annonces }}</strong> sur {{ ref.ROUGE.reels_emis }}, jours blancs&nbsp;: <strong>{{ ref.BLANC.annonces }}</strong> sur {{ ref.BLANC.reels_emis }}{% else %}Aucun jour rouge ou blanc dans les jours compar&eacute;s{% endif %}.</li>
+        <li>{% if ref.ROUGE.reels_emis or ref.BLANC.reels_emis %}Pr&eacute;visions justes pour des jours rouges&nbsp;: <strong>{{ ref.ROUGE.annonces }}</strong> sur {{ ref.ROUGE.reels_emis }}, pour des jours blancs&nbsp;: <strong>{{ ref.BLANC.annonces }}</strong> sur {{ ref.BLANC.reels_emis }} (chaque jour compte une fois par d&eacute;lai){% else %}Aucun jour rouge ou blanc dans les jours compar&eacute;s{% endif %}.</li>
         <li>Rep&egrave;re&nbsp;: dire «&nbsp;bleu&nbsp;» tous les jours aurait eu raison {{ ref.toujours_bleu }} fois sur {{ ref.emises }}{% if ref.toujours_bleu_pct is not none %} ({{ ref.toujours_bleu_pct }}&nbsp;%){% endif %}. <a href="{{ ref_path }}#bilan">Voir le d&eacute;tail</a>.</li>
     </ul>
     <p>La saison en cours est suivie jour par jour sur l'<a href="/historique-previsions">historique</a>&nbsp;; son pourcentage s'affiche &agrave; partir du 1<sup>er</sup>&nbsp;novembre (avant, presque tous les jours sont bleus et le taux ne veut pas dire grand-chose).</p>

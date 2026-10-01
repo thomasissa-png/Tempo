@@ -11,7 +11,7 @@
         "description": "Couleur officielle Tempo EDF (bleu, blanc, rouge) de chaque jour de la saison " ~ s.season_label ~ " disponible dans notre base, relayée par api-couleur-tempo.fr.",
         "url": "https://www.calendrier-tempo.fr" ~ canonical_path,
         "isAccessibleForFree": true,
-        "creator": {"@type": "Organization", "name": "Calendrier Tempo EDF", "url": "https://www.calendrier-tempo.fr/"},
+        "creator": {"@type": "Organization", "@id": "https://www.calendrier-tempo.fr/#organization", "name": "Calendrier Tempo EDF", "url": "https://www.calendrier-tempo.fr/"},
         "temporalCoverage": s.season_start ~ "/" ~ s.season_end,
         "variableMeasured": "Couleur Tempo du jour (BLEU, BLANC, ROUGE)"
     }|tojson }}</script>

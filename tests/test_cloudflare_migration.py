@@ -348,14 +348,6 @@ class TestEdgeCache:
         assert "getContainer(env.TEMPO_APP)" in scheduled
         assert "caches" not in scheduled and "serveWithEdgeCache" not in scheduled
 
-
-def test_woff2_served_as_font(client=None):
-    """Audit SEO 2026-10-01 : l'image python:3.12-slim n'a pas /etc/mime.types,
-    la police partait en text/plain. Le type doit être enregistré par l'app."""
-    import mimetypes
-    import app  # noqa: F401  (enregistre le type à l'import)
-    assert mimetypes.guess_type("static/fonts/inter.woff2")[0] == "font/woff2"
-
     def test_apex_and_http_redirect_in_one_hop_before_cache(self):
         src = self._worker()
         fetch = src[src.index("async fetch("):src.index("async scheduled(")]
@@ -365,6 +357,14 @@ def test_woff2_served_as_font(client=None):
         # Un seul saut, query conservée, sans new URL(path, base) (pas de redirection ouverte « //hôte »).
         assert "Response.redirect(`${CANONICAL_ORIGIN}${url.pathname}${url.search}`, 301)" in fetch
         assert fetch.index(cond) < fetch.index("serveWithEdgeCache(")
+
+
+def test_woff2_served_as_font(client=None):
+    """Audit SEO 2026-10-01 : l'image python:3.12-slim n'a pas /etc/mime.types,
+    la police partait en text/plain. Le type doit être enregistré par l'app."""
+    import mimetypes
+    import app  # noqa: F401  (enregistre le type à l'import)
+    assert mimetypes.guess_type("static/fonts/inter.woff2")[0] == "font/woff2"
 
 
 class TestHomeNeverCachedEmpty:
@@ -393,3 +393,73 @@ class TestHomeNeverCachedEmpty:
         r = client.get("/")
         assert r.status_code == 200
         assert r.headers["cache-control"].startswith("public, max-age=300")
+
+
+class TestEdgeDataVersion:
+    """Clé du cache au bord versionnée par les données : un changement de couleur
+    (confirmation EDF, calcul de 18h, évaluation) n'est jamais retardé par le cache."""
+
+    @staticmethod
+    def _worker():
+        return TestEdgeCache._worker()
+
+    def test_endpoint_no_store_changes_after_invalidation(self):
+        from fastapi.testclient import TestClient
+        import app as app_module
+        client = TestClient(app_module.app)
+        r1 = client.get("/api/edge-version")
+        assert r1.status_code == 200
+        assert r1.headers["cache-control"] == "no-store"
+        app_module.invalidate_predictions_cache()
+        r2 = client.get("/api/edge-version")
+        assert r2.headers["cache-control"] == "no-store"
+        assert r1.text != r2.text
+        boot1, n1, day1 = r1.text.split("-", 2)
+        boot2, n2, _ = r2.text.split("-", 2)
+        assert boot1 == boot2 and int(n2) == int(n1) + 1
+
+    def test_version_contains_paris_date(self, monkeypatch):
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        import app as app_module
+        # 23h30 UTC le 31 mars = 1h30 à Paris le 1er avril : la date de Paris fait foi.
+        fixed = datetime(2026, 4, 1, 1, 30, tzinfo=ZoneInfo("Europe/Paris"))
+        monkeypatch.setattr(app_module, "_now_paris", lambda: fixed)
+        assert app_module.edge_version().endswith("-2026-04-01")
+
+    def test_endpoint_not_in_robots_allow(self):
+        import app as app_module
+        robots = app_module.build_robots_txt()
+        assert "edge-version" not in robots
+        assert "Disallow: /api/" in robots
+
+    def test_increment_after_memory_caches_purged(self):
+        import inspect
+        import app as app_module
+        src = inspect.getsource(app_module.invalidate_predictions_cache)
+        assert src.rindex("_data_version += 1") > src.index("invalidate_history_cache()")
+
+    def test_worker_versioned_key_never_sent_to_container(self):
+        src = self._worker()
+        key = TestEdgeCache._function(src, "cacheKey")
+        assert "function cacheKey(url: URL, version: string)" in src
+        assert "key.searchParams.set(VERSION_PARAM, version)" in key
+        assert "cacheKey(url, version)" in src
+        # La requête vers le conteneur part de l'URL d'origine, jamais de la clé.
+        assert "fillRequest(url, headers)" in src and "fillRequest(key" not in src
+        # Un client qui fournit le paramètre interne n'atteint jamais le cache.
+        assert "url.searchParams.has(VERSION_PARAM)" in TestEdgeCache._function(src, "isCacheableRequest")
+
+    def test_worker_version_refresh_rules(self):
+        src = self._worker()
+        assert "VERSION_MAX_AGE_MS = 15_000" in src and "VERSION_TIMEOUT_MS = 2_000" in src
+        assert '"/api/edge-version"' in src  # jamais en cache (BYPASS_EXACT)
+        bypass = src[src.index("const BYPASS_EXACT"):src.index("]);", src.index("const BYPASS_EXACT"))]
+        assert '"/api/edge-version"' in bypass
+        current = src[src.index("async function currentDataVersion("):src.index("function cacheKey(")]
+        assert "versionInFlight" in current  # une seule relecture en vol par isolat
+        assert "knownVersion?.value ?? null" in current  # échec : dernière version connue
+        fetch_v = src[src.index("async function fetchDataVersion("):src.index("// Version courante")]
+        assert "response.status !== 200" in fetch_v and "timeout(VERSION_TIMEOUT_MS)" in fetch_v
+        serve = src[src.index("async function serveWithEdgeCache("):]
+        assert 'if (version === null) return withEdgeStatus(await passThrough(), "BYPASS")' in serve

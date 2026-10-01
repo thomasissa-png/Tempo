@@ -301,8 +301,10 @@ class TestCrawlFiles:
                 continue
             assert "Disallow: /api/\n" in g + "\n", g
             assert "/api/indexnow" not in g
+        # Audit post-bascule 2026-10-01 : le groupe « * » (Googlebot) reçoit les
+        # mêmes Allow des endpoints publics que les groupes nommés.
         star = next(g for g in groups if "User-agent: *" in g)
-        assert "Allow: /api/" not in star
+        assert "Allow: /api/history\n" in star
         claude = next(g for g in groups if "User-agent: Claude-SearchBot" in g)
         for ep in ("/api/today", "/api/tomorrow", "/api/remaining", "/api/predictions"):
             assert f"Allow: {ep}\n" in claude

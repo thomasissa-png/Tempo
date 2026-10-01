@@ -59,7 +59,7 @@
         "license": "https://creativecommons.org/licenses/by/4.0/",
         "isAccessibleForFree": true,
         "keywords": ["Tempo EDF", "calendrier Tempo", "jours rouges", "jours blancs"],
-        "creator": {"@type": "Organization", "name": "Calendrier Tempo EDF", "url": "https://www.calendrier-tempo.fr/"},
+        "creator": {"@type": "Organization", "@id": "https://www.calendrier-tempo.fr/#organization", "name": "Calendrier Tempo EDF", "url": "https://www.calendrier-tempo.fr/"},
         "temporalCoverage": month_season_label[:4] ~ "-09-01/" ~ month_season_label[5:] ~ "-08-31",
         "distribution": [{"@type": "DataDownload", "encodingFormat": "application/json", "contentUrl": "https://www.calendrier-tempo.fr/api/history?days=365"}]
     }|tojson }}</script>

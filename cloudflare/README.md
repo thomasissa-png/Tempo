@@ -165,6 +165,10 @@ Après 7 jours sans incident : le fondateur peut résilier Replit (garder un exp
 - Jamais en cache : `/admin*`, `/manage*`, `/api/webhook*`, `/api/subscribe`, `/api/resend-manage-link`, `/health`, `/keepalive`, tout non-GET, et le cron keep-alive (appel direct au conteneur).
 - Durée = `max-age` + `stale-while-revalidate` : au-delà de `max-age`, la copie est servie puis rafraîchie en arrière-plan (une revalidation par URL et par isolat). Clé = URL complète, hôte normalisé ; le cache est propre à chaque centre de données Cloudflare.
 - Diagnostic : `X-Edge-Cache: HIT|STALE|MISS|BYPASS` (+ `Age`). Le remplissage demande au conteneur une réponse non compressée et sans en-têtes conditionnels ; Cloudflare recompresse vers le visiteur.
+- Fraîcheur des couleurs : la clé de cache contient la version des données (`GET /api/edge-version` = « démarrage-compteur-date de Paris », `no-store`, jamais en cache ni dans robots), incrémentée par `invalidate_predictions_cache()` (confirmation EDF, calcul de 18h, évaluation), à chaque redémarrage et à minuit.
+- Chaque isolat relit la version quand elle a plus de 15 s (2 s max, une seule relecture à la fois) : après un changement, toute page servie depuis le cache reflète les nouvelles données en 15 s au plus, partout. Le paramètre `__edge_v` n'existe que dans la clé (une requête qui le porte passe en BYPASS).
+- Version illisible (503 de démarrage, délai) : dernière version connue gardée (nouvel essai 5 s après) ; aucune connue : BYPASS.
+- Coût : au plus une requête légère (aucune requête base) vers le conteneur toutes les 15 s par isolat actif.
 - Purge d'urgence : redéployer ne vide pas le cache ; attendre `max-age` + SWR (1 h au plus pour le HTML, 25 h pour `/static`, d'où le `?v=`) ou purger la zone dans le tableau de bord.
 
 ## Limites connues (à traiter après la bascule)
