@@ -34,6 +34,8 @@ Reste à faire :
 
 ## 3. Points ouverts
 
+- **WhatsApp HS depuis le 31/03/2026 (constat du 2026-10-01)** : base Replit, dernier envoi réussi le 21/03, puis 456 échecs « API access blocked » (code 200) jusqu'au 31/03, plus rien depuis. Numéro expéditeur côté Meta : status PENDING, platform_type NOT_APPLICABLE, code_verification_status EXPIRED ; tout envoi renvoie 133010 « Account not registered » (testé sur le seul numéro de test, rien n'est parti). À refaire dans le WhatsApp Manager de Thomas : vérifier pourquoi l'accès a été bloqué en mars (paiement, restriction), revalider le numéro (code SMS/appel), puis l'enregistrer sur l'API Cloud (PIN à 6 chiffres). À régler avant le 1er novembre (début des jours rouges). Le format national du numéro de test (06…) est corrigé (config._parse_phone_list).
+
 - Mentions légales §7 (« prévisions 5 jours », « éco2mix temps réel ») à mettre à jour avec @legal ; relecture par un avocat conseillée.
 - « Numéro jamais partagé » retiré de la fenêtre d'inscription : à confirmer avec Thomas.
 - Rattrapage 18 h : se déclenche seulement si AUCUNE prévision du jour (celle de 7 h 30 suffit) ; à durcir si Thomas veut exiger l'émission de 18 h.
