@@ -29,6 +29,7 @@ Revue notée, tour 1 (docs/audits/2026-09-30-revue-tour1-ux.md et -design.md) : 
 
 Reste à faire :
 - Tour 2 de revue notée (@ux + @design) sur la version en ligne, puis corrections, jusqu'à 9/10 minimum partout (exigence Thomas). Captures : attendre `.forecast-card` sur /calendrier ; fournir des tranches à l'échelle 1 pour les pages longues (article, mentions légales, historique mobile) ; inclure la fenêtre d'inscription et l'admin.
+- Leçon du 2026-10-01 (accueil noté 4/10 par Thomas alors que les agents donnaient 8,5) : toute revue se fait CÔTE À CÔTE avec la version de référence que Thomas apprécie (captures « avant », images/4.webp pour l'accueil), et la note de Thomas prime. Chaque passe ne doit pas ajouter de texte : sobriété et espace d'abord. L'accueil revient à l'ancienne mise en page (2 rangées de 5 pastilles égales, une ligne de message, un bouton).
 - NE PAS appliquer : distinction visuelle des cases remplies de l'historique, retrait de la coche/anneau vert (décisions Thomas).
 
 ## 3. Points ouverts
