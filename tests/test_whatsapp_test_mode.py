@@ -122,7 +122,8 @@ class TestConfig:
     def test_allowed_recipient(self, test_mode):
         assert alerts._allowed_recipient(TEST_PHONE, alerts.KIND_BROADCAST)
         assert not alerts._allowed_recipient(OTHER_PHONE, alerts.KIND_BROADCAST)
-        assert alerts._allowed_recipient(OTHER_PHONE, alerts.KIND_TRANSACTIONAL)
+        assert not alerts._allowed_recipient(OTHER_PHONE, alerts.KIND_TRANSACTIONAL)  # strict
+        assert alerts._allowed_recipient(TEST_PHONE, alerts.KIND_TRANSACTIONAL)
         # Sans kind ou kind inconnu : diffusion (fail closed)
         assert not alerts._allowed_recipient(OTHER_PHONE)
         assert not alerts._allowed_recipient(OTHER_PHONE, "autre")
@@ -212,21 +213,27 @@ def _incoming(client, phone, body):
     assert r.status_code == 200, r.text
 
 
-class TestTransactionalAlwaysSent:
+class TestTransactionalHeldInTestMode:
+    """Décision fondateur du 2026-10-01 : en mode test, 0 message hors numéro de test,
+    réponses automatiques comprises (bienvenue, lien de gestion, bot)."""
     # `client` avant `users` : importer app.py ne doit pas suivre l'inscription
     # (même ordre que tests/test_qa_e2e_regressions.py).
     def test_welcome(self, test_mode, meta):
         alerts.send_welcome(OTHER_PHONE, "tok")
-        assert meta == [(_to(OTHER_PHONE), "template")]
+        assert meta == []
+        alerts.send_welcome(TEST_PHONE, "tok")
+        assert meta == [(_to(TEST_PHONE), "template")]
 
     def test_resend_manage_link(self, test_mode, meta, client, users):
         r = client.post("/api/resend-manage-link", data={"phone": OTHER_PHONE})
         assert r.status_code == 200, r.text
-        assert meta == [(_to(OTHER_PHONE), "template")]
+        assert meta == []
 
     def test_bot_reply(self, test_mode, meta, client, users):
         _incoming(client, OTHER_PHONE, "RECAP")
-        assert meta == [(_to(OTHER_PHONE), "text")]
+        assert meta == []
+        _incoming(client, TEST_PHONE, "RECAP")
+        assert meta == [(_to(TEST_PHONE), "text")]
 
     def test_stop_always_unsubscribes(self, test_mode, meta, client, users):
         _incoming(client, OTHER_PHONE, "STOP")
@@ -234,8 +241,8 @@ class TestTransactionalAlwaysSent:
         actif = conn.execute("SELECT actif FROM users WHERE id = ?",
                              (users[OTHER_PHONE],)).fetchone()["actif"]
         conn.close()
-        assert actif == 0
-        assert meta == [(_to(OTHER_PHONE), "text")]  # confirmation envoyée
+        assert actif == 0  # la désinscription est appliquée
+        assert meta == []  # mais aucun message ne part
 
 
 # ---------------------------------------------------------------- admin

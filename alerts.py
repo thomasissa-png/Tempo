@@ -46,8 +46,8 @@ def _is_whatsapp_configured() -> bool:
 #   - "transactional" : réponse immédiate à une action de la personne
 #                       (bienvenue après inscription, renvoi du lien de gestion,
 #                       réponse du bot STOP/START/RECAP).
-# Tout appel sans kind (ou avec un kind inconnu) est traité comme "broadcast" :
-# un nouvel envoi planifié oublié reste retenu en mode test (fail closed).
+# Tout appel sans kind (ou avec un kind inconnu) est traité comme "broadcast".
+# En mode test, AUCUN type ne part hors des numéros de test (fail closed strict).
 KIND_BROADCAST = "broadcast"
 KIND_TRANSACTIONAL = "transactional"
 STATUS_HELD = "held"
@@ -64,10 +64,12 @@ def is_whatsapp_test_mode() -> bool:
 
 def _allowed_recipient(phone: str, kind: str = KIND_BROADCAST) -> bool:
     """Le message de type `kind` peut-il partir vers `phone` ?
-    Mode normal : toujours oui. Mode test : transactionnel oui, diffusion
-    seulement vers un numéro de la liste de test."""
+    Mode normal : toujours oui. Mode test : SEULEMENT vers un numéro de la liste de
+    test, quel que soit le type (décision fondateur du 2026-10-01 : « 0 message hors
+    numéro de test », réponses automatiques comprises). Les actions en base, comme la
+    désinscription STOP, restent appliquées ; seul le message est retenu (« held »)."""
     numbers = whatsapp_test_numbers()
-    if not numbers or kind == KIND_TRANSACTIONAL:
+    if not numbers:
         return True
     return normalize_phone(phone) in numbers
 
