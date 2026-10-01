@@ -33,3 +33,6 @@ qui reste la référence détaillée. Créé le 2026-10-01 (session principale).
 - Pas de tiret cadratin dans le texte client ; vouvoiement ; sobriété (le fondateur préfère une page
   propre et aérée à une page chargée : toute revue se fait côte à côte avec la version de référence).
 - Pas d'équipe humaine : calibration vélocité IA.
+- Demande du fondateur risquée (juridique, SEO, véracité) : ne pas refuser ni seulement objecter ;
+  revenir avec les options qui la font passer intelligemment, appliquer la meilleure et dire pourquoi
+  (consigne du 2026-10-01, ex. « le seul à ne rien vendre » → « à notre connaissance » + catégorie restreinte).

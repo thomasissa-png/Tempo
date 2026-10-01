@@ -99,9 +99,13 @@ class TestLlmsHistory:
     def test_no_superlative(self, client, path):
         """Jamais « seul » ni « unique » pour qualifier le service (texte éditorial, hors articles).
 
-        Seule exception : la phrase factuelle « Seule la couleur publiée/annoncée par EDF fait foi »."""
+        Exceptions : la phrase factuelle « Seule la couleur publiée/annoncée par EDF fait foi », et le
+        positionnement validé par le fondateur le 2026-10-01 (site_facts.NO_SALES : « à notre
+        connaissance » + catégorie restreinte), qui est la SEULE forme de « le seul » admise."""
+        import site_facts
         txt = client.get(path).text
         own = re.sub(r"Seule la couleur (publiée|annoncée) par EDF fait foi", "", txt.split("## Articles du blog")[0])
+        own = own.replace(site_facts.NO_SALES, "")
         hit = re.search(r".{0,60}\b(seul|seule|seuls|seules|unique|uniques)\b.{0,60}", own, flags=re.I)
         assert hit is None, hit.group(0)
         assert not re.search(r"\b(le|la|les) seul(e|s|es)? (service|site|outil)", txt, flags=re.I)
@@ -190,9 +194,11 @@ def test_positionnement_ne_vend_rien_sans_superlatif():
         body = c.get(path).text
         assert site_facts.NO_SALES in body
     for text in (site_facts.NO_SALES, site_facts.ORG_DESCRIPTION):
-        import re
         low = text.lower()
-        assert not re.search(r"\ble seul\b|\bla seule\b|\bunique\b", low) and "selectra" not in low
+        # « le seul » seulement avec la précaution et la catégorie restreinte, jamais de nom de tiers
+        if "le seul" in low:
+            assert "à notre connaissance" in low and "calendrier de prévision tempo" in low
+        assert "selectra" not in low
     assert "ne vend rien" in site_facts.ORG_DESCRIPTION
     legal = c.get("/mentions-legales").text
     assert "jamais vendues" in legal and "entièrement gratuit" in legal

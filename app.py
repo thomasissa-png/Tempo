@@ -1820,7 +1820,7 @@ async def llms_txt():
             "selon la couleur du jour : Bleu (300 jours/an, tarif bas), Blanc "
             "(43 jours/an, tarif moyen) et Rouge (22 jours/an, tarif très élevé). "
             "Notre algorithme combine les prévisions météo de 9 villes françaises "
-            "(Météo France AROME + ARPEGE), la consommation nationale (RTE) et un "
+            "(Météo France et Open-Meteo), la consommation nationale (RTE) et un "
             "modèle de machine learning (GradientBoosting, 33 variables) pour anticiper "
             "les couleurs. Près de 900 000 foyers étaient abonnés à l'option Tempo en juillet 2025 "
             "(données de la Commission de régulation de l'énergie, CRE).\n"

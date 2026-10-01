@@ -103,18 +103,20 @@ FOYERS_ALERTES_HTML = "plus de 2&nbsp;500"  # même chiffre, espace insécable p
 CHIFFREMENT_TELEPHONE = "Fernet (AES-128)"
 
 # Description de l'entité Organization (même @id sur l'accueil et /a-propos : un seul texte)
-# Positionnement (demande fondateur du 2026-10-01) : le site ne vend rien. Formulation vérifiable,
-# sans superlatif (« le seul ») ni nom de tiers ; cohérente avec les mentions légales (données
-# jamais vendues, service entièrement gratuit, aucune publicité).
+# Positionnement (demande fondateur du 2026-10-01) : « le seul à ne rien vendre », rendu défendable :
+# précaution « à notre connaissance », catégorie restreinte (calendrier de prévision Tempo), opposition
+# à des catégories (comparateurs, fournisseurs) et jamais à un nom. Cohérent avec les mentions légales.
 NO_SALES = (
-    "Nous ne vendons rien : ni offre d'électricité, ni équipement, ni les données de nos abonnés, "
-    "et le site n'affiche aucune publicité. Il existe uniquement pour aider les abonnés Tempo à "
-    "anticiper les jours rouges."
+    "À notre connaissance, nous sommes le seul calendrier de prévision Tempo qui ne vend rien : "
+    "contrairement aux comparateurs et aux fournisseurs d'énergie, nous ne proposons aucune offre "
+    "d'électricité, aucun équipement, ne vendons pas les données de nos abonnés et n'affichons aucune "
+    "publicité. Le site existe uniquement pour aider les abonnés Tempo à anticiper les jours rouges."
 )
 
 ORG_DESCRIPTION = (
     "Service indépendant et gratuit de prévision des jours Tempo EDF, non affilié à EDF ni à RTE. "
-    "Il ne vend rien (ni offre d'électricité, ni équipement, ni données) et n'affiche aucune publicité. "
+    "À notre connaissance, le seul calendrier de prévision Tempo qui ne vend rien : ni offre d'électricité, "
+    "ni équipement, ni données, et aucune publicité. "
     "Il publie l'historique de toutes ses prévisions, y compris ses erreurs, téléchargeable en CSV."
 )
 
