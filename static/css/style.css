@@ -2799,7 +2799,7 @@ main pre code { background: none; padding: 0; }
 /* Bloc CTA de fin de page (réutilise .blog-cta) : marge homogène */
 .page-cta { margin: 32px 0; }
 
-/* === Accueil : haut de page de l'ancienne accueil (décision fondateur du 2026-10-01) ===
+/* === Accueil : haut de page (une accroche, bandeau de mise à jour, résumé des 10 jours) ===
    H1 discret en surtitre, accroche en une ligne, bandeau « Dernière mise à jour »,
    carte « Résumé des 10 prochains jours » : 10 pastilles identiques en 2 rangées de 5. */
 .home-title { font-size: 0.95rem; font-weight: 600; line-height: 1.4; letter-spacing: 0; text-align: center; color: var(--text-secondary); margin: 26px 0 0; }
@@ -3285,7 +3285,7 @@ main [id] { scroll-margin-top: 84px; }
 @media (max-width: 400px) { .data-table code { font-size: 0.95em; } }
 .history-note sup, .hb-kpi-label sup { font-size: 0.9em; line-height: 0; }
 
-/* === Historique : la grille d'abord (décision fondateur du 2026-10-01) ===
+/* === Historique : la grille d'abord ===
    Au-dessus : H1, une phrase, les saisons, une ligne de chiffre clé sans cadre, puis titre + légende courte. */
 .history-page .history-intro { margin-bottom: 14px; }
 .history-keyline { margin: 14px 0 0; font-size: 0.95rem; color: var(--text-secondary); }

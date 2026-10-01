@@ -56,7 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
  * Charge toutes les données. Si l'API n'est pas encore prête (cold start),
  * retente avec backoff exponentiel : 2s, 4s, 6s, 8s, 10s (= 30s max).
  * Si toutes les tentatives échouent, planifie un dernier essai à 30s
- * pour couvrir les cold starts lents (Replit free tier).
+ * pour couvrir les démarrages lents du serveur.
  */
 async function loadAllData(attempt = 0) {
     // Étape 1 : Appeler /api/today et /api/tomorrow pour propager les confirmations EDF

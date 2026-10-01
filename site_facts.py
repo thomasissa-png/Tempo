@@ -312,6 +312,10 @@ def breadcrumb_jsonld(items: list[tuple[str, str]]) -> dict:
 # régénération des fichiers minifiés. Un seul endroit, lu par tous les templates.
 ASSET_VERSION = "20261001a"
 
+# Version des icônes (favicon.ico, PNG, apple-touch) : à incrémenter à chaque passage de
+# tools/generate_icons.py. Navigateurs et Google gardent les favicons très longtemps.
+ICON_VERSION = "20261001"
+
 
 def template_globals() -> dict:
     """Variables exposées à tous les templates Jinja (préfixe ``facts``)."""
@@ -355,6 +359,7 @@ def template_globals() -> dict:
         "HORIZON_INDICATIF_LISIBLE": HORIZON_INDICATIF_LISIBLE,
         "PERFORMANCE_POLICY": PERFORMANCE_POLICY,
         "ASSET_V": ASSET_VERSION,
+        "ICON_V": ICON_VERSION,
     }
 
 

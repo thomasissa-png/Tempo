@@ -50,6 +50,9 @@ _static_files = {
     "/static/css/style.min.css": _preload("static/css/style.min.css"),
     "/static/js/app.js": _preload("static/js/app.js"),
     "/static/js/app.min.js": _preload("static/js/app.min.js"),
+    # Favicon : jamais un 503 HTML pendant le démarrage (Google et les onglets le gardent)
+    "/favicon.ico": _preload("static/favicon.ico"),
+    "/static/favicon.ico": _preload("static/favicon.ico"),
 }
 
 # Dashboard rendu (Jinja2) pendant le démarrage : jamais le template brut

@@ -1415,11 +1415,15 @@ async def manifest_json():
             "start_url": "/",
             "display": "standalone",
             "background_color": "#ffffff",
-            "theme_color": "#1565C0",
+            # = <meta name="theme-color"> des pages (test_icons_2026_10_01)
+            "theme_color": "#2563EB",
+            # Icônes générées par tools/generate_icons.py ; la maskable a son propre fichier
+            # (rond dans la zone sûre Android, fond blanc) : le SVG bord à bord serait rogné.
             "icons": [
                 {"src": "/static/favicon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
-                {"src": "/static/icon-192.svg", "sizes": "192x192", "type": "image/svg+xml", "purpose": "any"},
-                {"src": "/static/icon-512.svg", "sizes": "512x512", "type": "image/svg+xml", "purpose": "any maskable"},
+                {"src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+                {"src": "/static/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
+                {"src": "/static/icon-192.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"},
             ],
         },
         headers={"Cache-Control": "public, max-age=86400"},
