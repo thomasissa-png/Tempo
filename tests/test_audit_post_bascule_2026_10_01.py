@@ -302,3 +302,13 @@ class TestSeoP2:
         assert r.headers["cache-control"] == "public, max-age=3600, stale-while-revalidate=86400"
         r = client.get("/static/css/style.min.css?v=")
         assert r.headers["cache-control"] == "public, max-age=3600, stale-while-revalidate=86400"
+
+
+def test_historique_bref_parle_de_previsions_pas_de_jours():
+    """Même correction que /methodologie : les chiffres cumulent une prévision par jour
+    et par délai, ce sont des prévisions justes, pas des « jours annoncés »."""
+    from pathlib import Path
+    src = (Path(__file__).resolve().parent.parent / "templates" / "_historique_bref.html").read_text(encoding="utf-8")
+    assert "annoncés à l'avance" not in src
+    assert "prévisions justes pour des jours rouges" in src
+    assert "prévisions justes pour des jours blancs" in src

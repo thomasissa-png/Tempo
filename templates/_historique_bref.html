@@ -30,13 +30,13 @@
                 <li><span class="history-bref-label">Prévisions erronées</span> <span class="history-bref-value"><strong>{{ b.erronees }}</strong></span></li>
                 <li><span class="history-bref-label">Couverture&nbsp;: prévisions émises</span> <span class="history-bref-value"><strong>{{ b.emises }}</strong> sur {{ b.jours }}{% if b.sans_prevision %}, {{ b.sans_prevision }} sans prévision{% endif %}{% if h.jours_sans_calcul %} ({{ h.jours_sans_calcul|length }} jour{{ 's' if h.jours_sans_calcul|length > 1 }} sans calcul){% endif %}</span></li>
                 {% if b.ROUGE.reels or b.ROUGE.alertes %}
-                <li><span class="history-bref-label"><span class="color-tag rouge">Rouge</span> jours rouges annoncés à l'avance</span> <span class="history-bref-value">{{ ratio(b.ROUGE.annonces, b.ROUGE.reels_emis, b.ROUGE.rappel_pct, 'aucun jour rouge prévu') }}</span></li>
+                <li><span class="history-bref-label"><span class="color-tag rouge">Rouge</span> prévisions justes pour des jours rouges</span> <span class="history-bref-value">{{ ratio(b.ROUGE.annonces, b.ROUGE.reels_emis, b.ROUGE.rappel_pct, 'aucun jour rouge prévu') }}</span></li>
                 <li><span class="history-bref-label"><span class="color-tag rouge">Rouge</span> alertes rouges qui étaient justes</span> <span class="history-bref-value">{{ ratio(b.ROUGE.alertes_justes, b.ROUGE.alertes, b.ROUGE.precision_pct, 'aucune alerte') }}</span></li>
                 {% else %}
                 <li><span class="history-bref-label"><span class="color-tag rouge">Rouge</span> jours rouges</span> <span class="history-bref-value history-muted">pas encore de jour rouge cette saison</span></li>
                 {% endif %}
                 {% if b.BLANC.reels or b.BLANC.alertes %}
-                <li><span class="history-bref-label"><span class="color-tag blanc">Blanc</span> jours blancs annoncés à l'avance</span> <span class="history-bref-value">{{ ratio(b.BLANC.annonces, b.BLANC.reels_emis, b.BLANC.rappel_pct, 'aucun jour blanc prévu') }}</span></li>
+                <li><span class="history-bref-label"><span class="color-tag blanc">Blanc</span> prévisions justes pour des jours blancs</span> <span class="history-bref-value">{{ ratio(b.BLANC.annonces, b.BLANC.reels_emis, b.BLANC.rappel_pct, 'aucun jour blanc prévu') }}</span></li>
                 <li><span class="history-bref-label"><span class="color-tag blanc">Blanc</span> alertes blanches qui étaient justes</span> <span class="history-bref-value">{{ ratio(b.BLANC.alertes_justes, b.BLANC.alertes, b.BLANC.precision_pct, 'aucune alerte') }}</span></li>
                 {% else %}
                 <li><span class="history-bref-label"><span class="color-tag blanc">Blanc</span> jours blancs</span> <span class="history-bref-value history-muted">pas encore de jour blanc cette saison</span></li>
