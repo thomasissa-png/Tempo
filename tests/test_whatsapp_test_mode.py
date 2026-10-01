@@ -110,6 +110,11 @@ class TestConfig:
         raw = " +33 6 12 34 56 78, 33698765432,, +33.6-12-34-56-78 "
         assert _parse_phone_list(raw) == (TEST_PHONE, OTHER_PHONE)
 
+    def test_parse_french_national_format(self):
+        # Secret saisi « 06 12 34 56 78 » : doit valoir le numéro inscrit, pas « +0612... »
+        assert _parse_phone_list("06 12 34 56 78") == (TEST_PHONE,)
+        assert _parse_phone_list("0033612345678, 06.98.76.54.32") == (TEST_PHONE, OTHER_PHONE)
+
     def test_empty_means_normal_mode(self):
         assert _parse_phone_list("") == ()
         assert _parse_phone_list(" , ") == ()

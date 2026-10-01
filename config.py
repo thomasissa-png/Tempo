@@ -16,10 +16,16 @@ def normalize_phone(raw: str) -> str:
 
 def _parse_phone_list(raw: str) -> tuple[str, ...]:
     """Liste de numéros séparés par des virgules → tuple normalisé, sans doublon.
-    Un numéro sans « + » mais tout en chiffres (format Meta) reçoit le « + »."""
+    Un numéro sans « + » mais tout en chiffres (format Meta) reçoit le « + ».
+    Un numéro français au format national (06…, 07…) ou 0033… devient +33… :
+    sinon « 06… » donnait « +06… », jamais égal au numéro inscrit (+336…)."""
     numbers: list[str] = []
     for item in (raw or "").split(","):
         n = normalize_phone(item)
+        if n.startswith("00") and n[2:].isdigit():
+            n = "+" + n[2:]
+        elif len(n) == 10 and n.startswith("0") and n.isdigit():
+            n = "+33" + n[1:]
         if n and n.isdigit():
             n = "+" + n
         if n and n not in numbers:
