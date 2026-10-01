@@ -360,6 +360,20 @@ def _couleurs_voisines(cells: dict, reel: str | None = None) -> dict[int, str]:
     return out
 
 
+def _temp_voisine(cells: dict, n: int) -> float | None:
+    """Température d'une case sans prévision quand aucune météo n'a été enregistrée ce
+    jour-là (décision fondateur du 2026-10-01 : aucune température manquante) : celle de
+    la prévision émise la plus proche sur la même ligne, délai plus petit d'abord (même
+    ordre que la couleur), sinon délai plus grand. Valeur réellement prévue, jamais
+    interpolée ; None si la ligne n'a aucune température prévue."""
+    ordre = list(range(n - 1, 0, -1)) + list(range(n + 1, max(HORIZONS) + 1))
+    for m in ordre:
+        c = cells.get(m)
+        if isinstance(c, dict) and c.get("temp") is not None:
+            return c["temp"]
+    return None
+
+
 def _jours_sans_calcul(emissions: set, start_d: date | None, today: date) -> list[str]:
     """Jours d'émission sans AUCUN calcul enregistré, de la première émission à hier.
 
@@ -417,9 +431,13 @@ def _build(conn, today: date) -> dict:
         for n, couleur in _couleurs_voisines(cells, actuals[d_iso]).items():
             if forecast_log is None:
                 forecast_log = _load_forecast_log(conn, start)
-            # Température réelle prévue ce jour-là, sinon aucune (jamais interpolée).
+            # Température prévue enregistrée ce jour-là, sinon celle de la prévision
+            # voisine (jamais interpolée ni inventée).
             e_iso = (d - timedelta(days=n)).isoformat()
-            remplies[n] = {"couleur": couleur, "temp": forecast_log.get((d_iso, e_iso)),
+            temp = forecast_log.get((d_iso, e_iso))
+            if temp is None:
+                temp = _temp_voisine(cells, n)
+            remplies[n] = {"couleur": couleur, "temp": temp,
                            "source": "edf" if n == 1 else "voisines"}
         by_season.setdefault(season_start_year(d), []).append(
             {"date": d_iso, "couleur": actuals[d_iso], "cells": cells, "causes": causes,

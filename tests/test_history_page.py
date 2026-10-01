@@ -477,9 +477,12 @@ class TestCouleursVoisines:
         # J-1 vide : couleur officielle EDF + vraie température relevée la veille
         assert rd[1] == {"couleur": "BLEU", "temp": 3.3, "source": "edf"}
         assert re_[1]["couleur"] == "ROUGE" and re_[1]["source"] == "edf"
-        # Voisines identiques (3 et 6 BLEU) : BLEU ; température réelle seulement
+        # Voisines identiques (3 et 6 BLEU) : BLEU ; météo enregistrée ce jour-là, sinon
+        # température de la prévision voisine la plus récente (J-3 : 7,0)
         assert rd[4] == {"couleur": "BLEU", "temp": 5.5, "source": "voisines"}
-        assert rd[5] == {"couleur": "BLEU", "temp": None, "source": "voisines"}
+        assert rd[5] == {"couleur": "BLEU", "temp": 7.0, "source": "voisines"}
+        assert rd[2]["temp"] == 7.0 and rd[13]["temp"] == 16.0  # un seul côté
+        assert all(v["temp"] is not None for v in rd.values())
         # Voisines différentes (8 BLANC, 6 BLEU) : la plus récente (délai plus petit)
         assert rd[7] == {"couleur": "BLEU", "temp": 9.9, "source": "voisines"}
         assert rd[9]["couleur"] == "BLANC"
@@ -487,6 +490,17 @@ class TestCouleursVoisines:
         assert rd[2]["couleur"] == "BLEU" and rd[15]["couleur"] == "BLEU"
         # Les cellules restent vides : ce ne sont pas des prévisions
         assert all(days[self.D]["cells"][n] is None for n in rd)
+
+    def test_temp_voisine_unit(self):
+        from prediction_history import _temp_voisine
+        cells = {n: None for n in range(1, 16)}
+        cells[8] = {"couleur": "BLANC", "temp": 8.0}
+        cells[6] = {"couleur": "BLEU", "temp": None}
+        cells[4] = {"couleur": "BLEU", "temp": 4.0}
+        assert _temp_voisine(cells, 7) == 4.0  # plus récente AVEC température
+        assert _temp_voisine(cells, 1) == 4.0  # J-1 : délai plus grand le plus proche
+        assert _temp_voisine(cells, 15) == 8.0  # délais plus petits d'abord : J-8
+        assert _temp_voisine({n: None for n in range(1, 16)}, 3) is None  # jamais inventée
 
     def test_rule_unit(self):
         from prediction_history import _couleurs_voisines, NA
@@ -547,7 +561,8 @@ class TestCouleursVoisines:
         assert "température moyenne prévue 5,5 °C" in title4
         assert 'class="hg-dot hg-bleu hg-ok"' in html4 and "5,5°" in html4
         title5, html5 = by_n[5]
-        assert 'class="hg-dot hg-bleu hg-ok"' in html5 and "hg-temp" not in html5 and "°" not in title5
+        # Pas de météo enregistrée ce jour-là : température de la prévision voisine (J-3)
+        assert 'class="hg-dot hg-bleu hg-ok"' in html5 and "7,0°" in html5 and "7,0 °C" in title5
         title1, html1 = by_n[1]
         assert "La veille : Bleu, juste ; Couleur publiée par EDF avant notre calcul de 18 h" in title1
         assert 'class="hg-dot hg-bleu hg-ok"' in html1 and "3,3°" in html1
@@ -568,7 +583,7 @@ class TestCouleursVoisines:
         row = dict(zip(rows[0], [r for r in rows if r[1] == self.D][0]))
         assert (row["prevision_J-4"], row["temp_prevue_J-4"]) == ("BLEU", "5,5")
         assert row["emise_le_J-4"].startswith("non enregistrée (couleur des prévisions voisines")
-        assert (row["prevision_J-5"], row["temp_prevue_J-5"]) == ("BLEU", "")
+        assert (row["prevision_J-5"], row["temp_prevue_J-5"]) == ("BLEU", "7,0")
         assert (row["prevision_J-7"], row["temp_prevue_J-7"]) == ("BLEU", "9,9")
         assert (row["prevision_J-1"], row["temp_prevue_J-1"]) == ("BLEU", "3,3")
         assert "publiée par EDF" in row["emise_le_J-1"]
@@ -605,7 +620,7 @@ class TestCouleursVoisinesCasReel:
         assert set(days["2026-09-29"]["remplies"]) == {2, 6, 12, 14}
         assert days["2026-09-30"]["causes"][13] == ("interruption", "2026-09-17")
         assert days["2026-09-30"]["remplies"][13] == {"couleur": "BLEU", "temp": 18.7, "source": "voisines"}
-        assert days["2026-09-30"]["remplies"][3]["temp"] is None
+        assert days["2026-09-30"]["remplies"][3]["temp"] == 20.0  # voisine J-2
         # Case remplie du 30/09 toujours comptée « sans prévision », jamais « émise »
         assert (_hz(s, 13)["emises"], _hz(s, 13)["justes"], _hz(s, 13)["sans_prevision"]) == (1, 1, 1)
 
