@@ -211,7 +211,7 @@
 
     <div id="admin-content" style="display:none">
 
-        <!-- Tabs AU-DESSUS de tout -->
+        {# Tabs AU-DESSUS de tout #}
         <div class="admin-tabs" role="tablist">
             <button class="admin-tab active" role="tab" aria-selected="true" data-tab="performance">Performance</button>
             <button class="admin-tab" role="tab" aria-selected="false" data-tab="seo">SEO</button>
@@ -220,18 +220,18 @@
             <button class="admin-tab" role="tab" aria-selected="false" data-tab="actions">Actions</button>
         </div>
 
-        <!-- ═══════ TAB 1 : Performance ═══════ -->
+        {# ═══════ TAB 1 : Performance ═══════ #}
         <div id="panel-performance" class="tab-panel active" role="tabpanel">
 
-            <!-- Filtre saison (uniquement onglet performance) -->
+            {# Filtre saison (uniquement onglet performance) #}
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
                 <span style="font-size:0.82rem;font-weight:600;color:var(--text-secondary)">Saison :</span>
                 <select id="season-select" class="season-select" aria-label="Saison">
-                    <!-- options remplies au chargement (saison en cours par défaut) -->
+                    {# options remplies au chargement (saison en cours par défaut) #}
                 </select>
             </div>
 
-            <!-- SECTION 1 : Récap jour par jour -->
+            {# SECTION 1 : Récap jour par jour #}
             <div class="admin-section-title">Récapitulatif jour par jour</div>
             <div class="panel-grid full">
                 <div class="flat-card">
@@ -253,7 +253,7 @@
                 </div>
             </div>
 
-            <!-- SECTION 2 : Analyse erreurs -->
+            {# SECTION 2 : Analyse erreurs #}
             <div class="admin-section-title" style="justify-content:space-between;flex-wrap:wrap">
                 <span>Analyse des erreurs</span>
                 <div style="display:flex;align-items:center;gap:8px">
@@ -300,7 +300,7 @@
                 </div>
             </div>
 
-            <!-- SECTION 3 : Progresse-t-on ? -->
+            {# SECTION 3 : Progresse-t-on ? #}
             <div class="admin-section-title">Progresse-t-on ?</div>
             <div class="panel-grid full">
                 <div class="flat-card">
@@ -317,7 +317,7 @@
                 </div>
             </div>
 
-            <!-- SECTION 4 : Learnings -->
+            {# SECTION 4 : Learnings #}
             <div class="admin-section-title">Learnings et leviers d'amélioration</div>
             <div class="panel-grid">
                 <div class="flat-card">
@@ -332,7 +332,7 @@
             </div>
         </div>
 
-        <!-- ═══════ TAB 2 : SEO ═══════ -->
+        {# ═══════ TAB 2 : SEO ═══════ #}
         <div id="panel-seo" class="tab-panel" role="tabpanel">
             <div class="admin-section-title">Journal de publication <span class="badge badge-seo">Agent SEO</span></div>
             <div class="flat-card" style="margin-bottom:20px"><pre class="log-viewer" id="seo-log">Chargement...</pre></div>
@@ -342,7 +342,7 @@
             <div id="seo-validation" class="flat-card" style="display:none"></div>
         </div>
 
-        <!-- ═══════ TAB 3 : Backlinks ═══════ -->
+        {# ═══════ TAB 3 : Backlinks ═══════ #}
         <div id="panel-backlinks" class="tab-panel" role="tabpanel">
             <div class="admin-section-title">Vue d'ensemble <span class="badge badge-backlinks">Agent Backlinks</span></div>
             <div class="bl-stat-grid">
@@ -360,7 +360,7 @@
             </div>
         </div>
 
-        <!-- ═══════ TAB 4 : Abonnés ═══════ -->
+        {# ═══════ TAB 4 : Abonnés ═══════ #}
         <div id="panel-subscribers" class="tab-panel" role="tabpanel">
             <div class="panel-grid">
                 <div class="flat-card"><h4>Résumé</h4><div id="subscribers-summary">Chargement...</div></div>
@@ -398,7 +398,7 @@
             </div>
         </div>
 
-        <!-- ═══════ TAB 5 : Actions ═══════ -->
+        {# ═══════ TAB 5 : Actions ═══════ #}
         <div id="panel-actions" class="tab-panel" role="tabpanel">
             <div class="panel-grid">
                 <div class="flat-card">

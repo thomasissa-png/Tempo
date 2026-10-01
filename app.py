@@ -1685,6 +1685,46 @@ def _llms_revision_date(articles) -> date:
     return max(dates)
 
 
+def _llms_history_section() -> str:
+    """Section « Historique public des prévisions » de llms.txt et llms-full.txt.
+
+    Placée avant « API publiques » (la ligne feed.xml de llms.txt prolonge cette liste).
+    Ligne de taux omise tant qu'aucune saison complète n'a de taux calculé.
+    """
+    u = site_facts.SITE_URL
+    start_label, ref = "", None
+    try:
+        from prediction_history import last_complete_season_summary, today_paris
+        start_iso = getattr(Config, "PREDICTION_START_DATE", None)
+        if start_iso:
+            start_label = site_facts.fr_date(date.fromisoformat(start_iso), with_weekday=False)
+        ref = last_complete_season_summary(_history_data(), today_paris())
+    except Exception as e:
+        logger.debug(f"[llms] Historique indisponible : {e}")
+    lines = [
+        "## Historique public des prévisions",
+        "Historique public et vérifiable de toutes nos prévisions de couleur Tempo, y compris les erreurs : "
+        f"{u}/historique-previsions (saison en cours) et {u}/historique-previsions/AAAA-AAAA (saisons passées).",
+        "- Contenu : pour chaque jour dont EDF a publié la couleur, la prévision émise de 1 à 15 jours avant, "
+        "figée à son émission (jamais recalculée), avec la température moyenne prévue, comparée à la couleur "
+        "officielle publiée par EDF et à la température observée.",
+        "- Sans sélection : tous les jours figurent dans la grille, prévision juste ou non ; un jour sans "
+        "prévision est compté à part et n'entre dans aucun taux.",
+        f"- Téléchargement : {u}/historique-previsions.csv (toutes saisons, séparateur point-virgule, UTF-8 avec "
+        "BOM, sans clé ni inscription ; colonnes saison, date, couleur_officielle, temp_observee, puis "
+        "prevision_J-N, temp_prevue_J-N, emise_le_J-N pour N de 15 à 1).",
+    ]
+    if start_label:
+        lines.append(f"- Historique tenu depuis le {start_label}.")
+    if ref and ref.get("justes_pct") is not None and ref.get("toujours_bleu_pct") is not None:
+        lines.append(
+            f"- Taux 2 à 5 jours avant, saison {ref['label']} (dernière saison complète) : {ref['justes']} "
+            f"prévisions justes sur {ref['emises']} émises ({ref['justes_pct']} %), repère « dire bleu tous les "
+            f"jours » : {ref['toujours_bleu_pct']} %. Méthode : {u}/methodologie"
+        )
+    return "\n".join(lines) + "\n"
+
+
 def _llms_common_sections() -> str:
     """Sections factuelles communes à llms.txt et llms-full.txt (source : site_facts)."""
     from tempo_client import get_season_dates
@@ -1731,6 +1771,8 @@ def _llms_common_sections() -> str:
         "avec le repère « dire bleu tous les jours » ; "
         f"publié sur {site_facts.SITE_URL}/methodologie et {site_facts.SITE_URL}/api/performance/badge\n"
         "\n"
+        + _llms_history_section() +
+        "\n"
         "## API publiques (JSON, gratuites, sans clé)\n"
         f"Documentation complète : {site_facts.SITE_URL}/api-tempo\n"
         + api_lines
@@ -1768,8 +1810,9 @@ async def llms_txt():
             "\n"
             "> Service gratuit et indépendant (non affilié à EDF ni à RTE) : couleur Tempo EDF du jour et de demain, "
             "calendrier des saisons Tempo et prévisions des jours rouges, blancs et bleus jusqu'à J+15.\n"
-            "> À notre connaissance, le seul service gratuit qui prévoit les couleurs Tempo jusqu'à J+15 "
-            "(les autres services de prévision s'arrêtent entre J+7 et J+9, relevé du 29 septembre 2026).\n"
+            "> Historique public et vérifiable de toutes nos prévisions, y compris les erreurs : chaque prévision "
+            "faite de 1 à 15 jours avant est figée à son émission, comparée jour par jour à la couleur officielle "
+            f"publiée par EDF et téléchargeable en CSV ({u}/historique-previsions.csv).\n"
             f"> Dernière révision du contenu : {revision}\n"
             "\n"
             "L'offre Tempo EDF est un contrat d'électricité où le prix du kWh varie "
@@ -1790,9 +1833,11 @@ async def llms_txt():
             f"- [Calendrier Tempo EDF]({u}/calendrier): calendrier mensuel de la saison en cours\n"
             f"- [Tarif Tempo EDF]({u}/tarif-tempo-edf): grille tarifaire en vigueur et coût d'un jour rouge\n"
             f"- [Méthodologie]({u}/methodologie): méthode de prévision et chiffres de performance\n"
-            f"- [Historique des prévisions]({u}/historique-previsions): nos prévisions faites 2 à 5 jours avant, "
-            "comparées jour par jour aux couleurs officielles, sans sélection (export CSV : "
-            f"{u}/historique-previsions.csv)\n"
+            f"- [Historique des prévisions]({u}/historique-previsions): historique public de toutes nos prévisions, "
+            "y compris les erreurs, faites 1 à 15 jours avant et comparées jour par jour à la couleur officielle EDF, "
+            "sans sélection\n"
+            f"- [Export CSV de l'historique]({u}/historique-previsions.csv): toutes saisons, une ligne par jour, "
+            "séparateur point-virgule, UTF-8\n"
             f"- [API Tempo]({u}/api-tempo): documentation de l'API JSON gratuite\n"
             f"- [Blog]({u}/blog/): guides pour économiser avec Tempo EDF\n"
             f"- [Alertes]({u}/alertes): alertes WhatsApp gratuites : {site_facts.ALERTES_DESCRIPTION}\n"

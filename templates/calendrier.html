@@ -27,7 +27,7 @@
     <meta name="apple-mobile-web-app-title" content="Calendrier Tempo">
     <meta name="theme-color" content="#2563EB">
     <link rel="manifest" href="/manifest.json">
-    <!-- Open Graph -->
+    {# Open Graph #}
     <meta property="og:title" content="{{ page_title }}">
     <meta property="og:description" content="{{ page_desc }}">
     <meta property="og:type" content="website">
@@ -38,14 +38,14 @@
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:image:alt" content="Calendrier Tempo EDF : jours rouges, blancs et bleus">
-    <!-- Twitter Card -->
+    {# Twitter Card #}
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="{{ page_title }}">
     <meta name="twitter:description" content="{{ page_desc }}">
     <meta name="twitter:image" content="https://www.calendrier-tempo.fr/static/og-image.png">
-    <!-- JSON-LD BreadcrumbList -->
+    {# JSON-LD BreadcrumbList #}
     <script type="application/ld+json">{{ breadcrumb_ld|tojson }}</script>
-    <!-- JSON-LD Dataset -->
+    {# JSON-LD Dataset #}
     <script type="application/ld+json">{{ {
         "@context": "https://schema.org",
         "@type": "Dataset",
@@ -59,7 +59,7 @@
         "temporalCoverage": month_season_label[:4] ~ "-09-01/" ~ month_season_label[5:] ~ "-08-31",
         "distribution": [{"@type": "DataDownload", "encodingFormat": "application/json", "contentUrl": "https://www.calendrier-tempo.fr/api/history?days=365"}]
     }|tojson }}</script>
-    <!-- JSON-LD FAQPage : même source que la FAQ visible (site_facts.faq_calendrier) -->
+    {# JSON-LD FAQPage : même source que la FAQ visible (site_facts.faq_calendrier) #}
     <script type="application/ld+json">{{ faq_ld|tojson }}</script>
     <link rel="preload" href="/static/fonts/inter-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
     <link rel="stylesheet" href="/static/css/fonts.css?v={{ facts.ASSET_V }}">
@@ -144,7 +144,7 @@
 
 <main id="main-content" class="container" role="main">
 
-    <!-- Breadcrumb -->
+    {# Breadcrumb #}
     <nav class="breadcrumb" aria-label="Fil d'Ariane">
         {% if is_current_month %}
         <a href="/">Accueil</a><span aria-hidden="true">&rsaquo;</span><span aria-current="page">Calendrier Tempo EDF</span>
@@ -168,7 +168,7 @@
     {% endif %}
 
     {% if month_season_label == season_label %}
-    <!-- Compteurs de la saison en cours -->
+    {# Compteurs de la saison en cours #}
     <div class="cal-stats" role="region" aria-label="Bilan de la saison {{ season_label }}">
         <div class="cal-stat rouge">
             <div class="stat-count">{{ stats.rouge_used }} / {{ facts.JOURS_ROUGES }}</div>
@@ -185,7 +185,7 @@
     </div>
     {% endif %}
 
-    <!-- Navigation entre mois : liens HTML crawlables (une URL par mois) -->
+    {# Navigation entre mois : liens HTML crawlables (une URL par mois) #}
     <nav id="cal" class="cal-nav" aria-label="Navigation entre mois">
         {% if prev_path %}
         <a href="{{ prev_path }}#cal" rel="prev" data-month="{{ prev_month }}" data-year="{{ prev_year }}" aria-label="Mois précédent : {{ prev_month_label }}">&larr; {{ prev_month_label }}</a>
@@ -196,7 +196,7 @@
         {% endif %}
     </nav>
 
-    <!-- Légende -->
+    {# Légende #}
     <div class="cal-legend" aria-hidden="true">
         <div class="cal-legend-item"><div class="cal-legend-dot is-rouge"></div> Rouge</div>
         <div class="cal-legend-item"><div class="cal-legend-dot is-blanc"></div> Blanc</div>
@@ -205,7 +205,7 @@
         <div class="cal-legend-item"><em>Italique</em>&nbsp;= pr&eacute;vision</div>
     </div>
 
-    <!-- Grille du calendrier (chaque case porte un libellé texte complet) -->
+    {# Grille du calendrier (chaque case porte un libellé texte complet) #}
     <div class="cal-grid" aria-label="Calendrier Tempo {{ current_month_label }}">
         <div class="cal-header" aria-hidden="true">Lun</div>
         <div class="cal-header" aria-hidden="true">Mar</div>
@@ -227,7 +227,7 @@
     <p class="cal-source-note">
         Source&nbsp;: {{ facts.SOURCE_COULEURS_PHRASE }}. Seule la couleur publiée par EDF fait foi.
     </p>
-    <!-- Résumé texte du mois (données réelles uniquement) -->
+    {# Résumé texte du mois (données réelles uniquement) #}
     {% set month_has_days = red_days or white_days or predicted_red or predicted_white %}
     <section class="cal-month-summary {{ 'is-visible' if month_has_days else 'sr-only' }}" aria-label="Résumé de {{ current_month_label }}">
         <p>
@@ -243,7 +243,7 @@
     </section>
 
     {% if is_current_month %}
-    <!-- Prévisions détaillées des 15 prochains jours (cartes, chargées par app.min.js) -->
+    {# Prévisions détaillées des 15 prochains jours (cartes, chargées par app.min.js) #}
     <h2 class="section-title cal-forecast-title">Pr&eacute;visions d&eacute;taill&eacute;es des 15 prochains jours</h2>
     <div class="last-update-bar cal-update-bar" id="last-update-bar" role="status" aria-live="polite" style="display:none">
         <span id="last-update-text"></span>
@@ -263,7 +263,7 @@
     <p class="cal-history-link">Nos pr&eacute;visions sont-elles fiables&nbsp;? <a href="/historique-previsions">Voir l'historique</a>.</p>
     {% endif %}
 
-    <!-- CTA -->
+    {# CTA #}
     <section class="blog-cta page-cta">
         <h2>Anticipez les {{ facts.ALERTES_HORIZON_JOURS }} prochains jours Tempo</h2>
         <p>{{ facts.ALERTES_DESCRIPTION_COURT }}. Gratuit, sans engagement.</p>
@@ -272,7 +272,7 @@
 
 
 
-    <!-- FAQ visible (même source que le JSON-LD FAQPage) -->
+    {# FAQ visible (même source que le JSON-LD FAQPage) #}
     <section class="faq-section cal-seo-content">
         <h2 class="section-title">Questions fr&eacute;quentes sur le calendrier Tempo EDF</h2>
         <div class="faq-list">
@@ -287,7 +287,7 @@
         </div>
     </section>
 
-    <!-- Saisons : dates réelles publiées -->
+    {# Saisons : dates réelles publiées #}
     <section class="cal-seo-content" aria-labelledby="saisons-title">
         <h2 id="saisons-title">Dates des jours rouges et blancs par saison</h2>
         <p>Liste compl&egrave;te des jours rouges et blancs publi&eacute;s par EDF, saison par saison&nbsp;:</p>
@@ -298,7 +298,7 @@
     </section>
 
 
-    <!-- Contenu SEO : replié sous 768 px, ouvert au-dessus (texte toujours dans le DOM) -->
+    {# Contenu SEO : replié sous 768 px, ouvert au-dessus (texte toujours dans le DOM) #}
     <section class="cal-seo-content cal-seo-content--more" aria-labelledby="comprendre-title">
         <details class="faq-item cal-seo-more" id="cal-seo-more" open>
         <summary><h2 id="comprendre-title">Comprendre le calendrier Tempo EDF</h2></summary>

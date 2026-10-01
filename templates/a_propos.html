@@ -30,7 +30,7 @@
     <meta name="twitter:title" content="&Agrave; propos du Calendrier Tempo EDF : qui sommes-nous">
     <meta name="twitter:description" content="Cr&eacute;&eacute; par des clients Tempo EDF pour anticiper les jours rouges et &eacute;conomiser.">
     <meta name="twitter:image" content="https://www.calendrier-tempo.fr/static/og-image.png">
-    <!-- JSON-LD BreadcrumbList -->
+    {# JSON-LD BreadcrumbList #}
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
@@ -41,7 +41,7 @@
         ]
     }
     </script>
-    <!-- JSON-LD Organization -->
+    {# JSON-LD Organization #}
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
@@ -55,7 +55,7 @@
             "width": 192,
             "height": 192
         },
-        "description": "Service ind\u00e9pendant et gratuit cr\u00e9\u00e9 par des clients Tempo EDF pour anticiper les jours rouges et \u00e9conomiser sur la facture d'\u00e9lectricit\u00e9.",
+        "description": {{ facts.ORG_DESCRIPTION|tojson }},
         "foundingDate": "2025",
         "areaServed": {
             "@type": "Country",

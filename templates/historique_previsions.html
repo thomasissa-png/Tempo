@@ -17,21 +17,29 @@
             </tr>
 {% endmacro %}
 {% block title %}{% if is_current %}Historique de nos prévisions Tempo EDF, jour par jour{% else %}Historique de nos prévisions Tempo EDF : saison {{ season_label }}{% endif %}{% endblock %}
-{% block description %}{% if is_current %}Nos prévisions Tempo EDF faites 1 à 15 jours avant, avec la température prévue, comparées sans filtre aux couleurs officielles EDF, jour par jour.{% else %}Nos prévisions Tempo EDF de la saison {{ season_label }}, faites 1 à 15 jours avant, comparées sans filtre aux couleurs officielles EDF, jour par jour.{% endif %}{% endblock %}
+{% block description %}{% if is_current %}Historique public de nos prévisions Tempo EDF, erreurs comprises : prévu 1 à 15 jours avant, comparé à la couleur officielle EDF. Export CSV gratuit.{% else %}Historique de nos prévisions Tempo EDF, saison {{ season_label }}, erreurs comprises : prévu 1 à 15 jours avant, comparé à la couleur officielle EDF. Export CSV.{% endif %}{% endblock %}
 {% block jsonld %}
-    <script type="application/ld+json">{{ {
+    {% set org = {"@type": "Organization", "@id": "https://www.calendrier-tempo.fr/#organization", "name": "Calendrier Tempo EDF", "url": "https://www.calendrier-tempo.fr/"} %}
+    {% set ld = {
         "@context": "https://schema.org",
         "@type": "Dataset",
+        "@id": "https://www.calendrier-tempo.fr" ~ canonical_path ~ "#dataset",
         "name": "Historique des prévisions Tempo EDF de calendrier-tempo.fr, saison " ~ season_label,
-        "description": "Prévisions de couleur Tempo EDF (bleu, blanc, rouge) émises de 1 à 15 jours avant chaque jour, avec la température moyenne prévue utilisée, figées à leur émission et comparées à la couleur officielle publiée par EDF et à la température observée. Tous les jours sont inclus, sans sélection.",
+        "description": "Historique public et vérifiable des prévisions de couleur Tempo EDF (bleu, blanc, rouge) de calendrier-tempo.fr, erreurs comprises : pour chaque jour, la prévision émise de 1 à 15 jours avant, figée à son émission, avec la température moyenne prévue, comparée à la couleur officielle publiée par EDF et à la température observée. Tous les jours dont EDF a publié la couleur sont inclus, sans sélection. Le fichier CSV couvre toutes les saisons suivies.",
         "url": "https://www.calendrier-tempo.fr" ~ canonical_path,
         "inLanguage": "fr",
         "isAccessibleForFree": true,
-        "creator": {"@type": "Organization", "@id": "https://www.calendrier-tempo.fr/#organization", "name": "Calendrier Tempo EDF", "url": "https://www.calendrier-tempo.fr/"},
+        "keywords": ["Tempo EDF", "historique des prévisions", "prévision jours rouges", "couleur Tempo", "calendrier Tempo EDF"],
+        "creator": org,
+        "publisher": org,
+        "isBasedOn": facts.SOURCE_COULEURS_URL,
+        "measurementTechnique": "Prévisions enregistrées au moment de leur émission, jamais recalculées, comparées à la couleur publiée par EDF.",
         "temporalCoverage": (h.first_iso ~ "/" ~ h.last_iso) if h else (season_start_iso ~ "/" ~ season_end_iso),
         "variableMeasured": ["Couleur Tempo officielle", "Couleur prévue de 1 à 15 jours avant", "Température moyenne prévue (°C)", "Température moyenne observée (°C)"],
-        "distribution": [{"@type": "DataDownload", "encodingFormat": "text/csv", "contentUrl": "https://www.calendrier-tempo.fr/historique-previsions.csv"}]
-    }|tojson }}</script>
+        "distribution": [{"@type": "DataDownload", "name": "Historique des prévisions Tempo EDF, toutes saisons (CSV)", "description": "Séparateur point-virgule, UTF-8 avec BOM, compatible Excel", "encodingFormat": "text/csv", "contentUrl": "https://www.calendrier-tempo.fr/historique-previsions.csv"}]
+    } %}
+    {% if h %}{% set _ = ld.update({"dateModified": h.last_iso}) %}{% endif %}
+    <script type="application/ld+json">{{ ld|tojson }}</script>
 {% endblock %}
 {% block breadcrumb %}
     <nav class="breadcrumb" aria-label="Fil d'Ariane">
@@ -42,7 +50,7 @@
 {% block content %}
 <article class="legal-content history-page">
     <h1>Historique de nos prévisions Tempo EDF{% if not is_current %}&nbsp;: <span class="nowrap">saison {{ season_label }}</span>{% endif %}</h1>
-    <!-- Haut de page court (décision fondateur du 2026-10-01) : la grille arrive tout de suite -->
+    {# Haut de page court (décision fondateur du 2026-10-01) : la grille arrive tout de suite #}
     <p class="section-desc history-intro">
         Nos prévisions Tempo faites jusqu'à 15 jours avant, <strong>telles qu'elles ont été émises</strong>, comparées à la couleur officielle d'EDF, y compris quand nous nous sommes trompés.
     </p>
@@ -57,7 +65,7 @@
     {% set ref_kl = reference if (reference and reference.label != season_label) else none %}
     {% set b_kl = h.bref %}
     {% if (ref_kl and ref_kl.emises) or b_kl.emises %}
-    <!-- Une seule ligne de chiffre clé (taux public = dernière saison complète), le détail est sous la grille -->
+    {# Une seule ligne de chiffre clé (taux public = dernière saison complète), le détail est sous la grille #}
     <p class="history-keyline">{% if ref_kl and ref_kl.emises %}Saison {{ ref_kl.label }}, dernière saison complète&nbsp;: <strong>{% if ref_kl.justes_pct is not none %}{{ ref_kl.justes_pct }}&nbsp;% de prévisions justes{% else %}{{ ref_kl.justes }} prévisions justes sur {{ ref_kl.emises }}{% endif %}</strong>, 2 à 5 jours avant.{% elif b_kl.justes_pct is not none %}Saison {{ season_label }}&nbsp;: <strong>{{ b_kl.justes_pct }}&nbsp;% de prévisions justes</strong>, 2 à 5 jours avant.{% else %}Saison {{ season_label }}{% if is_current %} en cours{% endif %}&nbsp;: <strong>{{ b_kl.justes }} prévision{{ 's' if b_kl.justes > 1 }} juste{{ 's' if b_kl.justes > 1 }} sur {{ b_kl.emises }}</strong>, 2 à 5 jours avant.{% endif %} <a href="#en-bref">Détail</a></p>
     {% endif %}
     {% include "_historique_grille.html" %}

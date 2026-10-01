@@ -1,4 +1,4 @@
-<!-- Modal inscription alertes : partial inclus dans toutes les pages (l'ancre #subscribe est la section de l'accueil) -->
+{# Modal inscription alertes : partial inclus dans toutes les pages (l'ancre #subscribe est la section de l'accueil) #}
 <div class="subscribe-modal-overlay" id="subscribe-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" style="display:none">
     <div class="subscribe-modal">
         <button class="modal-close" id="modal-close" aria-label="Fermer">&times;</button>
@@ -11,11 +11,11 @@
         <div class="sms-preview" id="modal-sms-preview">
             <div class="sms-preview-label">&#128172; Exemple du r&eacute;cap du dimanche (couleurs fictives)&nbsp;:</div>
             <div class="sms-bubble" id="modal-sms-bubble">
-                <!-- Content generated dynamically by updateSmsBubble() -->
+                {# Content generated dynamically by updateSmsBubble() #}
             </div>
         </div>
         <form id="modal-subscribe-form">
-            <!-- Anti-bot: honeypot field (invisible to humans, filled by bots) -->
+            {# Anti-bot: honeypot field (invisible to humans, filled by bots) #}
             <div class="hp-field" aria-hidden="true">
                 <input type="text" name="website" tabindex="-1" autocomplete="off" id="modal-hp">
             </div>

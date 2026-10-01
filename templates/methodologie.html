@@ -2,7 +2,7 @@
 {% set long_page = true %}
 {# Rendu : SSR (poids par défaut lus dans config.py, mesure en direct lue en base), cache 1 h #}
 {% block title %}Méthodologie : comment nous prévoyons les jours Tempo EDF{% endblock %}
-{% block description %}Comment nous prévoyons les jours Tempo EDF rouges, blancs et bleus : météo, consommation RTE, scoring pondéré, machine learning, règles EDF et performance.{% endblock %}
+{% block description %}Comment nous prévoyons les jours Tempo EDF : météo, consommation RTE, règles EDF. Performance mesurée en conditions réelles, historique public en CSV.{% endblock %}
 {% block jsonld %}
     <script type="application/ld+json">{{ {
         "@context": "https://schema.org",
@@ -11,7 +11,8 @@
         "url": "https://www.calendrier-tempo.fr/methodologie",
         "inLanguage": "fr",
         "author": {"@type": "Organization", "@id": "https://www.calendrier-tempo.fr/#organization", "name": "Calendrier Tempo EDF", "url": "https://www.calendrier-tempo.fr/"},
-        "publisher": {"@type": "Organization", "@id": "https://www.calendrier-tempo.fr/#organization", "name": "Calendrier Tempo EDF", "url": "https://www.calendrier-tempo.fr/"}
+        "publisher": {"@type": "Organization", "@id": "https://www.calendrier-tempo.fr/#organization", "name": "Calendrier Tempo EDF", "url": "https://www.calendrier-tempo.fr/"},
+        "mentions": {"@type": "Dataset", "@id": "https://www.calendrier-tempo.fr/historique-previsions#dataset", "name": "Historique des prévisions Tempo EDF de calendrier-tempo.fr", "url": "https://www.calendrier-tempo.fr/historique-previsions"}
     }|tojson }}</script>
 {% endblock %}
 {% block breadcrumb %}

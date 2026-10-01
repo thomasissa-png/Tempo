@@ -18,7 +18,7 @@
     <meta name="apple-mobile-web-app-title" content="Calendrier Tempo">
     <meta name="theme-color" content="#2563EB">
     <link rel="manifest" href="/manifest.json">
-    <!-- Open Graph -->
+    {# Open Graph #}
     <meta property="og:title" content="{{ article.title }}">
     <meta property="og:description" content="{{ article.description }}">
     <meta property="og:type" content="article">
@@ -35,12 +35,12 @@
     {% for tag in article.keywords.split(', ') if tag.strip() %}
     <meta property="article:tag" content="{{ tag.strip() }}">
     {% endfor %}
-    <!-- Twitter Card -->
+    {# Twitter Card #}
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="{{ article.title }}">
     <meta name="twitter:description" content="{{ article.description }}">
     <meta name="twitter:image" content="https://www.calendrier-tempo.fr/static/og-image.png">
-    <!-- JSON-LD construits en Python et sérialisés par |tojson (JSON toujours valide) -->
+    {# JSON-LD construits en Python et sérialisés par |tojson (JSON toujours valide) #}
     <script type="application/ld+json">{{ article_ld|tojson }}</script>
     <script type="application/ld+json">{{ breadcrumb_ld|tojson }}</script>
     {% if faq_ld %}
@@ -61,7 +61,7 @@
 
 <main id="main-content" class="container blog-article-main" role="main">
 
-    <!-- Breadcrumb -->
+    {# Breadcrumb #}
     <nav class="breadcrumb" aria-label="Fil d'Ariane">
         <a href="/">Accueil</a><span aria-hidden="true">&rsaquo;</span><a href="/blog/">Blog</a><span aria-hidden="true">&rsaquo;</span><span aria-current="page">{{ article.title }}</span>
     </nav>
@@ -104,7 +104,7 @@
             {% endif %}
         </div>
 
-        <!-- CTA de fin d'article (conviction avant conversion) -->
+        {# CTA de fin d'article (conviction avant conversion) #}
         <aside class="blog-cta-inline">
             <strong>Anticipez les {{ facts.ALERTES_HORIZON_JOURS }} prochains jours Tempo</strong>
             <p>{{ facts.ALERTES_DESCRIPTION_COURT }}. Inscription en 30 secondes.</p>
@@ -113,7 +113,7 @@
     </article>
 
     {% if related %}
-    <!-- Articles liés (même cluster en priorité) -->
+    {# Articles liés (même cluster en priorité) #}
     <aside class="blog-related" aria-labelledby="related-title">
         <h2 id="related-title">&Agrave; lire aussi</h2>
         <ul>
@@ -122,7 +122,7 @@
     </aside>
     {% endif %}
 
-    <!-- Navigation articles + liens internes -->
+    {# Navigation articles + liens internes #}
     <nav class="blog-nav-articles" aria-label="Articles du blog">
         <a href="/blog/">&larr; Retour au blog</a>
         <a href="/calendrier">Calendrier Tempo EDF</a>

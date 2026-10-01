@@ -138,7 +138,7 @@ def _insert_predictions() -> list[dict]:
 
 
 def _card(page: str) -> str:
-    return page[page.index('id="week-summary-card"'):page.index('<!-- Compteurs jours restants')]
+    return page[page.index('id="week-summary-card"'):page.index('<h2 class="section-title">O&ugrave; en est la saison')]
 
 
 class TestHomeCardSsr:
@@ -149,7 +149,7 @@ class TestHomeCardSsr:
         assert "Couleur Tempo EDF aujourd'hui, demain et pr" in page  # H1 inchangé (requête n°1)
         top = page[page.index('class="home-title"'):page.index('id="week-summary-card"')]
         # ordre : H1 discret, accroche, bandeau mise à jour, titre de la carte
-        assert top.index("welcome-banner") < top.index('id="last-update-bar"') < top.index("Résumé des 10 prochains jours")
+        assert top.index("welcome-banner") < top.index('id="last-update-bar"') < top.index('id="week-summary-title"')
         lead = _text(top[top.index("welcome-banner"):top.index('id="last-update-bar"')]).replace(" .", ".")
         ratio = site_facts.fr_num(site_facts.RATIO_ROUGE_BLEU_HP)
         assert (f"Un jour rouge coûte {ratio} fois plus cher en heures pleines qu'un jour bleu. "

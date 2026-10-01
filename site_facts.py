@@ -102,6 +102,12 @@ FOYERS_ALERTES = "plus de 2 500"  # décision fondateur du 2026-09-29 : chiffre 
 FOYERS_ALERTES_HTML = "plus de 2&nbsp;500"  # même chiffre, espace insécable pour le HTML
 CHIFFREMENT_TELEPHONE = "Fernet (AES-128)"
 
+# Description de l'entité Organization (même @id sur l'accueil et /a-propos : un seul texte)
+ORG_DESCRIPTION = (
+    "Service indépendant et gratuit de prévision des jours Tempo EDF, non affilié à EDF ni à RTE. "
+    "Il publie l'historique de toutes ses prévisions, y compris ses erreurs, téléchargeable en CSV."
+)
+
 # Horizons de prévision
 HORIZON_MAX_JOURS = 15
 HORIZON_FIABLE = "J+2 à J+5"
@@ -133,10 +139,10 @@ PAGE_LASTMOD = {
     "/mentions-legales": date(2026, 9, 30),
     "/tarif-tempo-edf": date(2026, 9, 30),
     "/api-tempo": date(2026, 9, 30),
-    "/methodologie": date(2026, 9, 30),
-    "/historique-previsions": date(2026, 9, 30),
+    "/methodologie": date(2026, 10, 1),
+    "/historique-previsions": date(2026, 10, 1),
 }
-LLMS_CONTENT_DATE = date(2026, 9, 30)  # dernière révision éditoriale de llms.txt
+LLMS_CONTENT_DATE = date(2026, 10, 1)  # dernière révision éditoriale de llms.txt
 
 
 # ================================================================
@@ -352,6 +358,7 @@ def template_globals() -> dict:
         "FOYERS_ALERTES": FOYERS_ALERTES,
         "FOYERS_ALERTES_HTML": FOYERS_ALERTES_HTML,
         "CHIFFREMENT_TELEPHONE": CHIFFREMENT_TELEPHONE,
+        "ORG_DESCRIPTION": ORG_DESCRIPTION,
         "HORIZON_MAX_JOURS": HORIZON_MAX_JOURS,
         "HORIZON_FIABLE": HORIZON_FIABLE,
         "HORIZON_INDICATIF": HORIZON_INDICATIF,
@@ -423,9 +430,11 @@ FAQ_HOME: list[dict] = [
             "prévisions météo deviennent moins précises, donc les nôtres aussi : de "
             f"{HORIZON_INDICATIF_LISIBLE}, c'est une <strong>tendance</strong>, pas une certitude. Pour une "
             "décision importante (grosse lessive, recharge d'un véhicule), fiez-vous plutôt aux "
-            "prévisions à 2 ou 3 jours. Chaque prévision passée est comparée à la couleur officielle sur notre "
-            "<a href=\"/historique-previsions\">historique des prévisions</a> ; la mesure détaillée est sur la page "
-            "<a href=\"/methodologie\">méthodologie</a>.</p>"
+            "prévisions à 2 ou 3 jours. Vous pouvez le vérifier : notre "
+            "<a href=\"/historique-previsions\">historique public des prévisions</a> montre, jour par jour, "
+            "chaque prévision telle qu'elle a été émise, y compris nos erreurs, comparée à la couleur officielle "
+            "d'EDF, et se télécharge en <a href=\"/historique-previsions.csv\">CSV</a> ; la méthode est détaillée "
+            "sur la page <a href=\"/methodologie\">méthodologie</a>.</p>"
         ),
     },
     {

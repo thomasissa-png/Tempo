@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Mentions légales et RGPD | Calendrier Tempo EDF</title>
-    <!-- Fix #S6 : meta description pour la page légale -->
+    {# Fix #S6 : meta description pour la page légale #}
     <meta name="description" content="Mentions l&eacute;gales, confidentialit&eacute; et RGPD du Calendrier Tempo EDF. Protection des donn&eacute;es et d&eacute;sinscription alertes.">
     {% if bing_verification %}<meta name="msvalidate.01" content="{{ bing_verification }}">{% endif %}
     {% if google_verification %}<meta name="google-site-verification" content="{{ google_verification }}">{% endif %}
@@ -21,7 +21,7 @@
     <link rel="stylesheet" href="/static/css/fonts.css?v={{ facts.ASSET_V }}">
     <link rel="preload" href="/static/css/style.min.css?v={{ facts.ASSET_V }}" as="style">
     <link rel="stylesheet" href="/static/css/style.min.css?v={{ facts.ASSET_V }}">
-    <!-- Open Graph -->
+    {# Open Graph #}
     <meta property="og:title" content="Mentions l&eacute;gales et RGPD | Calendrier Tempo EDF">
     <meta property="og:description" content="Mentions l&eacute;gales, politique de confidentialit&eacute; et RGPD du Calendrier Tempo EDF.">
     <meta property="og:type" content="website">
@@ -32,12 +32,12 @@
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:image:alt" content="Calendrier Tempo EDF : mentions l&eacute;gales">
-    <!-- Twitter Card -->
+    {# Twitter Card #}
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Mentions l&eacute;gales et RGPD | Calendrier Tempo EDF">
     <meta name="twitter:description" content="Mentions l&eacute;gales, politique de confidentialit&eacute; et RGPD du Calendrier Tempo EDF.">
     <meta name="twitter:image" content="https://www.calendrier-tempo.fr/static/og-image.png">
-    <!-- JSON-LD BreadcrumbList -->
+    {# JSON-LD BreadcrumbList #}
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
@@ -78,7 +78,7 @@
         </ul>
     </nav>
 
-    <!-- Fix #9 : classes CSS au lieu de styles inline -->
+    {# Fix #9 : classes CSS au lieu de styles inline #}
     <div class="legal-section">
         <h2 id="editeur">1. Éditeur du site et directeur de la publication</h2>
         <p class="legal-text">

@@ -13,17 +13,17 @@
     <meta name="geo.region" content="FR">
     <meta name="geo.placename" content="France">
     <link rel="alternate" type="application/rss+xml" title="Blog Calendrier Tempo EDF" href="https://www.calendrier-tempo.fr/feed.xml">
-    <!-- Fix #S4 : canonical URL -->
+    {# Fix #S4 : canonical URL #}
     <link rel="canonical" href="https://www.calendrier-tempo.fr/">
     {% include "_favicons.html" %}
-    <!-- Bookmark / Add to Home Screen : nom court + manifest PWA -->
+    {# Bookmark / Add to Home Screen : nom court + manifest PWA #}
     <meta name="application-name" content="Calendrier Tempo">
     <meta name="apple-mobile-web-app-title" content="Calendrier Tempo">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="theme-color" content="#2563EB">
     <link rel="manifest" href="/manifest.json">
-    <!-- Fix #S2 : Open Graph -->
+    {# Fix #S2 : Open Graph #}
     <meta property="og:title" content="Tempo EDF : couleur du jour, demain et prévisions EDF Tempo">
     <meta property="og:description" content="Couleur EDF Tempo du jour et du lendemain dès 12h, prévisions des jours rouges, blancs et bleus à 15 jours. Service gratuit et indépendant.">
     <meta property="og:type" content="website">
@@ -34,12 +34,12 @@
     <meta property="og:image:width" content="1200">
     <meta property="og:image:height" content="630">
     <meta property="og:image:alt" content="Calendrier Tempo EDF : prévisions des jours rouges, blancs et bleus">
-    <!-- Fix #S2 : Twitter Card -->
+    {# Fix #S2 : Twitter Card #}
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Tempo EDF : couleur du jour, demain et prévisions EDF Tempo">
     <meta name="twitter:description" content="Couleur EDF Tempo du jour et du lendemain dès 12h, prévisions des jours rouges à 15 jours. Gratuit.">
     <meta name="twitter:image" content="https://www.calendrier-tempo.fr/static/og-image.png">
-    <!-- JSON-LD WebSite -->
+    {# JSON-LD WebSite #}
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
@@ -47,11 +47,11 @@
         "name": "Calendrier Tempo EDF",
         "alternateName": ["Calendrier Tempo", "calendrier-tempo.fr"],
         "url": "https://www.calendrier-tempo.fr/",
-        "description": "Couleur Tempo EDF du jour et de demain, calendrier des saisons et prévisions des jours rouges, blancs et bleus sur 15 jours.",
+        "description": "Couleur Tempo EDF du jour et de demain, calendrier des saisons, prévisions des jours rouges, blancs et bleus sur 15 jours, et historique public de ces prévisions, erreurs comprises.",
         "inLanguage": "fr"
     }
     </script>
-    <!-- JSON-LD SoftwareApplication -->
+    {# JSON-LD SoftwareApplication #}
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
@@ -69,7 +69,7 @@
         }
     }
     </script>
-    <!-- JSON-LD Organization -->
+    {# JSON-LD Organization #}
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
@@ -84,11 +84,11 @@
             "width": 192,
             "height": 192
         },
-        "description": "Service indépendant et gratuit de prévision des jours Tempo EDF, non affilié à EDF ni à RTE.",
+        "description": {{ facts.ORG_DESCRIPTION|tojson }},
         "foundingDate": "2025"
     }
     </script>
-    <!-- JSON-LD HowTo -->
+    {# JSON-LD HowTo #}
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
@@ -123,10 +123,10 @@
         ]
     }
     </script>
-    <!-- JSON-LD FAQPage : généré depuis site_facts.FAQ_HOME (même source que la FAQ visible) -->
+    {# JSON-LD FAQPage : généré depuis site_facts.FAQ_HOME (même source que la FAQ visible) #}
     <script type="application/ld+json">{{ faq_ld|tojson }}</script>
     {% if itemlist_ld %}
-    <!-- JSON-LD ItemList : prochains jours (données SSR réelles) -->
+    {# JSON-LD ItemList : prochains jours (données SSR réelles) #}
     <script type="application/ld+json">{{ itemlist_ld|tojson }}</script>
     {% endif %}
     <link rel="preconnect" href="https://cloud.umami.is" crossorigin>
@@ -146,17 +146,17 @@
 
 <main id="main-content" class="container" role="main">
 
-    <!-- Fix #14 : noscript fallback -->
+    {# Fix #14 : noscript fallback #}
     <noscript>
         <div style="background:#FFEBEE;border:2px solid #F44336;border-radius:8px;padding:20px;margin:24px 0;text-align:center">
             <strong>JavaScript est désactivé.</strong> Les couleurs ci-dessous datent du chargement de la page : activez JavaScript pour les voir se mettre à jour.
         </div>
     </noscript>
 
-    <!-- Haut de page : mise en page de l'ancienne accueil (décision fondateur du 2026-10-01) -->
+    {# Haut de page : mise en page de l'ancienne accueil (décision fondateur du 2026-10-01) #}
     <h1 class="home-title">Couleur Tempo EDF aujourd'hui, demain et pr&eacute;visions &agrave; 15 jours</h1>
 
-    <!-- Accroche en une ligne : id conservé pour app.js -->
+    {# Accroche en une ligne : id conservé pour app.js #}
     <section class="welcome-banner home-lead" id="welcome-banner">
         <p>
             Un jour <span class="color-tag rouge">rouge</span> co&ucirc;te <strong>{{ facts.RATIO }} fois plus cher</strong> en heures pleines qu'un jour bleu.
@@ -168,11 +168,11 @@
         <span id="last-update-text">{% if ssr.last_update %}Derni&egrave;re mise &agrave; jour : <time datetime="{{ ssr.last_update_iso }}">{{ ssr.last_update }}</time>{% endif %}</span>
     </div>
 
-    <!-- Résumé des 10 prochains jours (décision fondateur : pas de bloc aujourd'hui/demain séparé) -->
+    {# Résumé des 10 prochains jours (décision fondateur : pas de bloc aujourd'hui/demain séparé) #}
     <section class="week-summary week-summary-top" aria-labelledby="week-summary-title">
         <h2 class="section-title" id="week-summary-title">R&eacute;sum&eacute; des 10 prochains jours</h2>
         <div class="week-summary-card{% if ssr.week_summary|selectattr('couleur', 'equalto', 'ROUGE')|list %} has-rouge{% endif %}" id="week-summary-card">
-            <!-- Ligne de message : même texte en SSR et en JS (site_facts.week_outlook_html / weekOutlookHtml) -->
+            {# Ligne de message : même texte en SSR et en JS (site_facts.week_outlook_html / weekOutlookHtml) #}
             <p class="week-summary-text" id="week-outlook"{% if not ssr.week_outlook %} hidden{% endif %}>{{ ssr.week_outlook|safe }}</p>
             <div id="week-summary" role="region" aria-label="Couleur Tempo d'aujourd'hui, de demain et des jours suivants">
                 {% if ssr.week_summary %}
@@ -197,7 +197,7 @@
         </div>
     </section>
 
-    <!-- Compteurs jours restants -->
+    {# Compteurs jours restants #}
     <h2 class="section-title">O&ugrave; en est la saison Tempo ?</h2>
     <p class="section-desc" id="season-desc">
         Chaque saison (1<sup>er</sup> sept. &rarr; 31 ao&ucirc;t), EDF r&eacute;partit
@@ -223,10 +223,10 @@
     </div>
     <p class="counter-note">Prix du kWh en heures pleines, TTC.</p>
     <p class="days-left-text" id="days-left"></p>
-    <!-- P-06 : contexte humain des compteurs -->
+    {# P-06 : contexte humain des compteurs #}
     <p class="counter-context" id="counter-context"></p>
 
-    <!-- CTA alertes — compact, ouvre la modal -->
+    {# CTA alertes — compact, ouvre la modal #}
     <section class="subscribe-cta-section" id="subscribe">
         <div class="subscribe-cta-card">
             <div class="subscribe-cta-icon" aria-hidden="true">
@@ -244,7 +244,7 @@
     </section>
 
 
-    <!-- P-07 : Comment ça marche centré utilisateur (pas algo) -->
+    {# P-07 : Comment ça marche centré utilisateur (pas algo) #}
     <section class="how-it-works" id="comment-ca-marche">
         <h2>Comment &eacute;conomiser avec le Calendrier EDF Tempo ?</h2>
         <div class="steps-grid">
@@ -266,7 +266,7 @@
         </div>
     </section>
 
-    <!-- P-15 : message hors-saison (masqué par défaut, affiché par JS si besoin) -->
+    {# P-15 : message hors-saison (masqué par défaut, affiché par JS si besoin) #}
     <div class="hors-saison-banner" id="hors-saison-banner" style="display:none" role="alert">
         <div class="hors-saison-icon" aria-hidden="true">&#9728;&#65039;</div>
         <div>
@@ -274,7 +274,7 @@
         </div>
     </div>
 
-    <!-- FAQ pratique pour Jean-Pierre -->
+    {# FAQ pratique pour Jean-Pierre #}
     <section class="faq-section">
         <h2 class="section-title">Tout comprendre sur EDF Tempo en 2 minutes</h2>
         <div class="faq-list">
