@@ -20,6 +20,9 @@ Flux :
 import asyncio
 import logging
 import mimetypes
+
+# python:3.12-slim n'a pas /etc/mime.types : sans ça, les polices partent en text/plain.
+mimetypes.add_type("font/woff2", ".woff2")
 import os
 import threading
 

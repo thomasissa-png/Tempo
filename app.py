@@ -22,6 +22,7 @@ import asyncio
 import hashlib
 import hmac
 import logging
+import mimetypes
 import os
 import time
 from collections import defaultdict
@@ -301,6 +302,7 @@ app = FastAPI(
 )
 
 app.add_middleware(GZipMiddleware, minimum_size=500)  # Compresse CSS/JS/JSON > 500 octets
+mimetypes.add_type("font/woff2", ".woff2")  # image slim sans /etc/mime.types (audit SEO 2026-10-01)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
@@ -418,6 +420,10 @@ async def add_cache_and_security_headers(request: Request, call_next):
         response.headers["Content-Language"] = "fr"
     # --- Cache-Control --- (jamais sur les erreurs : une 404 ne doit pas être mise en cache 1 h)
     if response.status_code >= 400:
+        return response
+    # Une route qui s'est déclarée non cacheable (ex. accueil rendu sans données) le reste :
+    # sinon le cache au bord de Cloudflare figerait la version dégradée plusieurs minutes.
+    if "no-store" in response.headers.get("Cache-Control", ""):
         return response
     # Match exact d'abord (pages HTML)
     if path in _CACHE_EXACT:
@@ -677,7 +683,7 @@ def _get_ssr_data() -> dict:
         finally:
             conn.close()
     except Exception as e:
-        logger.debug(f"[SSR] Erreur pré-chargement: {e}")
+        logger.warning(f"[SSR] Erreur pré-chargement: {e}")
     return ssr
 
 
@@ -686,7 +692,7 @@ async def page_dashboard(request: Request):
     """Page principale — dashboard des prévisions."""
     ssr = _get_ssr_data()
     ref = _reference_rate()
-    return templates.TemplateResponse("dashboard.html", {
+    response = templates.TemplateResponse("dashboard.html", {
         "request": request,
         "ssr": ssr,
         "ref_rate": ref,
@@ -694,6 +700,12 @@ async def page_dashboard(request: Request):
         "faq_ld": site_facts.faq_jsonld(site_facts.FAQ_HOME),
         "itemlist_ld": _predictions_itemlist_ld(ssr),
     })
+    if not ssr.get("predictions"):
+        # Accueil sans données (démarrage, base indisponible) : le JS les chargera, mais
+        # cette version ne doit être gardée par aucun cache (audit GEO du 2026-10-01).
+        logger.warning("[SSR] Accueil rendu sans prévisions : Cache-Control no-store")
+        response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 def _predictions_itemlist_ld(ssr: dict) -> dict | None:

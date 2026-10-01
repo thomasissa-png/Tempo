@@ -88,13 +88,194 @@ async function sha256(text: string): Promise<string> {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+// ---------------------------------------------------------------------------
+// Cache au bord (Cache API, caches.default) : respecte les Cache-Control de l'app.
+// - Seules les réponses 200 « public » avec max-age > 0 sont stockées (jamais private,
+//   no-store, no-cache, Set-Cookie, ni les 503 de démarrage de main.py).
+// - Durée de stockage = max-age + stale-while-revalidate : entre les deux, la copie
+//   en cache est servie (STALE) et rafraîchie en arrière-plan (ctx.waitUntil).
+// - Clé = URL complète (query comprise), hôte normalisé. En-tête de diagnostic X-Edge-Cache.
+// ---------------------------------------------------------------------------
+
+const EDGE_STATUS = "X-Edge-Cache"; // HIT | STALE | MISS | BYPASS
+// En-têtes internes, stockés avec la copie et retirés avant l'envoi au client.
+const STORED_AT = "X-Edge-Stored-At";
+const ORIGIN_CC = "X-Edge-Origin-Cache-Control";
+
+// Jamais en cache : back-office, gestion d'abonnement, webhooks, inscriptions, santé.
+const BYPASS_PREFIXES = ["/admin", "/manage/", "/api/webhook/"] as const;
+const BYPASS_EXACT = new Set([
+  "/manage", "/api/webhook", "/api/subscribe", "/api/resend-manage-link", "/health", "/keepalive",
+]);
+// Cookies sans effet sur le rendu (Cloudflare, mesure d'audience) : ils n'empêchent pas le cache.
+const NEUTRAL_COOKIE = /^(__cf|_cf|cf_|__cflb|_ga|_gid|umami)/i;
+
+function isCacheableRequest(request: Request, url: URL): boolean {
+  const method = request.method.toUpperCase();
+  if (method !== "GET" && method !== "HEAD") return false;
+  if (request.headers.has("Authorization") || request.headers.has("Range")) return false;
+  const cookie = request.headers.get("Cookie");
+  if (cookie) {
+    const names = cookie.split(";").map((c) => c.split("=")[0].trim()).filter((n) => n !== "");
+    if (names.some((n) => !NEUTRAL_COOKIE.test(n))) return false; // cookie de session possible
+  }
+  const path = url.pathname;
+  if (BYPASS_EXACT.has(path)) return false;
+  if (BYPASS_PREFIXES.some((p) => path.startsWith(p))) return false;
+  return true;
+}
+
+function cacheKey(url: URL): Request {
+  const key = new URL(url.toString());
+  key.protocol = "https:";
+  key.hostname = key.hostname.toLowerCase().replace(/\.$/, "");
+  key.port = "";
+  key.hash = "";
+  return new Request(key.toString(), { method: "GET" });
+}
+
+function parseCacheControl(value: string | null): Map<string, string> {
+  const directives = new Map<string, string>();
+  for (const part of (value ?? "").split(",")) {
+    const [name, ...rest] = part.trim().split("=");
+    if (name) directives.set(name.toLowerCase(), rest.join("=").replace(/^"|"$/g, ""));
+  }
+  return directives;
+}
+
+function seconds(raw: string | undefined): number {
+  const n = Number.parseInt(raw ?? "", 10);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+// Durées de fraîcheur / SWR d'une réponse, ou null si elle ne doit pas être stockée.
+function edgeTtl(response: Response, cacheControl: string | null): { fresh: number; swr: number } | null {
+  if (response.status !== 200) return null; // jamais les 503 de démarrage ni les erreurs
+  if (response.headers.has("Set-Cookie") || response.headers.has("Retry-After")) return null;
+  const vary = (response.headers.get("Vary") ?? "").toLowerCase();
+  if (vary.split(",").some((v) => v.trim() !== "" && v.trim() !== "accept-encoding")) return null;
+  const cc = parseCacheControl(cacheControl);
+  if (!cc.has("public") || cc.has("private") || cc.has("no-store") || cc.has("no-cache")) return null;
+  const fresh = cc.has("s-maxage") ? seconds(cc.get("s-maxage")) : seconds(cc.get("max-age"));
+  if (fresh <= 0) return null;
+  const mustRevalidate = cc.has("must-revalidate") || cc.has("proxy-revalidate");
+  const swr = mustRevalidate ? 0 : seconds(cc.get("stale-while-revalidate"));
+  return { fresh, swr };
+}
+
+function withEdgeStatus(response: Response, status: string): Response {
+  const copy = new Response(response.body, response);
+  copy.headers.set(EDGE_STATUS, status);
+  return copy;
+}
+
+// Requête vers le conteneur pour remplir le cache : GET complet, sans en-têtes conditionnels
+// (on veut un 200 à stocker, pas un 304) et sans compression (copie stockée en clair,
+// Cloudflare recompresse vers le visiteur).
+function fillRequest(url: URL, headers: Headers): Request {
+  const h = new Headers(headers);
+  for (const name of ["If-None-Match", "If-Modified-Since", "Accept-Encoding"]) h.delete(name);
+  return new Request(url.toString(), { method: "GET", headers: h, redirect: "manual" });
+}
+
+// Stocke la réponse si ses en-têtes l'autorisent. Renvoie true si elle a été mise en cache.
+function storeIfCacheable(response: Response, key: Request, ctx: ExecutionContext): boolean {
+  const originCc = response.headers.get("Cache-Control");
+  const ttl = edgeTtl(response, originCc);
+  if (!ttl) return false;
+  const stored = new Response(response.clone().body, response);
+  stored.headers.delete(EDGE_STATUS);
+  stored.headers.set(STORED_AT, String(Date.now()));
+  stored.headers.set(ORIGIN_CC, originCc ?? "");
+  stored.headers.set("Cache-Control", `public, max-age=${ttl.fresh + ttl.swr}`);
+  ctx.waitUntil(caches.default.put(key, stored).catch((e) => console.error(`[edge-cache] put : ${e}`)));
+  return true;
+}
+
+// Libère un corps non lu sans attendre (une branche de tee ne se ferme qu'avec l'autre).
+function discard(response: Response): void {
+  response.body?.cancel().catch(() => {});
+}
+
+// Copie servie depuis le cache : Cache-Control d'origine restauré, Age réel, en-têtes internes retirés.
+function fromCache(cached: Response, age: number, status: string, head: boolean): Response {
+  const headers = new Headers(cached.headers);
+  headers.set("Cache-Control", headers.get(ORIGIN_CC) ?? "");
+  headers.delete(ORIGIN_CC);
+  headers.delete(STORED_AT);
+  headers.delete("CF-Cache-Status");
+  headers.set("Age", String(age));
+  headers.set(EDGE_STATUS, status);
+  if (head) discard(cached);
+  return new Response(head ? null : cached.body, { status: cached.status, statusText: cached.statusText, headers });
+}
+
+// Une seule revalidation à la fois par URL et par isolat (best effort).
+const revalidating = new Map<string, number>();
+const REVALIDATE_LOCK_MS = 30_000;
+
+function revalidateInBackground(url: URL, headers: Headers, key: Request, env: Env, ctx: ExecutionContext): void {
+  const now = Date.now();
+  const since = revalidating.get(key.url);
+  if (since !== undefined && now - since < REVALIDATE_LOCK_MS) return;
+  revalidating.set(key.url, now);
+  ctx.waitUntil(
+    getContainer(env.TEMPO_APP)
+      .fetch(fillRequest(url, headers))
+      .then((fresh) => {
+        storeIfCacheable(fresh, key, ctx);
+        discard(fresh);
+      })
+      .catch((e) => console.error(`[edge-cache] revalidation ${url.pathname} : ${e}`))
+      .finally(() => revalidating.delete(key.url)),
+  );
+}
+
+async function serveWithEdgeCache(
+  request: Request, url: URL, headers: Headers, env: Env, ctx: ExecutionContext,
+): Promise<Response> {
+  const container = getContainer(env.TEMPO_APP);
+  const passThrough = () => container.fetch(new Request(request, { headers, redirect: "manual" }));
+  if (!isCacheableRequest(request, url)) return withEdgeStatus(await passThrough(), "BYPASS");
+
+  const head = request.method.toUpperCase() === "HEAD";
+  const key = cacheKey(url);
+  let cached: Response | undefined;
+  try {
+    cached = await caches.default.match(key);
+  } catch (e) {
+    console.error(`[edge-cache] match : ${e}`);
+  }
+  if (cached) {
+    const storedAt = Number(cached.headers.get(STORED_AT));
+    const ttl = edgeTtl(cached, cached.headers.get(ORIGIN_CC));
+    const age = Math.max(0, Math.floor((Date.now() - storedAt) / 1000));
+    if (ttl && Number.isFinite(storedAt) && storedAt > 0 && age < ttl.fresh + ttl.swr) {
+      if (age < ttl.fresh) return fromCache(cached, age, "HIT", head);
+      revalidateInBackground(url, headers, key, env, ctx);
+      return fromCache(cached, age, "STALE", head);
+    }
+    discard(cached);
+  }
+  // HEAD absent du cache : transmis tel quel, rien n'est stocké.
+  if (head) return withEdgeStatus(await passThrough(), "BYPASS");
+
+  const response = await container.fetch(fillRequest(url, headers));
+  const stored = storeIfCacheable(response, key, ctx);
+  return withEdgeStatus(response, stored ? "MISS" : "BYPASS");
+}
+
+const CANONICAL_ORIGIN = "https://www.calendrier-tempo.fr";
+
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
-    // Domaine nu → www (les canonicals, le sitemap et les liens pointent vers www).
-    if (url.hostname === "calendrier-tempo.fr") {
-      url.hostname = "www.calendrier-tempo.fr";
-      return Response.redirect(url.toString(), 301);
+    // Domaine nu ou http → https://www en UN seul saut (les canonicals, le sitemap et les
+    // liens pointent vers https://www). Jamais pour *.workers.dev. Concaténation de chaînes
+    // (pas new URL(path, base)) : un chemin « //autre.site » ne doit pas changer d'hôte.
+    const isWorkersDev = url.hostname.endsWith(".workers.dev");
+    if (!isWorkersDev && (url.hostname === "calendrier-tempo.fr" || url.protocol === "http:")) {
+      return Response.redirect(`${CANONICAL_ORIGIN}${url.pathname}${url.search}`, 301);
     }
     const headers = new Headers(request.headers);
     // On écrase tout X-Forwarded-For fourni par le client (anti-usurpation).
@@ -103,11 +284,10 @@ export default {
     if (clientIp) headers.set("X-Forwarded-For", clientIp);
     headers.set("X-Forwarded-Proto", url.protocol.replace(":", ""));
 
-    const upstream = new Request(request, { headers, redirect: "manual" });
-    const response = await getContainer(env.TEMPO_APP).fetch(upstream);
+    const response = await serveWithEdgeCache(request, url, headers, env, ctx);
 
     // L'URL de test *.workers.dev ne doit jamais être indexée (contenu dupliqué).
-    if (url.hostname.endsWith(".workers.dev")) {
+    if (isWorkersDev) {
       const copy = new Response(response.body, response);
       copy.headers.set("X-Robots-Tag", "noindex, nofollow");
       return copy;

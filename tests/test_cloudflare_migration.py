@@ -286,3 +286,110 @@ class TestWhatsAppTestModeGuard:
         worker = open(os.path.join(os.path.dirname(copy_database.__file__), "worker.ts")).read()
         assert "WHATSAPP_TEST_NUMBERS" in push_secrets.APP_ENV_KEYS
         assert '"WHATSAPP_TEST_NUMBERS"' in worker
+
+
+class TestEdgeCache:
+    """Cache au bord du Worker (caches.default) : vérification statique de worker.ts."""
+
+    @staticmethod
+    def _worker():
+        return open(os.path.join(os.path.dirname(copy_database.__file__), "worker.ts")).read()
+
+    @staticmethod
+    def _function(src, name):
+        start = src.index(f"function {name}(")
+        end = src.find("\nfunction ", start + 1)
+        end2 = src.find("\nasync function ", start + 1)
+        ends = [e for e in (end, end2) if e != -1]
+        return src[start:min(ends)] if ends else src[start:]
+
+    def test_uses_cache_api_and_diagnostic_header(self):
+        src = self._worker()
+        assert "caches.default.match(" in src and "caches.default.put(" in src
+        assert '"X-Edge-Cache"' in src
+        for status in ('"HIT"', '"STALE"', '"MISS"', '"BYPASS"'):
+            assert status in src
+
+    def test_sensitive_paths_never_cached(self):
+        req = self._function(self._worker(), "isCacheableRequest")
+        src = self._worker()
+        for path in ('"/admin"', '"/manage/"', '"/api/webhook/"', '"/api/subscribe"', '"/api/resend-manage-link"'):
+            assert path in src
+        assert "BYPASS_EXACT.has(path)" in req and "BYPASS_PREFIXES.some" in req
+        assert 'method !== "GET" && method !== "HEAD"' in req
+        assert 'has("Authorization")' in req and 'get("Cookie")' in req
+
+    def test_only_public_200_with_positive_max_age(self):
+        ttl = self._function(self._worker(), "edgeTtl")
+        assert "response.status !== 200" in ttl
+        assert 'has("Set-Cookie")' in ttl and 'has("Retry-After")' in ttl
+        assert '!cc.has("public")' in ttl
+        for directive in ('"private"', '"no-store"', '"no-cache"'):
+            assert f"cc.has({directive})" in ttl
+        assert "fresh <= 0" in ttl and '"stale-while-revalidate"' in ttl
+
+    def test_stale_while_revalidate_in_background_and_internal_headers_stripped(self):
+        src = self._worker()
+        assert "ttl.fresh + ttl.swr" in src and "revalidateInBackground(" in src
+        assert "ctx.waitUntil(" in self._function(src, "revalidateInBackground")
+        served = self._function(src, "fromCache")
+        assert "headers.delete(STORED_AT)" in served and "headers.delete(ORIGIN_CC)" in served
+
+    def test_forwarded_headers_redirect_and_noindex_kept(self):
+        src = self._worker()
+        fetch = src[src.index("async fetch("):src.index("async scheduled(")]
+        assert fetch.index("calendrier-tempo.fr") < fetch.index("serveWithEdgeCache(")
+        assert 'headers.delete("X-Forwarded-For")' in fetch and '"X-Forwarded-Proto"' in fetch
+        assert '"X-Robots-Tag", "noindex, nofollow"' in fetch
+
+    def test_keepalive_cron_bypasses_cache(self):
+        src = self._worker()
+        scheduled = src[src.index("async scheduled("):]
+        assert "getContainer(env.TEMPO_APP)" in scheduled
+        assert "caches" not in scheduled and "serveWithEdgeCache" not in scheduled
+
+
+def test_woff2_served_as_font(client=None):
+    """Audit SEO 2026-10-01 : l'image python:3.12-slim n'a pas /etc/mime.types,
+    la police partait en text/plain. Le type doit être enregistré par l'app."""
+    import mimetypes
+    import app  # noqa: F401  (enregistre le type à l'import)
+    assert mimetypes.guess_type("static/fonts/inter.woff2")[0] == "font/woff2"
+
+    def test_apex_and_http_redirect_in_one_hop_before_cache(self):
+        src = self._worker()
+        fetch = src[src.index("async fetch("):src.index("async scheduled(")]
+        assert 'const CANONICAL_ORIGIN = "https://www.calendrier-tempo.fr";' in src
+        cond = 'if (!isWorkersDev && (url.hostname === "calendrier-tempo.fr" || url.protocol === "http:"))'
+        assert cond in fetch
+        # Un seul saut, query conservée, sans new URL(path, base) (pas de redirection ouverte « //hôte »).
+        assert "Response.redirect(`${CANONICAL_ORIGIN}${url.pathname}${url.search}`, 301)" in fetch
+        assert fetch.index(cond) < fetch.index("serveWithEdgeCache(")
+
+
+class TestHomeNeverCachedEmpty:
+    """Audit GEO 2026-10-01 : un accueil rendu sans prévisions (démarrage, base
+    indisponible) ne doit jamais être gardé par le cache au bord de Cloudflare."""
+
+    def _client(self):
+        from fastapi.testclient import TestClient
+        import app as app_module
+        app_module._db_ready.set()
+        return app_module, TestClient(app_module.app)
+
+    def test_empty_home_is_no_store(self, monkeypatch):
+        app_module, client = self._client()
+        real = app_module._get_ssr_data
+        monkeypatch.setattr(app_module, "_get_ssr_data", lambda: {**real(), "predictions": []})
+        r = client.get("/")
+        assert r.status_code == 200
+        assert r.headers["cache-control"] == "no-store"
+
+    def test_full_home_keeps_public_cache(self, monkeypatch):
+        app_module, client = self._client()
+        real = app_module._get_ssr_data
+        monkeypatch.setattr(app_module, "_get_ssr_data",
+                            lambda: {**real(), "predictions": [{"date": "2026-10-02", "couleur": "BLEU", "confirmed": False}]})
+        r = client.get("/")
+        assert r.status_code == 200
+        assert r.headers["cache-control"].startswith("public, max-age=300")

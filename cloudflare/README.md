@@ -23,7 +23,7 @@ Invariants à ne jamais casser :
 - `PHONE_ENCRYPTION_KEY` doit être IDENTIQUE à Replit, sinon les numéros des abonnés
   sont illisibles.
 - `*.workers.dev` répond avec `X-Robots-Tag: noindex` (pas de contenu dupliqué).
-- Le domaine nu redirige en 301 vers `www`.
+- Le domaine nu et tout accès `http` redirigent en 301 vers `https://www` en un seul saut (avant le cache ; pas pour `*.workers.dev`). Suppose « Always Use HTTPS » désactivé sur la zone, sinon 2 sauts.
 
 ## Fichiers
 
@@ -158,6 +158,14 @@ Retour arrière (avant l'étape 4) : remettre les enregistrements DNS vers Repli
 Neon → Replit avec `copy_database.py` en inversant les deux variables.
 
 Après 7 jours sans incident : le fondateur peut résilier Replit (garder un export avant).
+
+## Cache au bord (`worker.ts`, Cache API `caches.default`)
+
+- Stocké : GET (HEAD servi s'il est déjà en cache) sans `Authorization` ni cookie autre que Cloudflare/mesure d'audience, réponses 200 `public` avec `max-age` (ou `s-maxage`) > 0, sans `private`/`no-store`/`no-cache`/`Set-Cookie`/`Retry-After` (donc jamais les 503 de démarrage).
+- Jamais en cache : `/admin*`, `/manage*`, `/api/webhook*`, `/api/subscribe`, `/api/resend-manage-link`, `/health`, `/keepalive`, tout non-GET, et le cron keep-alive (appel direct au conteneur).
+- Durée = `max-age` + `stale-while-revalidate` : au-delà de `max-age`, la copie est servie puis rafraîchie en arrière-plan (une revalidation par URL et par isolat). Clé = URL complète, hôte normalisé ; le cache est propre à chaque centre de données Cloudflare.
+- Diagnostic : `X-Edge-Cache: HIT|STALE|MISS|BYPASS` (+ `Age`). Le remplissage demande au conteneur une réponse non compressée et sans en-têtes conditionnels ; Cloudflare recompresse vers le visiteur.
+- Purge d'urgence : redéployer ne vide pas le cache ; attendre `max-age` + SWR (1 h au plus pour le HTML, 25 h pour `/static`, d'où le `?v=`) ou purger la zone dans le tableau de bord.
 
 ## Limites connues (à traiter après la bascule)
 
