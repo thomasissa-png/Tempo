@@ -22,11 +22,9 @@
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["TempoApp"] }],
 
   // Keep-alive du conteneur (le scheduler Python gère les vraies tâches).
-  "triggers": { "crons": ["*/5 * * * *"] }
+  "triggers": { "crons": ["*/5 * * * *"] },
 
-  // Domaines : activés à la bascule seulement (cloudflare/README.md, phase 2).
-  // "routes": [
-  //   { "pattern": "www.calendrier-tempo.fr", "custom_domain": true },
-  //   { "pattern": "calendrier-tempo.fr", "custom_domain": true }
-  // ]
+  // Domaines (bascule du 2026-10-01) : custom domains attachés par l'API (cloudflare/README.md,
+  // phase 2). workers_dev explicite : sans lui, wrangler désactive l'URL de test dès qu'une route existe.
+  "workers_dev": true
 }
