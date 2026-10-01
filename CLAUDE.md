@@ -224,7 +224,7 @@ git push -u origin <branch-name>
 - **Dual-mode**: SQLite (`tempo.db`) locally, PostgreSQL on Replit (configured via `DATABASE_URL` env var). Replit migrated to PostgreSQL to avoid SQLite concurrency issues with subscribers. `PgConnectionWrapper` in `database.py` emulates the sqlite3 interface (parameter `?` → `%s`, `AUTOINCREMENT` → `SERIAL`, `INSERT OR IGNORE` → `ON CONFLICT DO NOTHING`, `INSERT OR REPLACE` → `ON CONFLICT (...) DO UPDATE SET`, `PRAGMA user_version` → `schema_version` table, `BEGIN/BEGIN EXCLUSIVE` → no-op (PG implicit transactions), `executescript` → split and execute, `lastrowid` → `SELECT lastval()`). Connection pooling via `ThreadedConnectionPool` (minconn=1, maxconn=10). `row_factory` attribute supported (no-op setter). Schema version table initialized once per process. All existing migration code works unmodified on both backends.
 - **DDL SAVEPOINT protection**: In PostgreSQL, a failed query aborts the ENTIRE transaction (unlike SQLite where only the statement fails). `execute()` auto-wraps `ALTER TABLE` and `DROP` statements in `SAVEPOINT/RELEASE`, and `executescript()` wraps the entire script. This allows migration `try/except` blocks to catch expected errors (e.g. "column already exists") without poisoning the transaction.
 - **Literal `%` escaping**: `execute()` escapes `%` → `%%` in SQL strings when params are present (psycopg2 interprets `%` as format specifiers). `LIKE 'backtest%'` with params becomes `'backtest%%'` for psycopg2, then PostgreSQL receives `'backtest%'`. Without params, no escaping (psycopg2 skips `%` processing).
-- Migration version 25. Key tables: `predictions`, `actuals`, `weather_cache`, `weather_forecast_log`, `rte_forecast_log`, `rte_daily`, `weights`, `subscribers`
+- Migration version 26. Key tables: `predictions`, `actuals`, `weather_cache`, `weather_forecast_log`, `weather_forecast_mf_log`, `rte_forecast_log`, `rte_daily`, `weights`, `subscribers`
 - **`_CONFLICT_COLS` mapping**: `_convert_sql()` uses a table→conflict_columns mapping to auto-convert any remaining `INSERT OR REPLACE` (safety net for tests/legacy code). Tables: predictions `(date, horizon)`, weather_cache `(date)`, rte_daily `(date)`, actuals `(date)`, learning_journal `(pattern_type, pattern_key, date_analysis)`, weather_forecast_log `(target_date, forecast_date)`, performance `(date_prediction, date_cible, jours_avance)`.
 - **SQL compatibility rules** (CRITICAL — must work in both SQLite AND PostgreSQL):
   - NEVER use `strftime()` in SQL queries — use `SUBSTR(date_column, 1, 7)` for month extraction (dates are ISO `YYYY-MM-DD` text)
@@ -275,6 +275,7 @@ git push -u origin <branch-name>
 - **`temp_moy_prevue`** column added to `predictions` table (v18): stores the 9-city weighted average temperature used for scoring each prediction
 - **`humidity_prevue`** + **`wind_speed_prevue`** columns added to `predictions` (v19): stores humidity and wind speed used in C_nette proxy scoring
 - `weather_cache` continues to store the latest forecast per date (used by current scoring pipeline)
+- **`weather_forecast_mf_log` (v26, 2026-10-01)**: Météo France archived NEXT TO Open-Meteo, NOT used by scoring (founder: compare ~10 days, then replay before any use). `weather_client.fetch_meteofrance_archive()` (explicit `forecast_horizons` picked from the run's available list, run = farthest complete Paris day then most recent among the last 4, 3-hourly steps, complete days only, one bbox request per step for the 9 cities, <= 45 req/min, AROME key 401/403 -> retry with ARPEGE key) -> rows per (target_date, forecast_date, model 'arome'|'arpege'|'merged'), aggregated with `_merge_models_to_daily` + 9-city weighted mean, missing humidity/wind/pressure = NULL. Separate job `meteofrance_archive` scheduled from the `finally` of `task_daily_predictions` (and catch-up), manual `run_task_now("meteofrance_archive")`, admin row count in scheduler status. Compare: `tools/replay/compare_weather_sources.py [--json]`.
 
 ### Cloudflare (production depuis le 2026-10-01 7h02, Replit arrêté)
 - Cible : Worker `calendrier-tempo` + conteneur (même `Dockerfile`, 1 instance) + Neon Postgres. Runbook : `cloudflare/README.md`.
@@ -288,7 +289,7 @@ git push -u origin <branch-name>
 - **DB-1: Timezone consistency**: All `datetime.now()` calls in `performance_tracker.py` replaced with `_now_paris()` (`datetime.now(tz=ZoneInfo("Europe/Paris"))`). Timestamps were stored as naive UTC on Replit while predictor.py stores Paris-aware timestamps.
 
 ### Weather Fallback Chain
-- Primary: Meteo France via meteole (AROME + ARPEGE, 9 cities)
+- Reality since Feb 2026: scoring runs on Open-Meteo. `_fetch_indicator` sends no `forecast_horizons`, so meteole returns step 0 only (at most a one-step J0 from Météo France). Météo France is archived for comparison only since 2026-10-01 (see Weather Forecast History, v26).
 - If meteole fails (Timedelta/Timestamp bugs in v0.2.5): caught by try/except, logged as WARNING
 - Fallback: Open-Meteo API (same 9 cities, source confidence 0.80 → score attenuated toward 50)
 - If both fail: no predictions generated (empty forecast list)

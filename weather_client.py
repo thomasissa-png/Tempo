@@ -19,6 +19,9 @@ import httpx
 import logging
 import asyncio
 import math
+import re
+import threading
+import time
 from datetime import datetime, date, timedelta
 from config import Config
 
@@ -522,7 +525,9 @@ def _extract_values_from_df(df, param_key: str, model_name: str) -> dict[int, fl
 # ================================================================
 
 def _merge_models_to_daily(arome_results: dict[int, dict],
-                            arpege_results: dict[int, dict]) -> list[dict]:
+                            arpege_results: dict[int, dict],
+                            ref_time: datetime | None = None,
+                            day_tz=None) -> list[dict]:
     """Fusionne les donnees horaires AROME et ARPEGE en previsions journalieres.
 
     Strategie : AROME prioritaire (meilleure resolution), ARPEGE en complement
@@ -530,10 +535,13 @@ def _merge_models_to_daily(arome_results: dict[int, dict],
 
     Les step_index sont des indices horaires depuis le run du modele.
     On les convertit en dates avec l'heure UTC courante comme reference.
+    `ref_time` (UTC aware) et `day_tz` (ex. Europe/Paris) sont optionnels :
+    utilises par l'archive Meteo France (heure de run reelle, jours de Paris
+    comme Open-Meteo) ; par defaut, comportement historique inchange.
     """
     # Fix P0-1 audit : timezone-aware UTC au lieu de utcnow() deprecie
     from zoneinfo import ZoneInfo
-    now = datetime.now(tz=ZoneInfo("UTC")).replace(minute=0, second=0, microsecond=0)
+    now = ref_time or datetime.now(tz=ZoneInfo("UTC")).replace(minute=0, second=0, microsecond=0)
 
     # Convertir les step_index en timestamps et grouper par date
     # AROME : pas horaire, indices 0 a ~51
@@ -543,6 +551,8 @@ def _merge_models_to_daily(arome_results: dict[int, dict],
     def _add_entries(results: dict, source: str):
         for step_idx, params in results.items():
             valid_time = now + timedelta(hours=step_idx)
+            if day_tz is not None:
+                valid_time = valid_time.astimezone(day_tz)
             day_str = valid_time.strftime("%Y-%m-%d")
 
             if day_str not in daily_data:
@@ -971,3 +981,443 @@ def _merge_city_forecasts(city_forecasts: dict[str, list[dict]]) -> list[dict]:
 # Les temperatures sont stockees directement dans la table predictions
 # (temp_min_prevue, temp_max_prevue) par store_prediction().
 # La table weather_cache sera purgee naturellement par purge_old_data().
+
+
+# ================================================================
+# ARCHIVE METEO FRANCE (comparaison uniquement, PAS utilisee au scoring)
+# ================================================================
+# Constat 2026-10-01 : `_fetch_indicator` n'envoie pas `forecast_horizons`
+# a meteole, qui ne renvoie que l'echeance 0 : Open-Meteo fait tout le
+# scoring depuis fevrier. Decision fondateur : archiver AROME + ARPEGE a
+# cote d'Open-Meteo (table weather_forecast_mf_log, v26), comparer aux
+# temperatures observees (tools/replay/compare_weather_sources.py), et
+# seulement ensuite (rejeu obligatoire) decider de les utiliser.
+# `fetch_forecast()` et le chemin de scoring ne sont PAS modifies.
+
+_MF_API_ROOT = "https://public-api.meteofrance.fr/public/"
+_MF_MAX_REQ_PER_MIN = 45          # limite Meteo France 50/min, marge de 10 %
+_MF_REQUEST_TIMEOUT_S = 30        # un GRIB fait quelques centaines de Ko
+_MF_ARCHIVE_DEADLINE_S = 15 * 60  # garde-fou global : le thread finit toujours
+_MF_ARCHIVE_STEP_H = 3            # 8 echeances par jour (moyenne exacte d'un cycle diurne)
+_MF_ARCHIVE_MAX_DAYS = {"arome": 2, "arpege": 4}   # J+0..J+2 / J+0..J+4
+_MF_AROME_PRECISION = 0.025       # grille 2,5 km : 6x moins de points que 0,01
+_MF_ARCHIVE_INDICATORS = (        # (cle, indicateur WCS, hauteurs)
+    ("temperature", _INDICATORS["temperature"], [2]),
+    ("humidity", _INDICATORS["humidity"], [2]),
+    ("wind_gust", _INDICATORS["wind_gust"], [10]),
+    ("pressure", _INDICATORS["pressure"], None),
+)
+_MF_OPTIONAL_FIELDS = (("humidity", "humidity"), ("wind_gust", "wind_speed"),
+                       ("pressure", "pressure"))
+_mf_fallback_logged: set[str] = set()
+
+
+class MFAuthError(Exception):
+    """HTTP 401/403 Meteo France : cle refusee ou non abonnee a cette API."""
+
+
+class _RateLimiter:
+    """Espace les requetes (toutes cles et modeles confondus)."""
+
+    def __init__(self, per_minute: int, clock=time.monotonic, sleep=time.sleep):
+        self.interval = 60.0 / per_minute
+        self._clock, self._sleep = clock, sleep
+        self._next = 0.0
+        self._lock = threading.Lock()
+
+    def wait(self) -> None:
+        with self._lock:
+            now = self._clock()
+            if now < self._next:
+                self._sleep(self._next - now)
+                now = self._next
+            self._next = now + self.interval
+
+
+_mf_limiter = _RateLimiter(_MF_MAX_REQ_PER_MIN)
+
+
+class _MFArchiveClient:
+    """Client HTTP minimal pour meteole (meme interface que MeteoFranceClient.get).
+
+    Ecarts voulus avec le client meteole : 401/403 levent tout de suite (meteole
+    reessaie 5 fois avec 150 s d'attente), rythme global <= 45 requetes/min,
+    timeout explicite, 429 respecte Retry-After (plafonne a 60 s).
+    """
+
+    def __init__(self, api_key: str, limiter: _RateLimiter | None = None,
+                 deadline: float | None = None):
+        import requests
+        self._requests = requests
+        self._session = requests.Session()
+        self._session.headers.update({"apikey": api_key})
+        self._limiter = limiter or _mf_limiter
+        self._deadline = deadline
+        self.request_count = 0
+
+    def get(self, path: str, *, params: dict | None = None, max_retries: int = 3):
+        last = "?"
+        for attempt in range(1, max_retries + 1):
+            if self._deadline is not None and time.monotonic() > self._deadline:
+                raise TimeoutError("archive Meteo France : delai global depasse")
+            self._limiter.wait()
+            self.request_count += 1
+            try:
+                resp = self._session.get(_MF_API_ROOT + path, params=params,
+                                         timeout=_MF_REQUEST_TIMEOUT_S)
+            except self._requests.exceptions.RequestException as e:
+                last = f"reseau : {e}"
+                time.sleep(5 * attempt)
+                continue
+            code = resp.status_code
+            if code in (200, 202, 204):
+                return resp
+            if code in (401, 403):
+                raise MFAuthError(f"HTTP {code} : {resp.text[:200]}")
+            if code == 400:
+                raise ValueError(f"HTTP 400 : {resp.text[:300]}")
+            if code == 404:
+                raise LookupError(f"HTTP 404 : {resp.text[:200]}")
+            last = f"HTTP {code}"
+            if code == 429:
+                try:
+                    wait = float(resp.headers.get("Retry-After", 60))
+                except ValueError:
+                    wait = 60.0
+                time.sleep(min(max(wait, 1.0), 60.0))
+            else:
+                time.sleep(5 * attempt)
+        raise RuntimeError(f"Meteo France : echec apres {max_retries} essais ({last})")
+
+
+def _mf_archive_build_model(model_name: str, auth: dict, deadline: float):
+    """Instancie AromeForecast / ArpegeForecast avec le client d'archive."""
+    from meteole import AromeForecast, ArpegeForecast
+    key = auth.get("api_key")
+    if not key:
+        raise MFAuthError("aucune cle API (application_id OAuth non gere par l'archive)")
+    client = _MFArchiveClient(key, deadline=deadline)
+    if model_name == "arome":
+        return AromeForecast(client=client, precision=_MF_AROME_PRECISION)
+    return ArpegeForecast(client=client)
+
+
+def _mf_archive_auths(model_name: str) -> list[tuple[str, dict]]:
+    """Cles a essayer dans l'ordre : cle du modele, puis (AROME) cle ARPEGE.
+
+    Verifie le 2026-10-01 : la cle ARPEGE (meme application) ouvre AROME.
+    """
+    auths = []
+    primary = _get_meteofrance_auth(model_name)
+    if primary.get("api_key"):
+        auths.append((model_name, primary))
+    if model_name == "arome":
+        fallback = _get_meteofrance_auth("arpege")
+        if fallback.get("api_key") and fallback != primary:
+            auths.append(("arpege", fallback))
+    return auths
+
+
+def _mf_parse_run(coverage_id: str) -> datetime:
+    """Heure du run (UTC) contenue dans le coverage_id meteole."""
+    from datetime import timezone
+    m = re.search(r"___(\d{4})-(\d{2})-(\d{2})T(\d{2})\.(\d{2})\.(\d{2})Z", coverage_id)
+    if not m:
+        raise ValueError(f"run introuvable dans {coverage_id!r}")
+    return datetime(*(int(g) for g in m.groups()), tzinfo=timezone.utc)
+
+
+def _mf_day_instants(day: date, tz) -> list[datetime]:
+    """Instants UTC multiples de 3 h compris dans la journee `day` (heure de Paris)."""
+    from datetime import timezone
+    start = datetime(day.year, day.month, day.day, tzinfo=tz).astimezone(timezone.utc)
+    nxt = day + timedelta(days=1)
+    end = datetime(nxt.year, nxt.month, nxt.day, tzinfo=tz).astimezone(timezone.utc)
+    t = start + timedelta(hours=(-start.hour) % _MF_ARCHIVE_STEP_H)
+    out = []
+    while t < end:
+        out.append(t)
+        t += timedelta(hours=_MF_ARCHIVE_STEP_H)
+    return out
+
+
+def _mf_select_horizons(run_dt: datetime, available: list, days: list[date], tz,
+                        require_complete: bool) -> tuple[list[timedelta], list[date]]:
+    """Choisit les echeances dans la liste DISPONIBLE du run.
+
+    require_complete=True : un jour n'est retenu que si toutes ses echeances
+    3 h sont disponibles (une moyenne sur une demi-journee biaiserait la
+    comparaison). Retourne (echeances triees, jours retenus).
+    """
+    avail = set(available)
+    chosen: set[timedelta] = set()
+    kept = []
+    for d in days:
+        wanted = [t - run_dt for t in _mf_day_instants(d, tz)]
+        ok = [h for h in wanted if h in avail]
+        if (require_complete and wanted and len(ok) == len(wanted)) or (not require_complete and ok):
+            chosen.update(ok)
+            kept.append(d)
+    return sorted(chosen), kept
+
+
+def _mf_pick_run(model, indicator: str, days: list[date], tz, n_runs: int = 4):
+    """Choisit le run parmi les `n_runs` plus recents : jour complet le plus
+    lointain d'abord, puis le plus recent. Le dernier run est publie
+    progressivement (AROME 06Z : 28 echeances a 10h30 UTC) et seuls les runs
+    ARPEGE de 12Z vont jusqu'a 114 h (J+4 complet) ; les autres s'arretent a 102 h.
+
+    Retourne (coverage_id, run UTC, echeances disponibles, jours complets).
+    """
+    try:
+        cap = model.capabilities
+        runs = sorted((str(r) for r in cap[cap["indicator"] == indicator]["run"].unique()),
+                      reverse=True)[:n_runs] or [None]
+    except Exception:
+        runs = [None]  # capacites illisibles : dernier run seulement
+    best = None
+    for run in runs:
+        try:
+            cid = (model._get_coverage_id(indicator, run=run) if run
+                   else model._get_coverage_id(indicator))
+            run_dt = _mf_parse_run(cid)
+            available = model.get_coverage_description(cid)["forecast_horizons"]
+        except MFAuthError:
+            raise
+        except Exception as e:
+            logger.debug(f"[Météo France archive] run {run} ignore : {e}")
+            continue
+        _, complete = _mf_select_horizons(run_dt, available, days, tz, True)
+        score = (max(complete) if complete else date.min, run_dt)
+        if best is None or score > best[0]:
+            best = (score, cid, run_dt, available, complete)
+    if best is None:
+        raise RuntimeError(f"aucun run lisible pour {indicator}")
+    return best[1:]
+
+
+def _mf_city_bbox(cities: list[dict], pad: float = 0.3) -> tuple[tuple, tuple]:
+    lats = [c["lat"] for c in cities]
+    lons = [c["lon"] for c in cities]
+    return ((round(min(lats) - pad, 2), round(max(lats) + pad, 2)),
+            (round(min(lons) - pad, 2), round(max(lons) + pad, 2)))
+
+
+def _mf_points_from_df(df, run_dt: datetime, cities: list[dict]) -> dict[str, dict[datetime, float]]:
+    """Valeurs au point de grille le plus proche de chaque ville.
+
+    DataFrame meteole : latitude, longitude, run, forecast_horizon, <valeur>.
+    Retourne {ville: {instant_valide_UTC: valeur}}.
+    """
+    import pandas as pd
+    if df is None or getattr(df, "empty", True):
+        return {}
+    known = {"latitude", "longitude", "run", "forecast_horizon", "ensemble_number",
+             "valid_time", "time", "step"}
+    value_cols = [c for c in df.columns if c not in known]
+    if not value_cols or "forecast_horizon" not in df.columns:
+        return {}
+    vcol = value_cols[0]
+    lats = sorted(set(float(v) for v in df["latitude"].unique()))
+    lons = sorted(set(float(v) for v in df["longitude"].unique()))
+    out: dict[str, dict[datetime, float]] = {}
+    for city in cities:
+        la = min(lats, key=lambda v: abs(v - city["lat"]))
+        lo = min(lons, key=lambda v: abs(v - city["lon"]))
+        if abs(la - city["lat"]) > 0.5 or abs(lo - city["lon"]) > 0.5:
+            continue  # point hors de l'emprise recue : pas de valeur plutot qu'une fausse
+        sub = df[(df["latitude"] == la) & (df["longitude"] == lo)]
+        series = {}
+        for fh, val in zip(sub["forecast_horizon"], sub[vcol]):
+            if val is None or not pd.notna(val) or isinstance(val, (pd.Timedelta, pd.Timestamp)):
+                continue
+            try:
+                f = float(val)
+            except (TypeError, ValueError):
+                continue
+            if math.isnan(f) or math.isinf(f):
+                continue
+            series[run_dt + pd.Timedelta(fh).to_pytimedelta()] = f
+        if series:
+            out[city["name"]] = series
+    return out
+
+
+def _mf_fetch_model(model, model_name: str, today: date, cities: list[dict],
+                    bbox: tuple, tz) -> dict:
+    """Recupere les 4 indicateurs d'un modele pour les 9 villes (une emprise
+    commune par echeance : 1 requete couvre toutes les villes).
+
+    Requetes : 1 capacites, 1 description par run candidat (temperature,
+    4 max), puis par indicateur et par jour retenu 1 description + 8 GRIB.
+    """
+    days = [today + timedelta(days=i) for i in range(_MF_ARCHIVE_MAX_DAYS[model_name] + 1)]
+    series: dict[str, dict[str, dict]] = {c["name"]: {} for c in cities}
+    kept_days: list[date] = []
+    params_ok: list[str] = []
+    run_iso = None
+    run_str = None
+    for key, indicator, heights in _MF_ARCHIVE_INDICATORS:
+        try:
+            if key == "temperature":
+                cid, run_dt, available, sel_days = _mf_pick_run(model, indicator, days, tz)
+                kept_days, run_iso = sel_days, run_dt.isoformat()
+                run_str = cid.split("___", 1)[1][:20]
+                if not kept_days:
+                    logger.warning(f"[Météo France archive] {model_name} : aucun jour complet "
+                                   f"dans les runs récents ({len(available)} échéances "
+                                   f"au run {run_iso})")
+                    break
+            else:
+                try:  # même run que la température (cohérence), sinon le dernier
+                    cid = model._get_coverage_id(indicator, run=run_str)
+                except Exception:
+                    cid = model._get_coverage_id(indicator)
+                run_dt = _mf_parse_run(cid)
+                available = model.get_coverage_description(cid)["forecast_horizons"]
+                _, sel_days = _mf_select_horizons(run_dt, available, kept_days, tz, False)
+            got = False
+            for d in sel_days:  # un appel par jour : DataFrame borné en mémoire
+                horizons, _ = _mf_select_horizons(run_dt, available, [d], tz, False)
+                df = model.get_coverage(coverage_id=cid, lat=bbox[0], long=bbox[1],
+                                        heights=heights, forecast_horizons=horizons)
+                for city, pts in _mf_points_from_df(df, run_dt, cities).items():
+                    series[city].setdefault(key, {}).update(pts)
+                    got = True
+                del df
+            if got:
+                params_ok.append(key)
+        except (MFAuthError, TimeoutError):
+            raise
+        except Exception as e:
+            if key == "temperature":
+                raise RuntimeError(f"{model_name}/temperature : {e}") from e
+            logger.warning(f"[Météo France archive] {model_name}/{key} indisponible : {e}")
+    return {"run": run_iso, "days": kept_days, "series": series, "params": params_ok}
+
+
+def _mf_has_values(city_series: dict, key: str, day_str: str, tz) -> bool:
+    return any(t.astimezone(tz).strftime("%Y-%m-%d") == day_str
+               for t in city_series.get(key, {}))
+
+
+def _mf_national_rows(per_model: dict[str, dict], cities: list[dict], today: date,
+                      tz, fetched_at: str) -> list[dict]:
+    """Agrege par jour (`_merge_models_to_daily`) puis moyenne ponderee des
+    villes (`_merge_city_forecasts`) pour arome, arpege et merged.
+
+    Humidite / vent / pression : None si l'indicateur manque (jamais les
+    valeurs par defaut 50 % / 10 km/h du scoring, qui seraient inventees).
+    """
+    from datetime import timezone
+    all_times = [t for m in per_model.values() for s in m["series"].values()
+                 for pts in s.values() for t in pts]
+    if not all_times:
+        return []
+    ref = min(all_times).astimezone(timezone.utc)
+    weights = {c["name"]: c["weight"] for c in cities}
+
+    def hourly(city: str, model: str) -> dict[int, dict]:
+        out: dict[int, dict] = {}
+        for key, pts in per_model.get(model, {}).get("series", {}).get(city, {}).items():
+            for t, v in pts.items():
+                out.setdefault(int((t - ref).total_seconds() // 3600), {})[key] = v
+        return out
+
+    combos = {"arome": ("arome",), "arpege": ("arpege",), "merged": ("arome", "arpege")}
+    rows = []
+    for label, models in combos.items():
+        models = tuple(m for m in models if m in per_model)
+        if not models:
+            continue
+        allowed = {d.isoformat() for m in models for d in per_model[m]["days"]}
+        city_days: dict[str, list[dict]] = {}
+        for c in cities:
+            aro = hourly(c["name"], "arome") if "arome" in models else {}
+            arp = hourly(c["name"], "arpege") if "arpege" in models else {}
+            daily = [d for d in _merge_models_to_daily(aro, arp, ref_time=ref, day_tz=tz)
+                     if d["date"] in allowed]
+            for d in daily:
+                src = per_model[d["source"]]["series"].get(c["name"], {})
+                for key, field in _MF_OPTIONAL_FIELDS:
+                    if not _mf_has_values(src, key, d["date"], tz):
+                        d[field] = None
+            if daily:
+                city_days[c["name"]] = daily
+        if not city_days:
+            continue
+        runs = ";".join(f"{m}={per_model[m]['run']}" for m in models)
+        # None retires avant la moyenne existante (elle supposerait 50 % / 10 km/h),
+        # humidite/vent/pression recalcules ci-dessous sur les villes renseignees
+        clean = {city: [{k: v for k, v in r.items() if v is not None} for r in lst]
+                 for city, lst in city_days.items()}
+        for nat in _merge_city_forecasts(clean):
+            day_rows = {city: next(r for r in lst if r["date"] == nat["date"])
+                        for city, lst in city_days.items()
+                        if any(r["date"] == nat["date"] for r in lst)}
+            row = {"target_date": nat["date"], "forecast_date": today.isoformat(),
+                   "horizon_days": (date.fromisoformat(nat["date"]) - today).days,
+                   "model": label, "temp_min": nat["temp_min"], "temp_max": nat["temp_max"],
+                   "temp_moy": nat["temp_moy"], "n_villes": len(day_rows), "run": runs,
+                   "fetched_at": fetched_at}
+            for _, field in _MF_OPTIONAL_FIELDS:  # moyenne ponderee sur les villes renseignees
+                vals = [(r[field], weights.get(city, 0.1)) for city, r in day_rows.items()
+                        if r.get(field) is not None]
+                wt = sum(w for _, w in vals)
+                row[field] = round(sum(v * w for v, w in vals) / wt, 1) if wt > 0 else None
+            rows.append(row)
+    return rows
+
+
+def fetch_meteofrance_archive(today: date | None = None) -> dict:
+    """Prevision Meteo France AROME (J+0..J+2) et ARPEGE (J+0..J+4), 9 villes,
+    pour ARCHIVE et comparaison (weather_forecast_mf_log). Synchrone, a lancer
+    dans un thread. Ne leve jamais : les erreurs sont dans le rapport.
+
+    Retourne {"forecast_date", "rows": [...], "models": {modele: {ok, key,
+    run, days, cities, error}}, "requests": n}.
+    """
+    from zoneinfo import ZoneInfo
+    tz = ZoneInfo("Europe/Paris")
+    now = datetime.now(tz)
+    today = today or now.date()
+    cities = Config.WEATHER_CITIES
+    bbox = _mf_city_bbox(cities)
+    deadline = time.monotonic() + _MF_ARCHIVE_DEADLINE_S
+    report = {"forecast_date": today.isoformat(), "rows": [], "models": {}, "requests": 0}
+    per_model: dict[str, dict] = {}
+    for model_name in ("arome", "arpege"):
+        info = {"ok": False, "key": None, "run": None, "days": 0, "cities": 0, "error": None}
+        report["models"][model_name] = info
+        auths = _mf_archive_auths(model_name)
+        if not auths:
+            info["error"] = "aucune clé Météo France configurée"
+            continue
+        for i, (key_label, auth) in enumerate(auths):
+            model = None
+            try:
+                model = _mf_archive_build_model(model_name, auth, deadline)
+                data = _mf_fetch_model(model, model_name, today, cities, bbox, tz)
+                per_model[model_name] = data
+                info.update(ok=bool(data["days"]), key=key_label, run=data["run"], error=None,
+                            days=len(data["days"]),
+                            cities=sum(1 for s in data["series"].values() if s.get("temperature")))
+                break
+            except MFAuthError as e:
+                info["error"] = f"clé {key_label} refusée ({str(e)[:120]})"
+                if i + 1 < len(auths) and model_name not in _mf_fallback_logged:
+                    _mf_fallback_logged.add(model_name)
+                    logger.warning(f"[Météo France archive] clé {key_label} refusée pour "
+                                   f"{model_name.upper()} : nouvel essai avec la clé "
+                                   f"{auths[i + 1][0].upper()}")
+            except Exception as e:
+                info["error"] = str(e)[:200]
+                logger.warning(f"[Météo France archive] {model_name} en échec : {e}")
+                break
+            finally:
+                client = getattr(model, "_client", None)
+                report["requests"] += getattr(client, "request_count", 0) or 0
+    per_model = {m: d for m, d in per_model.items() if d["days"]}
+    if per_model:
+        report["rows"] = _mf_national_rows(per_model, cities, today, tz, now.isoformat())
+    return report

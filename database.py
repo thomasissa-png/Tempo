@@ -72,6 +72,7 @@ _CONFLICT_COLS = {
     'learning_journal': '(pattern_type, pattern_key, date_analysis)',
     'weather_forecast_log': '(target_date, forecast_date)',
     'rte_forecast_log': '(target_date, forecast_date)',
+    'weather_forecast_mf_log': '(target_date, forecast_date, model)',
     'performance': '(date_prediction, date_cible, jours_avance)',
     'scheduler_executions': '(task_id)',
     'agent_files': '(path)',
@@ -1442,6 +1443,57 @@ def init_db():
         conn.commit()
         logger.info("Migration v25 appliquee (table rte_forecast_log)")
 
+    if version < 26:
+        # Migration v26 — archive des prévisions Météo France (AROME, ARPEGE,
+        # fusion « merged » selon la règle du scoring) à côté d'Open-Meteo
+        # (weather_forecast_log). Comparaison uniquement : PAS utilisée par
+        # le scoring tant qu'un rejeu ne l'a pas validée (2026-10-01).
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS weather_forecast_mf_log (
+                target_date TEXT NOT NULL,
+                forecast_date TEXT NOT NULL,
+                model TEXT NOT NULL,
+                horizon_days INTEGER,
+                temp_min REAL,
+                temp_max REAL,
+                temp_moy REAL,
+                humidity REAL,
+                wind_speed REAL,
+                pressure REAL,
+                n_villes INTEGER,
+                run TEXT,
+                fetched_at TEXT NOT NULL,
+                PRIMARY KEY (target_date, forecast_date, model)
+            )
+        """)
+        for col, ddl in (
+            ("horizon_days", "INTEGER"),
+            ("temp_min", "REAL"),
+            ("temp_max", "REAL"),
+            ("temp_moy", "REAL"),
+            ("humidity", "REAL"),
+            ("wind_speed", "REAL"),
+            ("pressure", "REAL"),
+            ("n_villes", "INTEGER"),
+            ("run", "TEXT"),
+            ("fetched_at", "TEXT"),
+        ):
+            try:
+                conn.execute(f"ALTER TABLE weather_forecast_mf_log ADD COLUMN {col} {ddl}")
+            except _DbOperationalError:
+                logger.debug(f"Migration v26: colonne {col} existe deja")
+        conn.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_wfml_target_forecast_model "
+            "ON weather_forecast_mf_log(target_date, forecast_date, model)"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_wfml_forecast_date "
+            "ON weather_forecast_mf_log(forecast_date)"
+        )
+        conn.execute("PRAGMA user_version = 26")
+        conn.commit()
+        logger.info("Migration v26 appliquee (table weather_forecast_mf_log)")
+
     # Poids initiaux si vide
     existing = conn.execute("SELECT COUNT(*) as c FROM weights_history").fetchone()
     if not existing or existing["c"] == 0:
@@ -1722,13 +1774,40 @@ def store_rte_forecast_log(rows: list[dict]) -> int:
         conn.close()
 
 
+_WEATHER_MF_LOG_COLS = (
+    "target_date", "forecast_date", "model", "horizon_days", "temp_min",
+    "temp_max", "temp_moy", "humidity", "wind_speed", "pressure", "n_villes",
+    "run", "fetched_at",
+)
+
+
+def store_weather_mf_log(rows: list[dict]) -> int:
+    """Upsert des lignes weather_forecast_mf_log (clé target_date +
+    forecast_date + model). Relancer le même jour met à jour la ligne."""
+    if not rows:
+        return 0
+    cols = ", ".join(_WEATHER_MF_LOG_COLS)
+    marks = ", ".join("?" for _ in _WEATHER_MF_LOG_COLS)
+    updates = ", ".join(f"{c} = excluded.{c}" for c in _WEATHER_MF_LOG_COLS[3:])
+    sql = (f"INSERT INTO weather_forecast_mf_log ({cols}) VALUES ({marks}) "
+           f"ON CONFLICT(target_date, forecast_date, model) DO UPDATE SET {updates}")
+    conn = get_db()
+    try:
+        for r in rows:
+            conn.execute(sql, tuple(r.get(c) for c in _WEATHER_MF_LOG_COLS))
+        conn.commit()
+        return len(rows)
+    finally:
+        conn.close()
+
+
 def get_forecast_log_stats() -> dict:
     """Diagnostic admin (lecture seule) : volume et fraîcheur des archives
-    de prévisions météo (v18) et RTE (v25)."""
+    de prévisions météo Open-Meteo (v18), RTE (v25) et Météo France (v26)."""
     stats = {}
     conn = get_db()
     try:
-        for table in ("weather_forecast_log", "rte_forecast_log"):
+        for table in ("weather_forecast_log", "rte_forecast_log", "weather_forecast_mf_log"):
             try:
                 row = conn.execute(
                     f"SELECT COUNT(*) AS n, MAX(forecast_date) AS last_forecast, "

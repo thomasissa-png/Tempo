@@ -52,7 +52,7 @@ class TestMigrationV24:
     def test_table_exists_and_version_current(self):
         conn = get_db()
         try:
-            assert conn.execute("PRAGMA user_version").fetchone()[0] == 25
+            assert conn.execute("PRAGMA user_version").fetchone()[0] == 26
             cols = [r[1] for r in conn.execute("PRAGMA table_info(agent_files)").fetchall()]
             assert cols == ["path", "content", "base_hash", "content_hash", "agent", "updated_at"]
         finally:
@@ -70,7 +70,7 @@ class TestMigrationV24:
         init_db()
         conn = get_db()
         try:
-            assert conn.execute("PRAGMA user_version").fetchone()[0] == 25
+            assert conn.execute("PRAGMA user_version").fetchone()[0] == 26
         finally:
             conn.close()
         assert _row("articles/a.md")["content"] == "x"
@@ -333,7 +333,7 @@ class TestPostgres:
             database.init_db()
             database.init_db()  # idempotent
             c = database.get_db()
-            assert c.execute("PRAGMA user_version").fetchone()[0] == 25
+            assert c.execute("PRAGMA user_version").fetchone()[0] == 26
             c.close()
             assert database.persist_agent_file("articles/a.md", "agent 100% é", "seo_agent", "repo")
             assert database.persist_agent_file("articles/a.md", "agent2", "seo_agent", "agent 100% é")
@@ -366,7 +366,7 @@ class TestPostgres:
             c.close()
             database.init_db()
             c = database.get_db()
-            assert c.execute("PRAGMA user_version").fetchone()[0] == 25
+            assert c.execute("PRAGMA user_version").fetchone()[0] == 26
             assert c.execute("SELECT COUNT(*) FROM agent_files").fetchone()[0] == 0
             c.close()
             # Rejeu depuis v23 avec la table déjà présente : pas d'erreur

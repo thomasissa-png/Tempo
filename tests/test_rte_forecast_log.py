@@ -46,7 +46,7 @@ class TestMigrationV25:
     def test_version_and_columns(self):
         conn = get_db()
         try:
-            assert conn.execute("PRAGMA user_version").fetchone()[0] == 25
+            assert conn.execute("PRAGMA user_version").fetchone()[0] == 26
             cols = [r[1] for r in conn.execute("PRAGMA table_info(rte_forecast_log)").fetchall()]
         finally:
             conn.close()
@@ -67,7 +67,7 @@ class TestMigrationV25:
             init_db()
         conn = get_db()
         try:
-            assert conn.execute("PRAGMA user_version").fetchone()[0] == 25
+            assert conn.execute("PRAGMA user_version").fetchone()[0] == 26
         finally:
             conn.close()
         assert _count() == 1
@@ -454,7 +454,7 @@ class TestPostgres:
                 c = database.get_db(); c.execute("PRAGMA user_version = 24"); c.commit(); c.close()
                 database.init_db()
             c = database.get_db()
-            assert c.execute("PRAGMA user_version").fetchone()[0] == 25
+            assert c.execute("PRAGMA user_version").fetchone()[0] == 26
             r = c.execute("SELECT COUNT(*) AS n, MAX(conso_mw) AS m FROM rte_forecast_log").fetchone()
             assert (r["n"], r["m"]) == (1, 66000.0), dict(r)
             c.close()

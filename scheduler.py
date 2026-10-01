@@ -845,6 +845,65 @@ async def _archive_rte_forecasts(trigger: str) -> int:
         return 0
 
 
+MF_ARCHIVE_JOB_ID = "meteofrance_archive"
+
+
+async def task_meteofrance_archive() -> str:
+    """Archive les prévisions Météo France AROME + ARPEGE (v26,
+    weather_forecast_mf_log) à côté d'Open-Meteo, pour comparaison.
+
+    PAS utilisées par le scoring (décision fondateur 2026-10-01 : comparer aux
+    températures observées, puis rejeu, avant toute utilisation). Quelques
+    minutes (45 requêtes/min max) : tourne dans un thread, ne lève jamais.
+    Retourne le message de bilan.
+    """
+    tag = "[Météo France archive]"
+    try:
+        from weather_client import fetch_meteofrance_archive
+        from database import store_weather_mf_log
+        report = await asyncio.to_thread(fetch_meteofrance_archive)
+        rows = report.get("rows") or []
+        n = await asyncio.to_thread(store_weather_mf_log, rows) if rows else 0
+        parts = []
+        for model, info in report.get("models", {}).items():
+            txt = (f"{model.upper()} {'OK' if info.get('ok') else 'échec'} "
+                   f"{info.get('days', 0)} j / {info.get('cities', 0)} villes")
+            if info.get("key") and info["key"] != model:
+                txt += f" (clé {info['key'].upper()})"
+            if info.get("error"):
+                txt += f" : {info['error']}"
+            parts.append(txt)
+        msg = (f"{tag} {n} lignes weather_forecast_mf_log ({report.get('forecast_date')}) ; "
+               + " ; ".join(parts) + f" ; {report.get('requests', 0)} requêtes")
+        (logger.info if n else logger.warning)(msg)
+        return msg
+    except Exception as e:
+        logger.warning(f"{tag} échec (non bloquant) : {e}")
+        return f"{tag} échec : {e}"
+
+
+def _schedule_meteofrance_archive(trigger: str) -> bool:
+    """Planifie l'archive Météo France en tâche séparée (+5 s) pour ne pas
+    allonger le calcul de 18h. Jamais bloquant, ne lève jamais."""
+    try:
+        if not scheduler.running:
+            logger.info(f"[{trigger}] Météo France archive non planifiée (scheduler arrêté)")
+            return False
+        from apscheduler.triggers.date import DateTrigger
+        scheduler.add_job(
+            _tracked(MF_ARCHIVE_JOB_ID, task_meteofrance_archive),
+            DateTrigger(run_date=_now_paris() + timedelta(seconds=5)),
+            id=MF_ARCHIVE_JOB_ID,
+            name="Archive Météo France (comparaison, hors scoring)",
+            replace_existing=True,
+            misfire_grace_time=3600,
+        )
+        return True
+    except Exception as e:
+        logger.warning(f"[{trigger}] Météo France archive non planifiée : {e}")
+        return False
+
+
 async def _store_rte_daily(rte_score: dict | None) -> None:
     """Stocke les donnees RTE dans rte_daily pour alimenter les features ML lag.
 
@@ -1198,6 +1257,8 @@ async def task_daily_predictions():
         # Archive des prévisions RTE (v25) : après la météo et les prédictions,
         # indépendante de leur succès, jamais bloquante.
         await _archive_rte_forecasts("18h")
+        # Archive Météo France (v26) : tâche séparée planifiée, hors scoring.
+        _schedule_meteofrance_archive("18h")
 
 
 def _schedule_deferred_retries():
@@ -1348,6 +1409,7 @@ async def task_catchup_predictions(final: bool = False, trigger: str = "rattrapa
             await _archive_rte_forecasts(trigger)
         except Exception as e:
             logger.debug(f"[Rattrapage] archive RTE ignorée : {e}")
+        _schedule_meteofrance_archive(trigger)
     if count:
         logger.info(f"[Rattrapage] {count} prévisions émises (aucune alerte envoyée)")
     elif final:
@@ -1788,6 +1850,15 @@ async def run_task_now(task_name: str) -> str:
         else:
             return f"ERREUR agent : {result['error']}"
 
+    if task_name == "meteofrance_archive":
+        # Quelques minutes (45 requêtes/min) : en arrière-plan quand le scheduler
+        # tourne (la requête admin ne doit pas expirer), sinon exécution directe.
+        if _schedule_meteofrance_archive("admin"):
+            return ("Archive Météo France lancée en arrière-plan (quelques minutes) : "
+                    "bilan dans les logs [Météo France archive] et dans le tableau "
+                    "des archives ci-dessous")
+        return await task_meteofrance_archive()
+
     if task_name == "weights":
         # Déclenchement MANUEL et explicite : seul chemin qui recalcule les poids
         # tant que Config.AUTO_WEIGHTS_RECALC_ENABLED = False (pause 2026-09-29).
@@ -1810,6 +1881,7 @@ async def run_task_now(task_name: str) -> str:
             "backfill", "analyze", "evaluate_missed",
             "db_export", "db_import",
             "seo_agent", "backlinks_agent", "morning_alerts",
+            "meteofrance_archive",
         ]
         return f"Tâche inconnue: {task_name}. Disponibles: {available}"
 
