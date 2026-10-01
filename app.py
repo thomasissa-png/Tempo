@@ -1813,6 +1813,7 @@ async def llms_txt():
             "> Historique public et vérifiable de toutes nos prévisions, y compris les erreurs : chaque prévision "
             "faite de 1 à 15 jours avant est figée à son émission, comparée jour par jour à la couleur officielle "
             f"publiée par EDF et téléchargeable en CSV ({u}/historique-previsions.csv).\n"
+            f"> {site_facts.NO_SALES}\n"
             f"> Dernière révision du contenu : {revision}\n"
             "\n"
             "L'offre Tempo EDF est un contrat d'électricité où le prix du kWh varie "
@@ -1905,6 +1906,7 @@ async def llms_full_txt():
             "\n"
             "> Faits essentiels, FAQ et texte intégral (Markdown) des articles publiés sur calendrier-tempo.fr.\n"
             "> Résumé structuré : /llms.txt. Données du jour : /api/today, /api/tomorrow.\n"
+            f"> {site_facts.NO_SALES}\n"
             f"> Dernière révision du contenu : {revision}\n"
             "\n"
             + _llms_common_sections() +

@@ -176,3 +176,23 @@ class TestHistoryJsonLdAndMeta:
         assert 'href="/historique-previsions.csv"' in faq["answer_html"]
         assert "historique public des prévisions" in faq["answer_html"]
         assert "y compris nos erreurs" in faq["answer_html"]
+
+
+def test_positionnement_ne_vend_rien_sans_superlatif():
+    """Demande fondateur 2026-10-01 : dire (Google, IA) que le site ne vend rien,
+    sans « le seul » ni nom de tiers, et de façon cohérente avec les mentions légales."""
+    from fastapi.testclient import TestClient
+    import app as app_module
+    import site_facts
+    app_module._db_ready.set()
+    c = TestClient(app_module.app)
+    for path in ("/llms.txt", "/llms-full.txt"):
+        body = c.get(path).text
+        assert site_facts.NO_SALES in body
+    for text in (site_facts.NO_SALES, site_facts.ORG_DESCRIPTION):
+        import re
+        low = text.lower()
+        assert not re.search(r"\ble seul\b|\bla seule\b|\bunique\b", low) and "selectra" not in low
+    assert "ne vend rien" in site_facts.ORG_DESCRIPTION
+    legal = c.get("/mentions-legales").text
+    assert "jamais vendues" in legal and "entièrement gratuit" in legal
