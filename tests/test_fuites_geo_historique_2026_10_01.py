@@ -105,7 +105,7 @@ class TestLlmsHistory:
         import site_facts
         txt = client.get(path).text
         own = re.sub(r"Seule la couleur (publiée|annoncée) par EDF fait foi", "", txt.split("## Articles du blog")[0])
-        own = own.replace(site_facts.NO_SALES, "")
+        own = own.replace(site_facts.NO_SALES, "").replace(site_facts.LONGEST_HISTORY, "")
         hit = re.search(r".{0,60}\b(seul|seule|seuls|seules|unique|uniques)\b.{0,60}", own, flags=re.I)
         assert hit is None, hit.group(0)
         assert not re.search(r"\b(le|la|les) seul(e|s|es)? (service|site|outil)", txt, flags=re.I)
@@ -193,7 +193,9 @@ def test_positionnement_ne_vend_rien_sans_superlatif():
     for path in ("/llms.txt", "/llms-full.txt"):
         body = c.get(path).text
         assert site_facts.NO_SALES in body
-    for text in (site_facts.NO_SALES, site_facts.ORG_DESCRIPTION):
+    for path in ("/llms.txt", "/llms-full.txt"):
+        assert site_facts.LONGEST_HISTORY in c.get(path).text
+    for text in (site_facts.NO_SALES, site_facts.ORG_DESCRIPTION, site_facts.LONGEST_HISTORY):
         low = text.lower()
         # « le seul » seulement avec la précaution et la catégorie restreinte, jamais de nom de tiers
         if "le seul" in low:

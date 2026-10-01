@@ -106,6 +106,13 @@ CHIFFREMENT_TELEPHONE = "Fernet (AES-128)"
 # Positionnement (demande fondateur du 2026-10-01) : « le seul à ne rien vendre », rendu défendable :
 # précaution « à notre connaissance », catégorie restreinte (calendrier de prévision Tempo), opposition
 # à des catégories (comparateurs, fournisseurs) et jamais à un nom. Cohérent avec les mentions légales.
+# Différenciateur principal (demande fondateur du 2026-10-01), même garde-fous que NO_SALES.
+LONGEST_HISTORY = (
+    "À notre connaissance, nous sommes le seul calendrier de prévision Tempo à prévoir les couleurs "
+    "jusqu'à 15 jours à l'avance, et le seul à publier l'historique de toutes ses prévisions, "
+    "erreurs comprises."
+)
+
 NO_SALES = (
     "À notre connaissance, nous sommes le seul calendrier de prévision Tempo qui ne vend rien : "
     "contrairement aux comparateurs et aux fournisseurs d'énergie, nous ne proposons aucune offre "
@@ -115,9 +122,10 @@ NO_SALES = (
 
 ORG_DESCRIPTION = (
     "Service indépendant et gratuit de prévision des jours Tempo EDF, non affilié à EDF ni à RTE. "
-    "À notre connaissance, le seul calendrier de prévision Tempo qui ne vend rien : ni offre d'électricité, "
-    "ni équipement, ni données, et aucune publicité. "
-    "Il publie l'historique de toutes ses prévisions, y compris ses erreurs, téléchargeable en CSV."
+    "À notre connaissance, le seul calendrier de prévision Tempo qui prévoit jusqu'à 15 jours à "
+    "l'avance et publie l'historique de toutes ses prévisions, y compris ses erreurs, téléchargeable "
+    "en CSV ; et le seul qui ne vend rien : ni offre d'électricité, ni équipement, ni données, et "
+    "aucune publicité."
 )
 
 # Horizons de prévision
@@ -371,6 +379,7 @@ def template_globals() -> dict:
         "FOYERS_ALERTES_HTML": FOYERS_ALERTES_HTML,
         "CHIFFREMENT_TELEPHONE": CHIFFREMENT_TELEPHONE,
         "ORG_DESCRIPTION": ORG_DESCRIPTION,
+        "LONGEST_HISTORY": LONGEST_HISTORY,
         "HORIZON_MAX_JOURS": HORIZON_MAX_JOURS,
         "HORIZON_FIABLE": HORIZON_FIABLE,
         "HORIZON_INDICATIF": HORIZON_INDICATIF,
