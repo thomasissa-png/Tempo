@@ -120,6 +120,15 @@ toutes les pages en 200, IP réelle transmise, canonicals en https, scheduler d�
 5. Abaisser à 60 s le TTL des enregistrements DNS `www` et apex (toujours vers Replit) : la
    bascule se propagera en une minute au lieu de cinq.
 
+> **Bascule FAITE le 2026-10-01 à 7h02** (demande de Thomas, WhatsApp hors service des deux côtés donc
+> aucun doublon possible). Méthode réelle : Cloudflare refuse un `custom_domain` sur un nom qui a déjà
+> un enregistrement (erreur 100117) ; on a donc créé les routes de zone `www.calendrier-tempo.fr/*` et
+> `calendrier-tempo.fr/*` (droit « Zone · Workers Routes · Edit » ajouté au jeton), activé « Always Use
+> HTTPS », puis passé les deux enregistrements A en « proxied » (atomique, sans trou). Copie Replit → Neon
+> à 6h50, `merge_users.py` : 0 changement (231 abonnés dont 229 actifs des deux côtés). Replit stoppé
+> (dernière exécution 7h00). Retour arrière : enregistrements A en DNS seul + redémarrer Replit + recopier
+> Neon → Replit. `wrangler.jsonc` garde `workers_dev: true` (sinon l'URL de test est désactivée).
+
 ## Phase 2 : bascule SANS COUPURE (fenêtre 13h-17h, pas un mardi ni un dimanche)
 
 Décision fondateur : le site ne doit jamais être hors ligne. Principe : Replit continue de

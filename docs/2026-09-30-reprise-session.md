@@ -12,7 +12,7 @@ Fait :
 - Zone DNS Cloudflare créée et ACTIVE (`dns_zone.py`, 14 enregistrements IONOS, site encore sur Replit, TTL 60 s). Serveurs DNS changés chez IONOS par Thomas.
 - Mode test WhatsApp (`WHATSAPP_TEST_NUMBERS`) : diffusions réservées au numéro de Thomas ; `push_secrets.py --prod` le rend obligatoire ; `--sans-mode-test` pour ouvrir à tous quand Thomas valide.
 
-Reste à faire, jeudi 2026-10-01 vers 14 h, quand Thomas écrit « Go bascule » (runbook phase 2) :
+**Bascule FAITE le 2026-10-01 à 7h02** (voir cloudflare/README.md, phase 2). Reste : réparer WhatsApp (point ouvert ci-dessous), puis `push_secrets.py --prod --sans-mode-test` quand Thomas valide. Ancienne procédure, pour mémoire :
 1. Vérifier que `TEMPO_WHATSAPP_TEST_NUMBERS` et `WHATSAPP_APP_SECRET` sont lus (nouvelle session), sans les afficher. Thomas doit être inscrit aux alertes avec ce numéro.
 2. `check_access.py`, puis `copy_database.py`, puis `push_secrets.py --prod`.
 3. Sur workers.dev : `/admin/whatsapp-diagnostic` (token_set, test_mode true), pages, admin.

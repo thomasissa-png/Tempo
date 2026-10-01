@@ -276,10 +276,10 @@ git push -u origin <branch-name>
 - **`humidity_prevue`** + **`wind_speed_prevue`** columns added to `predictions` (v19): stores humidity and wind speed used in C_nette proxy scoring
 - `weather_cache` continues to store the latest forecast per date (used by current scoring pipeline)
 
-### Cloudflare (migration décidée 2026-09-29, en cours)
+### Cloudflare (production depuis le 2026-10-01 7h02, Replit arrêté)
 - Cible : Worker `calendrier-tempo` + conteneur (même `Dockerfile`, 1 instance) + Neon Postgres. Runbook : `cloudflare/README.md`.
 - Invariants : `max_instances: 1` (scheduler unique), IP réelle via `X-Forwarded-For` posé par le Worker, `PHONE_ENCRYPTION_KEY` identique à Replit.
-- Tant que la bascule n'est pas faite, Replit reste la prod ; Cloudflare tourne sans `WHATSAPP_TOKEN` (mode simulation).
+- Bascule faite : routes de zone `www`/apex + enregistrements A « proxied » (retour arrière = repasser en DNS seul et relancer Replit). WhatsApp en mode test (`WHATSAPP_TEST_NUMBERS`) tant que le numéro Meta n'est pas réenregistré.
 - Scripts lancés depuis la session : `check_access.py` (bloquant), `copy_database.py` (`REPLIT_DATABASE_URL` → `NEON_DATABASE_URL`), `push_secrets.py [--prod]`. Le Worker redémarre le conteneur quand les secrets changent (empreinte SHA-256 en stockage DO).
 
 ### Database Robustness
