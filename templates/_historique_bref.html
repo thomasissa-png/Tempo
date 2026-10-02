@@ -2,7 +2,7 @@
    depuis le 2026-10-01 (décision fondateur : la grille d'abord, une seule ligne de chiffre clé au-dessus).
    Effectifs de la zone la plus fiable (2 à 5 jours avant), cumulés sur les 4 délais.
    Décision fondateur du 2026-09-30 : taux calculés sur les prévisions réellement émises,
-   couverture à part, repère « toujours bleu » à côté ; saison en cours sans pourcentage
+   couverture à part ; repère « toujours bleu » retiré le 2026-10-02 (fondateur : « aucun sens ») ; saison en cours sans taux ni 100 sur 100
    avant le 1er novembre ; taux mis en avant = dernière saison complète.
    Une seule carte : les chiffres clés en tête (sans cadre imbriqué), le détail dans un repli. #}
 {% set b = h.bref %}
@@ -16,19 +16,23 @@
             <p class="hb-kpi hb-kpi--ref"><span class="hb-kpi-value">{% if ref.justes_pct is not none %}{{ ref.justes_pct }}&nbsp;%{% else %}{{ ref.justes }} sur {{ ref.emises }}{% endif %}</span>
                 <span class="hb-kpi-label">de prévisions justes en {{ ref.label }}, dernière saison complète ({{ ref.justes }} sur {{ ref.emises }}). <a href="{{ ref.path }}">Voir la saison</a></span></p>
             {% endif %}
+            {% if pct_visible %}
             <p class="hb-kpi"><span class="hb-kpi-value">{% if not b.emises %}Aucune{% elif b.justes_pct is not none %}{{ b.justes_pct }}&nbsp;%{% else %}{{ b.justes }} juste{{ 's' if b.justes > 1 }}{% endif %}</span>
-                <span class="hb-kpi-label">{% if not b.emises %}prévision émise{% elif b.justes_pct is not none %}de prévisions justes ({{ b.justes }} sur {{ b.emises }}){% else %}sur {{ b.emises }} prévision{{ 's' if b.emises > 1 }} émise{{ 's' if b.emises > 1 }}{% endif %}, saison {{ season_label }}{% if is_current %} en cours{% endif %}&nbsp;: {{ b.erronees }} erronée{{ 's' if b.erronees > 1 }}{% if b.sans_prevision %}, {{ b.sans_prevision }} sans prévision (comptées à part){% endif %}.{% if not pct_visible %} Pourcentages à partir du 1<sup>er</sup>&nbsp;novembre.{% endif %}</span></p>
-            {% set rb_src = ref if ref else b %}
-            <p class="hb-kpi"><span class="hb-kpi-value">{% if rb_src.toujours_bleu_pct is not none %}{{ rb_src.toujours_bleu_pct }}&nbsp;%{% elif b.emises %}{{ b.toujours_bleu }} sur {{ b.emises }}{% else %}Aucun jour{% endif %}</span>
-                <span class="hb-kpi-label">Repère&nbsp;: dire «&nbsp;bleu&nbsp;» tous les jours aurait eu raison{% if ref %} en {{ ref.label }}{% endif %}.</span></p>
+                <span class="hb-kpi-label">{% if not b.emises %}prévision émise{% elif b.justes_pct is not none %}de prévisions justes ({{ b.justes }} sur {{ b.emises }}){% else %}sur {{ b.emises }} prévision{{ 's' if b.emises > 1 }} émise{{ 's' if b.emises > 1 }}{% endif %}, saison {{ season_label }}{% if is_current %} en cours{% endif %}.</span></p>
+            {% else %}
+            <p class="hb-kpi"><span class="hb-kpi-label">Saison {{ season_label }} en cours&nbsp;: taux publiés à partir du 1<sup>er</sup>&nbsp;novembre, quand les jours rouges et blancs deviennent possibles.</span></p>
+            {% endif %}
         </div>
         <details class="history-details history-bref-more" id="bref-detail">
             <summary>Détail de la saison {{ season_label }}, du {{ h.first_date }} au {{ h.last_date }}</summary>
             <p class="history-note">Chaque jour compte une fois par délai. Les pourcentages portent sur les prévisions réellement émises&nbsp;; les jours sans prévision sont comptés à part.{% if not pct_visible %} Avant le 1<sup>er</sup>&nbsp;novembre, presque tous les jours sont bleus et le taux ne veut pas dire grand-chose.{% endif %}</p>
             <ul class="history-bref-list">
+                {% if pct_visible %}
                 <li><span class="history-bref-label">Prévisions justes, toutes couleurs</span> <span class="history-bref-value">{{ ratio(b.justes, b.emises, b.justes_pct, 'aucune prévision émise') }}</span></li>
                 <li><span class="history-bref-label">Prévisions erronées</span> <span class="history-bref-value"><strong>{{ b.erronees }}</strong></span></li>
+                {% endif %}
                 <li><span class="history-bref-label">Couverture&nbsp;: prévisions émises</span> <span class="history-bref-value"><strong>{{ b.emises }}</strong> sur {{ b.jours }}{% if b.sans_prevision %}, {{ b.sans_prevision }} sans prévision{% endif %}{% if h.jours_sans_calcul %} ({{ h.jours_sans_calcul|length }} jour{{ 's' if h.jours_sans_calcul|length > 1 }} sans calcul){% endif %}</span></li>
+                {% if pct_visible %}
                 {% if b.ROUGE.reels or b.ROUGE.alertes %}
                 <li><span class="history-bref-label"><span class="color-tag rouge">Rouge</span> prévisions justes pour des jours rouges</span> <span class="history-bref-value">{{ ratio(b.ROUGE.annonces, b.ROUGE.reels_emis, b.ROUGE.rappel_pct, 'aucun jour rouge prévu') }}</span></li>
                 <li><span class="history-bref-label"><span class="color-tag rouge">Rouge</span> alertes rouges qui étaient justes</span> <span class="history-bref-value">{{ ratio(b.ROUGE.alertes_justes, b.ROUGE.alertes, b.ROUGE.precision_pct, 'aucune alerte') }}</span></li>
@@ -41,7 +45,7 @@
                 {% else %}
                 <li><span class="history-bref-label"><span class="color-tag blanc">Blanc</span> jours blancs</span> <span class="history-bref-value history-muted">pas encore de jour blanc cette saison</span></li>
                 {% endif %}
-                <li class="history-bref-repere"><span class="history-bref-label">Repère&nbsp;: dire «&nbsp;bleu&nbsp;» tous les jours aurait eu raison</span> <span class="history-bref-value">{{ ratio(b.toujours_bleu, b.emises, b.toujours_bleu_pct, 'aucun jour') }}</span></li>
+                {% endif %}
             </ul>
             {% if b.sans_prevision and (cf.interruption or cf.autre) %}
             <p class="history-bref-causes">Les {{ b.sans_prevision }} cases sans prévision&nbsp;: {% if cf.interruption %}{{ cf.interruption }} dues à un calcul interrompu{% if h.jours_sans_calcul %} ({{ h.jours_sans_calcul|length }} jour{{ 's' if h.jours_sans_calcul|length > 1 }} sans calcul, dates ci-dessous){% endif %}{% endif %}{% if cf.interruption and cf.autre %}&nbsp;; {% endif %}{% if cf.autre %}{{ cf.autre }} dont la cause n'a pas été enregistrée{% endif %}.</p>

@@ -286,7 +286,7 @@
                 {% if item.id == 'faq-fiabilite' %}
                 <p id="faq-precision-text">{% if ref_rate %}{% set r = ref_rate %}Saison {{ r.label }} (derni&egrave;re saison compl&egrave;te), pr&eacute;visions faites 2 &agrave; 5 jours &agrave; l'avance, toutes couleurs confondues&nbsp;:
                     <strong id="faq-precision-value">{{ r.justes_pct }}&nbsp;% de pr&eacute;visions justes</strong> ({{ r.justes }} sur {{ r.emises }} pr&eacute;visions &eacute;mises, {{ r.sans_prevision }} jours sans pr&eacute;vision compt&eacute;s &agrave; part).
-                    Rep&egrave;re&nbsp;: dire «&nbsp;bleu&nbsp;» tous les jours aurait eu raison {{ r.toujours_bleu_pct }}&nbsp;% du temps. D&eacute;tail par couleur dans <a href="{{ r.path }}">l'historique de nos pr&eacute;visions</a>.{% else %}D&eacute;tail par couleur, jour par jour, dans <a href="/historique-previsions">l'historique de nos pr&eacute;visions</a>.{% endif %}</p>
+                    D&eacute;tail par couleur dans <a href="{{ r.path }}">l'historique de nos pr&eacute;visions</a>.{% else %}D&eacute;tail par couleur, jour par jour, dans <a href="/historique-previsions">l'historique de nos pr&eacute;visions</a>.{% endif %}</p>
                 {% endif %}
                 </div>
             </details>

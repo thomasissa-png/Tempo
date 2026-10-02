@@ -1,9 +1,9 @@
 {# Bilan par délai J-1 → J-15 de /historique-previsions (inclus par historique_previsions.html) #}
 {% set rb = namespace(v=false) %}
 {% for hz in h.fiables + h.veille + h.indicatifs %}{% if hz.ROUGE.reels or hz.BLANC.reels or hz.ROUGE.alertes or hz.BLANC.alertes %}{% set rb.v = true %}{% endif %}{% endfor %}
-{% set ncol = 7 if rb.v else 3 %}
+{% set ncol = 6 if rb.v else 2 %}
     <h2 id="bilan">Bilan par délai d'anticipation</h2>
-    <p>Pour chaque délai, les jours rouges et blancs annoncés à l'avance et nos alertes qui étaient justes. Environ {{ facts.JOURS_BLEUS }} jours sur 365 sont bleus&nbsp;: dire «&nbsp;bleu&nbsp;» tous les jours aurait souvent raison, la dernière colonne le montre sur les mêmes jours.</p>
+    <p>Pour chaque délai, les jours rouges et blancs annoncés à l'avance et nos alertes qui étaient justes.</p>
     {% if not rb.v %}
     <p class="history-note history-note--info">Aucun jour rouge ou blanc {% if is_current %}depuis le 1<sup>er</sup> septembre{% else %}sur cette saison{% endif %}&nbsp;: les colonnes rouge et blanc s'afficheront dès le premier jour concerné.</p>
     {% else %}
@@ -23,7 +23,6 @@
                 <th scope="col" class="num">Alertes blanches qui étaient justes</th>
                 {% endif %}
                 <th scope="col" class="num">Prévisions justes</th>
-                <th scope="col" class="num"><span class="hide-sm">Repère&nbsp;: toujours dire «&nbsp;bleu&nbsp;»</span><span class="show-sm" title="Repère&nbsp;: toujours dire «&nbsp;bleu&nbsp;»">Toujours «&nbsp;bleu&nbsp;»</span></th>
             </tr>
         </thead>
         <tbody>

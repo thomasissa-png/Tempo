@@ -102,7 +102,7 @@
     <ul class="method-bref">
         <li>Couverture&nbsp;: {{ ref.emises }} pr&eacute;visions &eacute;mises sur {{ ref.jours }} attendues ({{ ref.sans_prevision }} sans pr&eacute;vision{% if ref.jours_sans_calcul %}, {{ ref.jours_sans_calcul }} jour{{ 's' if ref.jours_sans_calcul > 1 }} sans calcul{% endif %})&nbsp;: une pr&eacute;vision absente n'est ni juste ni erron&eacute;e, elle est compt&eacute;e &agrave; part.</li>
         <li>{% if ref.ROUGE.reels_emis or ref.BLANC.reels_emis %}Pr&eacute;visions justes pour des jours rouges&nbsp;: <strong>{{ ref.ROUGE.annonces }}</strong> sur {{ ref.ROUGE.reels_emis }}, pour des jours blancs&nbsp;: <strong>{{ ref.BLANC.annonces }}</strong> sur {{ ref.BLANC.reels_emis }} (chaque jour compte une fois par d&eacute;lai){% else %}Aucun jour rouge ou blanc dans les jours compar&eacute;s{% endif %}.</li>
-        <li>Rep&egrave;re&nbsp;: dire «&nbsp;bleu&nbsp;» tous les jours aurait eu raison {{ ref.toujours_bleu }} fois sur {{ ref.emises }}{% if ref.toujours_bleu_pct is not none %} ({{ ref.toujours_bleu_pct }}&nbsp;%){% endif %}. <a href="{{ ref_path }}#bilan">Voir le d&eacute;tail</a>.</li>
+        <li><a href="{{ ref_path }}#bilan">Voir le d&eacute;tail par d&eacute;lai</a>.</li>
     </ul>
     <p>La saison en cours est suivie jour par jour sur l'<a href="/historique-previsions">historique</a>&nbsp;; son pourcentage s'affiche &agrave; partir du 1<sup>er</sup>&nbsp;novembre (avant, presque tous les jours sont bleus et le taux ne veut pas dire grand-chose).</p>
     {% else %}

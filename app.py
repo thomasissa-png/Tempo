@@ -1716,11 +1716,10 @@ def _llms_history_section() -> str:
     ]
     if start_label:
         lines.append(f"- Historique tenu depuis le {start_label}.")
-    if ref and ref.get("justes_pct") is not None and ref.get("toujours_bleu_pct") is not None:
+    if ref and ref.get("justes_pct") is not None:
         lines.append(
             f"- Taux 2 à 5 jours avant, saison {ref['label']} (dernière saison complète) : {ref['justes']} "
-            f"prévisions justes sur {ref['emises']} émises ({ref['justes_pct']} %), repère « dire bleu tous les "
-            f"jours » : {ref['toujours_bleu_pct']} %. Méthode : {u}/methodologie"
+            f"prévisions justes sur {ref['emises']} émises ({ref['justes_pct']} %). Méthode : {u}/methodologie"
         )
     return "\n".join(lines) + "\n"
 
@@ -1767,8 +1766,7 @@ def _llms_common_sections() -> str:
         "## Performance (nature exacte des chiffres)\n"
         f"- {site_facts.PERFORMANCE_POLICY}\n"
         f"- En conditions réelles : taux de prévisions justes ({site_facts.HORIZON_FIABLE}) de la dernière saison "
-        "complète, calculé sur les prévisions réellement émises (jours sans prévision comptés à part), "
-        "avec le repère « dire bleu tous les jours » ; "
+        "complète, calculé sur les prévisions réellement émises (jours sans prévision comptés à part) ; "
         f"publié sur {site_facts.SITE_URL}/methodologie et {site_facts.SITE_URL}/api/performance/badge\n"
         "\n"
         + _llms_history_section() +
@@ -2522,7 +2520,7 @@ async def api_performance(request: Request, authorization: str | None = Header(N
 def _reference_rate() -> dict | None:
     """Taux publié sur le site (décision fondateur du 2026-09-30) : dernière saison
     complète, prévisions faites 2 à 5 jours avant, calculé sur les prévisions réellement
-    émises ; couverture et repère « toujours bleu » à côté. Même source que l'historique."""
+    émises ; couverture à côté (repère « toujours bleu » retiré le 2026-10-02). Même source que l'historique."""
     try:
         from prediction_history import (last_complete_season_summary, season_path,
                                         season_start_year, today_paris, season_label)
@@ -2540,8 +2538,7 @@ def _reference_rate_label(ref: dict) -> str:
     return (f"Saison {ref['label']} (dernière saison complète), prévisions faites "
             f"{site_facts.HORIZON_FIABLE_LISIBLE}, toutes couleurs confondues : "
             f"{ref['justes_pct']} % de prévisions justes ({ref['justes']} sur {ref['emises']} "
-            f"prévisions émises, {ref['sans_prevision']} jours sans prévision comptés à part). "
-            f"Repère : dire « bleu » tous les jours aurait eu raison {ref['toujours_bleu_pct']} % du temps.")
+            f"prévisions émises, {ref['sans_prevision']} jours sans prévision comptés à part).")
 
 
 @app.get("/api/performance/badge")

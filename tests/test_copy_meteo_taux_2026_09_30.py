@@ -134,7 +134,9 @@ class TestPourcentageSaisonEnCours:
         monkeypatch.setattr(app_module, "_history_data", _data)
         monkeypatch.setattr(ph, "today_paris", lambda: date(2026, 9, 30))
         page = html.unescape(client.get("/historique-previsions").text).replace("\xa0", " ")
-        assert "Pourcentages à partir du 1er novembre" in page.replace("<sup>", "").replace("</sup>", "")
+        assert "taux publiés à partir du 1er novembre" in page.replace("<sup>", "").replace("</sup>", "")
+        # 2026-10-02 : plus de « 100 justes sur 100 » ni d'« erronée » pour la saison en cours
+        assert "Repère" not in page and "dire « bleu »" not in page
         bref = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", page[page.index('id="en-bref"'):page.index("Légende complète")]))
         # Tour 1 (HIS-T3) : chiffre de la dernière saison complète en tête, en tuile
         assert "90 % de prévisions justes en 2025-2026, dernière saison complète" in bref
@@ -154,7 +156,7 @@ class TestTauxPublies:
         assert r["saison"] == "2025-2026" and r["precision"] == 90
         assert (r["justes"], r["emises"], r["sans_prevision"]) == (640, 712, 64)
         assert "precision_30j" not in r
-        assert "Saison 2025-2026" in r["label"] and "dire « bleu »" in r["label"]
+        assert "Saison 2025-2026" in r["label"] and "bleu" not in r["label"]
 
     def test_methodologie_and_home_faq(self, client, monkeypatch):
         import app as app_module
@@ -167,7 +169,7 @@ class TestTauxPublies:
         faq = home[home.index('id="faq-precision-text"'):]
         faq = faq[:faq.index("</p>")]
         assert "Saison 2025-2026 (dernière saison complète)" in faq and "90 % de prévisions justes" in faq
-        assert "toutes couleurs confondues" in faq and "dire « bleu »" in faq
+        assert "toutes couleurs confondues" in faq and "bleu »" not in faq and "Repère" not in faq
 
     def test_no_flattering_qualifier_in_js(self):
         js = (ROOT / "static" / "js" / "app.js").read_text(encoding="utf-8")

@@ -132,7 +132,7 @@ class TestLlmsHistory:
         monkeypatch.setattr(prediction_history, "last_complete_season_summary", lambda d, t=None: ref)
         out = app_module._llms_history_section()
         assert "saison 2025-2026 (dernière saison complète) : 300 prévisions justes sur 400 émises (75 %)" in out
-        assert "« dire bleu tous les jours » : 70 %" in out
+        assert "dire bleu" not in out  # repère retiré le 2026-10-02 (fondateur)
 
     def test_dates_bumped(self):
         import site_facts

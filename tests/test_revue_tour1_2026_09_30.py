@@ -96,7 +96,7 @@ class TestHistorique:
 
     def test_bilan_compact_readable(self):
         bilan = (ROOT / "templates" / "_historique_bilan.html").read_text(encoding="utf-8")
-        assert 'class="show-sm"' in bilan and "Toujours «&nbsp;bleu&nbsp;»" in bilan
+        assert "Toujours «&nbsp;bleu&nbsp;»" not in bilan  # colonne repère retirée le 2026-10-02
         assert ".history-bilan-scroll.is-compact .history-table { table-layout: fixed; }" in TOUR1
         assert ".history-bilan-scroll.is-compact { max-width: 720px; }" in TOUR1
 

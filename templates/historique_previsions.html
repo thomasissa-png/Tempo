@@ -13,7 +13,6 @@
                 <td class="num">{{ ratio(hz.BLANC.annonces, hz.BLANC.reels_emis, hz.BLANC.rappel_pct, 'aucun') }}</td>
                 <td class="num">{{ ratio(hz.BLANC.alertes_justes, hz.BLANC.alertes, hz.BLANC.precision_pct, 'aucune') }}</td>
                 {% endif %}<td class="num">{{ ratio(hz.justes, hz.emises, hz.justes_pct, 'aucune prévision') }}{% if hz.sans_prevision %}<span class="hb-sub">+ {{ hz.sans_prevision }}<span class="hide-sm"> jour{{ 's' if hz.sans_prevision > 1 }}</span> sans prévision</span>{% endif %}</td>
-                <td class="num">{{ ratio(hz.toujours_bleu, hz.emises, hz.toujours_bleu_pct, 'aucun jour') }}</td>
             </tr>
 {% endmacro %}
 {% block title %}{% if is_current %}Historique de nos prévisions Tempo EDF, jour par jour{% else %}Historique de nos prévisions Tempo EDF : saison {{ season_label }}{% endif %}{% endblock %}

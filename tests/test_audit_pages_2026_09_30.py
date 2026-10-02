@@ -57,7 +57,8 @@ class TestHistoryPage:
         assert above.count("<p") <= 2  # une phrase d'intro + au plus une ligne de chiffre clé
         assert "hb-kpi" not in above and "<details" not in above
         bref = art[art.index('id="en-bref"'):art.index("Légende complète")]
-        assert "Repère" in bref and "sur" in bref
+        assert "Repère" not in bref and "bleu tous les jours" not in bref  # retiré le 2026-10-02 (fondateur)
+        assert "sur" in bref
         assert "hb-pct" not in bref  # effectifs < 20 : pas de pourcentage
 
     def test_bref_aggregates_reliable_horizons(self, monkeypatch):
@@ -98,7 +99,7 @@ class TestHistoryPage:
         _controlled_case(monkeypatch)
         page = html.unescape(client.get(PAGE + "/2025-2026").text)
         assert "Alertes rouges qui étaient justes" in page
-        assert "Repère : toujours dire « bleu »" in page.replace("\xa0", " ")
+        assert "Repère" not in page and "Toujours « bleu »" not in page.replace("\xa0", " ")
 
 
 # ---------------------------------------------------------------- Accueil (ACC-01 à ACC-10)
